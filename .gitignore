@@ -1,0 +1,106 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# NLPL build artifacts
+build/bin/*
+build/generated/*
+build/executables/*
+!build/bin/.gitkeep
+!build/generated/.gitkeep
+!build/executables/.gitkeep
+
+# Generated files that might end up in root
+*.generated.c
+*.generated.cpp
+*.generated.js
+*.generated.wasm
+
+# Compiled binaries
+*.exe
+*.out
+a.out
+
+# C build artifacts
+*.o
+*.a
+*.so
+*.dylib
+
+# ANTLR
+*.tokens
+*.interp
+*Lexer.py
+*Parser.py
+*Listener.py
+*Visitor.py
+
+# Logs
+*.log
+*.txt
+!requirements.txt
+
+# Test outputs
+test_output/
+*.test
+
+# Backup files
+*.backup
+*~
+
+# Test binaries in root (cleanup)
+/test_*
+!/test_*.py
+!/test_*.json
+!/test_programs/
+
+# Temporary test projects
+test_*_proj/
+
+# Build artifacts in root
+*.ll
+*.o
+*.a
+*.exe
+*.out
+test_ffi
+test_export
+-o
+
+# IDE specific
+vscode-nlpl/
+.vscode/
+.idea/
+
+# Session reports (keep in docs/)
+/SESSION_SUMMARY_*.md
+
+# Verification scripts in root (should be in dev_tools/)
+/verify_*.py
+/debug_*.py

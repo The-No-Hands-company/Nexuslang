@@ -1,0 +1,37 @@
+# NLPL Type System Demonstration
+
+# Variable declarations with type annotations
+Create count as Integer and set it to 10.
+Create price as Float and set it to 19.99.
+Create name as String and set it to "NLPL".
+Create is_enabled as Boolean and set it to true.
+
+# Function with type annotations
+Define a function called calculate_total that takes quantity as Integer, unit_price as Float and returns Float
+    Return quantity * unit_price.
+End function.
+
+Define a function called format_price that takes amount as Float and returns String
+    Return "$" + amount.
+End function.
+
+# Using the functions with correct types
+Create total as Float and set it to calculate_total(count, price).
+Create formatted_price as String and set it to format_price(total).
+
+# Output the results
+Print("Order Summary:").
+Print("Product: " + name).
+Print("Quantity: " + count).
+Print("Unit Price: $" + price).
+Print("Total: " + formatted_price).
+
+# Uncomment these lines to see type errors:
+# Type error: assigning string to integer
+# Create error1 as Integer and set it to "This is not an integer".
+
+# Type error: passing string to a function expecting integer
+# Create error2 as Float and set it to calculate_total("5", price).
+
+# Type error: incompatible binary operation
+# Create error3 and set it to count + name. 

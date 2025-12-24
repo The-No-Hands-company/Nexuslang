@@ -1,0 +1,9 @@
+# NLPL Function - LLVM Backend Test
+# Tests function definition and calling
+
+function add with x as Integer and y as Integer returns Integer
+    return x plus y
+end
+
+set result to call add with 15 and 27
+print text result

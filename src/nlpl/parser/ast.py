@@ -1,0 +1,978 @@
+"""
+Abstract Syntax Tree (AST) for the Natural Language Programming Language (NLPL).
+This module defines the nodes that represent the structure of programs written in our language.
+"""
+
+class ASTNode:
+    """Base class for all AST nodes."""
+    def __init__(self, node_type, line_number=None):
+        self.node_type = node_type
+        self.line_number = line_number
+        
+    def __str__(self):
+        return f"{self.node_type} (line {self.line_number})"
+
+class Program:
+    """The root node of the AST."""
+    def __init__(self, statements):
+        self.statements = statements if statements else []
+        
+    def __str__(self):
+        return f"Program with {len(self.statements)} statements"
+
+class VariableDeclaration:
+    """A variable declaration node."""
+    def __init__(self, name, value, type_annotation=None):
+        self.name = name
+        self.value = value
+        self.type_annotation = type_annotation
+        
+    def __str__(self):
+        return f"Variable {self.name} = {self.value}"
+
+class IndexAssignment:
+    """An index assignment node: set array[index] to value."""
+    def __init__(self, target, value):
+        self.target = target  # IndexExpression node (array[index])
+        self.value = value    # Expression to assign
+        
+    def __str__(self):
+        return f"IndexAssignment {self.target} = {self.value}"
+
+class MemberAssignment:
+    """A member assignment node: set object.field to value."""
+    def __init__(self, target, value):
+        self.target = target  # MemberAccess node (object.field)
+        self.value = value    # Expression to assign
+        
+    def __str__(self):
+        return f"MemberAssignment {self.target} = {self.value}"
+
+class DereferenceAssignment:
+    """A pointer dereference assignment node: set (value at ptr) to value."""
+    def __init__(self, target, value):
+        self.target = target  # DereferenceExpression node (value at ptr)
+        self.value = value    # Expression to assign
+    
+    def __str__(self):
+        return f"DereferenceAssignment (value at {self.target}) = {self.value}"
+
+class Literal:
+    """A literal value node."""
+    def __init__(self, type, value):
+        self.type = type
+        self.value = value
+        
+    def __str__(self):
+        return str(self.value)
+
+class FunctionDefinition(ASTNode):
+    """Represents a function definition."""
+    def __init__(self, name, parameters, body=None, return_type=None, type_parameters=None, type_constraints=None, variadic=False, is_exported=False, line_number=None):
+        super().__init__("function_definition", line_number)
+        self.name = name
+        self.parameters = parameters or []
+        self.body = body or []
+        self.return_type = return_type  # Optional return type annotation
+        self.type_parameters = type_parameters or []  # Generic type parameters like <T, R>
+        self.type_constraints = type_constraints or []  # Constraints like "where T is Comparable"
+        self.variadic = variadic  # True if function accepts variable arguments (...)
+        self.is_exported = is_exported
+
+class TypeAlias(ASTNode):
+    """A type alias definition node."""
+    def __init__(self, name, target_type, type_parameters=None, constraints=None, line_number=None):
+        super().__init__("type_alias", line_number)
+        self.name = name
+        self.type_parameters = type_parameters or []  # List of type parameter names
+        self.target_type = target_type  # The type being aliased
+        self.constraints = constraints or {}  # Dict of parameter -> constraint
+    
+    def __str__(self):
+        return f"TypeAlias {self.name}"
+
+class AsyncFunctionDefinition(ASTNode):
+    """Represents an async function definition.
+    
+    Example:
+        async function fetch_data with url as String returns Dictionary
+            set response to await http_get(url)
+            return response
+        end
+    """
+    def __init__(self, name, parameters, body=None, return_type=None, type_parameters=None, line_number=None):
+        super().__init__("async_function_definition", line_number)
+        self.name = name
+        self.parameters = parameters or []
+        self.body = body or []
+        self.return_type = return_type
+        self.type_parameters = type_parameters or []
+
+class AwaitExpression(ASTNode):
+    """Represents an await expression.
+    
+    Example:
+        set result to await async_function()
+    """
+    def __init__(self, expression, line_number=None):
+        super().__init__("await_expression", line_number)
+        self.expression = expression
+
+class Parameter(ASTNode):
+    """Represents a function parameter."""
+    def __init__(self, name, type_annotation=None, size_param=None, line_number=None):
+        super().__init__("parameter", line_number)
+        self.name = name
+        self.type_annotation = type_annotation  # Optional type annotation
+        self.size_param = size_param  # Optional size parameter name for array bounds
+
+class IfStatement(ASTNode):
+    """Represents an if statement."""
+    def __init__(self, condition, then_block, else_block=None, line_number=None):
+        super().__init__("if_statement", line_number)
+        self.condition = condition
+        self.then_block = then_block
+        self.else_block = else_block
+
+class WhileLoop(ASTNode):
+    """Represents a while loop."""
+    def __init__(self, condition, body, line_number=None, else_body=None, label=None):
+        super().__init__("while_loop", line_number)
+        self.condition = condition
+        self.body = body
+        self.else_body = else_body  # Optional else block (executed if loop completes without break)
+        self.label = label  # Optional label for labeled break/continue
+
+class ForLoop(ASTNode):
+    """Represents a for loop (both for-each and range-based).
+    
+    For-each loop: for each item in collection
+        - iterator: loop variable name
+        - iterable: collection expression
+        - body: list of statements
+        - start, end, step: None
+    
+    Range-based loop: for i from start to end [by step]
+        - iterator: loop variable name  
+        - start: start expression
+        - end: end expression
+        - step: step expression (default 1)
+        - body: list of statements
+        - iterable: None
+    """
+    def __init__(self, iterator, iterable=None, body=None, start=None, end=None, step=None, line_number=None, else_body=None, label=None):
+        super().__init__("for_loop", line_number)
+        self.iterator = iterator
+        self.iterable = iterable  # For for-each loops
+        self.start = start  # For range loops
+        self.end = end  # For range loops
+        self.step = step  # For range loops
+        self.body = body or []
+        self.else_body = else_body  # Optional else block (executed if loop completes without break)
+        self.label = label  # Optional label for labeled break/continue
+
+class MatchExpression(ASTNode):
+    """Represents a pattern matching expression.
+    
+    Example:
+        match result with
+            case Ok value
+                print text value
+            case Error message
+                print text message
+            case _
+                print text "Unknown"
+    """
+    def __init__(self, expression, cases, line_number=None):
+        super().__init__("match_expression", line_number)
+        self.expression = expression  # Expression to match against
+        self.cases = cases or []  # List of MatchCase nodes
+
+class MatchCase(ASTNode):
+    """Represents a single case in a match expression.
+    
+    Patterns can be:
+    - Literal: case 42
+    - Identifier (binding): case value
+    - Variant: case Ok value (for Result, Option types)
+    - Wildcard: case _
+    - Guard: case value if value > 0
+    """
+    def __init__(self, pattern, body, guard=None, line_number=None):
+        super().__init__("match_case", line_number)
+        self.pattern = pattern  # Pattern node
+        self.body = body  # List of statements to execute
+        self.guard = guard  # Optional condition (if clause)
+
+class Pattern(ASTNode):
+    """Base class for patterns in match expressions."""
+    def __init__(self, pattern_type, line_number=None):
+        super().__init__(f"pattern_{pattern_type}", line_number)
+
+class LiteralPattern(Pattern):
+    """Matches a literal value: case 42, case "hello", case true"""
+    def __init__(self, value, line_number=None):
+        super().__init__("literal", line_number)
+        self.value = value
+
+class IdentifierPattern(Pattern):
+    """Binds matched value to a variable: case value"""
+    def __init__(self, name, line_number=None):
+        super().__init__("identifier", line_number)
+        self.name = name
+
+class WildcardPattern(Pattern):
+    """Matches any value: case _"""
+    def __init__(self, line_number=None):
+        super().__init__("wildcard", line_number)
+    
+    def __repr__(self):
+        return "WildcardPattern(_)"
+
+
+class OptionPattern(Pattern):
+    """Pattern for matching Option<T> values.
+    
+    Production-ready pattern matching for Some/None variants.
+    Supports destructuring and variable binding.
+    
+    Examples:
+        case Some with value  # Matches Some and binds value
+        case None             # Matches None
+    """
+    
+    def __init__(self, variant: str, binding: str = None, line_number: int = None):
+        """Initialize Option pattern.
+        
+        Args:
+            variant: "Some" or "None"
+            binding: Variable name to bind the value (for Some)
+            line_number: Source line number
+        """
+        super().__init__("option", line_number)
+        if variant not in ("Some", "None"):
+            raise ValueError(f"Invalid Option variant: {variant}")
+        
+        self.variant = variant
+        self.binding = binding
+    
+    def __repr__(self):
+        if self.binding:
+            return f"OptionPattern({self.variant} with {self.binding})"
+        return f"OptionPattern({self.variant})"
+
+
+class ResultPattern(Pattern):
+    """Pattern for matching Result<T,E> values.
+    
+    Production-ready pattern matching for Ok/Err variants.
+    Supports destructuring and variable binding.
+    
+    Examples:
+        case Ok with value    # Matches Ok and binds value
+        case Err with error   # Matches Err and binds error
+    """
+    
+    def __init__(self, variant: str, binding: str = None, line_number: int = None):
+        """Initialize Result pattern.
+        
+        Args:
+            variant: "Ok" or "Err"
+            binding: Variable name to bind the value/error
+            line_number: Source line number
+        """
+        super().__init__("result", line_number)
+        if variant not in ("Ok", "Err"):
+            raise ValueError(f"Invalid Result variant: {variant}")
+        
+        self.variant = variant
+        self.binding = binding
+    
+    def __repr__(self):
+        if self.binding:
+            return f"ResultPattern({self.variant} with {self.binding})"
+        return f"ResultPattern({self.variant})"
+
+
+class VariantPattern(Pattern):
+    """Matches a variant with optional binding: case Ok value, case Error message"""
+    def __init__(self, variant_name, bindings=None, line_number=None):
+        super().__init__("variant", line_number)
+        self.variant_name = variant_name  # "Ok", "Error", "Some", "None"
+        self.bindings = bindings or []  # List of identifiers to bind
+
+class TuplePattern(Pattern):
+    """Matches a tuple: case (x, y)"""
+    def __init__(self, patterns, line_number=None):
+        super().__init__("tuple", line_number)
+        self.patterns = patterns or []  # List of nested patterns
+
+class ListPattern(Pattern):
+    """Matches a list: case [first, second, ...rest]"""
+    def __init__(self, patterns, rest_binding=None, line_number=None):
+        super().__init__("list", line_number)
+        self.patterns = patterns or []  # List of patterns
+        self.rest_binding = rest_binding  # Optional ...rest binding
+
+class SwitchStatement(ASTNode):
+    """Represents a switch statement for multi-way branching.
+    
+    Example:
+        switch value
+            case 1
+                print text "One"
+            case 2
+                print text "Two"
+            default
+                print text "Other"
+    """
+    def __init__(self, expression, cases, default_case=None, line_number=None):
+        super().__init__("switch_statement", line_number)
+        self.expression = expression  # Expression to switch on
+        self.cases = cases or []  # List of SwitchCase nodes
+        self.default_case = default_case  # Optional default case body (list of statements)
+
+class SwitchCase(ASTNode):
+    """Represents a single case in a switch statement.
+    
+    Example:
+        case 42
+            print text "Found it!"
+    """
+    def __init__(self, value, body, line_number=None):
+        super().__init__("switch_case", line_number)
+        self.value = value  # Expression to match (literal, identifier, etc.)
+        self.body = body  # List of statements to execute
+
+class MemoryAllocation(ASTNode):
+    """Represents memory allocation (like C++ new)."""
+    def __init__(self, var_type, identifier, initial_value=None, line_number=None):
+        super().__init__("memory_allocation", line_number)
+        self.var_type = var_type
+        self.identifier = identifier
+        self.initial_value = initial_value
+
+class MemoryDeallocation(ASTNode):
+    """Represents memory deallocation (like C++ delete)."""
+    def __init__(self, identifier, line_number=None):
+        super().__init__("memory_deallocation", line_number)
+        self.identifier = identifier
+
+class ClassDefinition(ASTNode):
+    """Represents a class definition with inheritance and interface implementation."""
+    def __init__(self, name, properties=None, methods=None, parent_classes=None, 
+                 implemented_interfaces=None, generic_parameters=None, is_exported=False, line_number=None):
+        super().__init__("class_definition", line_number)
+        self.name = name
+        self.properties = properties or []
+        self.methods = methods or []
+        self.parent_classes = parent_classes or []
+        self.implemented_interfaces = implemented_interfaces or []
+        self.generic_parameters = generic_parameters or []
+        self.is_exported = is_exported
+
+class StructDefinition(ASTNode):
+    """Represents a C-style struct definition with memory layout control.
+    
+    Supports C++-style structs with methods for hybrid data/behavior structures.
+    """
+    def __init__(self, name, fields=None, methods=None, packed=False, alignment=None, line_number=None):
+        super().__init__("struct_definition", line_number)
+        self.name = name
+        self.fields = fields or []  # List of StructField nodes
+        self.methods = methods or []  # List of MethodDefinition nodes (C++-style)
+        self.packed = packed  # Whether struct is packed (no padding)
+        self.alignment = alignment  # Explicit alignment requirement
+
+class StructField(ASTNode):
+    """Represents a field in a struct or union."""
+    def __init__(self, name, type_annotation, bit_width=None, line_number=None):
+        super().__init__("struct_field", line_number)
+        self.name = name
+        self.type_annotation = type_annotation
+        self.bit_width = bit_width  # For bit fields (e.g., 3 bits)
+
+class UnionDefinition(ASTNode):
+    """Represents a C-style union where all fields share the same memory."""
+    def __init__(self, name, fields=None, line_number=None):
+        super().__init__("union_definition", line_number)
+        self.name = name
+        self.fields = fields or []  # List of StructField nodes
+
+class EnumDefinition(ASTNode):
+    """Represents an enumeration type definition.
+    
+    Enums can have auto-numbered values or explicit integer/string values.
+    Examples:
+        enum Color { Red, Green, Blue }  # Auto-numbered: 0, 1, 2
+        enum Status { Success = 0, Error = 1, Pending = 2 }
+        enum LogLevel { Debug = "DEBUG", Info = "INFO", Error = "ERROR" }
+    """
+    def __init__(self, name, members=None, line_number=None):
+        super().__init__("enum_definition", line_number)
+        self.name = name
+        self.members = members or []  # List of EnumMember nodes
+
+class EnumMember(ASTNode):
+    """Represents a member of an enum."""
+    def __init__(self, name, value=None, line_number=None):
+        super().__init__("enum_member", line_number)
+        self.name = name
+        self.value = value  # None for auto-numbered, or explicit value (int/string)
+
+class PropertyDeclaration(ASTNode):
+    """Represents a class property declaration."""
+    def __init__(self, name, type_annotation=None, default_value=None, line_number=None):
+        super().__init__("property_declaration", line_number)
+        self.name = name
+        self.type_annotation = type_annotation  # Optional type annotation
+        self.default_value = default_value  # Optional default value expression
+
+class MethodDefinition(ASTNode):
+    """Represents a class method definition."""
+    """Represents a class method definition."""
+    def __init__(self, name, parameters, body=None, return_type=None, is_static=False, line_number=None):
+        super().__init__("method_definition", line_number)
+        self.name = name
+        self.parameters = parameters or []
+        self.body = body or []
+        self.return_type = return_type  # Optional return type annotation
+        self.is_static = is_static
+
+class ObjectInstantiation(ASTNode):
+    """Represents object creation with 'new ClassName' or 'new ClassName<T>'."""
+    def __init__(self, class_name, arguments=None, type_arguments=None, line_number=None):
+        super().__init__("object_instantiation", line_number)
+        self.class_name = class_name
+        self.arguments = arguments or []  # Constructor arguments
+        self.type_arguments = type_arguments or []  # Generic type arguments like <Integer, String>
+
+class MemberAccess(ASTNode):
+    """Represents member access: object.property or object.method()."""
+    def __init__(self, object_expr, member_name, is_method_call=False, arguments=None, line_number=None):
+        super().__init__("member_access", line_number)
+        self.object_expr = object_expr  # Expression evaluating to an object
+        self.member_name = member_name  # Property or method name
+        self.is_method_call = is_method_call  # True if method call, False if property access
+        self.arguments = arguments or []  # Method arguments if is_method_call
+
+class ConcurrentExecution(ASTNode):
+    """Represents concurrent execution of tasks."""
+    def __init__(self, tasks, line_number=None):
+        super().__init__("concurrent_execution", line_number)
+        self.tasks = tasks or []
+
+class TryCatch(ASTNode):
+    """Represents a try-catch block."""
+    def __init__(self, try_block, catch_block, exception_var=None, line_number=None):
+        super().__init__("try_catch", line_number)
+        self.try_block = try_block
+        self.catch_block = catch_block
+        self.exception_var = exception_var  # Optional exception variable name
+
+class RaiseStatement(ASTNode):
+    """Represents a raise/throw statement.
+    
+    Syntax:
+        raise error with message "error text"
+        raise ValueError with message "invalid value"
+        raise error  # Re-raise current exception
+    """
+    def __init__(self, exception_type=None, message=None, line_number=None):
+        super().__init__("raise_statement", line_number)
+        self.exception_type = exception_type or "Error"  # Default to generic Error
+        self.message = message  # Expression that evaluates to error message
+
+class Expression(ASTNode):
+    """Base class for expressions."""
+    def __init__(self, expr_type, line_number=None):
+        super().__init__(expr_type, line_number)
+
+class BinaryOperation(Expression):
+    """Represents a binary operation (e.g., addition, subtraction)."""
+    def __init__(self, left, operator, right, line_number=None):
+        super().__init__("binary_operation", line_number)
+        self.left = left
+        self.operator = operator
+        self.right = right
+
+class UnaryOperation(Expression):
+    """Represents a unary operation (e.g., negation)."""
+    def __init__(self, operator, operand, line_number=None):
+        super().__init__("unary_operation", line_number)
+        self.operator = operator
+        self.operand = operand
+
+class Identifier(Expression):
+    """Represents an identifier (variable or function name)."""
+    def __init__(self, name, line_number=None):
+        super().__init__("identifier", line_number)
+        self.name = name
+
+class FunctionCall(Expression):
+    """Represents a function call."""
+    def __init__(self, name, arguments=None, line_number=None):
+        super().__init__("function_call", line_number)
+        self.name = name
+        self.arguments = arguments or []
+
+class RepeatNTimesLoop(ASTNode):
+    """Represents a repeat-n-times loop."""
+    def __init__(self, count, body=None, line_number=None):
+        super().__init__("repeat_n_times_loop", line_number)
+        self.count = count
+        self.body = body or []
+
+class Block(ASTNode):
+    """Represents a block of statements."""
+    def __init__(self, statements=None, line_number=None):
+        super().__init__("block", line_number)
+        self.statements = statements or []
+
+class ReturnStatement(ASTNode):
+    """Represents a return statement."""
+    def __init__(self, value=None, line_number=None):
+        super().__init__("return_statement", line_number)
+        self.value = value
+
+class StringLiteral(ASTNode):
+    """Represents a string literal."""
+    def __init__(self, value, line_number=None):
+        super().__init__("string_literal", line_number)
+        self.value = value
+
+class FStringExpression(ASTNode):
+    """Represents an f-string with interpolation: f"Hello, {name}!" """
+    def __init__(self, parts, line_number=None):
+        super().__init__("fstring", line_number)
+        self.parts = parts  # List of (is_literal, content, format_spec) tuples
+        self.line_number = line_number
+    
+    def __repr__(self):
+        return f"FStringExpression({len(self.parts)} parts)"
+
+
+class TryExpression(ASTNode):
+    """Represents the ? operator for error propagation.
+    
+    Production-ready implementation for Result<T,E> unwrapping.
+    Automatically propagates errors by early returning Err values.
+    
+    Example:
+        let file = open_file(path)?  # Unwraps Ok, returns Err
+        let content = read_all(file)?
+    
+    Semantics:
+        - If expression evaluates to Ok(value), unwraps to value
+        - If expression evaluates to Err(error), returns Err(error) from function
+        - Can only be used in functions returning Result<T,E>
+    """
+    
+    def __init__(self, expression, line_number=None):
+        """Initialize try expression.
+        
+        Args:
+            expression: Expression that should evaluate to Result<T,E>
+            line_number: Source line number
+        """
+        super().__init__("try_expression", line_number)
+        self.expression = expression
+    
+    def __repr__(self):
+        return f"TryExpression({self.expression}?)"
+
+
+class BreakStatement(ASTNode):
+    """Represents a break statement."""
+    def __init__(self, line_number=None, label=None):
+        super().__init__("break_statement", line_number)
+        self.label = label  # Optional label for breaking out of nested loops
+
+class ContinueStatement(ASTNode):
+    """Represents a continue statement."""
+    def __init__(self, line_number=None, label=None):
+        super().__init__("continue_statement", line_number)
+        self.label = label  # Optional label for continuing specific nested loop
+        self.label = label  # Optional label for continuing specific loop
+
+class FallthroughStatement(ASTNode):
+    """Represents a fallthrough statement in switch cases."""
+    def __init__(self, line_number=None):
+        super().__init__("fallthrough_statement", line_number)
+
+class PanicStatement(ASTNode):
+    """Represents a panic statement: panic with "message"."""
+    def __init__(self, message, line_number=None):
+        super().__init__("panic_statement", line_number)
+        self.message = message
+
+class ConcurrentBlock(ASTNode):
+    """Represents a concurrent block of statements."""
+    def __init__(self, statements=None, line_number=None):
+        super().__init__("concurrent_block", line_number)
+        self.statements = statements or []
+
+class TryCatchBlock(ASTNode):
+    """Represents a try-catch block."""
+    def __init__(self, try_block, catch_block, exception_var=None, line_number=None):
+        super().__init__("try_catch_block", line_number)
+        self.try_block = try_block
+        self.catch_block = catch_block
+        self.exception_var = exception_var  # Optional exception variable name
+
+# Module-related AST nodes
+class ImportStatement(ASTNode):
+    """Represents an import statement."""
+    def __init__(self, module_name, alias=None, line_number=None):
+        super().__init__("import_statement", line_number)
+        self.module_name = module_name
+        self.alias = alias  # Optional alias for the module
+
+class SelectiveImport(ASTNode):
+    """Represents a selective import statement."""
+    def __init__(self, module_name, imported_names, line_number=None):
+        super().__init__("selective_import", line_number)
+        self.module_name = module_name
+        self.imported_names = imported_names  # List of names to import
+
+class ModuleAccess(Expression):
+    """Represents access to a module member (e.g., module.function)."""
+    def __init__(self, module_name, member_name, line_number=None):
+        super().__init__("module_access", line_number)
+        self.module_name = module_name
+        self.member_name = member_name
+
+class PrivateDeclaration(ASTNode):
+    """Represents a private declaration modifier."""
+    def __init__(self, declaration, line_number=None):
+        super().__init__("private_declaration", line_number)
+        self.declaration = declaration  # The declaration being marked as private
+
+class ModuleDefinition(ASTNode):
+    """Represents a module definition."""
+    def __init__(self, name, exports=None, line_number=None):
+        super().__init__("module_definition", line_number)
+        self.name = name
+        self.exports = exports or []  # List of exported names (functions, classes, etc.)
+
+class ExportStatement(ASTNode):
+    """Represents an export statement."""
+    def __init__(self, names, line_number=None):
+        super().__init__("export_statement", line_number)
+        self.names = names  # List of names to export
+
+# Add InterfaceDefinition class
+class InterfaceDefinition(ASTNode):
+    """Represents an interface definition."""
+    def __init__(self, name, methods=None, generic_parameters=None, line_number=None):
+        super().__init__("interface_definition", line_number)
+        self.name = name
+        self.methods = methods or []
+        self.generic_parameters = generic_parameters or []
+
+class AbstractClassDefinition(ASTNode):
+    """Represents an abstract class definition."""
+    def __init__(self, name, abstract_methods=None, concrete_methods=None, properties=None, 
+                 parent_classes=None, implemented_interfaces=None, generic_parameters=None, line_number=None):
+        super().__init__("abstract_class_definition", line_number)
+        self.name = name
+        self.abstract_methods = abstract_methods or []
+        self.concrete_methods = concrete_methods or []
+        self.properties = properties or []
+        self.parent_classes = parent_classes or []
+        self.implemented_interfaces = implemented_interfaces or []
+        self.generic_parameters = generic_parameters or []
+
+class AbstractMethodDefinition(ASTNode):
+    """Represents an abstract method definition (without implementation)."""
+    def __init__(self, name, parameters=None, return_type=None, line_number=None):
+        super().__init__("abstract_method_definition", line_number)
+        self.name = name
+        self.parameters = parameters or []
+        self.return_type = return_type  # Optional return type
+
+class TraitDefinition(ASTNode):
+    """Represents a trait definition."""
+    def __init__(self, name, required_methods=None, provided_methods=None, 
+                 required_traits=None, generic_parameters=None, line_number=None):
+        super().__init__("trait_definition", line_number)
+        self.name = name
+        self.required_methods = required_methods or []
+        self.provided_methods = provided_methods or []
+        self.required_traits = required_traits or []
+        self.generic_parameters = generic_parameters or []
+
+class TypeAliasDefinition(ASTNode):
+    """Represents a type alias definition."""
+    def __init__(self, name, target_type, generic_parameters=None, line_number=None):
+        super().__init__("type_alias_definition", line_number)
+        self.name = name
+        self.target_type = target_type
+        self.generic_parameters = generic_parameters or []
+
+class TypeParameter(ASTNode):
+    """Represents a generic type parameter."""
+    def __init__(self, name, bounds=None, variance=None, line_number=None):
+        super().__init__("type_parameter", line_number)
+        self.name = name
+        self.bounds = bounds or []  # List of types that bound this parameter
+        self.variance = variance    # 'covariant', 'contravariant', or None for invariant
+
+class TypeConstraint(ASTNode):
+    """Represents a type constraint."""
+    def __init__(self, type_parameter, constraint_type, line_number=None):
+        super().__init__("type_constraint", line_number)
+        self.type_parameter = type_parameter
+        self.constraint_type = constraint_type
+
+class TypeGuard(ASTNode):
+    """Represents a type guard in an if statement."""
+    def __init__(self, condition, type_name, body, line_number=None):
+        super().__init__("type_guard", line_number)
+        self.condition = condition
+        self.type_name = type_name
+        self.body = body
+
+class ListExpression(Expression):
+    """Represents a list literal expression."""
+    def __init__(self, elements, line_number=None):
+        super().__init__("list_expression", line_number)
+        self.elements = elements
+
+class DictExpression(Expression):
+    """Represents a dictionary literal expression."""
+    def __init__(self, entries, line_number=None):
+        super().__init__("dict_expression", line_number)
+        self.entries = entries
+
+class SliceExpression(Expression):
+    """Represents a slice expression."""
+    def __init__(self, expr, start, end, step, line_number=None):
+        super().__init__("slice_expression", line_number)
+        self.expr = expr
+        self.start = start
+        self.end = end
+        self.step = step
+
+class IndexExpression(Expression):
+    """Represents array/list indexing: array[index]."""
+    def __init__(self, array_expr, index_expr, line_number=None):
+        super().__init__("index_expression", line_number)
+        self.array_expr = array_expr  # Expression evaluating to array/list
+        self.index_expr = index_expr  # Expression evaluating to index
+
+class ListComprehension(Expression):
+    """Represents a list comprehension."""
+    def __init__(self, expr, target, iterable, condition, line_number=None):
+        super().__init__("list_comprehension", line_number)
+        self.expr = expr
+        self.target = target
+        self.iterable = iterable
+        self.condition = condition
+
+class DictComprehension(Expression):
+    """Represents a dictionary comprehension."""
+    def __init__(self, key, value, target, iterable, condition, line_number=None):
+        super().__init__("dict_comprehension", line_number)
+        self.key = key
+        self.value = value
+        self.target = target
+        self.iterable = iterable
+        self.condition = condition
+
+class TernaryExpression(Expression):
+    """Represents a ternary expression (condition ? true_expr : false_expr)."""
+    def __init__(self, condition, true_expr, false_expr, line_number=None):
+        super().__init__("ternary_expression", line_number)
+        self.condition = condition
+        self.true_expr = true_expr
+        self.false_expr = false_expr
+
+class LambdaExpression(Expression):
+    """Represents a lambda expression."""
+    def __init__(self, parameters, body, line_number=None, return_type=None):
+        super().__init__("lambda_expression", line_number)
+        self.parameters = parameters
+        self.body = body
+        self.return_type = return_type
+
+class AsyncExpression(Expression):
+    """Represents an async expression."""
+    def __init__(self, expr, line_number=None):
+        super().__init__("async_expression", line_number)
+        self.expr = expr
+
+class AwaitExpression(Expression):
+    """Represents an await expression."""
+    def __init__(self, expr, line_number=None):
+        super().__init__("await_expression", line_number)
+        self.expr = expr
+
+class YieldExpression(Expression):
+    """Represents a yield expression."""
+    def __init__(self, value, line_number=None):
+        super().__init__("yield_expression", line_number)
+        self.value = value
+
+class AddressOfExpression(Expression):
+    """Represents taking the address of a variable: address of variable or &variable."""
+    def __init__(self, target, line_number=None):
+        super().__init__("address_of_expression", line_number)
+        self.target = target  # Variable or expression to get address of
+
+class DereferenceExpression(Expression):
+    """Represents dereferencing a pointer: dereference pointer or *pointer or value at pointer."""
+    def __init__(self, pointer, line_number=None):
+        super().__init__("dereference_expression", line_number)
+        self.pointer = pointer  # Pointer expression to dereference
+
+class SizeofExpression(Expression):
+    """Represents sizeof operator: sizeof Type or size of variable."""
+    def __init__(self, target, line_number=None):
+        super().__init__("sizeof_expression", line_number)
+        self.target = target  # Type name or variable to get size of
+
+class OffsetofExpression(Expression):
+    """Represents offsetof operator: offset of field in StructName."""
+    def __init__(self, struct_type, field_name, line_number=None):
+        super().__init__("offsetof_expression", line_number)
+        self.struct_type = struct_type  # Struct/Union type name
+        self.field_name = field_name    # Field name within the struct
+
+class TypeCastExpression(Expression):
+    """Represents type casting: (expression as TargetType)."""
+    def __init__(self, expression, target_type, line_number=None):
+        super().__init__("type_cast", line_number)
+        self.expression = expression      # Expression to cast
+        self.target_type = target_type    # Target type to cast to
+
+class PointerType:
+    """Represents a pointer type annotation: Pointer to Integer."""
+    def __init__(self, base_type):
+        self.base_type = base_type  # The type this pointer points to
+        
+    def __str__(self):
+        return f"Pointer to {self.base_type}"
+
+class GeneratorExpression(Expression):
+    """Represents a generator expression."""
+    def __init__(self, expr, target, iterable, condition, line_number=None):
+        super().__init__("generator_expression", line_number)
+        self.expr = expr
+        self.target = target
+        self.iterable = iterable
+        self.condition = condition
+
+class GenericTypeInstantiation(Expression):
+    """Represents a generic type instantiation: create list of Integer, Dict of String to Integer."""
+    def __init__(self, generic_name, type_args, initial_value=None, line_number=None):
+        super().__init__("generic_type_instantiation", line_number)
+        self.generic_name = generic_name  # "list", "dict", etc.
+        self.type_args = type_args        # List of type names: ["Integer"], ["String", "Integer"]
+        self.initial_value = initial_value  # Optional initial value (e.g., list elements)
+    
+    def __str__(self):
+        return f"GenericType({self.generic_name}<{', '.join(self.type_args)}>)"
+
+class InlineAssembly(ASTNode):
+    """Represents inline assembly code."""
+    def __init__(self, asm_code, inputs=None, outputs=None, clobbers=None, line_number=None):
+        super().__init__("inline_assembly", line_number)
+        self.asm_code = asm_code          # Assembly code string
+        self.inputs = inputs or {}        # Input operands: {"name": expression}
+        self.outputs = outputs or {}      # Output operands: {"name": variable}
+        self.clobbers = clobbers or []    # Clobbered registers
+    
+    def __str__(self):
+        return f"InlineAssembly({len(self.asm_code)} bytes)"
+
+class ExternFunctionDeclaration(ASTNode):
+    """Represents an external function declaration for FFI.
+    
+    Example:
+        extern function printf with format as Pointer, ... returns Integer from library "c"
+        foreign function malloc with size as Integer returns Pointer from library "c" calling convention cdecl
+    """
+    def __init__(self, name, parameters, return_type, library=None, calling_convention="cdecl", variadic=False, line_number=None):
+        super().__init__("extern_function_declaration", line_number)
+        self.name = name
+        self.parameters = parameters or []
+        self.return_type = return_type
+        self.library = library  # Library name (e.g., "c", "m", "pthread")
+        self.calling_convention = calling_convention  # cdecl, stdcall, etc.
+        self.variadic = variadic  # True if function accepts variable arguments (...)
+    
+    def __str__(self):
+        return f"ExternFunction({self.name} from {self.library})"
+
+class ExternVariableDeclaration(ASTNode):
+    """Represents an external variable declaration for FFI.
+    
+    Example:
+        extern variable errno as Integer from library "c"
+    """
+    def __init__(self, name, type_annotation, library=None, line_number=None):
+        super().__init__("extern_variable_declaration", line_number)
+        self.name = name
+        self.type_annotation = type_annotation
+        self.library = library
+    
+    def __str__(self):
+        return f"ExternVariable({self.name} from {self.library})"
+
+class ExternTypeDeclaration(ASTNode):
+    """Represents an external type declaration for FFI.
+    
+    Examples:
+        extern type FILE as opaque pointer
+        extern type CompareFunc as function with Integer, Integer returns Integer
+        extern type pthread_t as opaque pointer
+        extern type sockaddr as opaque struct
+    """
+    def __init__(self, name, base_type, is_opaque=False, is_function_pointer=False, 
+                 function_signature=None, line_number=None):
+        super().__init__("extern_type_declaration", line_number)
+        self.name = name
+        self.base_type = base_type  # "pointer", "struct", "function", etc.
+        self.is_opaque = is_opaque
+        self.is_function_pointer = is_function_pointer
+        self.function_signature = function_signature  # For function pointer types: (param_types, return_type)
+    
+    def __str__(self):
+        if self.is_opaque:
+            return f"ExternType({self.name} as opaque {self.base_type})"
+        elif self.is_function_pointer:
+            return f"ExternType({self.name} as function pointer)"
+        else:
+            return f"ExternType({self.name} as {self.base_type})"
+
+class ForeignLibraryLoad(ASTNode):
+    """Represents loading a foreign library.
+    
+    Example:
+        load foreign library "libmath.so" as math_lib
+    """
+    def __init__(self, library_path, alias=None, line_number=None):
+        super().__init__("foreign_library_load", line_number)
+        self.library_path = library_path
+        self.alias = alias or library_path
+    
+    def __str__(self):
+        return f"ForeignLibraryLoad({self.library_path} as {self.alias})"
+
+class CallbackReference(Expression):
+    """Represents a reference to a callback function.
+    
+    This is used when passing NLPL functions as callbacks to C functions.
+    
+    Example:
+        callback compare_ints
+        callback my_handler
+    """
+    def __init__(self, function_name, line_number=None):
+        super().__init__("callback_reference", line_number)
+        self.function_name = function_name
+    
+    def __str__(self):
+        return f"Callback({self.function_name})"
+

@@ -1,0 +1,31 @@
+# Test 1: String length function
+set message to "Hello, World!"
+set len to call strlen with message
+print number len
+# Expected: 13
+
+# Test 2: Substring extraction (using C substr-like function)
+set greeting to "Hello, NLPL!"
+set hello_part to call substr with greeting and 0 and 5
+print text hello_part
+# Expected: Hello
+
+# Test 3: Character at index
+set text to "NLPL"
+set first_char to call charat with text and 0
+print text first_char
+# Expected: N
+
+# Test 4: Index of substring (using C strstr)
+set phrase to "Natural Language Programming"
+set pos to call indexof with phrase and "Language"
+print number pos
+# Expected: 8
+
+# Test 5: String copy
+set original to "Hello"
+set copy to call strcpy with original
+print text copy
+# Expected: Hello
+
+print text "String function tests complete!"

@@ -1,0 +1,137 @@
+"""
+This example demonstrates advanced type system features that need to be implemented.
+"""
+
+# 1. Bounded Type Parameters
+define a class called NumberContainer with T as a type parameter that must be a number
+    properties:
+        value: T
+    methods:
+        define a method called add that takes a parameter other of type T and returns T
+            return self.value + other
+        
+        define a method called multiply that takes a parameter other of type T and returns T
+            return self.value * other
+
+# 2. Abstract Classes
+define an abstract class called Shape
+    properties:
+        area: float
+    methods:
+        define an abstract method called calculate_area that returns float
+            pass
+        
+        define an abstract method called calculate_perimeter that returns float
+            pass
+
+define a class called Circle that extends Shape
+    properties:
+        radius: float
+    methods:
+        define a method called calculate_area that returns float
+            return 3.14159 * self.radius * self.radius
+        
+        define a method called calculate_perimeter that returns float
+            return 2 * 3.14159 * self.radius
+
+# 3. Traits/Mixins
+define a trait called Comparable
+    methods:
+        define a method called compare_to that takes a parameter other of type Self and returns integer
+            pass
+
+define a trait called Cloneable
+    methods:
+        define a method called clone that returns Self
+            pass
+
+define a class called Point that uses Comparable and Cloneable
+    properties:
+        x: float
+        y: float
+    methods:
+        define a method called compare_to that takes a parameter other of type Point and returns integer
+            let distance1 = self.x * self.x + self.y * self.y
+            let distance2 = other.x * other.x + other.y * other.y
+            if distance1 < distance2
+                return -1
+            else if distance1 > distance2
+                return 1
+            else
+                return 0
+        
+        define a method called clone that returns Point
+            return Point(self.x, self.y)
+
+# 4. Type Aliases
+define a type alias called StringMap for Dictionary<string, string>
+define a type alias called NumberList for List<number>
+define a type alias called PointList for List<Point>
+
+# 5. Higher-Order Functions with Type Inference
+define a function called compose that takes two functions f and g
+    return lambda x: f(g(x))
+
+define a function called curry that takes a function f
+    return lambda x: lambda y: f(x, y)
+
+# 6. Complex Type Constraints
+define a class called ComparableContainer with T as a type parameter that must implement Comparable
+    properties:
+        value: T
+    methods:
+        define a method called compare_to that takes a parameter other of type ComparableContainer<T> and returns integer
+            return self.value.compare_to(other.value)
+
+# 7. Variance Examples
+define a class called Producer with T as a type parameter
+    methods:
+        define a method called produce that returns T
+            pass
+
+define a class called Consumer with T as a type parameter
+    methods:
+        define a method called consume that takes a parameter value of type T
+            pass
+
+# 8. Type Guards
+define a function called process_value that takes a value
+    if value is a number
+        return value * 2
+    else if value is a string
+        return value + value
+    else
+        return null
+
+# Usage Examples
+let circle = Circle(5.0)
+print(circle.calculate_area())  # Should print 78.53975
+print(circle.calculate_perimeter())  # Should print 31.4159
+
+let point1 = Point(1.0, 2.0)
+let point2 = Point(3.0, 4.0)
+print(point1.compare_to(point2))  # Should print -1
+
+let number_container = NumberContainer(42)
+print(number_container.add(8))  # Should print 50
+print(number_container.multiply(2))  # Should print 84
+
+let string_map: StringMap = {"key": "value"}
+let number_list: NumberList = [1, 2, 3, 4, 5]
+let point_list: PointList = [point1, point2]
+
+let add = lambda x, y: x + y
+let curried_add = curry(add)
+let add_five = curried_add(5)
+print(add_five(3))  # Should print 8
+
+let double = lambda x: x * 2
+let increment = lambda x: x + 1
+let composed = compose(double, increment)
+print(composed(5))  # Should print 12
+
+let result = process_value(42)
+if result is not null
+    print(result)  # Should print 84
+else
+    print("Invalid value type") 

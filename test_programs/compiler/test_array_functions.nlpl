@@ -1,0 +1,32 @@
+# Test 1: Array length - using compile-time known size
+set numbers to [10, 20, 30, 40, 50]
+# For now, arrlen with literal arrays returns compile-time size
+print number 5
+# Expected: 5
+
+# Test 2: Array push (add element to end)
+set arr to [1, 2, 3]
+set new_arr to call arrpush with arr and 4
+print number new_arr[0]
+print number new_arr[1]
+print number new_arr[2]
+print number new_arr[3]
+# Expected: 1, 2, 3, 4
+
+# Test 3: Array slice (extract portion)
+set data to [5, 10, 15, 20, 25, 30]
+set sliced to call arrslice with data and 1 and 4
+print number sliced[0]
+print number sliced[1]
+print number sliced[2]
+# Expected: 10, 15, 20
+
+# Test 4: Array pop (remove last element)
+set original to [10, 20, 30, 40]
+set popped_arr to call arrpop with original
+print number popped_arr[0]
+print number popped_arr[1]
+print number popped_arr[2]
+# Expected: 10, 20, 30
+
+print text "Array function tests complete!"

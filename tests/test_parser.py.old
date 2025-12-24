@@ -1,0 +1,237 @@
+"""
+Test cases for the NLPL parser.
+Tests AST construction and error handling.
+"""
+
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+
+import unittest
+from nlpl.parser.parser import Parser
+from nlpl.parser.ast import (
+    Program, FunctionDefinition, VariableDeclaration, Assignment, BinaryOp,
+    UnaryOp, FunctionCall, IfStatement, WhileLoop, ForLoop, ReturnStatement, Literal, Identifier,
+    Block, Parameter, TypeAnnotation
+)
+
+class TestParser(unittest.TestCase):
+    """Test cases for the NLPL parser."""
+    
+    def setUp(self):
+        """Set up test fixtures before each test method."""
+        self.parser = None
+    
+    def test_variable_declaration(self):
+        """Test parsing variable declarations."""
+        source = "x as Integer = 42"
+        self.parser = Parser(source)
+        ast = self.parser.parse()
+        
+        self.assertIsInstance(ast, Program)
+        self.assertEqual(len(ast.statements), 1)
+        self.assertIsInstance(ast.statements[0], VarDecl)
+        
+        var_decl = ast.statements[0]
+        self.assertEqual(var_decl.name.value, "x")
+        self.assertEqual(var_decl.type_annotation.type.value, "Integer")
+        self.assertIsInstance(var_decl.value, Literal)
+        self.assertEqual(var_decl.value.value, 42)
+    
+    def test_function_definition(self):
+        """Test parsing function definitions."""
+        source = """
+        function add(a as Integer, b as Integer) returns Integer:
+            return a + b
+        end
+        """
+        self.parser = Parser(source)
+        ast = self.parser.parse()
+        
+        self.assertIsInstance(ast, Program)
+        self.assertEqual(len(ast.statements), 1)
+        self.assertIsInstance(ast.statements[0], FunctionDef)
+        
+        func_def = ast.statements[0]
+        self.assertEqual(func_def.name.value, "add")
+        self.assertEqual(len(func_def.parameters), 2)
+        self.assertEqual(func_def.return_type.type.value, "Integer")
+        
+        # Check parameters
+        param1, param2 = func_def.parameters
+        self.assertEqual(param1.name.value, "a")
+        self.assertEqual(param1.type_annotation.type.value, "Integer")
+        self.assertEqual(param2.name.value, "b")
+        self.assertEqual(param2.type_annotation.type.value, "Integer")
+        
+        # Check body
+        self.assertIsInstance(func_def.body, Block)
+        self.assertEqual(len(func_def.body.statements), 1)
+        self.assertIsInstance(func_def.body.statements[0], Return)
+        
+        # Check return expression
+        return_stmt = func_def.body.statements[0]
+        self.assertIsInstance(return_stmt.value, BinaryOp)
+        self.assertEqual(return_stmt.value.operator, "+")
+        self.assertEqual(return_stmt.value.left.value, "a")
+        self.assertEqual(return_stmt.value.right.value, "b")
+    
+    def test_if_statement(self):
+        """Test parsing if statements."""
+        source = """
+        if x > 0:
+            print("Positive")
+        else:
+            print("Negative")
+        end
+        """
+        self.parser = Parser(source)
+        ast = self.parser.parse()
+        
+        self.assertIsInstance(ast, Program)
+        self.assertEqual(len(ast.statements), 1)
+        self.assertIsInstance(ast.statements[0], If)
+        
+        if_stmt = ast.statements[0]
+        self.assertIsInstance(if_stmt.condition, BinaryOp)
+        self.assertEqual(if_stmt.condition.operator, ">")
+        self.assertEqual(if_stmt.condition.left.value, "x")
+        self.assertEqual(if_stmt.condition.right.value, 0)
+        
+        # Check then branch
+        self.assertIsInstance(if_stmt.then_branch, Block)
+        self.assertEqual(len(if_stmt.then_branch.statements), 1)
+        self.assertIsInstance(if_stmt.then_branch.statements[0], Call)
+        self.assertEqual(if_stmt.then_branch.statements[0].func.value, "print")
+        self.assertEqual(if_stmt.then_branch.statements[0].args[0].value, "Positive")
+        
+        # Check else branch
+        self.assertIsInstance(if_stmt.else_branch, Block)
+        self.assertEqual(len(if_stmt.else_branch.statements), 1)
+        self.assertIsInstance(if_stmt.else_branch.statements[0], Call)
+        self.assertEqual(if_stmt.else_branch.statements[0].func.value, "print")
+        self.assertEqual(if_stmt.else_branch.statements[0].args[0].value, "Negative")
+    
+    def test_while_loop(self):
+        """Test parsing while loops."""
+        source = """
+        while x > 0:
+            x = x - 1
+        end
+        """
+        self.parser = Parser(source)
+        ast = self.parser.parse()
+        
+        self.assertIsInstance(ast, Program)
+        self.assertEqual(len(ast.statements), 1)
+        self.assertIsInstance(ast.statements[0], While)
+        
+        while_stmt = ast.statements[0]
+        self.assertIsInstance(while_stmt.condition, BinaryOp)
+        self.assertEqual(while_stmt.condition.operator, ">")
+        self.assertEqual(while_stmt.condition.left.value, "x")
+        self.assertEqual(while_stmt.condition.right.value, 0)
+        
+        # Check body
+        self.assertIsInstance(while_stmt.body, Block)
+        self.assertEqual(len(while_stmt.body.statements), 1)
+        self.assertIsInstance(while_stmt.body.statements[0], Assignment)
+        
+        # Check assignment
+        assign = while_stmt.body.statements[0]
+        self.assertEqual(assign.target.value, "x")
+        self.assertIsInstance(assign.value, BinaryOp)
+        self.assertEqual(assign.value.operator, "-")
+        self.assertEqual(assign.value.left.value, "x")
+        self.assertEqual(assign.value.right.value, 1)
+    
+    def test_for_loop(self):
+        """Test parsing for loops."""
+        source = """
+        for i as Integer = 0 to 10:
+            print(i)
+        end
+        """
+        self.parser = Parser(source)
+        ast = self.parser.parse()
+        
+        self.assertIsInstance(ast, Program)
+        self.assertEqual(len(ast.statements), 1)
+        self.assertIsInstance(ast.statements[0], For)
+        
+        for_stmt = ast.statements[0]
+        self.assertEqual(for_stmt.variable.name.value, "i")
+        self.assertEqual(for_stmt.variable.type_annotation.type.value, "Integer")
+        self.assertEqual(for_stmt.start.value, 0)
+        self.assertEqual(for_stmt.end.value, 10)
+        
+        # Check body
+        self.assertIsInstance(for_stmt.body, Block)
+        self.assertEqual(len(for_stmt.body.statements), 1)
+        self.assertIsInstance(for_stmt.body.statements[0], Call)
+        self.assertEqual(for_stmt.body.statements[0].func.value, "print")
+        self.assertEqual(for_stmt.body.statements[0].args[0].value, "i")
+    
+    def test_error_handling(self):
+        """Test parser error handling."""
+        error_cases = [
+            ("x =", "Unexpected token: EOF"),
+            ("function add(", "Unexpected token: EOF"),
+            ("if x > 0", "Expected ':'"),
+            ("while x > 0", "Expected ':'"),
+            ("for i = 0", "Expected 'to'"),
+            ("x as Integer =", "Unexpected token: EOF")
+        ]
+        
+        for source, expected_error in error_cases:
+            self.parser = Parser(source)
+            with self.assertRaises(Exception) as context:
+                self.parser.parse()
+            self.assertTrue(expected_error in str(context.exception))
+    
+    def test_complex_program(self):
+        """Test parsing a complex program."""
+        source = """
+        function factorial(n as Integer) returns Integer:
+            if n <= 1:
+                return 1
+            else:
+                return n * factorial(n - 1)
+            end
+        end
+        
+        x as Integer = 5
+        result as Integer = factorial(x)
+        print(result)
+        """
+        self.parser = Parser(source)
+        ast = self.parser.parse()
+        
+        self.assertIsInstance(ast, Program)
+        self.assertEqual(len(ast.statements), 4)  # function def, var decl, var decl, print
+        
+        # Check function definition
+        func_def = ast.statements[0]
+        self.assertEqual(func_def.name.value, "factorial")
+        self.assertEqual(len(func_def.parameters), 1)
+        self.assertEqual(func_def.parameters[0].name.value, "n")
+        self.assertEqual(func_def.return_type.type.value, "Integer")
+        
+        # Check variable declarations
+        var_decl1 = ast.statements[1]
+        self.assertEqual(var_decl1.name.value, "x")
+        self.assertEqual(var_decl1.value.value, 5)
+        
+        var_decl2 = ast.statements[2]
+        self.assertEqual(var_decl2.name.value, "result")
+        self.assertIsInstance(var_decl2.value, Call)
+        self.assertEqual(var_decl2.value.func.value, "factorial")
+        self.assertEqual(var_decl2.value.args[0].value, "x")
+        
+        # Check print statement
+        print_stmt = ast.statements[3]
+        self.assertEqual(print_stmt.func.value, "print")
+        self.assertEqual(print_stmt.args[0].value, "result")
+
+if __name__ == '__main__':
+    unittest.main() 
