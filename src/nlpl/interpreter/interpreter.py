@@ -660,31 +660,88 @@ class Interpreter:
         
         Creates an enum type with named constant values.
         The enum is accessible as a namespace with member values.
+        Supports auto-numbering, explicit values, and string enums.
         
-        Example:
+        Examples:
             enum Color
-                Red = 0
-                Green = 1
-                Blue = 2
+                Red
+                Green
+                Blue
+            end
+            # Auto-numbered: Red=0, Green=1, Blue=2
+            
+            enum Status
+                Success = 0
+                Error = 1
+                Pending = 2
             end
             
-            # Access: Color.Red, Color.Green, Color.Blue
-        """
-        # Create an enum object that acts as a namespace
-        enum_obj = {}
-        
-        # Add each member to the enum object
-        for member in node.members:
-            # Evaluate the member value
-            if member.value:
-                value = self.execute(member.value)
-            else:
-                value = 0  # Default value if not specified
+            enum LogLevel
+                Debug = "DEBUG"
+                Info = "INFO"
+                Error = "ERROR"
+            end
             
-            enum_obj[member.name] = value
+            # Access: Color.Red, Status.Success, LogLevel.Debug
+        """
+        # Create an enum class-like object
+        class EnumType:
+            """Runtime representation of an enum type."""
+            def __init__(self, name, members):
+                self._name = name
+                self._members = members
+                self._value_to_name = {v: k for k, v in members.items()}
+                # Add members as attributes
+                for member_name, member_value in members.items():
+                    setattr(self, member_name, member_value)
+            
+            def __repr__(self):
+                return f"<Enum {self._name}>"
+            
+            def __getitem__(self, key):
+                """Allow dict-like access: Color["Red"]"""
+                return self._members[key]
+            
+            def __contains__(self, value):
+                """Check if value is in enum: 0 in Color"""
+                return value in self._value_to_name
+            
+            def get_name(self, value):
+                """Get name for a value: Color.get_name(0) -> "Red" """
+                return self._value_to_name.get(value)
+            
+            def values(self):
+                """Get all enum values"""
+                return list(self._members.values())
+            
+            def names(self):
+                """Get all enum names"""
+                return list(self._members.keys())
         
-        # Store the enum in the current scope
-        self.set_variable(node.name, enum_obj)
+        # Build member dictionary with auto-numbering
+        members = {}
+        auto_value = 0
+        
+        for member in node.members:
+            if hasattr(member, 'value') and member.value is not None:
+                # Explicit value provided
+                value = self.execute(member.value)
+                # Update auto_value for next implicit member
+                if isinstance(value, (int, float)):
+                    auto_value = int(value) + 1
+            else:
+                # Auto-numbered value
+                value = auto_value
+                auto_value += 1
+            
+            members[member.name] = value
+        
+        # Create enum type instance
+        enum_type = EnumType(node.name, members)
+        
+        # Store the enum type in classes (for type checking) and variables (for access)
+        self.classes[node.name] = node
+        self.set_variable(node.name, enum_type)
         
         return node.name
         
