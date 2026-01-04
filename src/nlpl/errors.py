@@ -10,12 +10,13 @@ import difflib
 class NLPLError(Exception):
     """Base class for all NLPL errors."""
     def __init__(self, message: str, line: Optional[int] = None, column: Optional[int] = None,
-                 source_line: Optional[str] = None, error_type: str = "Error"):
+                 source_line: Optional[str] = None, error_type: str = "Error", nlpl_type: str = "Error"):
         self.message = message
         self.line = line
         self.column = column
         self.source_line = source_line
         self.error_type = error_type
+        self.nlpl_type = nlpl_type
         super().__init__(self._format_error())
     
     def _format_error(self) -> str:
@@ -47,7 +48,7 @@ class NLPLSyntaxError(NLPLError):
         self.suggestion = suggestion
         self.expected = expected
         self.got = got
-        super().__init__(message, line, column, source_line, "Syntax Error")
+        super().__init__(message, line, column, source_line, "Syntax Error", "SyntaxError")
     
     def _format_error(self) -> str:
         """Format syntax error with additional context."""
@@ -67,10 +68,10 @@ class NLPLRuntimeError(NLPLError):
     """Runtime error with stack trace."""
     def __init__(self, message: str, line: Optional[int] = None, column: Optional[int] = None,
                  source_line: Optional[str] = None, stack_trace: Optional[List[str]] = None,
-                 variable_context: Optional[dict] = None):
+                 variable_context: Optional[dict] = None, nlpl_type: str = "RuntimeError"):
         self.stack_trace = stack_trace or []
         self.variable_context = variable_context or {}
-        super().__init__(message, line, column, source_line, "Runtime Error")
+        super().__init__(message, line, column, source_line, "Runtime Error", nlpl_type)
     
     def _format_error(self) -> str:
         """Format runtime error with stack trace."""
@@ -103,7 +104,7 @@ class NLPLNameError(NLPLError):
         self.suggestions = get_close_matches(name, self.available_names)
         
         message = f"Name '{name}' is not defined"
-        super().__init__(message, line, column, source_line, "Name Error")
+        super().__init__(message, line, column, source_line, "Name Error", "NameError")
     
     def _format_error(self) -> str:
         """Format name error with suggestions."""
@@ -127,7 +128,7 @@ class NLPLTypeError(NLPLError):
                  got_type: Optional[str] = None):
         self.expected_type = expected_type
         self.got_type = got_type
-        super().__init__(message, line, column, source_line, "Type Error")
+        super().__init__(message, line, column, source_line, "Type Error", "TypeError")
     
     def _format_error(self) -> str:
         """Format type error with type info."""

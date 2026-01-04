@@ -678,12 +678,33 @@ class CallbackManager:
             nlpl_func_type = ir.FunctionType(llvm_return_type, llvm_param_types)
             nlpl_func = ir.Function(self.module, nlpl_func_type, name=nlpl_func_name)
         
-        # Convert C parameters to NLPL format (if needed)
+        # Convert C parameters to NLPL format
         converted_args = []
         for i, (arg, param_type) in enumerate(zip(wrapper_func.args, param_types)):
-            # For most types, direct pass-through works
-            # TODO: Add conversions for complex types like strings, structs
-            converted_args.append(arg)
+            # String marshalling: C char* -> NLPL string
+            if param_type in ['String', 'str']:
+                # C strings are already i8*, so direct pass-through
+                # NLPL will handle null-termination
+                converted_args.append(arg)
+            
+            # Struct marshalling: C struct -> NLPL struct
+            elif param_type in self.ffi.struct_types:
+                # Structs are passed by value or pointer
+                # If by pointer, dereference; if by value, use directly
+                if isinstance(arg.type, ir.PointerType):
+                    # Load the struct from pointer
+                    struct_value = wrapper_builder.load(arg, name=f\"struct_{i}_value\")\n                    converted_args.append(struct_value)
+                else:
+                    # Already by value
+                    converted_args.append(arg)
+            
+            # Pointer types: Direct pass-through
+            elif param_type.endswith('*') or param_type == 'Pointer':
+                converted_args.append(arg)
+            
+            # Primitive types: Direct pass-through
+            else:
+                converted_args.append(arg)
         
         # Call the NLPL function
         result = wrapper_builder.call(nlpl_func, converted_args, name="nlpl_result")

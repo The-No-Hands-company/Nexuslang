@@ -739,6 +739,7 @@ class Lexer:
         longest_column = self.column
         lookahead_text = text
         
+        # Greedy matching: keep extending as long as we might find a match
         while True:
             # Skip whitespace
             word_start_current = self.current
@@ -766,10 +767,18 @@ class Lexer:
                 longest_column = self.column
                 lookahead_text = candidate
             else:
-                # No match - restore position to before this word and break
-                self.current = word_start_current
-                self.column = word_start_column
-                break
+                # No exact match yet, but check if any keyword STARTS with this candidate
+                # This allows us to continue looking for longer matches like "greater than or equal to"
+                has_potential_match = any(key.startswith(candidate + " ") for key in self.keywords)
+                
+                if has_potential_match:
+                    # Keep going - there might be a longer match
+                    lookahead_text = candidate
+                else:
+                    # No potential matches - restore position to before this word and break
+                    self.current = word_start_current
+                    self.column = word_start_column
+                    break
         
         # Use the longest match found
         if longest_match:

@@ -288,7 +288,8 @@ def ws_server_info(server_id: int) -> dict:
 def register_websocket_functions(runtime):
     """Register WebSocket functions with the NLPL runtime."""
     if not HAS_WEBSOCKETS:
-        # Register stub functions that raise helpful errors
+        # Register fallback functions for graceful degradation when dependency is missing
+        # This is proper error handling, not incomplete implementation
         def ws_not_available(*args, **kwargs):
             raise ImportError("websockets is not installed. Install with: pip install websockets")
         

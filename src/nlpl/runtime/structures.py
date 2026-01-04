@@ -32,11 +32,13 @@ class Field:
 
 class StructureDefinition:
     """Base class for Struct and Union definitions."""
-    def __init__(self, name: str, fields: List[Tuple[str, str]]):
+    def __init__(self, name: str, fields: List[Tuple[str, str]], packed: bool = False, alignment: Optional[int] = None):
         self.name = name
         self.fields: Dict[str, Field] = {}
         self.size = 0
         self.alignment = 1
+        self.packed = packed  # Whether to disable padding
+        self.explicit_alignment = alignment  # Explicit alignment override
         self._calculate_layout(fields)
 
     def _get_type_info(self, type_name: str) -> Tuple[str, int, int]:
@@ -62,6 +64,7 @@ class StructureDefinition:
 class StructDefinition(StructureDefinition):
     """
     Defines a C-style struct layout including padding.
+    Supports packed structs (no padding) and explicit alignment.
     """
     def _calculate_layout(self, fields: List[Tuple[str, str]]):
         current_offset = 0
@@ -70,18 +73,33 @@ class StructDefinition(StructureDefinition):
         for name, type_name in fields:
             fmt, size, align = self._get_type_info(type_name)
             
-            # Add padding for alignment
-            padding = (align - (current_offset % align)) % align
-            current_offset += padding
+            # Add padding for alignment (unless packed)
+            if not self.packed:
+                padding = (align - (current_offset % align)) % align
+                current_offset += padding
             
             self.fields[name] = Field(name, fmt, current_offset, size)
             current_offset += size
             
             max_alignment = max(max_alignment, align)
 
-        # Structure end padding
-        padding = (max_alignment - (current_offset % max_alignment)) % max_alignment
-        self.size = current_offset + padding
+        # Structure end padding (unless packed)
+        if not self.packed:
+            padding = (max_alignment - (current_offset % max_alignment)) % max_alignment
+            self.size = current_offset + padding
+        else:
+            self.size = current_offset
+            
+        # Apply explicit alignment if specified
+        if self.explicit_alignment:
+            # Ensure size is at least alignment bytes
+            if self.size < self.explicit_alignment:
+                self.size = self.explicit_alignment
+            # Ensure size is multiple of alignment
+            padding = (self.explicit_alignment - (self.size % self.explicit_alignment)) % self.explicit_alignment
+            self.size += padding
+            max_alignment = self.explicit_alignment
+            
         self.alignment = max_alignment
 
 class UnionDefinition(StructureDefinition):
@@ -110,6 +128,8 @@ class StructureInstance:
     def __init__(self, definition: StructureDefinition):
         self.definition = definition
         self.memory = bytearray(definition.size)
+        # Keep references to objects stored as pointers to prevent GC
+        self.references: Dict[int, Any] = {}
 
     def get_field(self, name: str) -> Any:
         field = self.definition.fields.get(name)
@@ -120,9 +140,14 @@ class StructureInstance:
         try:
             val = struct.unpack_from(field.type_code, self.memory, field.offset)[0]
             
-            # Convert bytes to char if needed (struct returns byte string for 'c')
+            # Convert bytes to char if needed
             if field.type_code == 'c':
                 return val.decode('ascii')
+                
+            # If it's a pointer type and we have a stored reference, return the object
+            if field.type_code == 'Q' and field.offset in self.references:
+                return self.references[field.offset]
+                
             return val
         except struct.error as e:
             raise RuntimeError(f"Memory corruption reading field '{name}': {e}")
@@ -137,6 +162,16 @@ class StructureInstance:
             # Handle char encoding
             if field.type_code == 'c' and isinstance(value, str):
                 value = value.encode('ascii')
+            
+            # Handle StructureInstance assignment to pointer field (nested structs)
+            if field.type_code == 'Q' and isinstance(value, StructureInstance):
+                # Store reference to prevent GC and allow retrieval
+                self.references[field.offset] = value
+                # Use Python's id() as a simulated pointer address
+                value = id(value)
+            elif field.type_code == 'Q' and field.offset in self.references:
+                # If overwriting a pointer with a raw integer/address, remove the reference
+                del self.references[field.offset]
                 
             struct.pack_into(field.type_code, self.memory, field.offset, value)
         except struct.error as e:

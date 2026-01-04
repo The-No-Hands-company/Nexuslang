@@ -65,6 +65,20 @@ a.out
 *.log
 *.txt
 !requirements.txt
+!python_version.txt
+
+# AI assistant instructions (private)
+GEMINI.md
+.github/copilot-instructions.md
+
+# Utility toolkit (not part of this project)
+utility/
+
+# Root-level test files (should be in tests/ or test_programs/)
+/test_*.py
+/test_*.nlpl
+!/tests/
+!/test_programs/
 
 # Test outputs
 test_output/

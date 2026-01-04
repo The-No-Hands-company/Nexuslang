@@ -422,22 +422,24 @@ class EnumMember(ASTNode):
 
 class PropertyDeclaration(ASTNode):
     """Represents a class property declaration."""
-    def __init__(self, name, type_annotation=None, default_value=None, line_number=None):
+    def __init__(self, name, type_annotation=None, default_value=None, access_modifier='public', line_number=None):
         super().__init__("property_declaration", line_number)
         self.name = name
         self.type_annotation = type_annotation  # Optional type annotation
         self.default_value = default_value  # Optional default value expression
+        self.access_modifier = access_modifier  # 'public', 'private', or 'protected'
 
 class MethodDefinition(ASTNode):
     """Represents a class method definition."""
     """Represents a class method definition."""
-    def __init__(self, name, parameters, body=None, return_type=None, is_static=False, line_number=None):
+    def __init__(self, name, parameters, body=None, return_type=None, is_static=False, access_modifier='public', line_number=None):
         super().__init__("method_definition", line_number)
         self.name = name
         self.parameters = parameters or []
         self.body = body or []
         self.return_type = return_type  # Optional return type annotation
         self.is_static = is_static
+        self.access_modifier = access_modifier  # 'public', 'private', or 'protected'
 
 class ObjectInstantiation(ASTNode):
     """Represents object creation with 'new ClassName' or 'new ClassName<T>'."""
@@ -464,11 +466,13 @@ class ConcurrentExecution(ASTNode):
 
 class TryCatch(ASTNode):
     """Represents a try-catch block."""
-    def __init__(self, try_block, catch_block, exception_var=None, line_number=None):
+    def __init__(self, try_block, catch_block, exception_var=None, exception_type=None, exception_properties=None, line_number=None):
         super().__init__("try_catch", line_number)
         self.try_block = try_block
         self.catch_block = catch_block
         self.exception_var = exception_var  # Optional exception variable name
+        self.exception_type = exception_type  # Optional exception type (e.g., 'ValueError', 'RuntimeError')
+        self.exception_properties = exception_properties or []  # Properties to extract (e.g., ['message', 'code'])
 
 class RaiseStatement(ASTNode):
     """Represents a raise/throw statement.
@@ -511,10 +515,11 @@ class Identifier(Expression):
 
 class FunctionCall(Expression):
     """Represents a function call."""
-    def __init__(self, name, arguments=None, line_number=None):
+    def __init__(self, name, arguments=None, type_arguments=None, line_number=None):
         super().__init__("function_call", line_number)
         self.name = name
         self.arguments = arguments or []
+        self.type_arguments = type_arguments or []  # Generic type arguments like <Integer, String>
 
 class RepeatNTimesLoop(ASTNode):
     """Represents a repeat-n-times loop."""
@@ -614,12 +619,26 @@ class ConcurrentBlock(ASTNode):
 
 class TryCatchBlock(ASTNode):
     """Represents a try-catch block."""
-    def __init__(self, try_block, catch_block, exception_var=None, line_number=None):
+    def __init__(self, try_block, catch_block, exception_var=None, exception_type=None, line_number=None):
         super().__init__("try_catch_block", line_number)
         self.try_block = try_block
         self.catch_block = catch_block
         self.exception_var = exception_var  # Optional exception variable name
+        self.exception_type = exception_type  # Optional exception type (e.g., 'ValueError', 'RuntimeError')
 
+class PrintStatement(ASTNode):
+    """Represents a print statement with optional type hints.
+    
+    Syntax:
+        print "hello"
+        print text value
+        print number 42
+    """
+    def __init__(self, expression, print_type=None, line_number=None):
+        super().__init__("print_statement", line_number)
+        self.expression = expression
+        self.print_type = print_type  # "text", "number", or None
+        
 # Module-related AST nodes
 class ImportStatement(ASTNode):
     """Represents an import statement."""

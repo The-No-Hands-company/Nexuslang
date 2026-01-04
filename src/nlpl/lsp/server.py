@@ -87,12 +87,14 @@ class NLPLLanguageServer:
         from ..lsp.hover import HoverProvider
         from ..lsp.diagnostics import DiagnosticsProvider
         from ..lsp.symbols import SymbolProvider
+        from ..lsp.formatter import NLPLFormatter
         
         self.completion_provider = CompletionProvider(self)
         self.definition_provider = DefinitionProvider(self)
         self.hover_provider = HoverProvider(self)
         self.diagnostics_provider = DiagnosticsProvider(self)
         self.symbol_provider = SymbolProvider(self)
+        self.formatter = NLPLFormatter()
         
         logger.info("NLPL Language Server initialized")
     
@@ -333,8 +335,8 @@ class NLPLLanguageServer:
         uri = params['textDocument']['uri']
         text = self.documents.get(uri, '')
         
-        # TODO: Implement formatter
-        edits = []
+        # Get formatting edits from the formatter
+        edits = self.formatter.get_formatting_edits(text)
         
         return {
             "jsonrpc": "2.0",

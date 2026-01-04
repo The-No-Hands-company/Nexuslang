@@ -66,8 +66,11 @@ class LLVMIRGenerator(CodeGenerator):
         self.monomorphizer = Monomorphizer()
         self.generic_inference = GenericTypeInference()
         self.generic_functions: Dict[str, Any] = {}  # name -> FunctionDefinition AST node
+        self.generic_classes: Dict[str, Any] = {}  # name -> ClassDefinition AST node
+        self.current_type_substitutions: Dict[str, str] = {}  # NLPL type -> LLVM type override
         self.specialized_functions: Set[str] = set()  # Track generated specializations
         self.pending_specializations: List[Tuple[str, List[str], str]] = []  # Queue: (func_name, type_args, specialized_name)
+        self.pending_class_specializations: List[Tuple[str, List[str], str]] = []  # Queue: (class_name, type_args, specialized_name)
         
         # Counters
         self.string_counter = 0
@@ -348,6 +351,12 @@ class LLVMIRGenerator(CodeGenerator):
         
         # Generate class methods as functions
         for class_name, class_info in self.class_types.items():
+            # Skip generic class templates - they should only exist in generic_classes dict
+            if class_name in self.generic_classes:
+                continue
+            # Skip specializations - they're generated separately via _generate_specialized_class_impl
+            if class_info.get('is_specialization'):
+                continue
             for method_info in class_info['methods']:
                 self._generate_class_method(class_name, method_info)
         
@@ -359,11 +368,18 @@ class LLVMIRGenerator(CodeGenerator):
         if not self.module_name:
             self._generate_main_function(ast)
         
-        # Generate pending generic function specializations
-        if self.pending_specializations:
-            self.emit('')
-            self.emit('; Generic function specializations')
-            self._generate_pending_specializations()
+        # Process pending specializations (functions and classes) iteratively
+        # New specializations might trigger more specializations (e.g. nested types, methods using generics)
+        while self.pending_specializations or self.pending_class_specializations:
+            if self.pending_class_specializations:
+                self.emit('')
+                self.emit('; Generic class specializations')
+                self._generate_pending_class_specializations()
+                
+            if self.pending_specializations:
+                self.emit('')
+                self.emit('; Generic function specializations')
+                self._generate_pending_specializations()
         
         # Insert late type declarations at the marked position (after user types, before code)
         # Must be done as insertion because types are discovered during function generation
@@ -448,6 +464,8 @@ class LLVMIRGenerator(CodeGenerator):
             self.emit('declare i64 @strlen(i8* nocapture) #4')
         if 'strcmp' not in self.extern_functions:
             self.emit('declare i32 @strcmp(i8* nocapture, i8* nocapture) #5')
+        if 'strtok' not in self.extern_functions:
+            self.emit('declare i8* @strtok(i8*, i8* nocapture) #4')
         if 'strstr' not in self.extern_functions:
             self.emit('declare i8* @strstr(i8* nocapture, i8* nocapture) #4')
         if 'memcpy' not in self.extern_functions:
@@ -821,20 +839,134 @@ class LLVMIRGenerator(CodeGenerator):
         self.emit('}')
         self.emit('')
         
-        # str_split and str_join are complex (require dynamic arrays)
-        # For now, provide simplified placeholders
+        # Production-ready str_split implementation with dynamic memory allocation
         self.emit('define i8* @str_split(i8* %str, i8* %delim) {')
         self.emit('entry:')
-        self.emit('  ; Placeholder: returns original string for now')
-        self.emit('  ret i8* %str')
+        self.emit('  ; Get string and delimiter lengths')
+        self.emit('  %str_len = call i64 @strlen(i8* %str)')
+        self.emit('  %delim_len = call i64 @strlen(i8* %delim)')
+        self.emit('  ')
+        self.emit('  ; Allocate result array (max possible tokens = str_len + 1)')
+        self.emit('  %max_tokens = add i64 %str_len, 1')
+        self.emit('  %array_size = mul i64 %max_tokens, 8  ; 8 bytes per pointer')
+        self.emit('  %token_array = call i8* @malloc(i64 %array_size)')
+        self.emit('  ')
+        self.emit('  ; Allocate working copy of string')
+        self.emit('  %work_size = add i64 %str_len, 1')
+        self.emit('  %work_str = call i8* @malloc(i64 %work_size)')
+        self.emit('  call void @llvm.memcpy.p0i8.p0i8.i64(i8* %work_str, i8* %str, i64 %work_size, i1 false)')
+        self.emit('  ')
+        self.emit('  ; Tokenization loop')
+        self.emit('  %token_count = alloca i64')
+        self.emit('  store i64 0, i64* %token_count')
+        self.emit('  %current_pos = alloca i8*')
+        self.emit('  store i8* %work_str, i8** %current_pos')
+        self.emit('  ')
+        self.emit('  br label %tokenize_loop')
+        self.emit('')
+        self.emit('tokenize_loop:')
+        self.emit('  %pos = load i8*, i8** %current_pos')
+        self.emit('  %token = call i8* @strtok(i8* %pos, i8* %delim)')
+        self.emit('  %is_null = icmp eq i8* %token, null')
+        self.emit('  br i1 %is_null, label %tokenize_done, label %store_token')
+        self.emit('')
+        self.emit('store_token:')
+        self.emit('  %count = load i64, i64* %token_count')
+        self.emit('  %offset = mul i64 %count, 8')
+        self.emit('  %slot = getelementptr i8, i8* %token_array, i64 %offset')
+        self.emit('  %slot_ptr = bitcast i8* %slot to i8**')
+        self.emit('  store i8* %token, i8** %slot_ptr')
+        self.emit('  %new_count = add i64 %count, 1')
+        self.emit('  store i64 %new_count, i64* %token_count')
+        self.emit('  store i8* null, i8** %current_pos  ; strtok continuation')
+        self.emit('  br label %tokenize_loop')
+        self.emit('')
+        self.emit('tokenize_done:')
+        self.emit('  ret i8* %token_array')
         self.emit('}')
         self.emit('')
         
+        # Production-ready str_join implementation
         self.emit('define i8* @str_join(i8* %arr, i8* %sep) {')
         self.emit('entry:')
-        self.emit('  ; Placeholder: returns empty string for now')
-        self.emit('  %result = call i8* @malloc(i64 1)')
-        self.emit('  store i8 0, i8* %result')
+        self.emit('  ; Calculate total length needed')
+        self.emit('  %sep_len = call i64 @strlen(i8* %sep)')
+        self.emit('  %total_len = alloca i64')
+        self.emit('  store i64 0, i64* %total_len')
+        self.emit('  %arr_ptr = bitcast i8* %arr to i8**')
+        self.emit('  ')
+        self.emit('  ; First pass: calculate total length')
+        self.emit('  %count = alloca i64')
+        self.emit('  store i64 0, i64* %count')
+        self.emit('  br label %calc_loop')
+        self.emit('')
+        self.emit('calc_loop:')
+        self.emit('  %idx = load i64, i64* %count')
+        self.emit('  %elem_ptr = getelementptr i8*, i8** %arr_ptr, i64 %idx')
+        self.emit('  %elem = load i8*, i8** %elem_ptr')
+        self.emit('  %elem_is_null = icmp eq i8* %elem, null')
+        self.emit('  br i1 %elem_is_null, label %calc_done, label %calc_add')
+        self.emit('')
+        self.emit('calc_add:')
+        self.emit('  %elem_len = call i64 @strlen(i8* %elem)')
+        self.emit('  %curr_total = load i64, i64* %total_len')
+        self.emit('  %new_total = add i64 %curr_total, %elem_len')
+        self.emit('  ; Add separator length (if not first element)')
+        self.emit('  %is_first = icmp eq i64 %idx, 0')
+        self.emit('  %add_sep = select i1 %is_first, i64 0, i64 %sep_len')
+        self.emit('  %final_total = add i64 %new_total, %add_sep')
+        self.emit('  store i64 %final_total, i64* %total_len')
+        self.emit('  %next_idx = add i64 %idx, 1')
+        self.emit('  store i64 %next_idx, i64* %count')
+        self.emit('  br label %calc_loop')
+        self.emit('')
+        self.emit('calc_done:')
+        self.emit('  ; Allocate result string')
+        self.emit('  %final_len = load i64, i64* %total_len')
+        self.emit('  %result_size = add i64 %final_len, 1  ; +1 for null terminator')
+        self.emit('  %result = call i8* @malloc(i64 %result_size)')
+        self.emit('  store i8 0, i8* %result  ; Initialize with null terminator')
+        self.emit('  ')
+        self.emit('  ; Second pass: build result string')
+        self.emit('  store i64 0, i64* %count')
+        self.emit('  %write_pos = alloca i8*')
+        self.emit('  store i8* %result, i8** %write_pos')
+        self.emit('  br label %build_loop')
+        self.emit('')
+        self.emit('build_loop:')
+        self.emit('  %bidx = load i64, i64* %count')
+        self.emit('  %belem_ptr = getelementptr i8*, i8** %arr_ptr, i64 %bidx')
+        self.emit('  %belem = load i8*, i8** %belem_ptr')
+        self.emit('  %belem_is_null = icmp eq i8* %belem, null')
+        self.emit('  br i1 %belem_is_null, label %build_done, label %build_add')
+        self.emit('')
+        self.emit('build_add:')
+        self.emit('  ; Add separator if not first')
+        self.emit('  %bis_first = icmp eq i64 %bidx, 0')
+        self.emit('  br i1 %bis_first, label %skip_sep, label %add_sep')
+        self.emit('')
+        self.emit('add_sep:')
+        self.emit('  %wpos = load i8*, i8** %write_pos')
+        self.emit('  call void @llvm.memcpy.p0i8.p0i8.i64(i8* %wpos, i8* %sep, i64 %sep_len, i1 false)')
+        self.emit('  %new_wpos = getelementptr i8, i8* %wpos, i64 %sep_len')
+        self.emit('  store i8* %new_wpos, i8** %write_pos')
+        self.emit('  br label %skip_sep')
+        self.emit('')
+        self.emit('skip_sep:')
+        self.emit('  ; Copy element')
+        self.emit('  %belem_len = call i64 @strlen(i8* %belem)')
+        self.emit('  %cwpos = load i8*, i8** %write_pos')
+        self.emit('  call void @llvm.memcpy.p0i8.p0i8.i64(i8* %cwpos, i8* %belem, i64 %belem_len, i1 false)')
+        self.emit('  %cnew_wpos = getelementptr i8, i8* %cwpos, i64 %belem_len')
+        self.emit('  store i8* %cnew_wpos, i8** %write_pos')
+        self.emit('  %bnext_idx = add i64 %bidx, 1')
+        self.emit('  store i64 %bnext_idx, i64* %count')
+        self.emit('  br label %build_loop')
+        self.emit('')
+        self.emit('build_done:')
+        self.emit('  ; Null-terminate result')
+        self.emit('  %final_wpos = load i8*, i8** %write_pos')
+        self.emit('  store i8 0, i8* %final_wpos')
         self.emit('  ret i8* %result')
         self.emit('}')
         self.emit('')
@@ -1746,9 +1878,116 @@ class LLVMIRGenerator(CodeGenerator):
         self.functions[specialized_name] = (ret_type, param_types, param_names)
     
     def _generate_pending_specializations(self):
-        """Generate all pending generic function specializations."""
-        for func_name, type_args, specialized_name in self.pending_specializations:
+        """Generate pending generic function specializations."""
+        # Take a snapshot of current queue to allow appending during generation
+        current_batch = list(self.pending_specializations)
+        self.pending_specializations = []
+        
+        for func_name, type_args, specialized_name in current_batch:
             self._generate_specialized_function_impl(func_name, type_args, specialized_name)
+
+    def _generate_pending_class_specializations(self):
+        """Generate pending generic class specializations."""
+        # Take snapshot
+        current_batch = list(self.pending_class_specializations)
+        self.pending_class_specializations = []
+        
+        for class_name, type_args_names, specialized_name in current_batch:
+            self._generate_specialized_class_impl(class_name, type_args_names, specialized_name)
+    
+    def _register_specialized_class_metadata(self, class_name, type_args, specialized_name):
+        """Register specialized class metadata immediately (properties, methods placeholder)."""
+        if specialized_name in self.class_types:
+            return
+
+        template = self.generic_classes.get(class_name)
+        if not template:
+            return
+
+        # Create substitutions
+        param_names = [p if isinstance(p, str) else p.name for p in template.generic_parameters]
+        self.current_type_substitutions = dict(zip(param_names, type_args))
+        
+        # Resolve properties
+        properties = []
+        for prop in template.properties:
+            prop_type = prop.type_annotation if hasattr(prop, 'type_annotation') else 'Any'
+            if prop_type in self.current_type_substitutions:
+                prop_type = self.current_type_substitutions[prop_type]
+            
+            properties.append({
+                'name': prop.name,
+                'type': prop_type,
+                'visibility': 'public'
+            })
+
+        # Resolve methods (signatures)
+        methods = []
+        for method in template.methods:
+            # Resolve return type
+            ret_type = method.return_type
+            if ret_type in self.current_type_substitutions:
+                ret_type = self.current_type_substitutions[ret_type]
+            
+            methods.append({
+                'name': method.name,
+                'parameters': method.parameters, # Keep AST nodes, substitutions handled by _generate_class_method
+                'return_type': ret_type,
+                'visibility': 'public'
+            })
+            
+        # Register
+        self.class_types[specialized_name] = {
+            'properties': properties,
+            'methods': methods,
+            'parent': None,
+            'type_substitutions': self.current_type_substitutions.copy(),
+            'generated_ir': False,
+            'is_specialization': True  # Mark as specialization to skip in main method generation loop
+        }
+        self.current_type_substitutions = {}
+
+    def _generate_specialized_class_impl(self, class_name: str, type_args: List[str], specialized_name: str):
+        """Generate the actual LLVM IR for a specialized class."""
+        self._register_specialized_class_metadata(class_name, type_args, specialized_name)
+        
+        properties = self.class_types[specialized_name]['properties']
+        template = self.generic_classes[class_name]
+            
+        
+        if self.class_types[specialized_name].get('generated_ir'):
+            return
+
+        # 2. Add Struct Definition to late type declarations
+        # This ensures it appears before any code that uses it
+        field_types = []
+        for prop in properties:
+            field_types.append(self._map_nlpl_type_to_llvm(prop['type']))
+            
+        if field_types:
+            fields_str = ', '.join(field_types)
+            self.late_type_declarations.append(f'%{specialized_name} = type {{ {fields_str} }}')
+        else:
+            self.late_type_declarations.append(f'%{specialized_name} = type {{}}')
+            
+        # 3. Generate Specialized Methods
+        # We call _generate_class_method for each method in template
+        # The method generator will look up 'type_substitutions' we just stored
+        for method in template.methods:
+             method_info = {
+                'name': method.name,
+                'parameters': method.parameters,
+                'return_type': method.return_type,
+                'body': method.body,
+                'visibility': 'public'
+             }
+             self._generate_class_method(specialized_name, method_info)
+             
+        # Mark as generated
+        self.class_types[specialized_name]['generated_ir'] = True
+        
+        # Clear substitutions
+        self.current_type_substitutions = {}
     
     def _generate_specialized_function_impl(self, func_name: str, type_args: List[str], specialized_name: str):
         """
@@ -1841,8 +2080,19 @@ class LLVMIRGenerator(CodeGenerator):
     def _generate_class_method(self, class_name, method_info):
         """
         Generate a class method as a standalone function.
-        Method signature: ReturnType ClassName_methodName(ClassName* this, params...)
+        Wrapper to handle generic type substitutions context.
         """
+        old_substitutions = self.current_type_substitutions
+        if class_name in self.class_types and 'type_substitutions' in self.class_types[class_name]:
+            self.current_type_substitutions = self.class_types[class_name]['type_substitutions']
+            
+        try:
+            self._generate_class_method_impl(class_name, method_info)
+        finally:
+            self.current_type_substitutions = old_substitutions
+
+    def _generate_class_method_impl(self, class_name, method_info):
+        """Implementation of class method generation."""
         method_name = method_info['name']
         mangled_name = f'{class_name}_{method_name}'
         
@@ -2009,11 +2259,13 @@ class LLVMIRGenerator(CodeGenerator):
         if stmt_type == 'VariableDeclaration':
             self._generate_variable_declaration(stmt, indent)
         elif stmt_type == 'FunctionCall':
-            # Check if it's a print statement
+            # Check if it's a print statement (legacy support)
             if hasattr(stmt, 'name') and stmt.name == 'print':
                 self._generate_print_statement(stmt, indent)
             else:
                 self._generate_function_call_statement(stmt, indent)
+        elif stmt_type == 'PrintStatement':
+            self._generate_print_statement(stmt, indent)
         elif stmt_type == 'IfStatement':
             self._generate_if_statement(stmt, indent)
         elif stmt_type == 'WhileLoop':
@@ -2050,6 +2302,14 @@ class LLVMIRGenerator(CodeGenerator):
             pass  # Classes handled separately
         elif stmt_type == 'InterfaceDefinition':
             pass  # Interfaces handled separately (compile-time only)
+        elif stmt_type == 'MemberAccess':
+            # MemberAccess as statement - typically a method call like obj.method()
+            if hasattr(stmt, 'is_method_call') and stmt.is_method_call:
+                # Generate the method call (result is discarded since it's a statement)
+                self._generate_member_access(stmt, indent)
+            else:
+                # Just a property access with no side effect - can be ignored
+                pass
         elif stmt_type == 'ImportStatement':
             pass  # Imports handled at module level
         elif stmt_type == 'PanicStatement':
@@ -2104,6 +2364,38 @@ class LLVMIRGenerator(CodeGenerator):
                 
                 self.emit(f'{indent}store {llvm_type} {value_reg}, {llvm_type}* {alloca_name}, align 8')
             return
+        elif self.current_class_context and var_name not in self.global_vars:
+            # Check if this is a property assignment (implicit this.property)
+            class_name = self.current_class_context
+            if class_name in self.class_types:
+                properties = self._get_all_class_properties(class_name)
+                
+                # Check if var_name is a property
+                for i, prop in enumerate(properties):
+                    if prop['name'] == var_name:
+                        # This is a property assignment! Store to this.property
+                        if hasattr(node, 'value') and node.value and 'this' in self.local_vars:
+                            this_type, this_alloca = self.local_vars['this']
+                            
+                            # Load this pointer
+                            this_ptr = self._new_temp()
+                            self.emit(f'{indent}{this_ptr} = load {this_type}, {this_type}* {this_alloca}, align 8')
+                            
+                            # Get property pointer
+                            prop_type = self._map_nlpl_type_to_llvm(prop.get('type', 'Integer'))
+                            prop_ptr = self._new_temp()
+                            self.emit(f'{indent}{prop_ptr} = getelementptr inbounds %{class_name}, %{class_name}* {this_ptr}, i32 0, i32 {i}')
+                            
+                            # Generate value and store
+                            value_reg = self._generate_expression(node.value, indent)
+                            value_type = self._infer_expression_type(node.value)
+                            
+                            # Type conversion if needed
+                            if value_type != prop_type:
+                                value_reg = self._convert_type(value_reg, value_type, prop_type, indent)
+                            
+                            self.emit(f'{indent}store {prop_type} {value_reg}, {prop_type}* {prop_ptr}, align 8')
+                        return
         elif var_name in self.global_vars:
             # Reassignment to global variable (or initialization from main function)
             if hasattr(node, 'value') and node.value:
@@ -2212,13 +2504,15 @@ class LLVMIRGenerator(CodeGenerator):
         
         # Ensure message is i8* (string)
         if msg_type != 'i8*':
-            # Try to convert to string if possible, otherwise error or cast
-            # For now, assume simple string or castable
-            if msg_type.endswith('*'):
-                 msg_reg = self.emit(f'{indent}%panic_cast = bitcast {msg_type} {msg_reg} to i8*')
-            else:
-                 # TODO: Implement int/float to string conversion here if needed
-                 pass
+            # Convert numbers to string
+            if msg_type in ('i64', 'i32', 'i16', 'i8', 'i1', 'double', 'float'):
+                msg_reg = self._convert_number_to_string(msg_reg, msg_type, indent)
+            elif msg_type.endswith('*'):
+                # Try to bitcast pointer types
+                msg_reg_cast = self._new_temp()
+                self.emit(f'{indent}{msg_reg_cast} = bitcast {msg_type} {msg_reg} to i8*')
+                msg_reg = msg_reg_cast
+            # else: leave as is and hope for the best
         
         # Call nlpl_panic
         self.emit(f'{indent}call void @nlpl_panic(i8* {msg_reg})')
@@ -2226,13 +2520,37 @@ class LLVMIRGenerator(CodeGenerator):
     
     def _generate_print_statement(self, node, indent=''):
         """Generate printf call for print statement."""
-        if not hasattr(node, 'arguments') or not node.arguments:
+        # PrintStatement has 'expression', FunctionCall (legacy) has 'arguments[0]'
+        if hasattr(node, 'expression'):
+            value_expr = node.expression
+        elif hasattr(node, 'arguments') and node.arguments:
+            value_expr = node.arguments[0]
+        else:
             return
-        
-        # Get the value to print
-        value_expr = node.arguments[0]
+            
         value_reg = self._generate_expression(value_expr, indent)
-        value_type = self._infer_expression_type(value_expr)
+        
+        # Override inferred type if print_type hint is present
+        print_hint = getattr(node, 'print_type', None)
+        if print_hint == "text":
+            value_type = 'i8*'
+            # If actual type is not i8*, we might need a conversion
+            # For now, we assume _generate_expression might return the right thing 
+            # or handle it in the format string
+            inferred_type = self._infer_expression_type(value_expr)
+            if inferred_type != 'i8*':
+                # In a real compiler we'd insert a conversion call here 
+                # (e.g. call to-string)
+                pass
+        elif print_hint == "number":
+            # Default to float/double for 'number' hint if not already numeric
+            inferred_type = self._infer_expression_type(value_expr)
+            if inferred_type not in ['i64', 'i32', 'double', 'float', 'i1']:
+                value_type = 'double' # Fallback
+            else:
+                value_type = inferred_type
+        else:
+            value_type = self._infer_expression_type(value_expr)
         
         # Create format string based on type (use raw newline in string)
         if value_type == 'i64' or value_type == 'i32':
@@ -2933,25 +3251,59 @@ class LLVMIRGenerator(CodeGenerator):
         if not hasattr(node, 'iterator') or not hasattr(node, 'iterable'):
             return
         
-        iterator_name = node.iterator
         
-        # For now, we need the array to be a variable to get its type
-        # TODO: Support arbitrary expressions
-        if not hasattr(node.iterable, 'name'):
-            # For non-variable iterables, we can't determine length easily
-            # Skip for now
+        # Evaluate the iterable expression
+        array_var_name = None
+        array_size = None
+        array_ptr = None
+        array_type = None
+        
+        if hasattr(node.iterable, 'name'):
+            # Simple variable reference
+            array_var_name = node.iterable.name
+            if array_var_name in self.local_vars:
+                array_type, array_alloca = self.local_vars[array_var_name]
+                # Load array pointer
+                array_ptr = self._new_temp()
+                self.emit(f'{indent}{array_ptr} = load {array_type}, {array_type}* {array_alloca}, align 8')
+                
+                # Get array size from tracking
+                if array_var_name in self.array_sizes:
+                    array_size = self.array_sizes[array_var_name]
+            elif array_var_name in self.global_vars:
+                array_type, global_name = self.global_vars[array_var_name]
+                # Load array pointer
+                array_ptr = self._new_temp()
+                self.emit(f'{indent}{array_ptr} = load {array_type}, {array_type}* {global_name}, align 8')
+                
+                # Try to get size from tracking
+                if array_var_name in self.array_sizes:
+                    array_size = self.array_sizes[array_var_name]
+        else:
+            # Arbitrary expression - evaluate it
+            iterable_reg = self._generate_expression(node.iterable, indent)
+            iterable_type = self._infer_expression_type(node.iterable)
+            
+            # For list types, extract length and data pointer
+            if iterable_type.startswith('{'):
+                # Struct type like { i64, i64* } - extract length
+                length_reg = self._new_temp()
+                self.emit(f'{indent}{length_reg} = extractvalue {iterable_type} {iterable_reg}, 0')
+                array_size = None  # Dynamic size
+                
+                # Extract data pointer
+                array_ptr = self._new_temp()
+                self.emit(f'{indent}{array_ptr} = extractvalue {iterable_type} {iterable_reg}, 1')
+                array_type = iterable_type
+            else:
+                # Assume it's a pointer type
+                array_ptr = iterable_reg
+                array_type = iterable_type
+                array_size = None  # Unknown size
+        
+        # If we couldn't determine the array pointer, skip
+        if array_ptr is None:
             return
-        
-        array_var_name = node.iterable.name
-        if array_var_name not in self.local_vars:
-            return
-        
-        # Get array size from tracking
-        if array_var_name not in self.array_sizes:
-            # Don't know the size - can't generate proper loop
-            return
-        
-        array_size = self.array_sizes[array_var_name]
         
         # Create index variable
         index_var = f'_for_index_{self.label_counter}'
@@ -2994,18 +3346,46 @@ class LLVMIRGenerator(CodeGenerator):
         index_reg = self._new_temp()
         self.emit(f'{indent}{index_reg} = load i64, i64* {index_alloca}, align 8')
         
-        # Compare with actual array size
-        limit_reg = self._new_temp()
-        self.emit(f'{indent}{limit_reg} = icmp slt i64 {index_reg}, {array_size}')
+        # Get array length (static or dynamic)
+        if array_size is not None:
+            # Static size known at compile time
+            limit_reg = self._new_temp()
+            self.emit(f'{indent}{limit_reg} = icmp slt i64 {index_reg}, {array_size}')
+        else:
+            # Dynamic size - extract from struct or use runtime length
+            if array_type and array_type.startswith('{'):
+                # List struct type - length is first element
+                # We already extracted it earlier as length_reg
+                limit_reg = self._new_temp()
+                self.emit(f'{indent}{limit_reg} = icmp slt i64 {index_reg}, {length_reg}')
+            else:
+                # Unknown length - skip loop (shouldn't happen)
+                self.emit(f'{indent}br label %{end_label if not has_else else else_label}')
+                # Generate empty body to maintain structure
+                self.emit(f'{body_label}:')
+                self.emit(f'{indent}br label %{inc_label}')
+                self.emit(f'{inc_label}:')
+                self.emit(f'{indent}br label %{end_label}')
+                if has_else:
+                    self.emit(f'{else_label}:')
+                    if node.else_body:
+                        for stmt in node.else_body:
+                            self._generate_statement(stmt, indent)
+                    self.emit(f'{indent}br label %{end_label}')
+                self.emit(f'{end_label}:')
+                self.loop_stack.pop()
+                if hasattr(node, 'label') and node.label and node.label in self.labeled_loops:
+                    del self.labeled_loops[node.label]
+                return
+        
         self.emit(f'{indent}br i1 {limit_reg}, label %{body_label}, label %{end_label if not has_else else else_label}')
         
         # Body: load element, execute statements
         self.emit(f'{body_label}:')
         
-        # Load array pointer
-        array_type, array_alloca = self.local_vars[array_var_name]
-        array_ptr_reg = self._new_temp()
-        self.emit(f'{indent}{array_ptr_reg} = load {array_type}, {array_type}* {array_alloca}, align 8')
+        # Array pointer is already loaded in array_ptr variable
+        # No need to reload it
+        
         
         # Load index again for GEP
         index_reg2 = self._new_temp()
@@ -3013,7 +3393,7 @@ class LLVMIRGenerator(CodeGenerator):
         
         # Get element pointer
         elem_ptr = self._new_temp()
-        self.emit(f'{indent}{elem_ptr} = getelementptr inbounds i64, i64* {array_ptr_reg}, i64 {index_reg2}')
+        self.emit(f'{indent}{elem_ptr} = getelementptr inbounds i64, i64* {array_ptr}, i64 {index_reg2}')
         
         # Load element value into iterator variable
         elem_val = self._new_temp()
@@ -3298,15 +3678,26 @@ class LLVMIRGenerator(CodeGenerator):
         self.emit(f'{indent}; Catch block (ID: {try_id})')
         self.emit(f'{indent}{catch_label}:')
         
-        # Landing pad - catches any exception
+        # Landing pad - catches specific exception type or all exceptions
         # landingpad { i8*, i32 } catch i8* @typeinfo
         # Returns: { i8* exception_ptr, i32 type_selector }
         landingpad_result = self._new_temp()
         
-        # For now, catch all exceptions with "catch i8* null" (catch-all)
-        # TODO: Support specific exception types from AST
+        # Determine which exception type to catch
+        exception_type = None
+        if hasattr(node, 'exception_type') and node.exception_type:
+            exception_type = node.exception_type
+        
         self.emit(f'{indent}  {landingpad_result} = landingpad {{ i8*, i32 }}')
-        self.emit(f'{indent}    catch i8* null')
+        
+        if exception_type:
+            # Catch specific exception type
+            # Dynamically generate or retrieve typeinfo for this exception type
+            typeinfo = self._get_or_create_exception_typeinfo(exception_type)
+            self.emit(f'{indent}    catch i8* bitcast ({{ i8*, i8* }}* {typeinfo} to i8*)')
+        else:
+            # Catch all exceptions with "catch i8* null" (catch-all)
+            self.emit(f'{indent}    catch i8* null')
         
         # Extract exception pointer from landingpad result
         exc_ptr = self._new_temp()
@@ -3376,11 +3767,9 @@ class LLVMIRGenerator(CodeGenerator):
             
             # Convert to i8* if needed
             if message_type != 'i8*':
-                # For string literals or other types, ensure we have i8*
-                if message_type == 'i64':
-                    # Convert number to string (simplified - just use null for now)
-                    message_ptr = self._new_temp()
-                    self.emit(f'{indent}{message_ptr} = bitcast i8* null to i8*  ; TODO: convert number to string')
+                # Convert numbers to string
+                if message_type in ('i64', 'i32', 'i16', 'i8', 'i1', 'double', 'float'):
+                    message_ptr = self._convert_number_to_string(message_reg, message_type, indent)
                 else:
                     message_ptr = message_reg
             else:
@@ -3654,16 +4043,49 @@ class LLVMIRGenerator(CodeGenerator):
                 class_name = value_type
                 method_name = f"NLPL_{class_name}_{prop_name}"
                 
-                # Call getter
+                # Resolve return type from generic type substitutions
+                # Check if we have type substitutions active (from specialized generic class)
+                if self.current_type_substitutions:
+                    # Look up the property type in class metadata
+                    if class_name in self.class_metadata:
+                        class_meta = self.class_metadata[class_name]
+                        if 'properties' in class_meta:
+                            for prop in class_meta['properties']:
+                                if prop['name'] == prop_name:
+                                    prop_type = prop['type']
+                                    # Apply type substitutions
+                                    if prop_type in self.current_type_substitutions:
+                                        return_type_ir = self._map_nlpl_type_to_llvm(
+                                            self.current_type_substitutions[prop_type]
+                                        )
+                                    else:
+                                        return_type_ir = self._map_nlpl_type_to_llvm(prop_type)
+                                    break
+                            else:
+                                # Property not found in metadata, default to i64
+                                return_type_ir = 'i64'
+                        else:
+                            return_type_ir = 'i64'
+                    else:
+                        return_type_ir = 'i64'
+                else:
+                    # No type substitutions, try to infer from class metadata
+                    if class_name in self.class_metadata:
+                        class_meta = self.class_metadata[class_name]
+                        if 'properties' in class_meta:
+                            for prop in class_meta['properties']:
+                                if prop['name'] == prop_name:
+                                    return_type_ir = self._map_nlpl_type_to_llvm(prop['type'])
+                                    break
+                            else:
+                                return_type_ir = 'i64'
+                        else:
+                            return_type_ir = 'i64'
+                    else:
+                        return_type_ir = 'i64'
+                
+                # Call getter with resolved return type
                 inner_val = self._new_temp()
-                # Problem: return type of getter depends on T. 
-                # We accept we might need a distinct getter per specialization or use void* casting
-                # For now assume result returns i64 or pointer
-                
-                # FIXME: Proper generic type resolution needed here.
-                # Assuming concrete types for verification example (int64)
-                
-                return_type_ir = 'i64' # Placeholder
                 self.emit(f'{indent}{inner_val} = call {return_type_ir} @{method_name}(%{class_name}* {value_reg})')
                 
                 # Bind variable
@@ -3671,8 +4093,8 @@ class LLVMIRGenerator(CodeGenerator):
                 var_addr = self._new_temp()
                 self.emit(f'{indent}{var_addr} = alloca {return_type_ir}')
                 self.emit(f'{indent}store {return_type_ir} {inner_val}, {return_type_ir}* {var_addr}')
-                # Update symbol table (infer type from context or assume int for now)
-                self.local_vars[var_name] = ('i64', var_addr) # Placeholder type
+                # Update symbol table with resolved type
+                self.local_vars[var_name] = (return_type_ir, var_addr)
             
 
         
@@ -3763,12 +4185,46 @@ class LLVMIRGenerator(CodeGenerator):
             # Handle rest binding
             if rest_binding:
                 # Create a new list with remaining elements
-                # This is advanced and requires runtime list manipulation
-                # For now, just bind the rest binding to a placeholder
-                # TODO: Implement proper rest list creation
-                rest_alloca = self._new_temp()
-                self.emit(f'{indent}{rest_alloca} = alloca {value_type}, align 8')
-                self.local_vars[rest_binding] = (value_type, rest_alloca)
+                # Calculate number of remaining elements
+                num_patterns = len(patterns)
+                remaining_count_reg = self._new_temp()
+                self.emit(f'{indent}{remaining_count_reg} = sub i64 {length_reg}, {num_patterns}')
+                
+                # Allocate new list structure for rest elements
+                rest_list_reg = self._new_temp()
+                self.emit(f'{indent}{rest_list_reg} = alloca {value_type}, align 8')
+                
+                # Calculate size for remaining elements (in bytes)
+                elem_size = 8  # Assuming i64 elements
+                rest_size_reg = self._new_temp()
+                self.emit(f'{indent}{rest_size_reg} = mul i64 {remaining_count_reg}, {elem_size}')
+                
+                # Allocate memory for rest data
+                rest_data_i8_reg = self._new_temp()
+                self.emit(f'{indent}{rest_data_i8_reg} = call i8* @malloc(i64 {rest_size_reg})')
+                
+                # Cast to element pointer type
+                rest_data_reg = self._new_temp()
+                self.emit(f'{indent}{rest_data_reg} = bitcast i8* {rest_data_i8_reg} to i64*')
+                
+                # Copy remaining elements to new list
+                # Source: data_ptr_reg + num_patterns offset
+                src_offset_reg = self._new_temp()
+                self.emit(f'{indent}{src_offset_reg} = getelementptr inbounds i64, i64* {data_ptr_reg}, i64 {num_patterns}')
+                
+                # Use memcpy to copy remaining elements
+                self.emit(f'{indent}call void @llvm.memcpy.p0i8.p0i8.i64(i8* {rest_data_i8_reg}, i8* bitcast (i64* {src_offset_reg} to i8*), i64 {rest_size_reg}, i1 false)')
+                
+                # Create rest list structure: { length, data }
+                rest_struct_reg = self._new_temp()
+                self.emit(f'{indent}{rest_struct_reg} = insertvalue {value_type} undef, i64 {remaining_count_reg}, 0')
+                rest_struct_reg2 = self._new_temp()
+                self.emit(f'{indent}{rest_struct_reg2} = insertvalue {value_type} {rest_struct_reg}, i64* {rest_data_reg}, 1')
+                
+                # Store rest list in local variable
+                self.emit(f'{indent}store {value_type} {rest_struct_reg2}, {value_type}* {rest_list_reg}, align 8')
+                self.local_vars[rest_binding] = (value_type, rest_list_reg)
+            
             
             # Combine all match results with AND
             combined_reg = match_results[0]
@@ -3809,9 +4265,54 @@ class LLVMIRGenerator(CodeGenerator):
         return 'i64'  # default to integer
     
     def _get_tuple_element_type(self, tuple_type, index):
-        """Get the type of a tuple element at given index."""
-        # For now, assume homogeneous tuples of i64
-        # TODO: Support heterogeneous tuples with type inference
+        """Get the type of a tuple element at given index with heterogeneous support.
+        
+        Tuple types are represented as structs: { type0, type1, type2, ... }
+        We parse the struct definition to extract the type at the given index.
+        """
+        # Check if tuple_type is a struct type definition
+        if tuple_type.startswith('{') and tuple_type.endswith('}'):
+            # Parse struct members: { i64, i8*, double, ... }
+            inner = tuple_type[1:-1].strip()
+            
+            # Split by comma to get individual types
+            types = []
+            depth = 0
+            current_type = []
+            
+            for char in inner:
+                if char == '{':
+                    depth += 1
+                    current_type.append(char)
+                elif char == '}':
+                    depth -= 1
+                    current_type.append(char)
+                elif char == ',' and depth == 0:
+                    # End of current type
+                    type_str = ''.join(current_type).strip()
+                    if type_str:
+                        types.append(type_str)
+                    current_type = []
+                else:
+                    current_type.append(char)
+            
+            # Don't forget the last type
+            type_str = ''.join(current_type).strip()
+            if type_str:
+                types.append(type_str)
+            
+            # Return the type at the requested index
+            if 0 <= index < len(types):
+                return types[index]
+        
+        # Check if it's a named struct type like %TupleName
+        if tuple_type.startswith('%') and tuple_type in self.struct_types:
+            # Look up struct definition
+            struct_def = self.struct_types[tuple_type]
+            if 'fields' in struct_def and index < len(struct_def['fields']):
+                return struct_def['fields'][index]['type']
+        
+        # Fallback: assume homogeneous i64 tuples for backward compatibility
         return 'i64'
     
     def _can_optimize_to_switch(self, cases, match_type):
@@ -3931,9 +4432,35 @@ class LLVMIRGenerator(CodeGenerator):
         
         self.union_types[union_name] = fields
     
+    def _infer_type_from_value(self, value_node) -> str:
+        """Infer the NLPL type from a value expression."""
+        if value_node is None:
+            return 'Any'
+        
+        from nlpl.parser.ast import Literal, Identifier
+        
+        if isinstance(value_node, Literal):
+            if value_node.type == 'integer':
+                return 'Integer'
+            elif value_node.type == 'float':
+                return 'Float'
+            elif value_node.type == 'string':
+                return 'String'
+            elif value_node.type == 'boolean':
+                return 'Boolean'
+        
+        # For complex expressions, default to Any
+        return 'Any'
+    
     def _collect_class_definition(self, node):
         """Collect class definition for type system and code generation."""
         class_name = node.name
+        
+        # Check if this is a generic class
+        if hasattr(node, 'generic_parameters') and node.generic_parameters:
+            # Store generic class template - don't generate code yet
+            self.generic_classes[class_name] = node
+            return
         
         # Extract properties and methods
         properties = []
@@ -3941,10 +4468,23 @@ class LLVMIRGenerator(CodeGenerator):
         
         # Properties are variables declared in the class
         for prop in node.properties:
+            # Try to get type from type_annotation or infer from default_value
+            prop_type = None
+            if hasattr(prop, 'type_annotation') and prop.type_annotation:
+                prop_type = prop.type_annotation
+            elif hasattr(prop, 'default_value') and prop.default_value:
+                # Infer type from default value
+                prop_type = self._infer_type_from_value(prop.default_value)
+            
+            # Default to void pointer if type cannot be determined
+            if not prop_type:
+                prop_type = 'Any'  # Will map to i8* in LLVM
+            
             prop_info = {
                 'name': prop.name if hasattr(prop, 'name') else str(prop),
-                'type': prop.type_annotation if hasattr(prop, 'type_annotation') else 'Integer',
-                'visibility': 'private'  # Default visibility
+                'type': prop_type,
+                'visibility': 'private',  # Default visibility
+                'default_value': prop.default_value if hasattr(prop, 'default_value') else None
             }
             properties.append(prop_info)
         
@@ -4206,7 +4746,14 @@ class LLVMIRGenerator(CodeGenerator):
             
             # Check local vars first, then global vars
             if var_name in self.local_vars:
-                llvm_type, obj_ptr = self.local_vars[var_name]
+                llvm_type, alloca_ptr = self.local_vars[var_name]
+                # Check if alloca_ptr is already a pointer value (temp register from ObjectInstantiation)
+                if alloca_ptr.startswith('%') and alloca_ptr[1:].isdigit():
+                    obj_ptr = alloca_ptr
+                else:
+                    # Load the pointer value from the alloca
+                    obj_ptr = self._new_temp()
+                    self.emit(f'{indent}{obj_ptr} = load {llvm_type}, {llvm_type}* {alloca_ptr}, align 8')
             elif var_name in self.global_vars:
                 llvm_type, global_name = self.global_vars[var_name]
                 # Load the global pointer value
@@ -4308,6 +4855,73 @@ class LLVMIRGenerator(CodeGenerator):
                         
                         # Store value
                         self.emit(f'{indent}store {prop_type} {value_reg}, {prop_type}* {prop_ptr}, align 8')    
+    def _generate_type_cast_expression(self, node, indent=''):
+        """Generate IR for type casting."""
+        expr_reg = self._generate_expression(node.expression, indent)
+        source_type = self._infer_expression_type(node.expression)
+        target_type = node.target_type.lower()
+        
+        result_reg = self._new_temp()
+        
+        # cast to integer
+        if target_type == "integer":
+            if source_type == 'float' or source_type == 'double':
+                self.emit(f'{indent}{result_reg} = fptosi double {expr_reg} to i64')
+                return result_reg
+            elif source_type == 'i64' or source_type == 'i32':
+                return expr_reg # No conversion needed or sext
+            elif source_type == 'i8*': # String to int
+                # declare i64 @atol(i8*)
+                if 'atol' not in self.extern_functions:
+                    self.emit('declare i64 @atol(i8*)')
+                    self.extern_functions['atol'] = ('i64', ['i8*'], None)
+                self.emit(f'{indent}{result_reg} = call i64 @atol(i8* {expr_reg})')
+                return result_reg
+                
+        # cast to float
+        elif target_type == "float":
+            if source_type == 'i64' or source_type == 'i32':
+                self.emit(f'{indent}{result_reg} = sitofp i64 {expr_reg} to double')
+                return result_reg
+            elif source_type == 'float' or source_type == 'double':
+                return expr_reg
+            elif source_type == 'i8*': # String to float
+                # declare double @atof(i8*)
+                if 'atof' not in self.extern_functions:
+                    self.emit('declare double @atof(i8*)')
+                    self.extern_functions['atof'] = ('double', ['i8*'], None)
+                self.emit(f'{indent}{result_reg} = call double @atof(i8* {expr_reg})')
+                return result_reg
+
+        # cast to string
+        elif target_type == "string":
+            # Need buffer allocation and sprintf
+            buffer_reg = self._new_temp()
+            # Allocate buffer (32 bytes enough for numbers)
+            self.emit(f'{indent}{buffer_reg} = alloca i8, i32 32')
+            
+            # declare i32 @sprintf(i8*, i8*, ...)
+            if 'sprintf' not in self.extern_functions:
+                self.emit('declare i32 @sprintf(i8*, i8*, ...)')
+                self.extern_functions['sprintf'] = ('i32', ['i8*', 'i8*'], None)
+                
+            if source_type in ('i64', 'i32'):
+                format_str = "%lld\\00"
+                fmt_name, fmt_len = self._get_or_create_string_constant(format_str)
+                fmt_reg = self._new_temp()
+                self.emit(f'{indent}{fmt_reg} = getelementptr inbounds [{fmt_len} x i8], [{fmt_len} x i8]* {fmt_name}, i64 0, i64 0')
+                self.emit(f'{indent}call i32 (i8*, i8*, ...) @sprintf(i8* {buffer_reg}, i8* {fmt_reg}, i64 {expr_reg})')
+            elif source_type in ('float', 'double'):
+                format_str = "%f\\00"
+                fmt_name, fmt_len = self._get_or_create_string_constant(format_str)
+                fmt_reg = self._new_temp()
+                self.emit(f'{indent}{fmt_reg} = getelementptr inbounds [{fmt_len} x i8], [{fmt_len} x i8]* {fmt_name}, i64 0, i64 0')
+                self.emit(f'{indent}call i32 (i8*, i8*, ...) @sprintf(i8* {buffer_reg}, i8* {fmt_reg}, double {expr_reg})')
+            
+            return buffer_reg
+
+        return expr_reg
+
     def _generate_expression(self, expr, indent='') -> str:
         """
         Generate IR for expression and return register holding result.
@@ -4337,6 +4951,8 @@ class LLVMIRGenerator(CodeGenerator):
             return self._generate_fstring_expression(expr, indent)
         elif expr_type == 'IndexExpression':
             return self._generate_index_expression(expr, indent)
+        elif expr_type == 'TypeCastExpression':
+            return self._generate_type_cast_expression(expr, indent)
         elif expr_type == 'MemberAccess':
             # Check if this is a method call: call object.method_name
             # This parses as MemberAccess with object_expr = FunctionCall(name=object_name)
@@ -4350,7 +4966,14 @@ class LLVMIRGenerator(CodeGenerator):
                 
                 # Check if obj_name is a variable and get its type
                 if obj_name in self.local_vars:
-                    llvm_type, obj_ptr = self.local_vars[obj_name]
+                    llvm_type, alloca_ptr = self.local_vars[obj_name]
+                    # Check if alloca_ptr is already a pointer value (temp register from ObjectInstantiation)
+                    if alloca_ptr.startswith('%') and alloca_ptr[1:].isdigit():
+                        obj_ptr = alloca_ptr
+                    else:
+                        # Load the pointer value from the alloca
+                        obj_ptr = self._new_temp()
+                        self.emit(f'{indent}{obj_ptr} = load {llvm_type}, {llvm_type}* {alloca_ptr}, align 8')
                 elif obj_name in self.global_vars:
                     llvm_type, global_name = self.global_vars[obj_name]
                     # Load the global pointer value
@@ -4362,7 +4985,8 @@ class LLVMIRGenerator(CodeGenerator):
                 
                 # Extract class name from type like "%Point*"
                 if llvm_type.startswith('%') and llvm_type.endswith('*'):
-                    class_name = llvm_type[1:-1]  # Remove % and *
+                    class_name = llvm_type[1:-1]
+
                     
                     # Check if this class has this method
                     if class_name in self.class_types:
@@ -4376,7 +5000,13 @@ class LLVMIRGenerator(CodeGenerator):
                                 # Arguments: this pointer + any method arguments
                                 args = [f'{llvm_type} {obj_ptr}']
                                 
-                                # For now, assume no additional arguments (can extend later)
+                                # Add method arguments if any
+                                if hasattr(expr, 'arguments') and expr.arguments:
+                                    for arg_expr in expr.arguments:
+                                        arg_reg = self._generate_expression(arg_expr, indent)
+                                        arg_type = self._infer_expression_type(arg_expr)
+                                        args.append(f'{arg_type} {arg_reg}')
+                                
                                 args_str = ', '.join(args)
                                 
                                 if ret_type == 'void':
@@ -5463,8 +6093,69 @@ class LLVMIRGenerator(CodeGenerator):
                 self.emit(f'{indent}{ptr_reg} = getelementptr inbounds [{str_len} x i8], [{str_len} x i8]* {str_name}, i64 0, i64 0')
                 return ptr_reg
             elif isinstance(value, list):
-                # Array literal - TODO: implement
-                return '0'
+                # Array literal - generate stack-allocated array
+                if not value:
+                    # Empty array - return null pointer
+                    return 'null'
+                
+                # Infer element type from first element
+                first_elem = value[0]
+                if isinstance(first_elem, bool):
+                    elem_type = 'i1'
+                elif isinstance(first_elem, int):
+                    elem_type = 'i64'
+                elif isinstance(first_elem, float):
+                    elem_type = 'double'
+                elif isinstance(first_elem, str):
+                    elem_type = 'i8*'
+                elif isinstance(first_elem, list):
+                    # Nested array - recursively determine type
+                    # For now, treat as i64* (pointer to array)
+                    elem_type = 'i64*'
+                else:
+                    elem_type = 'i64'  # Default fallback
+                
+                array_size = len(value)
+                
+                # Allocate array on stack
+                array_alloca = self._new_temp()
+                self.emit(f'{indent}{array_alloca} = alloca [{array_size} x {elem_type}], align 8')
+                
+                # Store each element
+                for i, elem in enumerate(value):
+                    # Convert Python value to LLVM constant
+                    if isinstance(elem, bool):
+                        elem_val = '1' if elem else '0'
+                    elif isinstance(elem, int):
+                        elem_val = str(elem)
+                    elif isinstance(elem, float):
+                        hex_val = struct.pack('>d', elem)
+                        elem_val = f'0x{hex_val.hex()}'
+                    elif isinstance(elem, str):
+                        # String element - create string constant
+                        str_name, str_len = self._get_or_create_string_constant(elem)
+                        elem_reg = self._new_temp()
+                        self.emit(f'{indent}{elem_reg} = getelementptr inbounds [{str_len} x i8], [{str_len} x i8]* {str_name}, i64 0, i64 0')
+                        elem_val = elem_reg
+                    elif isinstance(elem, list):
+                        # Nested array - recursively generate
+                        # Create a temporary Literal node for recursion
+                        from ..parser.ast import Literal
+                        nested_lit = Literal('list', elem)
+                        elem_val = self._generate_literal(nested_lit, indent)
+                    else:
+                        elem_val = '0'
+                    
+                    # Get pointer to array[i]
+                    elem_ptr = self._new_temp()
+                    self.emit(f'{indent}{elem_ptr} = getelementptr inbounds [{array_size} x {elem_type}], [{array_size} x {elem_type}]* {array_alloca}, i64 0, i64 {i}')
+                    self.emit(f'{indent}store {elem_type} {elem_val}, {elem_type}* {elem_ptr}, align 8')
+                
+                # Return pointer to first element (array decays to pointer)
+                array_ptr = self._new_temp()
+                self.emit(f'{indent}{array_ptr} = getelementptr inbounds [{array_size} x {elem_type}], [{array_size} x {elem_type}]* {array_alloca}, i64 0, i64 0')
+                
+                return array_ptr
             else:
                 return '0'
         return '0'
@@ -5862,6 +6553,17 @@ class LLVMIRGenerator(CodeGenerator):
         
         func_name = expr.name
         
+        # Check if this is a member access (e.g., object.method())
+        if type(func_name).__name__ == 'MemberAccess':
+            # Mark it as a method call and add arguments
+            func_name.is_method_call = True
+            if hasattr(expr, 'arguments'):
+                func_name.arguments = expr.arguments
+            else:
+                func_name.arguments = []
+            # Delegate to _generate_member_access which handles method calls
+            return self._generate_member_access(func_name, indent)
+        
         # Check if this is a module access (e.g., module.function)
         if type(func_name).__name__ == 'ModuleAccess':
             # Extract module and function names
@@ -6114,11 +6816,13 @@ class LLVMIRGenerator(CodeGenerator):
         if func_name not in self.functions:
             # Check if it's a generic function that needs specialization
             if func_name in self.generic_functions:
-                # Infer type arguments from actual arguments
                 type_args = []
                 
-                # Generate arguments to infer their types
-                if hasattr(expr, 'arguments') and expr.arguments:
+                # PRIORITY 1: Use explicit type arguments if provided
+                if hasattr(expr, 'type_arguments') and expr.type_arguments:
+                    type_args = expr.type_arguments
+                # PRIORITY 2: Infer type arguments from actual arguments
+                elif hasattr(expr, 'arguments') and expr.arguments:
                     for i, arg_expr in enumerate(expr.arguments):
                         arg_type_llvm = self._infer_expression_type(arg_expr)
                         # Map LLVM type back to NLPL type name for specialization
@@ -7295,7 +7999,17 @@ class LLVMIRGenerator(CodeGenerator):
             
             # Not a module - check if it's a local or global variable for object property access
             if var_name in self.local_vars:
-                llvm_type, obj_ptr = self.local_vars[var_name]
+                llvm_type, alloca_ptr = self.local_vars[var_name]
+                # Check if alloca_ptr is already a pointer value (temp register from ObjectInstantiation)
+                # vs an alloca variable name that needs to be loaded
+                # Temp registers are like %4, %14 (number) vs alloca vars like %var_name (identifier)
+                if alloca_ptr.startswith('%') and alloca_ptr[1:].isdigit():
+                    # This is already a pointer (from ObjectInstantiation)
+                    obj_ptr = alloca_ptr
+                else:
+                    # This is an alloca variable, need to load the pointer value
+                    obj_ptr = self._new_temp()
+                    self.emit(f'{indent}{obj_ptr} = load {llvm_type}, {llvm_type}* {alloca_ptr}, align 8')
             elif var_name in self.global_vars:
                 llvm_type, global_name = self.global_vars[var_name]
                 # Load the global pointer value
@@ -7310,6 +8024,43 @@ class LLVMIRGenerator(CodeGenerator):
                 
                 # Check if it's a class
                 if type_name in self.class_types:
+                    # Check if this is a METHOD CALL (obj.method())
+                    if hasattr(expr, 'is_method_call') and expr.is_method_call:
+                        # Find the method in the class
+                        methods = self._get_all_class_methods(type_name)
+                        for method_info in methods:
+                            if method_info['name'] == member_name:
+                                # Generate method call: ClassName_methodName(this, args...)
+                                method_func_name = f'{type_name}_{member_name}'
+                                
+                                # Determine return type (None means void - no return value)
+                                method_return_type = method_info.get('return_type') or 'void'
+                                ret_type = self._map_nlpl_type_to_llvm(method_return_type)
+                                
+                                # Build arguments: first is 'this' pointer, then any other args
+                                arg_strs = [f'%{type_name}* {obj_ptr}']
+                                
+                                # Add additional arguments if any
+                                if hasattr(expr, 'arguments') and expr.arguments:
+                                    for arg in expr.arguments:
+                                        arg_reg = self._generate_expression(arg, indent)
+                                        arg_type = self._infer_expression_type(arg)
+                                        arg_strs.append(f'{arg_type} {arg_reg}')
+                                
+                                args_str = ', '.join(arg_strs)
+                                
+                                if ret_type == 'void':
+                                    self.emit(f'{indent}call void @{method_func_name}({args_str})')
+                                    return '0'
+                                else:
+                                    result_reg = self._new_temp()
+                                    self.emit(f'{indent}{result_reg} = call {ret_type} @{method_func_name}({args_str})')
+                                    return result_reg
+                        
+                        # Method not found - return 0
+                        return '0'
+                    
+                    # Property access (not a method call)
                     properties = self._get_all_class_properties(type_name)
                     
                     # Find property index
@@ -7555,6 +8306,43 @@ class LLVMIRGenerator(CodeGenerator):
         
         type_name = expr.class_name
         
+        # Handle generic instantiation: new Box<Integer>
+        if hasattr(expr, 'type_arguments') and expr.type_arguments:
+            # Check if this is a generic class
+            if type_name in self.generic_classes:
+                # Resolve type arguments
+                type_args_objects = []
+                type_args_names = []
+                for arg in expr.type_arguments:
+                    arg_name = arg if isinstance(arg, str) else arg.name
+                    type_args_names.append(arg_name)
+                    type_args_objects.append(self._create_type_object(arg_name))
+                
+                # Get specialized name
+                specialized_name = self.monomorphizer.get_specialized_name(type_name, type_args_objects)
+                
+                # Register metadata immediately so it can be used for initialization/checks
+                self._register_specialized_class_metadata(type_name, type_args_names, specialized_name)
+                
+                # Queue for code generation if not generated and not in queue
+                is_generated = self.class_types[specialized_name].get('generated_ir', False)
+                in_queue = any(sname == specialized_name for _, _, sname in self.pending_class_specializations)
+                
+                if not is_generated and not in_queue:
+                    # check if already in queue to avoid duplicates
+                    in_queue = False
+                    for cname, args, sname in self.pending_class_specializations:
+                         if sname == specialized_name:
+                             in_queue = True
+                             break
+                    
+                    if not in_queue:
+                        self.pending_class_specializations.append((type_name, type_args_names, specialized_name))
+                
+                # Use specialized name
+                type_name = specialized_name
+        
+        
         # Check if it's a class, struct, or union
         is_class = type_name in self.class_types
         is_struct = type_name in self.struct_types
@@ -7689,10 +8477,36 @@ class LLVMIRGenerator(CodeGenerator):
         else:
             return 64
     
+    def _create_type_object(self, type_name: str):
+        """Create a Type object from a string name for Monomorphizer."""
+        from ...typesystem.types import (
+            PrimitiveType, ListType, DictionaryType, ClassType
+        )
+        
+        # Handle basic types
+        if type_name in ('Integer', 'Float', 'Boolean', 'String'):
+            return PrimitiveType(type_name)
+        
+        # Handle simple lists (parsing logic might need to be more robust for nested)
+        if type_name.startswith('List<') and type_name.endswith('>'):
+            inner = type_name[5:-1]
+            return ListType(self._create_type_object(inner))
+            
+        # Default to ClassType
+        return ClassType(type_name, {}, [])
+
     def _map_nlpl_type_to_llvm(self, nlpl_type: str) -> str:
         """Map NLPL type string to LLVM IR type."""
+        # Handle None type - default to void pointer
+        if nlpl_type is None:
+            return 'i8*'
+        
         if nlpl_type in self.type_cache:
             return self.type_cache[nlpl_type]
+        
+        # substitute generic types if context is active
+        if nlpl_type in self.current_type_substitutions:
+            return self._map_nlpl_type_to_llvm(self.current_type_substitutions[nlpl_type])
         
         nlpl_lower = nlpl_type.lower()
         
@@ -7717,8 +8531,8 @@ class LLVMIRGenerator(CodeGenerator):
             llvm_type = 'i1'
         elif nlpl_lower in ('string', 'str'):
             llvm_type = 'i8*'
-        elif nlpl_lower == 'pointer':
-            llvm_type = 'i8*'
+        elif nlpl_lower in ('pointer', 'any'):
+            llvm_type = 'i8*'  # Any type uses void pointer
         elif nlpl_lower == 'void':
             llvm_type = 'void'
         elif nlpl_lower == 'byte':
@@ -7842,64 +8656,112 @@ class LLVMIRGenerator(CodeGenerator):
         elif expr_type == 'ObjectInstantiation':
             # new StructName - return %StructName*
             if hasattr(expr, 'class_name'):
-                return f'%{expr.class_name}*'
+                name = expr.class_name
+                # Check for generic arguments
+                if hasattr(expr, 'type_arguments') and expr.type_arguments:
+                    # Construct specialized name
+                    type_args_names = []
+                    type_args_objects = []
+                    for arg in expr.type_arguments:
+                        arg_name = arg if isinstance(arg, str) else arg.name
+                        type_args_names.append(arg_name)
+                        type_args_objects.append(self._create_type_object(arg))
+                    
+                    name = self.monomorphizer.get_specialized_name(name, type_args_objects)
+                    
+                    # Register specialized class metadata early so it's available for type inference
+                    # This ensures subsequent references to methods/properties work correctly
+                    if name in self.generic_classes:
+                        self._register_specialized_class_metadata(name, type_args_names, name)
+                    elif expr.class_name in self.generic_classes:  # Use original name for lookup
+                        self._register_specialized_class_metadata(expr.class_name, type_args_names, name)
+                        
+                return f'%{name}*'
             return 'i64'
         elif expr_type == 'MemberAccess':
-            # object.field - need to infer field type
+            # Check for method calls or property access on objects
             if hasattr(expr, 'object_expr') and hasattr(expr, 'member_name'):
-                if type(expr.object_expr).__name__ == 'Identifier':
-                    var_name = expr.object_expr.name
+                obj_expr = expr.object_expr
+                member_name = expr.member_name
+                
+                # Get object variable name
+                obj_name = None
+                if type(obj_expr).__name__ == 'Identifier':
+                    obj_name = obj_expr.name
+                elif type(obj_expr).__name__ == 'FunctionCall':
+                    # This might be "call obj.method" where obj is FunctionCall wrapping an Identifier
+                    if hasattr(obj_expr, 'name'):
+                        func_call_name = obj_expr.name
+                        if type(func_call_name).__name__ == 'Identifier':
+                            obj_name = func_call_name.name
+                        elif isinstance(func_call_name, str):
+                            obj_name = func_call_name
+                
+                # Check if this might be a method call even if is_method_call not set
+                # Look up the object type and see if member_name is a method
+                if obj_name:
                     llvm_type = None
+                    if obj_name in self.local_vars:
+                        llvm_type = self.local_vars[obj_name][0]
+                    elif obj_name in self.global_vars:
+                        llvm_type = self.global_vars[obj_name][0]
                     
-                    # Check local vars first, then global vars
-                    if var_name in self.local_vars:
-                        llvm_type = self.local_vars[var_name][0]
-                    elif var_name in self.global_vars:
-                        llvm_type = self.global_vars[var_name][0]
-                    
+                    # Extract class name from type like "%Point*" or "%Box_String*"
                     if llvm_type and llvm_type.startswith('%') and llvm_type.endswith('*'):
-                        struct_name = llvm_type[1:-1]
-                        # Check struct types
-                        if struct_name in self.struct_types:
-                            for fname, ftype in self.struct_types[struct_name]:
-                                if fname == expr.member_name:
-                                    return ftype
-                        # Check class types
-                        elif struct_name in self.class_types:
-                            for prop in self._get_all_class_properties(struct_name):
-                                if prop['name'] == expr.member_name:
+                        class_name = llvm_type[1:-1]  # Remove % and *
+                        
+                        # Look up in class_types
+                        if class_name in self.class_types:
+                            # Check if member_name is a method
+                            methods = self.class_types[class_name]['methods']
+                            for method_info in methods:
+                                if method_info['name'] == member_name:
+                                    # This is a method! Infer return type
+                                    return_type_nlpl = method_info.get('return_type', 'Integer')
+                                    return self._map_nlpl_type_to_llvm(return_type_nlpl)
+                            
+                            # Not a method, check if it's a property
+                            for prop in self._get_all_class_properties(class_name):
+                                if prop['name'] == member_name:
                                     return self._map_nlpl_type_to_llvm(prop.get('type', 'Integer'))
+            
+            # Fallback
             return 'i64'
         elif expr_type == 'FunctionCall':
             if hasattr(expr, 'name'):
+                func_name = expr.name
+                # Handle Identifier wrapped names
+                if type(func_name).__name__ == 'Identifier':
+                    func_name = func_name.name
+                    
                 # Check built-in string functions
-                if expr.name == 'strlen':
+                if func_name == 'strlen':
                     return 'i64'
-                elif expr.name in ('substr', 'charat', 'strcpy', 'replace', 'trim', 'toupper', 'tolower', 'split', 'join'):
+                elif func_name in ('substr', 'charat', 'strcpy', 'replace', 'trim', 'toupper', 'tolower', 'split', 'join'):
                     return 'i8*'
-                elif expr.name == 'indexof':
+                elif func_name == 'indexof':
                     return 'i64'
                 # Check built-in array functions
-                elif expr.name == 'arrlen':
+                elif func_name == 'arrlen':
                     return 'i64'
-                elif expr.name in ('arrpush', 'arrpop', 'arrslice'):
+                elif func_name in ('arrpush', 'arrpop', 'arrslice'):
                     return 'i64*'
                 # Check built-in math functions
-                elif expr.name in ('sqrt', 'pow', 'abs', 'min', 'max', 'sin', 'cos', 'tan', 'floor', 'ceil'):
+                elif func_name in ('sqrt', 'pow', 'abs', 'min', 'max', 'sin', 'cos', 'tan', 'floor', 'ceil'):
                     return 'double'
                 # Check built-in memory management functions
-                elif expr.name == 'alloc':
+                elif func_name == 'alloc':
                     return 'i8*'
-                elif expr.name == 'dealloc':
+                elif func_name == 'dealloc':
                     return 'void'
-                elif expr.name == 'realloc':
+                elif func_name == 'realloc':
                     return 'i8*'
                 # Check user-defined functions
-                elif expr.name in self.functions:
-                    return self.functions[expr.name][0]
+                elif func_name in self.functions:
+                    return self.functions[func_name][0]
                 # Check extern functions (FFI)
-                elif expr.name in self.extern_functions:
-                    ret_type, _, _, _ = self.extern_functions[expr.name]
+                elif func_name in self.extern_functions:
+                    ret_type, _, _, _ = self.extern_functions[func_name]
                     return ret_type
         elif expr_type == 'AddressOfExpression':
             # address of variable or function
@@ -8013,6 +8875,98 @@ class LLVMIRGenerator(CodeGenerator):
             return reg
         
         return result_reg
+    
+    def _convert_number_to_string(self, value_reg: str, value_type: str, indent='') -> str:
+        """Convert a number (integer or float) to a string using snprintf.
+        
+        Args:
+            value_reg: LLVM register containing the number
+            value_type: LLVM type of the number (i64, i32, double, float, etc.)
+            indent: Indentation for generated code
+            
+        Returns:
+            LLVM register containing i8* pointer to the string
+        """
+        # Allocate buffer for string (64 bytes should be enough for any number)
+        buffer_size = 64
+        buffer_reg = self._new_temp()
+        self.emit(f'{indent}{buffer_reg} = alloca [64 x i8], align 1')
+        
+        # Get pointer to buffer
+        buffer_ptr = self._new_temp()
+        self.emit(f'{indent}{buffer_ptr} = getelementptr inbounds [64 x i8], [64 x i8]* {buffer_reg}, i64 0, i64 0')
+        
+        # Determine format string based on type
+        if value_type in ('i64', 'i32', 'i16', 'i8'):
+            # Integer format
+            fmt_str = '%lld'
+            fmt_name, fmt_len = self._get_or_create_string_constant(fmt_str)
+            fmt_ptr = self._new_temp()
+            self.emit(f'{indent}{fmt_ptr} = getelementptr inbounds [{fmt_len} x i8], [{fmt_len} x i8]* {fmt_name}, i64 0, i64 0')
+            
+            # Convert to i64 if needed
+            if value_type != 'i64':
+                value_i64 = self._new_temp()
+                if value_type in ('i32', 'i16', 'i8'):
+                    self.emit(f'{indent}{value_i64} = sext {value_type} {value_reg} to i64')
+                else:
+                    value_i64 = value_reg
+                value_reg = value_i64
+            
+            # Call snprintf
+            self.emit(f'{indent}call i32 (i8*, i64, i8*, ...) @snprintf(i8* {buffer_ptr}, i64 64, i8* {fmt_ptr}, i64 {value_reg})')
+            
+        elif value_type in ('double', 'float'):
+            # Float format
+            fmt_str = '%f'
+            fmt_name, fmt_len = self._get_or_create_string_constant(fmt_str)
+            fmt_ptr = self._new_temp()
+            self.emit(f'{indent}{fmt_ptr} = getelementptr inbounds [{fmt_len} x i8], [{fmt_len} x i8]* {fmt_name}, i64 0, i64 0')
+            
+            # Convert to double if needed
+            if value_type == 'float':
+                value_double = self._new_temp()
+                self.emit(f'{indent}{value_double} = fpext float {value_reg} to double')
+                value_reg = value_double
+            
+            # Call snprintf
+            self.emit(f'{indent}call i32 (i8*, i64, i8*, ...) @snprintf(i8* {buffer_ptr}, i64 64, i8* {fmt_ptr}, double {value_reg})')
+            
+        elif value_type == 'i1':
+            # Boolean - convert to "true" or "false"
+            true_str_name, true_str_len = self._get_or_create_string_constant('true')
+            false_str_name, false_str_len = self._get_or_create_string_constant('false')
+            
+            result_ptr = self._new_temp()
+            true_label = f'bool_true_{self.label_counter}'
+            false_label = f'bool_false_{self.label_counter}'
+            end_label = f'bool_end_{self.label_counter}'
+            self.label_counter += 1
+            
+            self.emit(f'{indent}br i1 {value_reg}, label %{true_label}, label %{false_label}')
+            
+            self.emit(f'{indent}{true_label}:')
+            true_ptr = self._new_temp()
+            self.emit(f'{indent}{true_ptr} = getelementptr inbounds [{true_str_len} x i8], [{true_str_len} x i8]* {true_str_name}, i64 0, i64 0')
+            self.emit(f'{indent}br label %{end_label}')
+            
+            self.emit(f'{indent}{false_label}:')
+            false_ptr = self._new_temp()
+            self.emit(f'{indent}{false_ptr} = getelementptr inbounds [{false_str_len} x i8], [{false_str_len} x i8]* {false_str_name}, i64 0, i64 0')
+            self.emit(f'{indent}br label %{end_label}')
+            
+            self.emit(f'{indent}{end_label}:')
+            self.emit(f'{indent}{result_ptr} = phi i8* [ {true_ptr}, %{true_label} ], [ {false_ptr}, %{false_label} ]')
+            
+            return result_ptr
+        else:
+            # Unknown type - return empty string
+            empty_str_name, empty_str_len = self._get_or_create_string_constant('')
+            result_ptr = self._new_temp()
+            self.emit(f'{indent}{result_ptr} = getelementptr inbounds [{empty_str_len} x i8], [{empty_str_len} x i8]* {empty_str_name}, i64 0, i64 0')
+            return result_ptr
+        
+        return buffer_ptr
     
     def _get_or_create_string_constant(self, value: str) -> Tuple[str, int]:
         """Get or create global string constant."""

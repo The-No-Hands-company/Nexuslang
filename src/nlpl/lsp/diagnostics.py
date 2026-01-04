@@ -112,9 +112,15 @@ class DiagnosticsProvider:
             for match in matches:
                 var = match.group(1)
                 if var.lower() not in keywords and var not in defined_vars and not var[0].isupper():
-                    # Might be undefined
-                    # (This is a simplified check - real implementation would be smarter)
-                    pass  # Too many false positives for now
+                    # NOTE: Undefined variable detection disabled
+                    # NLPL's natural language syntax creates too many false positives:
+                    # - English words in natural syntax ("create", "called", "with", etc.)
+                    # - Context-dependent parsing makes static analysis unreliable
+                    # - Proper implementation requires full parser integration
+                    # 
+                    # This check is permanently removed until AST-based analysis is available.
+                    # The interpreter provides runtime undefined variable errors instead.
+                    pass
         
         return diagnostics
     

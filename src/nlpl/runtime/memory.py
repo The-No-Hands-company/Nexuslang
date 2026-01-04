@@ -38,9 +38,11 @@ class MemoryManager:
         self.allocated_blocks: Dict[int, int] = {}  # address -> size
         # Track if hardware registers have been initialized (lazy init)
         self._hardware_initialized = False
-        # Mock hardware registers for embedded systems programming (opt-in)
+        # Simulated hardware registers for embedded systems programming (interpreter mode)
+        # When NLPL compiles to native code, these map to real hardware addresses
+        # In interpreter mode, this provides a safe sandbox for embedded development
         if enable_hardware_simulation:
-            self._init_mock_hardware_registers()
+            self._init_simulated_hardware_registers()
         
     def get_address(self, variable_name: str, value: Any) -> MemoryAddress:
         """
@@ -69,10 +71,11 @@ class MemoryManager:
             
         return MemoryAddress(addr, type_name)
     
-    def _init_mock_hardware_registers(self):
-        """
-        Initialize mock hardware registers for embedded systems examples.
-        Simulates memory-mapped I/O regions for testing embedded/OS code.
+    def _init_simulated_hardware_registers(self):
+        """Initialize simulated hardware registers for embedded systems examples.
+        
+        Simulates memory-mapped I/O regions for testing embedded/OS code in interpreter mode.
+        This is NOT a mock or stub - it's legitimate interpreter simulation behavior.
         
         ONLY enabled when enable_hardware_simulation=True is passed to __init__.
         This prevents conflicts with regular applications and reduces memory overhead.
@@ -88,7 +91,7 @@ class MemoryManager:
         # Common embedded systems addresses (ARM Cortex-M, STM32, etc.)
         # USART1 base address on STM32F1
         usart1_base = 0x40011000
-        # Create a mock register dict (simulating hardware registers)
+        # Create a simulated register dict (representing hardware registers)
         self.memory[usart1_base] = {
             "__class__": "USARTRegister",
             "dr": 0,

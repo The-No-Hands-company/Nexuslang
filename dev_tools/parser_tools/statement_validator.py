@@ -33,7 +33,7 @@ init(autoreset=True)
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from src.parser.lexer import TokenType
+from src.nlpl.parser.lexer import TokenType
 
 
 class StatementHandlerValidator:
@@ -90,6 +90,7 @@ class StatementHandlerValidator:
             statement_code = statement_match.group(0)
             
             # Find if/elif blocks with token checks
+            # Pattern 1: Single token check
             # Updated regex to handle optional comments and print statements between condition and return
             handler_pattern = r'(?:if|elif)\s+\w+\.type\s*==\s*TokenType\.(\w+):\s*\n(?:\s*(?:#.*|print.*)\n)*\s*return\s+self\.(\w+)\('
             matches = re.findall(handler_pattern, statement_code)
@@ -97,6 +98,16 @@ class StatementHandlerValidator:
             for token_name, method_name in matches:
                 if hasattr(TokenType, token_name):
                     self.statement_handlers[token_name] = method_name
+            
+            # Pattern 2: OR conditions (e.g., "token.type == TokenType.RETURN or token.type == TokenType.RETURNS")
+            or_pattern = r'(?:if|elif)\s+\w+\.type\s*==\s*TokenType\.(\w+)\s+or\s+\w+\.type\s*==\s*TokenType\.(\w+):\s*\n(?:\s*(?:#.*|print.*)\n)*\s*return\s+self\.(\w+)\('
+            or_matches = re.findall(or_pattern, statement_code)
+            
+            for token1, token2, method_name in or_matches:
+                if hasattr(TokenType, token1):
+                    self.statement_handlers[token1] = method_name
+                if hasattr(TokenType, token2):
+                    self.statement_handlers[token2] = method_name
     
     def _extract_parser_methods(self, content):
         """Extract all parser methods and their signatures."""
@@ -156,16 +167,23 @@ class StatementHandlerValidator:
                     'message': f"Handler {method_name}() for {token_name} is called but NOT defined"
                 })
             else:
-                # Check method signature
+                # Check method signature - only warn about required parameters (no defaults)
                 method_info = self.parser_methods[method_name]
                 if method_info['params']:
-                    self.issues.append({
-                        'type': 'UNEXPECTED_PARAMS',
-                        'severity': 'WARNING',
-                        'method': method_name,
-                        'params': method_info['params'],
-                        'message': f"Method {method_name}() has unexpected parameters: {method_info['params']}"
-                    })
+                    # Check if all params have defaults (e.g., "packed=False")
+                    params_str = method_info['params']
+                    # Split by comma and check if all have '='
+                    param_list = [p.strip() for p in params_str.split(',')]
+                    required_params = [p for p in param_list if '=' not in p]
+                    
+                    if required_params:
+                        self.issues.append({
+                            'type': 'UNEXPECTED_PARAMS',
+                            'severity': 'WARNING',
+                            'method': method_name,
+                            'params': ', '.join(required_params),
+                            'message': f"Method {method_name}() has unexpected required parameters: {', '.join(required_params)}"
+                        })
     
     def report(self, show_suggestions=False, generate_stubs=False):
         """Generate validation report."""
@@ -325,7 +343,7 @@ def main():
     
     # Find parser file
     project_root = Path(__file__).parent.parent.parent
-    parser_file = project_root / 'src' / 'parser' / 'parser.py'
+    parser_file = project_root / 'src' / 'nlpl' / 'parser' / 'parser.py'
     
     if not parser_file.exists():
         print(f"{Fore.RED}Error: Parser file not found at {parser_file}")

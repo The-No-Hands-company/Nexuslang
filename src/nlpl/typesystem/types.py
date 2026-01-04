@@ -76,6 +76,9 @@ class PrimitiveType(Type):
     def _equals(self, other: Type) -> bool:
         return self.name == other.name
 
+    def __hash__(self) -> int:
+        return hash(self.name)
+
 class ListType(Type):
     """Represents a list type with an element type."""
     
@@ -96,6 +99,9 @@ class ListType(Type):
     
     def _equals(self, other: Type) -> bool:
         return self.element_type == other.element_type
+
+    def __hash__(self) -> int:
+        return hash(("List", self.element_type))
 
 class DictionaryType(Type):
     """Represents a dictionary type with key and value types."""
@@ -122,6 +128,9 @@ class DictionaryType(Type):
     
     def _equals(self, other: Type) -> bool:
         return self.key_type == other.key_type and self.value_type == other.value_type
+
+    def __hash__(self) -> int:
+        return hash(("Dict", self.key_type, self.value_type))
 
 class FunctionType(Type):
     """Represents a function type with parameter types and return type."""
@@ -177,6 +186,9 @@ class FunctionType(Type):
             all(t1 == t2 for t1, t2 in zip(self.param_types, other.param_types)) and
             self.return_type == other.return_type
         )
+
+    def __hash__(self) -> int:
+        return hash(("Function", tuple(self.param_types), self.return_type))
 
 class ClassType(Type):
     """Represents a class type with properties and methods."""
@@ -245,6 +257,9 @@ class ClassType(Type):
             self.methods == other.methods and
             self.parent_classes == other.parent_classes
         )
+
+    def __hash__(self) -> int:
+        return hash(("Class", self.name))
 
 class GenericType(Type):
     """Represents a generic type with type parameters and optional variance."""
@@ -437,10 +452,47 @@ class ResultType(GenericType):
             ok_type: The type T of the success value
             err_type: The type E of the error value
         """
-        # For Result, the base type could be considered a Union of ok_type and err_type,
-        # or a placeholder. For simplicity, we'll use a dummy base type or adjust GenericType's init.
-        # Assuming GenericType's base_type is just a placeholder for the generic structure.
-        super().__init__("Result", [ok_type, err_type], ANY_TYPE) # Using ANY_TYPE as a placeholder base_type
+        # Result<T, E> is a tagged union type that can hold either Ok(T) or Err(E)
+        # We create a synthetic base type that represents this union semantics
+        # The base type name encodes both possible types for proper type checking
+        base_type_name = f"Union[{ok_type},{err_type}]"
+        
+        # Create a minimal Type instance representing the union
+        # This enables proper type compatibility checking without circular dependencies
+        class ResultBaseType(Type):
+            def __init__(self, ok_t, err_t):
+                self.ok_type = ok_t
+                self.err_type = err_t
+                
+            def is_compatible_with(self, other):
+                # Compatible with either component type or another Result with compatible types
+                if isinstance(other, ResultBaseType):
+                    return (self.ok_type.is_compatible_with(other.ok_type) and
+                            self.err_type.is_compatible_with(other.err_type))
+                return (self.ok_type.is_compatible_with(other) or
+                        self.err_type.is_compatible_with(other))
+            
+            def get_common_supertype(self, other):
+                # The common supertype with another Result base or either component type
+                if isinstance(other, ResultBaseType):
+                    ok_super = self.ok_type.get_common_supertype(other.ok_type)
+                    err_super = self.err_type.get_common_supertype(other.err_type)
+                    if ok_super and err_super:
+                        return ResultBaseType(ok_super, err_super)
+                return None
+            
+            def _equals(self, other):
+                # Equality check for type system
+                if isinstance(other, ResultBaseType):
+                    return (self.ok_type._equals(other.ok_type) and
+                            self.err_type._equals(other.err_type))
+                return False
+            
+            def __str__(self):
+                return base_type_name
+        
+        base_type = ResultBaseType(ok_type, err_type)
+        super().__init__("Result", [ok_type, err_type], base_type)
         self.ok_type = ok_type
         self.err_type = err_type
     

@@ -20,7 +20,7 @@ from nlpl.parser.ast import *
 class CCodeGenerator(CodeGenerator):
     """Generate C code from NLPL AST."""
     
-    def __init__(self, target: str):
+    def __init__(self, target: str, bounds_checking: bool = True):
         super().__init__(target)
         self.includes = set()
         self.forward_declarations = []
@@ -31,6 +31,13 @@ class CCodeGenerator(CodeGenerator):
         self.current_class = None  # Track current class being processed
         self.class_properties = {}  # Map class_name -> set of property names
         self.property_types = {}  # Map (class_name, property_name) -> C type
+        self.class_all_properties = {}  # Map class_name -> list of (prop_name, c_type) for inheritance
+        self.class_parents = {}  # Map class_name -> parent_class_name for inheritance chain
+        self.needed_runtime_functions = set()  # Track which runtime functions are needed
+        self.bounds_checking = bounds_checking  # Enable/disable array bounds checking
+        self.array_sizes = {}  # Track known array sizes: var_name -> size
+        self.interface_types = {}  # Map interface_name -> {'methods': [...]}
+        self.class_interfaces = {}  # Map class_name -> list of implemented interface names
         
     def generate(self, ast: Program) -> str:
         """Generate complete C program from AST."""
@@ -52,8 +59,11 @@ class CCodeGenerator(CodeGenerator):
             elif isinstance(stmt, ExternFunctionDeclaration):
                 self._generate_extern_function(stmt)
             elif isinstance(stmt, ExternVariableDeclaration):
-                # TODO: Handle global extern variables
-                pass
+                # Generate extern variable declaration
+                var_type = self._map_type(stmt.type_annotation) if hasattr(stmt, 'type_annotation') and stmt.type_annotation else 'void*'
+                self.forward_declarations.append(f"extern {var_type} {stmt.name};")
+                # Track in symbol table for type inference
+                self.symbol_table[stmt.name] = var_type
         
         # Check if user defined a main function
         has_user_main = any(isinstance(stmt, FunctionDefinition) and stmt.name == "main" for stmt in ast.statements)
@@ -94,6 +104,12 @@ class CCodeGenerator(CodeGenerator):
         # Add forward declarations if any
         if self.forward_declarations:
             header_lines.extend(self.forward_declarations)
+            header_lines.append("")
+        
+        # Add runtime helper functions if needed
+        runtime_code = self._generate_runtime_functions()
+        if runtime_code:
+            header_lines.extend(runtime_code.split('\n'))
             header_lines.append("")
         
         # Prepend header to output buffer
@@ -154,35 +170,53 @@ class CCodeGenerator(CodeGenerator):
         """Generate C struct and methods for a class definition."""
         class_name = node.name
         
-        # Track properties for this class
-        property_names = {prop.name for prop in node.properties}
-        self.class_properties[class_name] = property_names
+        # Track properties for this class (including inherited)
+        property_names = set()
+        
+        # Store parent class name for inheritance tracking
+        parent_name = node.parent_classes[0] if node.parent_classes else None
+        self.class_parents[class_name] = parent_name
         
         # Generate struct definition
         self.emit_raw(f"// Class: {class_name}")
-        if node.parent_classes:
-            parent_name = node.parent_classes[0]  # Single inheritance only for now
+        if parent_name:
             self.emit_raw(f"// Inherits from: {parent_name}")
         
         self.emit_raw(f"typedef struct {class_name} {{")
         self.indent()
         
-        # If there's a parent, include it as first member for inheritance
-        if node.parent_classes:
-            parent_name = node.parent_classes[0]
-            self.emit(f"{parent_name} parent;  // Inherited members")
+        # Flatten inheritance: include parent class properties first
+        # This allows direct access like dog->name instead of dog->parent.name
+        all_properties = []
+        if parent_name and parent_name in self.class_all_properties:
+            for prop_name, c_type in self.class_all_properties[parent_name]:
+                all_properties.append((prop_name, c_type))
+                property_names.add(prop_name)
+                # Track inherited property type
+                self.property_types[(class_name, prop_name)] = c_type
+                self.emit(f"{c_type} {prop_name};  // inherited from {parent_name}")
         
-        # Generate properties as struct members
+        # Generate this class's own properties
         for prop in node.properties:
             if prop.type_annotation:
                 c_type = self._map_type(prop.type_annotation)
             else:
-                c_type = "void*"  # Default to generic pointer if no type specified
+                # Try to infer from default value
+                if hasattr(prop, 'default_value') and prop.default_value:
+                    c_type = self._infer_type(prop.default_value)
+                else:
+                    c_type = "void*"  # Default to generic pointer if no type specified
             
             # Track property type for type inference
             self.property_types[(class_name, prop.name)] = c_type
+            property_names.add(prop.name)
+            all_properties.append((prop.name, c_type))
             
             self.emit(f"{c_type} {prop.name};")
+        
+        # Store all properties (for child class inheritance)
+        self.class_all_properties[class_name] = all_properties
+        self.class_properties[class_name] = property_names
         
         # Generate function pointers for methods
         for method in node.methods:
@@ -243,6 +277,9 @@ class CCodeGenerator(CodeGenerator):
         
         # Method naming: ClassName_methodName
         method_c_name = f"{class_name}_{method.name}"
+        
+        # Store method return type for type inference
+        self.function_types[method_c_name] = return_type
         
         self.emit_raw(f"{return_type} {method_c_name}({params_str}) {{")
         self.indent()
@@ -315,6 +352,10 @@ class CCodeGenerator(CodeGenerator):
             # Functions are generated separately, not inline
             # They should be handled at the top level
             pass
+        elif isinstance(node, InterfaceDefinition):
+            # Interfaces are compile-time metadata only, no runtime code needed
+            # Interface compliance is checked at compile-time
+            pass
         elif isinstance(node, ExternFunctionDeclaration):
             self._generate_extern_function(node)
         elif isinstance(node, ReturnStatement):
@@ -331,6 +372,33 @@ class CCodeGenerator(CodeGenerator):
             self._generate_for_loop(node)
         elif isinstance(node, TryCatch):
             self._generate_try_catch(node)
+        elif isinstance(node, MemberAssignment):
+            # Member assignment: object.field = value
+            target_expr = self._generate_expression(node.target)
+            value_expr = self._generate_expression(node.value)
+            self.emit(f"{target_expr} = {value_expr};")
+        elif isinstance(node, IndexAssignment):
+            # Index assignment: array[index] = value
+            target = node.target  # IndexExpression
+            value_expr = self._generate_expression(node.value)
+            
+            # Generate bounds-checked index assignment
+            if isinstance(target.array_expr, Identifier):
+                arr_name = target.array_expr.name
+                if arr_name in self.array_sizes:
+                    size = self.array_sizes[arr_name]
+                    index_expr = self._generate_expression(target.index_expr)
+                    # Use bounds check with assignment
+                    self.emit(f"(nlpl_bounds_check({index_expr}, {size}, \"{arr_name}\", __LINE__), {arr_name}[{index_expr}] = {value_expr});")
+                    self.needed_runtime_functions.add("nlpl_bounds_check")
+                else:
+                    # No size info - generate without bounds check
+                    target_expr = self._generate_expression(target)
+                    self.emit(f"{target_expr} = {value_expr};")
+            else:
+                # Complex target (nested access, etc.) - no bounds check
+                target_expr = self._generate_expression(target)
+                self.emit(f"{target_expr} = {value_expr};")
         else:
             # Try to handle as expression
             try:
@@ -359,6 +427,10 @@ class CCodeGenerator(CodeGenerator):
             value_expr = self._generate_expression(node.value)
             var_type = self._infer_type(node.value)
             
+            # Track array size for bounds checking
+            if isinstance(node.value, ListExpression) and node.value.elements:
+                self.array_sizes[node.name] = len(node.value.elements)
+            
             # Store in symbol table
             self.symbol_table[node.name] = var_type
             
@@ -371,7 +443,20 @@ class CCodeGenerator(CodeGenerator):
                 while base_type.endswith("[]"):
                     dims += "[]"
                     base_type = base_type[:-2]
-                self.emit(f"{base_type} {node.name}{dims} = {value_expr};")
+                
+                # For 2D arrays, we need to specify inner dimension sizes in C
+                # e.g., int matrix[3][3] for a 3x3 matrix
+                if isinstance(node.value, ListExpression) and node.value.elements:
+                    if isinstance(node.value.elements[0], ListExpression):
+                        # 2D array - determine inner dimension size
+                        inner_size = len(node.value.elements[0].elements)
+                        outer_size = len(node.value.elements)
+                        self.emit(f"{base_type} {node.name}[{outer_size}][{inner_size}] = {value_expr};")
+                    else:
+                        # 1D array
+                        self.emit(f"{base_type} {node.name}{dims} = {value_expr};")
+                else:
+                    self.emit(f"{base_type} {node.name}{dims} = {value_expr};")
             else:
                 # Regular type
                 self.emit(f"{var_type} {node.name} = {value_expr};")
@@ -548,10 +633,127 @@ class CCodeGenerator(CodeGenerator):
             # Object instantiation returns pointer to class type
             return f"{expr.class_name}*"
         
+        elif isinstance(expr, MemberAccess):
+            # Member access: infer type from the property or method return type
+            # Get the object type
+            obj_type = self._infer_type(expr.object_expr)
+            
+            # Handle case where object is wrapped in FunctionCall due to "call" keyword
+            if isinstance(expr.object_expr, FunctionCall) and not expr.object_expr.arguments:
+                obj_name = expr.object_expr.name
+                if obj_name in self.symbol_table:
+                    obj_type = self.symbol_table[obj_name]
+            
+            # Strip pointer suffix to get class name
+            if obj_type.endswith("*"):
+                class_name = obj_type[:-1]
+            else:
+                class_name = obj_type
+            
+            # Check if this is a method call (function pointer being called)
+            is_method_call = expr.is_method_call or len(expr.arguments) > 0 or isinstance(expr.object_expr, FunctionCall)
+            
+            if is_method_call:
+                # This is a method call - look up method return type
+                method_key = f"{class_name}_{expr.member_name}"
+                if method_key in self.function_types:
+                    return self.function_types[method_key]
+            
+            # Look up property type in property_types
+            if (class_name, expr.member_name) in self.property_types:
+                return self.property_types[(class_name, expr.member_name)]
+            
+            # Default to void pointer if not found
+            return "void*"
+        
         elif isinstance(expr, FunctionCall):
             # Look up function return type from function_types table
             if expr.name in self.function_types:
                 return self.function_types[expr.name]
+            
+            # Check stdlib function return types
+            stdlib_return_types = {
+                # String functions - return string
+                "length": "int",
+                "uppercase": "char*",
+                "lowercase": "char*",
+                "concatenate": "char*",
+                "contains": "bool",
+                "substring": "char*",
+                
+                # Math functions
+                "sqrt": "double",
+                "abs": "int",
+                "power": "double",
+                "floor": "double",
+                "ceil": "double",
+                "round": "double",
+                "sin": "double",
+                "cos": "double",
+                "tan": "double",
+                
+                # File I/O functions
+                "read_file": "char*",
+                "read_text": "char*",
+                "write_file": "bool",
+                "write_text": "bool",
+                "append_file": "bool",
+                "file_exists": "bool",
+                "file_size": "long",
+                "delete_file": "bool",
+                "copy_file": "bool",
+                "create_directory": "bool",
+                "is_directory": "bool",
+                "is_file": "bool",
+                
+                # Console I/O
+                "read_line": "char*",
+                "read_int": "int",
+                "read_float": "double",
+                
+                # Array functions
+                "array_length": "int",
+                "array_push": "void",
+                "array_pop": "void*",
+                "array_get": "void*",
+                "array_set": "void",
+                "array_slice": "void*",
+                "array_reverse": "void",
+                "array_sort": "void",
+                "array_find": "int",
+                
+                # Short array function names
+                "arrlen": "int",
+                "arrpush": "void*",  # Returns new array pointer
+                "arrpop": "void*",   # Returns new array pointer
+                "arrget": "void*",
+                "arrset": "void",
+                "arrslice": "void*", # Returns new array pointer
+                "arrreverse": "void",
+                "arrsort": "void",
+                "arrfind": "int",
+                "arrclear": "void",
+                "arrinsert": "void",
+                "arrremove": "void*",
+                
+                # Additional string functions
+                "index_of": "int",
+                "replace": "char*",
+                "trim": "char*",
+                "split": "char**",
+                "join": "char*",
+                "starts_with": "bool",
+                "ends_with": "bool",
+                
+                # Additional math functions
+                "min": "int",
+                "max": "int",
+                "random": "double",
+                "random_int": "int",
+            }
+            if expr.name in stdlib_return_types:
+                return stdlib_return_types[expr.name]
+            
             # Default to int for unknown functions
             return "int"
         
@@ -666,7 +868,6 @@ class CCodeGenerator(CodeGenerator):
         # For NLPL's "for each x in collection" style loops
         # Generate as C for loop with index
         
-        collection_expr = self._generate_expression(node.iterable)
         iterator = node.iterator
         
         # Determine the collection type and how to get its length
@@ -674,16 +875,24 @@ class CCodeGenerator(CodeGenerator):
         
         # Check if we can determine the array size
         if isinstance(node.iterable, ListExpression):
-            # Direct array literal - we know the size
+            # Direct array literal - we need to declare a temporary array
             array_size = len(node.iterable.elements)
             
             # Infer element type
             element_type = self._infer_type(node.iterable.elements[0]) if node.iterable.elements else "int"
             
+            # Generate the element expressions
+            element_exprs = [self._generate_expression(elem) for elem in node.iterable.elements]
+            elements_str = ", ".join(element_exprs)
+            
+            # Create a temporary array and then loop over it
+            temp_array = f"_temp_arr_{id(node)}"
+            
             self.emit(f"/* For each loop over array literal */")
+            self.emit(f"{element_type} {temp_array}[] = {{{elements_str}}};")
             self.emit(f"for (int _i = 0; _i < {array_size}; _i++) {{")
             self.indent()
-            self.emit(f"{element_type} {iterator} = {collection_expr}[_i];")
+            self.emit(f"{element_type} {iterator} = {temp_array}[_i];")
             
         elif isinstance(node.iterable, Identifier):
             # Variable reference - look up its type
@@ -918,9 +1127,37 @@ class CCodeGenerator(CodeGenerator):
     
     def _generate_member_access(self, node: MemberAccess) -> str:
         """Generate C code for member access (object.property or object.method())."""
-        object_expr = self._generate_expression(node.object_expr)
+        # Get the object expression
+        # Handle case where parser incorrectly creates FunctionCall for object name with "call" keyword
+        if isinstance(node.object_expr, FunctionCall) and not node.object_expr.arguments:
+            # This is actually just an identifier (e.g., "p" not "p()")
+            object_expr = node.object_expr.name
+            object_node = node.object_expr  # Keep the node for type checking
+        else:
+            object_expr = self._generate_expression(node.object_expr)
+            object_node = node.object_expr
         
-        if node.is_method_call:
+        # Determine if this is a method call
+        # Check 1: Explicit method call flag
+        # Check 2: Has arguments (definitely a method call)
+        # Check 3: The member is a method (check if it's a function pointer in class)
+        is_method = node.is_method_call or len(node.arguments) > 0
+        
+        # Check if the member is a known method by looking at the object type
+        if not is_method and isinstance(object_node, (Identifier, FunctionCall)):
+            obj_name = object_node.name if isinstance(object_node, (Identifier, FunctionCall)) else None
+            if obj_name and obj_name in self.symbol_table:
+                obj_type = self.symbol_table[obj_name]
+                # If type is a class name (starts with uppercase or ends with *)
+                if obj_type.endswith('*') or (obj_type and obj_type[0].isupper()):
+                    class_name = obj_type.rstrip('*')
+                    # Check if this member is a method in the class definition
+                    # For now, assume members accessed with "call" keyword are methods
+                    # This is indicated by the FunctionCall wrapper around the identifier
+                    if isinstance(node.object_expr, FunctionCall):
+                        is_method = True
+        
+        if is_method:
             # Method call: object->method(object, args...)
             # The first argument is 'this' pointer
             args = [object_expr]  # 'this' pointer
@@ -978,6 +1215,19 @@ class CCodeGenerator(CodeGenerator):
         array_expr = self._generate_expression(node.array_expr)
         index_expr = self._generate_expression(node.index_expr)
         
+        # If bounds checking is enabled, use the bounds-checked accessor
+        if self.bounds_checking:
+            # Get array name for size lookup
+            array_name = None
+            if isinstance(node.array_expr, Identifier):
+                array_name = node.array_expr.name
+            
+            # Try to get known array size
+            if array_name and array_name in self.array_sizes:
+                size = self.array_sizes[array_name]
+                self.needed_runtime_functions.add("nlpl_bounds_check")
+                return f"(nlpl_bounds_check({index_expr}, {size}, \"{array_name}\", __LINE__), {array_expr}[{index_expr}])"
+        
         # In C, array indexing is straightforward: array[index]
         return f"{array_expr}[{index_expr}]"
     
@@ -1007,10 +1257,43 @@ class CCodeGenerator(CodeGenerator):
         """Get mapping of NLPL stdlib functions to C functions."""
         return {
             # String functions
-            "length": "strlen",
-            "uppercase": "strupr",  # Note: non-standard, may need custom implementation
-            "lowercase": "strlwr",  # Note: non-standard, may need custom implementation
-            "concatenate": "strcat",
+            "length": "nlpl_string_length",
+            "uppercase": "nlpl_uppercase",
+            "lowercase": "nlpl_lowercase",
+            "concatenate": "nlpl_concat",
+            "contains": "nlpl_string_contains",
+            "substring": "nlpl_substring",
+            "index_of": "nlpl_index_of",
+            "replace": "nlpl_replace",
+            "trim": "nlpl_trim",
+            "split": "nlpl_split",
+            "join": "nlpl_join",
+            "starts_with": "nlpl_starts_with",
+            "ends_with": "nlpl_ends_with",
+            
+            # Array functions (full and short names)
+            "array_length": "nlpl_array_length",
+            "array_push": "nlpl_array_push",
+            "array_pop": "nlpl_array_pop",
+            "array_get": "nlpl_array_get",
+            "array_set": "nlpl_array_set",
+            "array_slice": "nlpl_array_slice",
+            "array_reverse": "nlpl_array_reverse",
+            "array_sort": "nlpl_array_sort",
+            "array_find": "nlpl_array_find",
+            # Short array function names
+            "arrlen": "nlpl_array_length",
+            "arrpush": "nlpl_array_push",
+            "arrpop": "nlpl_array_pop",
+            "arrget": "nlpl_array_get",
+            "arrset": "nlpl_array_set",
+            "arrslice": "nlpl_array_slice",
+            "arrreverse": "nlpl_array_reverse",
+            "arrsort": "nlpl_array_sort",
+            "arrfind": "nlpl_array_find",
+            "arrclear": "nlpl_array_clear",
+            "arrinsert": "nlpl_array_insert",
+            "arrremove": "nlpl_array_remove",
             
             # Math functions
             "sqrt": "sqrt",
@@ -1022,11 +1305,31 @@ class CCodeGenerator(CodeGenerator):
             "sin": "sin",
             "cos": "cos",
             "tan": "tan",
+            "min": "nlpl_min",
+            "max": "nlpl_max",
+            "random": "nlpl_random",
+            "random_int": "nlpl_random_int",
             
-            # File I/O - will need custom wrappers
+            # File I/O functions
             "read_file": "nlpl_read_file",
+            "read_text": "nlpl_read_file",
             "write_file": "nlpl_write_file",
+            "write_text": "nlpl_write_file",
+            "append_file": "nlpl_append_file",
             "file_exists": "nlpl_file_exists",
+            "file_size": "nlpl_file_size",
+            "delete_file": "nlpl_delete_file",
+            "copy_file": "nlpl_copy_file",
+            "create_directory": "nlpl_create_directory",
+            "is_directory": "nlpl_is_directory",
+            "is_file": "nlpl_is_file",
+            
+            # Console I/O
+            "read_line": "nlpl_read_line",
+            "read_int": "nlpl_read_int",
+            "read_float": "nlpl_read_float",
+            "print_int": "nlpl_print_int",
+            "print_float": "nlpl_print_float",
         }
     
     def _generate_stdlib_call(self, node: FunctionCall) -> str:
@@ -1043,8 +1346,28 @@ class CCodeGenerator(CodeGenerator):
         # Add required includes based on function
         if node.name in ["sqrt", "power", "abs", "floor", "ceil", "round", "sin", "cos", "tan"]:
             self.includes.add("<math.h>")
-        elif node.name in ["length", "uppercase", "lowercase", "concatenate"]:
+        elif node.name in ["length", "uppercase", "lowercase", "concatenate", "contains", "substring",
+                           "index_of", "replace", "trim", "split", "join", "starts_with", "ends_with"]:
             self.includes.add("<string.h>")
+            self.includes.add("<ctype.h>")
+            self.needed_runtime_functions.add(mapping)
+        elif node.name in ["array_length", "array_push", "array_pop", "array_get", "array_set",
+                           "array_slice", "array_reverse", "array_sort", "array_find",
+                           "arrlen", "arrpush", "arrpop", "arrget", "arrset",
+                           "arrslice", "arrreverse", "arrsort", "arrfind", "arrclear",
+                           "arrinsert", "arrremove"]:
+            self.needed_runtime_functions.add(mapping)
+        elif node.name in ["min", "max", "random", "random_int"]:
+            self.needed_runtime_functions.add(mapping)
+            if node.name in ["random", "random_int"]:
+                self.includes.add("<time.h>")
+        elif node.name in ["read_file", "read_text", "write_file", "write_text", "append_file", 
+                          "file_exists", "file_size", "delete_file", "copy_file", 
+                          "create_directory", "is_directory", "is_file"]:
+            self.includes.add("<sys/stat.h>")
+            self.needed_runtime_functions.add(mapping)
+        elif node.name in ["read_line", "read_int", "read_float", "print_int", "print_float"]:
+            self.needed_runtime_functions.add(mapping)
         
         return f"{mapping}({args_str})"
     
@@ -1060,3 +1383,506 @@ class CCodeGenerator(CodeGenerator):
         }
         
         return type_map.get(nlpl_type, "void*")
+    
+    def _generate_runtime_functions(self) -> str:
+        """Generate inline C implementations of NLPL runtime functions."""
+        if not self.needed_runtime_functions:
+            return ""
+        
+        code_parts = ["// NLPL Runtime Functions"]
+        
+        # Array bounds checking
+        if "nlpl_bounds_check" in self.needed_runtime_functions:
+            code_parts.append('''
+void nlpl_bounds_check(int index, int size, const char* array_name, int line) {
+    if (index < 0 || index >= size) {
+        fprintf(stderr, "NLPL Runtime Error: Array index out of bounds\\n");
+        fprintf(stderr, "  Array '%s' has size %d, but index %d was accessed\\n", array_name, size, index);
+        fprintf(stderr, "  at line %d\\n", line);
+        exit(1);
+    }
+}''')
+        
+        # File I/O functions
+        if "nlpl_read_file" in self.needed_runtime_functions:
+            code_parts.append('''
+char* nlpl_read_file(const char* filepath) {
+    FILE* file = fopen(filepath, "r");
+    if (!file) return NULL;
+    fseek(file, 0, SEEK_END);
+    long size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    char* buffer = (char*)malloc(size + 1);
+    if (!buffer) { fclose(file); return NULL; }
+    size_t read_size = fread(buffer, 1, size, file);
+    buffer[read_size] = '\\0';
+    fclose(file);
+    return buffer;
+}''')
+        
+        if "nlpl_write_file" in self.needed_runtime_functions:
+            code_parts.append('''
+bool nlpl_write_file(const char* filepath, const char* content) {
+    FILE* file = fopen(filepath, "w");
+    if (!file) return false;
+    size_t len = strlen(content);
+    size_t written = fwrite(content, 1, len, file);
+    fclose(file);
+    return written == len;
+}''')
+        
+        if "nlpl_append_file" in self.needed_runtime_functions:
+            code_parts.append('''
+bool nlpl_append_file(const char* filepath, const char* content) {
+    FILE* file = fopen(filepath, "a");
+    if (!file) return false;
+    size_t len = strlen(content);
+    size_t written = fwrite(content, 1, len, file);
+    fclose(file);
+    return written == len;
+}''')
+        
+        if "nlpl_file_exists" in self.needed_runtime_functions:
+            code_parts.append('''
+bool nlpl_file_exists(const char* filepath) {
+    struct stat st;
+    return stat(filepath, &st) == 0;
+}''')
+        
+        if "nlpl_file_size" in self.needed_runtime_functions:
+            code_parts.append('''
+long nlpl_file_size(const char* filepath) {
+    struct stat st;
+    if (stat(filepath, &st) != 0) return -1;
+    return st.st_size;
+}''')
+        
+        if "nlpl_delete_file" in self.needed_runtime_functions:
+            code_parts.append('''
+bool nlpl_delete_file(const char* filepath) {
+    return remove(filepath) == 0;
+}''')
+        
+        if "nlpl_copy_file" in self.needed_runtime_functions:
+            code_parts.append('''
+bool nlpl_copy_file(const char* src, const char* dst) {
+    FILE* source = fopen(src, "rb");
+    if (!source) return false;
+    FILE* dest = fopen(dst, "wb");
+    if (!dest) { fclose(source); return false; }
+    char buffer[8192];
+    size_t bytes_read;
+    while ((bytes_read = fread(buffer, 1, sizeof(buffer), source)) > 0) {
+        if (fwrite(buffer, 1, bytes_read, dest) != bytes_read) {
+            fclose(source); fclose(dest); return false;
+        }
+    }
+    fclose(source); fclose(dest);
+    return true;
+}''')
+        
+        if "nlpl_create_directory" in self.needed_runtime_functions:
+            code_parts.append('''
+#ifdef _WIN32
+#include <direct.h>
+bool nlpl_create_directory(const char* path) { return _mkdir(path) == 0; }
+#else
+bool nlpl_create_directory(const char* path) { return mkdir(path, 0755) == 0; }
+#endif''')
+        
+        if "nlpl_is_directory" in self.needed_runtime_functions:
+            code_parts.append('''
+bool nlpl_is_directory(const char* path) {
+    struct stat st;
+    if (stat(path, &st) != 0) return false;
+    return S_ISDIR(st.st_mode);
+}''')
+        
+        if "nlpl_is_file" in self.needed_runtime_functions:
+            code_parts.append('''
+bool nlpl_is_file(const char* path) {
+    struct stat st;
+    if (stat(path, &st) != 0) return false;
+    return S_ISREG(st.st_mode);
+}''')
+        
+        # String utility functions
+        if "nlpl_string_length" in self.needed_runtime_functions:
+            code_parts.append('''
+int nlpl_string_length(const char* str) {
+    return str ? (int)strlen(str) : 0;
+}''')
+        
+        if "nlpl_uppercase" in self.needed_runtime_functions:
+            code_parts.append('''
+char* nlpl_uppercase(const char* str) {
+    if (!str) return NULL;
+    size_t len = strlen(str);
+    char* result = (char*)malloc(len + 1);
+    if (!result) return NULL;
+    for (size_t i = 0; i < len; i++) result[i] = toupper((unsigned char)str[i]);
+    result[len] = '\\0';
+    return result;
+}''')
+        
+        if "nlpl_lowercase" in self.needed_runtime_functions:
+            code_parts.append('''
+char* nlpl_lowercase(const char* str) {
+    if (!str) return NULL;
+    size_t len = strlen(str);
+    char* result = (char*)malloc(len + 1);
+    if (!result) return NULL;
+    for (size_t i = 0; i < len; i++) result[i] = tolower((unsigned char)str[i]);
+    result[len] = '\\0';
+    return result;
+}''')
+        
+        if "nlpl_concat" in self.needed_runtime_functions:
+            code_parts.append('''
+char* nlpl_concat(const char* str1, const char* str2) {
+    if (!str1) str1 = "";
+    if (!str2) str2 = "";
+    size_t len1 = strlen(str1), len2 = strlen(str2);
+    char* result = (char*)malloc(len1 + len2 + 1);
+    if (!result) return NULL;
+    strcpy(result, str1);
+    strcat(result, str2);
+    return result;
+}''')
+        
+        if "nlpl_string_contains" in self.needed_runtime_functions:
+            code_parts.append('''
+bool nlpl_string_contains(const char* str, const char* substr) {
+    if (!str || !substr) return false;
+    return strstr(str, substr) != NULL;
+}''')
+        
+        if "nlpl_substring" in self.needed_runtime_functions:
+            code_parts.append('''
+char* nlpl_substring(const char* str, int start, int length) {
+    if (!str || start < 0 || length <= 0) {
+        char* empty = (char*)malloc(1);
+        if (empty) empty[0] = '\\0';
+        return empty;
+    }
+    int str_len = (int)strlen(str);
+    if (start >= str_len) {
+        char* empty = (char*)malloc(1);
+        if (empty) empty[0] = '\\0';
+        return empty;
+    }
+    if (start + length > str_len) length = str_len - start;
+    char* result = (char*)malloc(length + 1);
+    if (!result) return NULL;
+    strncpy(result, str + start, length);
+    result[length] = '\\0';
+    return result;
+}''')
+        
+        # Console I/O functions
+        if "nlpl_read_line" in self.needed_runtime_functions:
+            code_parts.append('''
+char* nlpl_read_line(void) {
+    char buffer[4096];
+    if (!fgets(buffer, sizeof(buffer), stdin)) return NULL;
+    size_t len = strlen(buffer);
+    if (len > 0 && buffer[len - 1] == '\\n') buffer[len - 1] = '\\0';
+    return strdup(buffer);
+}''')
+        
+        if "nlpl_read_int" in self.needed_runtime_functions:
+            code_parts.append('''
+int nlpl_read_int(void) {
+    int value; int c;
+    if (scanf("%d", &value) != 1) return 0;
+    while ((c = getchar()) != '\\n' && c != EOF);
+    return value;
+}''')
+        
+        if "nlpl_read_float" in self.needed_runtime_functions:
+            code_parts.append('''
+double nlpl_read_float(void) {
+    double value; int c;
+    if (scanf("%lf", &value) != 1) return 0.0;
+    while ((c = getchar()) != '\\n' && c != EOF);
+    return value;
+}''')
+        
+        # Dynamic array structure and functions
+        if any(fn.startswith("nlpl_array_") for fn in self.needed_runtime_functions):
+            code_parts.append('''
+// Static array length macro (for compile-time known arrays)
+#define NLPL_STATIC_ARRLEN(arr) (sizeof(arr) / sizeof((arr)[0]))
+
+// Dynamic array structure for NLPL arrays
+typedef struct NLPLArray {
+    void** data;
+    int size;
+    int capacity;
+    size_t elem_size;
+} NLPLArray;
+
+NLPLArray* nlpl_array_create(int initial_capacity, size_t elem_size) {
+    NLPLArray* arr = (NLPLArray*)malloc(sizeof(NLPLArray));
+    if (!arr) return NULL;
+    arr->capacity = initial_capacity > 0 ? initial_capacity : 8;
+    arr->size = 0;
+    arr->elem_size = elem_size;
+    arr->data = (void**)malloc(sizeof(void*) * arr->capacity);
+    if (!arr->data) { free(arr); return NULL; }
+    return arr;
+}
+
+NLPLArray* nlpl_array_from_static_int(int* static_arr, int count) {
+    NLPLArray* arr = nlpl_array_create(count, sizeof(int));
+    if (!arr) return NULL;
+    for (int i = 0; i < count; i++) {
+        arr->data[i] = (void*)(intptr_t)static_arr[i];
+    }
+    arr->size = count;
+    return arr;
+}
+
+int* nlpl_array_to_static_int(NLPLArray* arr) {
+    if (!arr || arr->size == 0) return NULL;
+    int* result = (int*)malloc(sizeof(int) * arr->size);
+    if (!result) return NULL;
+    for (int i = 0; i < arr->size; i++) {
+        result[i] = (int)(intptr_t)arr->data[i];
+    }
+    return result;
+}
+
+void nlpl_array_free(NLPLArray* arr) {
+    if (arr) {
+        if (arr->data) free(arr->data);
+        free(arr);
+    }
+}''')
+        
+        if "nlpl_array_length" in self.needed_runtime_functions:
+            code_parts.append('''
+int nlpl_array_length(NLPLArray* arr) {
+    return arr ? arr->size : 0;
+}''')
+        
+        if "nlpl_array_push" in self.needed_runtime_functions:
+            code_parts.append('''
+void nlpl_array_push(NLPLArray* arr, void* elem) {
+    if (!arr) return;
+    if (arr->size >= arr->capacity) {
+        arr->capacity *= 2;
+        arr->data = (void**)realloc(arr->data, sizeof(void*) * arr->capacity);
+        if (!arr->data) return;
+    }
+    arr->data[arr->size++] = elem;
+}''')
+        
+        if "nlpl_array_pop" in self.needed_runtime_functions:
+            code_parts.append('''
+void* nlpl_array_pop(NLPLArray* arr) {
+    if (!arr || arr->size == 0) return NULL;
+    return arr->data[--arr->size];
+}''')
+        
+        if "nlpl_array_get" in self.needed_runtime_functions:
+            code_parts.append('''
+void* nlpl_array_get(NLPLArray* arr, int index) {
+    if (!arr || index < 0 || index >= arr->size) return NULL;
+    return arr->data[index];
+}''')
+        
+        if "nlpl_array_set" in self.needed_runtime_functions:
+            code_parts.append('''
+void nlpl_array_set(NLPLArray* arr, int index, void* elem) {
+    if (!arr || index < 0 || index >= arr->size) return;
+    arr->data[index] = elem;
+}''')
+        
+        if "nlpl_array_insert" in self.needed_runtime_functions:
+            code_parts.append('''
+void nlpl_array_insert(NLPLArray* arr, int index, void* elem) {
+    if (!arr || index < 0 || index > arr->size) return;
+    if (arr->size >= arr->capacity) {
+        arr->capacity *= 2;
+        arr->data = (void**)realloc(arr->data, sizeof(void*) * arr->capacity);
+        if (!arr->data) return;
+    }
+    for (int i = arr->size; i > index; i--) {
+        arr->data[i] = arr->data[i - 1];
+    }
+    arr->data[index] = elem;
+    arr->size++;
+}''')
+        
+        if "nlpl_array_remove" in self.needed_runtime_functions:
+            code_parts.append('''
+void* nlpl_array_remove(NLPLArray* arr, int index) {
+    if (!arr || index < 0 || index >= arr->size) return NULL;
+    void* elem = arr->data[index];
+    for (int i = index; i < arr->size - 1; i++) {
+        arr->data[i] = arr->data[i + 1];
+    }
+    arr->size--;
+    return elem;
+}''')
+        
+        if "nlpl_array_find" in self.needed_runtime_functions:
+            code_parts.append('''
+int nlpl_array_find(NLPLArray* arr, void* elem) {
+    if (!arr) return -1;
+    for (int i = 0; i < arr->size; i++) {
+        if (arr->data[i] == elem) return i;
+    }
+    return -1;
+}''')
+        
+        if "nlpl_array_reverse" in self.needed_runtime_functions:
+            code_parts.append('''
+void nlpl_array_reverse(NLPLArray* arr) {
+    if (!arr || arr->size < 2) return;
+    for (int i = 0; i < arr->size / 2; i++) {
+        void* temp = arr->data[i];
+        arr->data[i] = arr->data[arr->size - 1 - i];
+        arr->data[arr->size - 1 - i] = temp;
+    }
+}''')
+        
+        if "nlpl_array_clear" in self.needed_runtime_functions:
+            code_parts.append('''
+void nlpl_array_clear(NLPLArray* arr) {
+    if (arr) arr->size = 0;
+}''')
+        
+        if "nlpl_array_slice" in self.needed_runtime_functions:
+            code_parts.append('''
+NLPLArray* nlpl_array_slice(NLPLArray* arr, int start, int end) {
+    if (!arr || start < 0 || end > arr->size || start >= end) {
+        return nlpl_array_create(0, sizeof(void*));
+    }
+    int new_size = end - start;
+    NLPLArray* result = nlpl_array_create(new_size, arr->elem_size);
+    if (!result) return NULL;
+    for (int i = start; i < end; i++) {
+        nlpl_array_push(result, arr->data[i]);
+    }
+    return result;
+}''')
+        
+        # Integer array sort helper
+        if "nlpl_array_sort" in self.needed_runtime_functions:
+            code_parts.append('''
+static int nlpl_int_compare(const void* a, const void* b) {
+    intptr_t ia = (intptr_t)*(void**)a;
+    intptr_t ib = (intptr_t)*(void**)b;
+    return (ia > ib) - (ia < ib);
+}
+
+void nlpl_array_sort(NLPLArray* arr) {
+    if (!arr || arr->size < 2) return;
+    qsort(arr->data, arr->size, sizeof(void*), nlpl_int_compare);
+}''')
+        
+        # Math utility functions
+        if "nlpl_min" in self.needed_runtime_functions:
+            code_parts.append('''
+int nlpl_min(int a, int b) {
+    return a < b ? a : b;
+}''')
+        
+        if "nlpl_max" in self.needed_runtime_functions:
+            code_parts.append('''
+int nlpl_max(int a, int b) {
+    return a > b ? a : b;
+}''')
+        
+        if "nlpl_random" in self.needed_runtime_functions:
+            code_parts.append('''
+static int nlpl_random_seeded = 0;
+double nlpl_random(void) {
+    if (!nlpl_random_seeded) { srand((unsigned)time(NULL)); nlpl_random_seeded = 1; }
+    return (double)rand() / RAND_MAX;
+}''')
+        
+        if "nlpl_random_int" in self.needed_runtime_functions:
+            code_parts.append('''
+int nlpl_random_int(int min_val, int max_val) {
+    if (!nlpl_random_seeded) { srand((unsigned)time(NULL)); nlpl_random_seeded = 1; }
+    return min_val + rand() % (max_val - min_val + 1);
+}''')
+        
+        # String utility functions (additional)
+        if "nlpl_index_of" in self.needed_runtime_functions:
+            code_parts.append('''
+int nlpl_index_of(const char* str, const char* substr) {
+    if (!str || !substr) return -1;
+    const char* found = strstr(str, substr);
+    return found ? (int)(found - str) : -1;
+}''')
+        
+        if "nlpl_replace" in self.needed_runtime_functions:
+            code_parts.append('''
+char* nlpl_replace(const char* str, const char* old_sub, const char* new_sub) {
+    if (!str || !old_sub || !new_sub) return NULL;
+    size_t str_len = strlen(str), old_len = strlen(old_sub), new_len = strlen(new_sub);
+    if (old_len == 0) return strdup(str);
+    
+    // Count occurrences
+    int count = 0;
+    const char* p = str;
+    while ((p = strstr(p, old_sub)) != NULL) { count++; p += old_len; }
+    
+    // Allocate result
+    size_t result_len = str_len + count * (new_len - old_len);
+    char* result = (char*)malloc(result_len + 1);
+    if (!result) return NULL;
+    
+    // Build result
+    char* r = result;
+    p = str;
+    while (*p) {
+        if (strstr(p, old_sub) == p) {
+            memcpy(r, new_sub, new_len);
+            r += new_len;
+            p += old_len;
+        } else {
+            *r++ = *p++;
+        }
+    }
+    *r = '\\0';
+    return result;
+}''')
+        
+        if "nlpl_trim" in self.needed_runtime_functions:
+            code_parts.append('''
+char* nlpl_trim(const char* str) {
+    if (!str) return NULL;
+    while (isspace((unsigned char)*str)) str++;
+    if (*str == '\\0') return strdup("");
+    const char* end = str + strlen(str) - 1;
+    while (end > str && isspace((unsigned char)*end)) end--;
+    size_t len = end - str + 1;
+    char* result = (char*)malloc(len + 1);
+    if (!result) return NULL;
+    memcpy(result, str, len);
+    result[len] = '\\0';
+    return result;
+}''')
+        
+        if "nlpl_starts_with" in self.needed_runtime_functions:
+            code_parts.append('''
+bool nlpl_starts_with(const char* str, const char* prefix) {
+    if (!str || !prefix) return false;
+    return strncmp(str, prefix, strlen(prefix)) == 0;
+}''')
+        
+        if "nlpl_ends_with" in self.needed_runtime_functions:
+            code_parts.append('''
+bool nlpl_ends_with(const char* str, const char* suffix) {
+    if (!str || !suffix) return false;
+    size_t str_len = strlen(str), suf_len = strlen(suffix);
+    if (suf_len > str_len) return false;
+    return strcmp(str + str_len - suf_len, suffix) == 0;
+}''')
+        
+        return '\n'.join(code_parts)

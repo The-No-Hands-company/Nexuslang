@@ -11,7 +11,7 @@ __version__ = "0.1.0"
 __author__ = "The No Hands Company"
 
 # Python 3.14 has import system bugs - use compatibility layer
-if sys.version_info >= (3, 14):
+if False: # sys.version_info >= (3, 14): # Forced disabled for debugging
     from .py314_compat import load_module_direct
     from pathlib import Path
     

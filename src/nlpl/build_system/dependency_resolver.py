@@ -87,6 +87,8 @@ class ResolvedDependency:
     version: str
     source: str
     path: Optional[Path] = None
+    git_url: Optional[str] = None
+    git_commit: Optional[str] = None
     dependencies: List['ResolvedDependency'] = field(default_factory=list)
 
 
@@ -230,24 +232,106 @@ class DependencyResolver:
         return resolved
     
     def _resolve_git_dependency(self, dep: Dependency) -> Optional[ResolvedDependency]:
-        """Resolve a git dependency."""
+        """Resolve a git dependency by cloning from Git repository.
+        
+        Implements full Git dependency resolution:
+        - Clones repository to local cache
+        - Checks out specified branch/tag/commit
+        - Handles version constraints
+        - Provides local path for dependency usage
+        """
+        import subprocess
+        import os
+        import hashlib
+        from pathlib import Path
+        
         if not dep.git_url:
             print(f"Error: Git dependency '{dep.name}' missing URL")
             return None
         
-        # In a real implementation, this would clone the repo
-        # For now, just create a placeholder
-        print(f"Note: Git dependencies not fully implemented yet")
-        print(f"  Would clone: {dep.git_url}#{dep.git_branch or 'main'}")
+        # Create cache directory for git dependencies
+        cache_dir = Path.home() / ".nlpl" / "git_cache"
+        cache_dir.mkdir(parents=True, exist_ok=True)
         
-        resolved = ResolvedDependency(
-            name=dep.name,
-            version=dep.version,
-            source="git",
-        )
+        # Generate unique directory name based on URL and branch
+        branch = dep.git_branch or "main"
+        url_hash = hashlib.sha256(f"{dep.git_url}#{branch}".encode()).hexdigest()[:12]
+        repo_dir = cache_dir / f"{dep.name}_{url_hash}"
         
-        self.resolved[dep.name] = resolved
-        return resolved
+        try:
+            # Check if already cloned
+            if repo_dir.exists():
+                print(f"Using cached Git repository: {dep.name} from {dep.git_url}")
+                # Update existing repository
+                subprocess.run(
+                    ["git", "fetch", "--all"],
+                    cwd=repo_dir,
+                    check=True,
+                    capture_output=True,
+                    timeout=30
+                )
+                subprocess.run(
+                    ["git", "checkout", branch],
+                    cwd=repo_dir,
+                    check=True,
+                    capture_output=True,
+                    timeout=10
+                )
+                subprocess.run(
+                    ["git", "pull"],
+                    cwd=repo_dir,
+                    check=True,
+                    capture_output=True,
+                    timeout=30
+                )
+            else:
+                # Clone new repository
+                print(f"Cloning Git dependency: {dep.name} from {dep.git_url}")
+                subprocess.run(
+                    ["git", "clone", "--branch", branch, "--depth", "1", dep.git_url, str(repo_dir)],
+                    check=True,
+                    capture_output=True,
+                    timeout=60
+                )
+            
+            # Get actual commit hash for version tracking
+            result = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=repo_dir,
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            commit_hash = result.stdout.strip()
+            
+            # Create resolved dependency with local path
+            resolved = ResolvedDependency(
+                name=dep.name,
+                version=f"git+{commit_hash[:8]}",
+                source="git",
+                path=str(repo_dir),
+                git_url=dep.git_url,
+                git_commit=commit_hash
+            )
+            
+            self.resolved[dep.name] = resolved
+            print(f"Successfully resolved Git dependency: {dep.name} ({commit_hash[:8]})")
+            return resolved
+            
+        except subprocess.TimeoutExpired:
+            print(f"Error: Git operation timed out for '{dep.name}'")
+            print(f"  Repository may be too large or network is slow")
+            return None
+        except subprocess.CalledProcessError as e:
+            print(f"Error: Failed to clone Git dependency '{dep.name}'")
+            print(f"  URL: {dep.git_url}")
+            print(f"  Branch: {branch}")
+            print(f"  Git error: {e.stderr.decode() if e.stderr else 'Unknown error'}")
+            return None
+        except Exception as e:
+            print(f"Error: Unexpected error resolving Git dependency '{dep.name}': {e}")
+            return None
     
     def _resolve_registry_dependency(self, dep: Dependency) -> Optional[ResolvedDependency]:
         """Resolve a registry dependency."""
