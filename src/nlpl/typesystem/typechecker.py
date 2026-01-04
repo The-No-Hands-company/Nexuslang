@@ -207,6 +207,9 @@ class TypeChecker:
             return ANY_TYPE  # Dereference returns the pointed-to type (simplified)
         elif isinstance(statement, TypeCastExpression):
             return self.check_type_cast(statement, env)
+        elif statement.__class__.__name__ == 'MemberAccess':
+            # Handle member access: object.property or object.method()
+            return self.check_member_access(statement, env)
         else:
             raise TypeCheckError(f"Unsupported statement type: {statement.__class__.__name__}")
             return ANY_TYPE
@@ -966,6 +969,33 @@ class TypeChecker:
                 # For other types, return ANY_TYPE
                 return ANY_TYPE
         
+        # Return target type if already a Type object
+        return expr.target_type if isinstance(expr.target_type, Type) else ANY_TYPE
+    
+    def check_member_access(self, expr: Any, env: TypeEnvironment) -> Type:
+        """Check a member access expression: object.member."""
+        # Check the object expression
+        obj_type = self.check_statement(expr.object_expr, env)
+        
+        # If object type is a class type, check if member exists
+        if isinstance(obj_type, ClassType):
+            member_name = expr.member_name
+            
+            # Check properties
+            if member_name in obj_type.properties:
+                return obj_type.properties[member_name]
+            
+            # Check methods
+            if member_name in obj_type.methods:
+                return obj_type.methods[member_name]
+            
+            # Member not found - type checking will fail
+            # For now, return ANY_TYPE to allow execution to continue
+            return ANY_TYPE
+        
+        # For other types, return ANY_TYPE
+        return ANY_TYPE
+
         # If target_type is already a Type object, return it
         return expr.target_type if isinstance(expr.target_type, Type) else ANY_TYPE
  

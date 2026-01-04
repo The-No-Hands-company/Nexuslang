@@ -1780,7 +1780,7 @@ class Interpreter:
         # Look up the class definition
         class_def = self.classes.get(class_name)
         if not class_def:
-            from ..exceptions import NLPLNameError
+            from ..errors import NLPLNameError
             raise NLPLNameError(f"Undefined class, struct, or union: '{class_name}'", 
                                line_number=node.line_number,
                                available_names=list(self.classes.keys()))
@@ -1789,7 +1789,7 @@ class Interpreter:
         # Node has type_arguments: Box<Integer> -> type_arguments=['Integer']
         type_args_map = {}
         if hasattr(node, 'type_arguments') and node.type_arguments:
-            from ..exceptions import NLPLTypeError
+            from ..errors import NLPLTypeError
             if not hasattr(class_def, 'generic_parameters') or not class_def.generic_parameters:
                 raise NLPLTypeError(f"Class '{class_name}' is not generic but was given type arguments",
                                     line=getattr(node, 'line', None),
@@ -1801,17 +1801,24 @@ class Interpreter:
                                     column=getattr(node, 'column', None))
             
             # Map parameters T to arguments Integer
-            # class_def.generic_parameters is a list of TypeParameter nodes
+            # class_def.generic_parameters is a list of TypeParameter nodes OR strings
             # node.type_arguments is a list of type names or Type nodes (depending on parser)
             
             for param, arg in zip(class_def.generic_parameters, node.type_arguments):
-                # Param is a TypeParameter node, use param.name (e.g., "T")
-                param_name = param.name
+                # Param could be a TypeParameter node with .name, or just a string
+                if hasattr(param, 'name'):
+                    param_name = param.name
+                else:
+                    param_name = str(param)
                 
                 # Arg could be different depending on parser version. 
                 # Assuming simple strings for now based on current test.
                 # If complex type, it might be a node.
-                arg_name = arg
+                if hasattr(arg, 'name'):
+                    arg_name = arg.name
+                else:
+                    arg_name = str(arg)
+                    
                 type_args_map[param_name] = arg_name
 
         # Handle Structs and Unions

@@ -970,7 +970,8 @@ def get_type_by_name(name: str) -> Type:
         else:
             return DictionaryType(ANY_TYPE, ANY_TYPE)
     
-    return type_map.get(name_lower, ANY_TYPE)
+    # Default: return ANY_TYPE for unknown types
+    return ANY_TYPE
 
 def _parse_type_arguments(args_str: str) -> List[str]:
     """Parse comma-separated type arguments, handling nested generics.
