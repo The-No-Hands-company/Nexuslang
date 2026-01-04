@@ -263,8 +263,35 @@ class Set(Generic[T]):
         return f"Set({self._data})"
 
 
+
+
+def list_append(target, value):
+    """Append a value to a list or collection.
+    
+    Args:
+        target: List, Vec, or any collection with an append/push method
+        value: Value to append
+        
+    Returns:
+        None (modifies target in-place)
+    """
+    if isinstance(target, list):
+        target.append(value)
+    elif isinstance(target, Vec):
+        target.push(value)
+    elif hasattr(target, 'append'):
+        target.append(value)
+    elif hasattr(target, 'push'):
+        target.push(value)
+    else:
+        raise TypeError(f"Cannot append to type {type(target).__name__}")
+    return None
+
+
 def register_collections_functions(runtime):
     """Register collection constructors with runtime."""
     runtime.register_function("Vec", Vec)
     runtime.register_function("HashMap", HashMap)
     runtime.register_function("Set", Set)
+    runtime.register_function("list_append", list_append)
+    runtime.register_function("append", list_append)  # Alias

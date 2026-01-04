@@ -48,7 +48,7 @@ def run_program(source_code, debug=False, type_check=True):
         print("\nAST:")
         print_ast(ast)
     
-    interpreter = Interpreter(runtime)
+    interpreter = Interpreter(runtime, enable_type_checking=type_check)
     
     try:
         result = interpreter.interpret(ast)

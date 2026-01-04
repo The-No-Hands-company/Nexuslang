@@ -254,7 +254,7 @@ class TypeInferenceEngine:
         for stmt in function.body:
             if hasattr(stmt, 'node_type') and stmt.node_type == 'return_statement':
                 if stmt.value:
-                    return_type = self.infer_expression_type(stmt.value, func_env, generic_context)
+                    return_type = self.infer_expression_type(stmt.value, func_env)
                     return_types.append(return_type)
                 else:
                     return_types.append(NULL_TYPE)

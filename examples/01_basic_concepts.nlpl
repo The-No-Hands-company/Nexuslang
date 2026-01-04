@@ -1,5 +1,16 @@
 # Basic Programming Concepts in NLPL
 
+# Function Definition (must be defined before use)
+function calculate_average with numbers as List of Float returns Float
+    if length(numbers) equals 0
+        return 0.0
+    
+    set total to 0.0
+    for each number in numbers
+        set total to total plus number
+    
+    return total divided by length(numbers)
+
 # Variables and Types
 set name to "John Doe"
 set age to 25
@@ -17,24 +28,13 @@ set quotient to 15 divided by 3
 set greeting to "Hello, " plus name
 set upper_name to convert name to uppercase
 set lower_name to convert name to lowercase
-set name_length to length of name
+set name_length to length(name)
 
 # List Operations
 set first_grade to grades[0]
-set last_grade to grades[length of grades minus 1]
+set last_grade to grades[length(grades) minus 1]
 append 95.0 to grades
 set average to calculate_average with grades
-
-# Function Definition
-function calculate_average with numbers as List of Float returns Float
-    if numbers is empty
-        return 0.0
-    
-    set total to 0.0
-    for each number in numbers
-        set total to total plus number
-    
-    return total divided by length of numbers
 
 # Conditional Statements
 if age is greater than or equal to 18
@@ -62,11 +62,9 @@ catch error with message
     print text "Error: " plus message
 
 # File Operations
-if file "data.txt" exists
-    open file "data.txt" for reading
-    set content to read from file
-    close file
+if file_exists("data.txt")
+    set content to read_file("data.txt")
+    print text "File content: " plus content
 else
-    create new file "data.txt"
-    write "Hello, World!" to file
-    close file 
+    set success to write_file("data.txt", "Hello, World!")
+    print text "File created successfully"

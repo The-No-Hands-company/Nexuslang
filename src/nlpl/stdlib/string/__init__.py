@@ -13,6 +13,10 @@ from ...runtime.runtime import Runtime
 
 
 def register_string_functions(runtime: Runtime) -> None:
+    # Basic string operations
+    runtime.register_function("length", length)
+    runtime.register_function("len", length)  # Short alias
+    
     # String validation
     runtime.register_function("is_numeric", is_numeric)
     runtime.register_function("is_alphabetic", is_alphabetic)

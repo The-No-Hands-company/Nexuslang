@@ -23,7 +23,7 @@ class Person
     public function get address returns String
         return this.address
     
-    public function to string returns String
+    public function to_string returns String
         return "Person(name=" plus this.name plus ", age=" plus convert this.age to string plus ", address=" plus this.address plus ")"
 
 # Inheritance
@@ -36,25 +36,25 @@ class Student extends Person
         set this.student_id to student_id
         create this.grades as empty List of Float
     
-    public function add grade with score as Float
+    public function add_grade with score as Float
         append score to this.grades
     
-    public function calculate average returns Float
-        if this.grades is empty
+    public function calculate_average returns Float
+        if length(this.grades) equals 0
             return 0.0
         
         set total to 0.0
         for each grade in this.grades
             set total to total plus grade
         
-        return total divided by length of this.grades
+        return total divided by length(this.grades)
     
-    public function to string returns String
-        return "Student(" plus super.to string plus ", student_id=" plus this.student_id plus ", average=" plus convert this.calculate average to string plus ")"
+    public function to_string returns String
+        return "Student(" plus super.to_string() plus ", student_id=" plus this.student_id plus ", average=" plus convert this.calculate_average() to string plus ")"
 
 # Interface Definition
 interface Printable
-    public function to string returns String
+    public function to_string returns String
 
 # Class Implementing Interface
 class Book implements Printable
@@ -67,16 +67,16 @@ class Book implements Printable
         set this.author to author
         set this.price to price
     
-    public function to string returns String
+    public function to_string returns String
         return "Book(title=" plus this.title plus ", author=" plus this.author plus ", price=" plus convert this.price to string plus ")"
 
 # Abstract Class
 abstract class Shape
-    public abstract function calculate area returns Float
-    public abstract function calculate perimeter returns Float
+    public abstract function calculate_area returns Float
+    public abstract function calculate_perimeter returns Float
     
-    public function to string returns String
-        return "Shape(area=" plus convert this.calculate area to string plus ", perimeter=" plus convert this.calculate perimeter to string plus ")"
+    public function to_string returns String
+        return "Shape(area=" plus convert this.calculate_area() to string plus ", perimeter=" plus convert this.calculate_perimeter() to string plus ")"
 
 class Circle extends Shape
     private set radius to Float
@@ -84,21 +84,21 @@ class Circle extends Shape
     public function initialize with radius as Float
         set this.radius to radius
     
-    public function calculate area returns Float
+    public function calculate_area returns Float
         return 3.14159 times this.radius times this.radius
     
-    public function calculate perimeter returns Float
+    public function calculate_perimeter returns Float
         return 2 times 3.14159 times this.radius
 
 # Usage Examples
 create person as new Person with "John Doe" and 25 and "123 Main St"
 create student as new Student with "Jane Smith" and 20 and "456 College Ave" and "STU123"
-add grade 85.5 to student
-add grade 92.0 to student
+call student.add_grade with 85.5
+call student.add_grade with 92.0
 create book as new Book with "The Great Gatsby" and "F. Scott Fitzgerald" and 9.99
 create circle as new Circle with 5.0
 
-print text person.to string
-print text student.to string
-print text book.to string
-print text circle.to string 
+print text person.to_string()
+print text student.to_string()
+print text book.to_string()
+print text circle.to_string()

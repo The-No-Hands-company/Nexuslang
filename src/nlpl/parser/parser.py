@@ -1039,30 +1039,37 @@ class Parser:
             self.advance()
             return parameters, True
         
-        # Skip optional "a" or "a parameter"
+        # Skip optional "a" or "a parameter" ONLY if it's followed by an actual parameter name
+        # Don't skip if "a" is the parameter name itself (e.g., "with a as Integer")
         if self.current_token and self.current_token.type == TokenType.A:
-            self.advance()
-            
-            # Skip "parameter" if present
-            if self.current_token and self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() == 'parameter':
-                self.advance()
-            
+            # Peek ahead to see if this is an article or the parameter name
+            next_token = self.peek()
+            # If next token is AS, OF, COMMA, or RETURNS, then "a" is the parameter name
+            if next_token and next_token.type not in (TokenType.AS, TokenType.OF, TokenType.COMMA, TokenType.RETURNS):
+                self.advance()  # Skip the article "a"
+                
+                # Skip "parameter" if present
+                if self.current_token and self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() == 'parameter':
+                    self.advance()
+        
         # Parse first parameter
         param = self.parameter()
         if param:
             parameters.append(param)
             
         # Parse additional parameters (separated by comma or 'and')
-        while self.current_token and self.current_token.type == TokenType.COMMA:
-            self.advance()  # Eat comma
+        while self.current_token and self.current_token.type in (TokenType.COMMA, TokenType.AND):
+            self.advance()  # Eat comma or 'and'
             
-            # Skip optional "a" or "a parameter"
+            # Skip optional "a" or "a parameter" with same logic
             if self.current_token and self.current_token.type == TokenType.A:
-                self.advance()
-                
-                # Skip "parameter" if present
-                if self.current_token and self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() == 'parameter':
+                next_token = self.peek()
+                if next_token and next_token.type not in (TokenType.AS, TokenType.OF, TokenType.COMMA, TokenType.RETURNS):
                     self.advance()
+                    
+                    # Skip "parameter" if present
+                    if self.current_token and self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() == 'parameter':
+                        self.advance()
             
             # Check for ellipsis (variadic)
             if self.current_token.type == TokenType.ELLIPSIS:
@@ -1083,8 +1090,8 @@ class Parser:
         #  - <identifier> [of type <type>]
         #  - <identifier> [as <type>[<size_param>]]
         
-        # Accept IDENTIFIER, NAME, or contextual keywords as parameter names
-        if self.current_token.type in (TokenType.IDENTIFIER, TokenType.NAME) or \
+        # Accept IDENTIFIER, NAME, A (as parameter name), or contextual keywords as parameter names
+        if self.current_token.type in (TokenType.IDENTIFIER, TokenType.NAME, TokenType.A) or \
            self._can_be_identifier(self.current_token):
             param_name = self.current_token.lexeme
             self.advance()

@@ -13,7 +13,12 @@ from ..parser.ast import (
     ReturnStatement, Block, ConcurrentBlock, TryCatchBlock,
     InterfaceDefinition, AbstractClassDefinition, TraitDefinition,
     TypeAliasDefinition, AbstractMethodDefinition,
-    TypeParameter, TypeConstraint, TypeGuard
+    TypeParameter, TypeConstraint, TypeGuard,
+    PrintStatement,  # Add print statement
+    TypeCastExpression,  # Add type cast
+    # Low-level constructs
+    StructDefinition, UnionDefinition, ObjectInstantiation, MemberAssignment,
+    SizeofExpression, AddressOfExpression, DereferenceExpression
 )
 from ..typesystem.types import (
     Type, PrimitiveType, ListType, DictionaryType, ClassType, 
@@ -184,9 +189,31 @@ class TypeChecker:
             return self.check_trait_definition(statement)
         elif isinstance(statement, TypeAliasDefinition):
             return self.check_type_alias_definition(statement)
+        elif isinstance(statement, PrintStatement):
+            return self.check_print_statement(statement, env)
+        elif isinstance(statement, StructDefinition):
+            return ANY_TYPE  # Struct definitions are valid, return ANY for now
+        elif isinstance(statement, UnionDefinition):
+            return ANY_TYPE  # Union definitions are valid, return ANY for now  
+        elif isinstance(statement, ObjectInstantiation):
+            return ANY_TYPE  # Object instantiation valid, return ANY for now
+        elif isinstance(statement, MemberAssignment):
+            return ANY_TYPE  # Member assignment valid, return ANY for now
+        elif isinstance(statement, SizeofExpression):
+            return INTEGER_TYPE  # sizeof returns integer
+        elif isinstance(statement, AddressOfExpression):
+            return ANY_TYPE  # Address-of returns pointer type (simplified)
+        elif isinstance(statement, DereferenceExpression):
+            return ANY_TYPE  # Dereference returns the pointed-to type (simplified)
+        elif isinstance(statement, TypeCastExpression):
+            return self.check_type_cast(statement, env)
         else:
-            self.errors.append(f"Unsupported statement type: {type(statement).__name__}")
+            raise TypeCheckError(f"Unsupported statement type: {statement.__class__.__name__}")
             return ANY_TYPE
+    
+    def check_expression(self, expression: Any, env: TypeEnvironment) -> Type:
+        """Check the type of an expression. Alias for check_statement for compatibility."""
+        return self.check_statement(expression, env)
     
     def check_variable_declaration(self, declaration: VariableDeclaration, env: TypeEnvironment) -> Type:
         """Check the type of a variable declaration."""
@@ -470,7 +497,7 @@ class TypeChecker:
             for i, (arg_type, param_type) in enumerate(zip(arg_types, function_type.param_types)):
                 if not arg_type.is_compatible_with(param_type):
                     self.errors.append(
-                        f"Type error: Function '{call.name}' argument {i+1} expects type '{param_type}', got '{arg_type}'"
+                        f"Type error: Function '{call.name}' argument {i+1} expects type '{self._type_name(param_type)}', got '{self._type_name(arg_type)}'"
                     )
             
             return function_type.return_type
@@ -479,26 +506,44 @@ class TypeChecker:
             # In a real implementation, we would check against a registry of built-in functions
             return ANY_TYPE
     
+    def _type_name(self, type_: Type) -> str:
+        """Get a human-readable name for a type."""
+        if hasattr(type_, 'name'):
+            return type_.name
+        return type_.__class__.__name__
+
+    
     def check_binary_operation(self, operation: BinaryOperation, env: TypeEnvironment) -> Type:
         """Check a binary operation."""
         left_type = self.check_statement(operation.left, env)
         right_type = self.check_statement(operation.right, env)
         
-        # Arithmetic operators
-        if operation.operator in ['+', '-', '*', '/', '%']:
-            if operation.operator == '+' and (left_type == STRING_TYPE or right_type == STRING_TYPE):
+        # Get the operator (handle both Token objects and strings)
+        if hasattr(operation.operator, 'lexeme'):
+            op = operation.operator.lexeme
+        else:
+            op = str(operation.operator)
+        
+        # Arithmetic operators (both symbolic and natural language)
+        arithmetic_ops = ['+', '-', '*', '/', '%', 'plus', 'minus', 'times', 'divided by', 'modulo', 'power', 'to the power of', '**']
+        if op in arithmetic_ops:
+            if op in ['+', 'plus'] and (left_type == STRING_TYPE or right_type == STRING_TYPE):
                 # String concatenation
                 return STRING_TYPE
             
             if not (left_type.is_compatible_with(INTEGER_TYPE) or left_type.is_compatible_with(FLOAT_TYPE)):
                 self.errors.append(
-                    f"Type error: Left operand of '{operation.operator}' must be a number, got '{left_type}'"
+                    f"Type error: Left operand of '{op}' must be a number, got '{self._type_name(left_type)}'"
                 )
             
             if not (right_type.is_compatible_with(INTEGER_TYPE) or right_type.is_compatible_with(FLOAT_TYPE)):
                 self.errors.append(
-                    f"Type error: Right operand of '{operation.operator}' must be a number, got '{right_type}'"
+                    f"Type error: Right operand of '{op}' must be a number, got '{self._type_name(right_type)}'"
                 )
+            
+            # Division and power always return float
+            if op in ['/', 'divided by', 'power', 'to the power of', '**']:
+                return FLOAT_TYPE
             
             # If either operand is a float, the result is a float
             if left_type == FLOAT_TYPE or right_type == FLOAT_TYPE:
@@ -506,10 +551,14 @@ class TypeChecker:
             
             return INTEGER_TYPE
         
-        # Comparison operators
-        elif operation.operator in ['==', '!=', '<', '>', '<=', '>=']:
+        # Comparison operators (both symbolic and natural language)
+        comparison_ops = ['==', '!=', '<', '>', '<=', '>=', 'equals', 'is equal to', 'not equal to', 
+                         'is not equal to', 'greater than', 'is greater than', 'less than', 'is less than',
+                         'greater than or equal to', 'is greater than or equal to', 
+                         'less than or equal to', 'is less than or equal to']
+        if op in comparison_ops:
             # For equality operators, any types can be compared
-            if operation.operator in ['==', '!=']:
+            if op in ['==', '!=', 'equals', 'is equal to', 'not equal to', 'is not equal to']:
                 return BOOLEAN_TYPE
             
             # For other comparison operators, operands must be comparable
@@ -518,51 +567,59 @@ class TypeChecker:
                 (right_type.is_compatible_with(INTEGER_TYPE) or right_type.is_compatible_with(FLOAT_TYPE))
             ):
                 self.errors.append(
-                    f"Type error: Operands of '{operation.operator}' must be numbers, got '{left_type}' and '{right_type}'"
+                    f"Type error: Operands of '{op}' must be numbers, got '{self._type_name(left_type)}' and '{self._type_name(right_type)}'"
                 )
             
             return BOOLEAN_TYPE
         
         # Logical operators
-        elif operation.operator in ['and', 'or']:
+        logical_ops = ['and', 'or']
+        if op in logical_ops:
             if not left_type.is_compatible_with(BOOLEAN_TYPE):
                 self.errors.append(
-                    f"Type error: Left operand of '{operation.operator}' must be a boolean, got '{left_type}'"
+                    f"Type error: Left operand of '{op}' must be a boolean, got '{self._type_name(left_type)}'"
                 )
             
             if not right_type.is_compatible_with(BOOLEAN_TYPE):
                 self.errors.append(
-                    f"Type error: Right operand of '{operation.operator}' must be a boolean, got '{right_type}'"
+                    f"Type error: Right operand of '{op}' must be a boolean, got '{self._type_name(right_type)}'"
                 )
             
             return BOOLEAN_TYPE
         
         else:
-            self.errors.append(f"Unsupported binary operator: {operation.operator}")
+            self.errors.append(f"Unsupported binary operator: {op}")
             return ANY_TYPE
+
     
     def check_unary_operation(self, operation: UnaryOperation, env: TypeEnvironment) -> Type:
         """Check a unary operation."""
         operand_type = self.check_statement(operation.operand, env)
         
-        if operation.operator == '-':
+        # Get the operator (handle both Token objects and strings)
+        if hasattr(operation.operator, 'lexeme'):
+            op = operation.operator.lexeme
+        else:
+            op = str(operation.operator)
+        
+        if op == '-':
             if not (operand_type.is_compatible_with(INTEGER_TYPE) or operand_type.is_compatible_with(FLOAT_TYPE)):
                 self.errors.append(
-                    f"Type error: Operand of unary '-' must be a number, got '{operand_type}'"
+                    f"Type error: Operand of unary '-' must be a number, got '{self._type_name(operand_type)}'"
                 )
             
             return operand_type
         
-        elif operation.operator == 'not':
+        elif op == 'not':
             if not operand_type.is_compatible_with(BOOLEAN_TYPE):
                 self.errors.append(
-                    f"Type error: Operand of 'not' must be a boolean, got '{operand_type}'"
+                    f"Type error: Operand of 'not' must be a boolean, got '{self._type_name(operand_type)}'"
                 )
             
             return BOOLEAN_TYPE
         
         else:
-            self.errors.append(f"Unsupported unary operator: {operation.operator}")
+            self.errors.append(f"Unsupported unary operator: {op}")
             return ANY_TYPE
     
     def check_literal(self, literal: Literal, env: TypeEnvironment) -> Type:
@@ -879,12 +936,36 @@ class TypeChecker:
             if type1.name in type2.parent_classes:
                 return True
             
-            # Check interface implementation
-            if type2.is_interface and type1.name in type2.implemented_interfaces:
-                return True
-            
-            # Check trait implementation
-            if type2.is_trait and type1.name in type2.implemented_traits:
-                return True
+        # Default: use Type's is_compatible_with method
+        return type1.is_compatible_with(type2)
+    
+    def check_print_statement(self, statement: PrintStatement, env: TypeEnvironment) -> Type:
+        """Check a print statement. Print can handle any type."""
+        # Type check the expression being printed
+        if hasattr(statement, 'value') and statement.value:
+            self.check_statement(statement.value, env)
+        return ANY_TYPE
+    
+    def check_type_cast(self, expr: TypeCastExpression, env: TypeEnvironment) -> Type:
+        """Check a type cast expression and return the target type."""
+        # Check the expression being cast
+        source_type = self.check_statement(expr.expression, env)
         
-        return type1.is_compatible_with(type2) 
+        # Convert target_type to Type object if it's a string
+        if isinstance(expr.target_type, str):
+            type_name = expr.target_type.lower()
+            if type_name == "integer" or type_name == "int":
+                return INTEGER_TYPE
+            elif type_name == "float":
+                return FLOAT_TYPE
+            elif type_name == "string":
+                return STRING_TYPE
+            elif type_name == "boolean" or type_name == "bool":
+                return BOOLEAN_TYPE
+            else:
+                # For other types, return ANY_TYPE
+                return ANY_TYPE
+        
+        # If target_type is already a Type object, return it
+        return expr.target_type if isinstance(expr.target_type, Type) else ANY_TYPE
+ 

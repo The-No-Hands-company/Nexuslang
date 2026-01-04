@@ -58,7 +58,7 @@ class NLPLUserException(Exception):
 
 class Interpreter:
     """Interprets and executes the AST."""
-    def __init__(self, runtime):
+    def __init__(self, runtime, enable_type_checking=False):
         self.runtime = runtime
         self.global_scope = {}
         self.current_scope = [self.global_scope]
@@ -66,6 +66,16 @@ class Interpreter:
         self.classes = {}
         self.last_exception = None  # To support re-raising
         self.module_loader = None  # Will be initialized lazily
+        
+        # Type system components (lazy initialization)
+        self.enable_type_checking = enable_type_checking
+        self.type_checker = None
+        self.type_inference = None
+        if enable_type_checking:
+            from ..typesystem.typechecker import TypeChecker
+            from ..typesystem.type_inference import TypeInferenceEngine
+            self.type_checker = TypeChecker()
+            self.type_inference = TypeInferenceEngine()
         
     def create_function_wrapper(self, function_def):
         """Create a callable wrapper for a user-defined function."""
@@ -126,6 +136,13 @@ class Interpreter:
             ast = parser.parse()
         else:
             ast = ast_or_source
+        
+        # Run type checking if enabled
+        if self.enable_type_checking and isinstance(ast, Program):
+            errors = self.type_checker.check_program(ast)
+            if errors:
+                error_msg = "\n".join(errors)
+                raise NLPLTypeError(f"Type checking failed:\n{error_msg}")
             
         if isinstance(ast, Program):
             result = None
@@ -1524,13 +1541,15 @@ class Interpreter:
             
             # Execute the function body
             result = None
-            for statement in function_def.body:
-                result = self.execute(statement)
-                if isinstance(statement, ReturnStatement):
-                    break
-            
-            # Clean up the function scope
-            self.exit_scope()
+            try:
+                for statement in function_def.body:
+                    result = self.execute(statement)
+            except ReturnException as ret:
+                # Properly capture the return value
+                result = ret.value
+            finally:
+                # Always clean up the function scope
+                self.exit_scope()
             
             return result
         
