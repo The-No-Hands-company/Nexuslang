@@ -211,18 +211,11 @@ class TypeChecker:
             # Handle lambda expressions
             return self.check_lambda_expression(statement, env)
         elif statement.__class__.__name__ == 'MemberAccess':
-            return ANY_TYPE  # Member assignment valid, return ANY for now
-        elif isinstance(statement, SizeofExpression):
-            return INTEGER_TYPE  # sizeof returns integer
-        elif isinstance(statement, AddressOfExpression):
-            return ANY_TYPE  # Address-of returns pointer type (simplified)
-        elif isinstance(statement, DereferenceExpression):
-            return ANY_TYPE  # Dereference returns the pointed-to type (simplified)
-        elif isinstance(statement, TypeCastExpression):
-            return self.check_type_cast(statement, env)
-        elif statement.__class__.__name__ == 'MemberAccess':
             # Handle member access: object.property or object.method()
             return self.check_member_access(statement, env)
+        elif statement.__class__.__name__ == 'IndexExpression':
+            # Handle index expressions: array[index] or dict[key]
+            return self.check_index_expression(statement, env)
         else:
             raise TypeCheckError(f"Unsupported statement type: {statement.__class__.__name__}")
             return ANY_TYPE
@@ -1023,8 +1016,20 @@ class TypeChecker:
         return expr.target_type if isinstance(expr.target_type, Type) else ANY_TYPE
     
     def check_member_access(self, expr: Any, env: TypeEnvironment) -> Type:
-        """Check a member access expression: object.member."""
-        # Check the object expression
+        """
+        Check a member access expression: object.member
+        
+        Uses type inference engine for proper type propagation through
+        member access chains (e.g., obj.method().property.another_method()).
+        """
+        # Use type inference engine for comprehensive member access handling
+        inferred_type = self.type_inference.infer_member_access_type(expr, env.variables)
+        
+        # If inference succeeded, return the inferred type
+        if inferred_type != ANY_TYPE:
+            return inferred_type
+        
+        # Fallback: Check the object expression directly
         obj_type = self.check_statement(expr.object_expr, env)
         
         # If object type is a class type, check if member exists
@@ -1037,15 +1042,70 @@ class TypeChecker:
             
             # Check methods
             if member_name in obj_type.methods:
-                return obj_type.methods[member_name]
+                method_type = obj_type.methods[member_name]
+                
+                # If this is a method call, return the return type
+                if hasattr(expr, 'is_method_call') and expr.is_method_call:
+                    if isinstance(method_type, FunctionType):
+                        return method_type.return_type
+                return method_type
             
-            # Member not found - type checking will fail
-            # For now, return ANY_TYPE to allow execution to continue
+            # Member not found - return ANY for error recovery
+            self.errors.append(
+                f"Member '{member_name}' not found in class '{obj_type.name}'"
+            )
             return ANY_TYPE
         
         # For other types, return ANY_TYPE
         return ANY_TYPE
-
-        # If target_type is already a Type object, return it
-        return expr.target_type if isinstance(expr.target_type, Type) else ANY_TYPE
+    
+    def check_index_expression(self, expr: Any, env: TypeEnvironment) -> Type:
+        """
+        Check an index expression: array[index] or dict[key]
+        
+        Validates that:
+        - The indexed object is a collection type (list, dict, string)
+        - The index type matches the expected type (integer for lists, key type for dicts)
+        """
+        # Use type inference engine for proper index type checking
+        inferred_type = self.type_inference.infer_index_expression_type(expr, env.variables)
+        
+        # Check the array/collection type
+        array_type = self.check_statement(expr.array_expr, env)
+        
+        # Check the index type
+        index_type = self.check_statement(expr.index_expr, env)
+        
+        # Validate based on collection type
+        if isinstance(array_type, ListType):
+            # List indexing requires integer index
+            if not index_type.is_compatible_with(INTEGER_TYPE) and index_type != ANY_TYPE:
+                self.errors.append(
+                    f"List index must be Integer, got {index_type}"
+                )
+            return array_type.element_type
+        
+        elif isinstance(array_type, DictionaryType):
+            # Dictionary access requires key type
+            if not index_type.is_compatible_with(array_type.key_type) and index_type != ANY_TYPE:
+                self.errors.append(
+                    f"Dictionary key must be {array_type.key_type}, got {index_type}"
+                )
+            return array_type.value_type
+        
+        elif array_type == STRING_TYPE:
+            # String indexing requires integer index, returns string (character)
+            if not index_type.is_compatible_with(INTEGER_TYPE) and index_type != ANY_TYPE:
+                self.errors.append(
+                    f"String index must be Integer, got {index_type}"
+                )
+            return STRING_TYPE
+        
+        elif array_type != ANY_TYPE:
+            # Type error - trying to index non-indexable type
+            self.errors.append(
+                f"Cannot index into type {array_type}"
+            )
+        
+        return inferred_type
  

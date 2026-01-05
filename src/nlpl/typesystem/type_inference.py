@@ -53,6 +53,14 @@ class TypeInferenceEngine:
                 return self.variable_types[expr.name]
             return ANY_TYPE  # Unresolved identifier
         
+        # Handle MemberAccess (object.property or object.method())
+        if hasattr(expr, 'node_type') and expr.node_type == 'member_access':
+            return self.infer_member_access_type(expr, env)
+        
+        # Handle IndexExpression (array[index])
+        if hasattr(expr, 'node_type') and expr.node_type == 'index_expression':
+            return self.infer_index_expression_type(expr, env)
+        
         if isinstance(expr, BinaryOperation):
             left_type = self.infer_expression_type(expr.left, env)
             right_type = self.infer_expression_type(expr.right, env)
@@ -558,4 +566,172 @@ class TypeInferenceEngine:
                 # Can't unify - use ANY
                 return ANY_TYPE
         
-        return result_type 
+        return result_type
+    
+    def infer_member_access_type(self, member_access, env: Dict[str, Type]) -> Type:
+        """
+        Infer type of member access expression: object.member
+        
+        This handles:
+        - Property access: obj.property
+        - Method calls: obj.method()
+        - Chained access: obj.method().property.another_method()
+        
+        Args:
+            member_access: MemberAccess AST node
+            env: Type environment
+            
+        Returns:
+            Type of the accessed member
+        """
+        # First, infer the type of the object being accessed
+        object_type = self.infer_expression_type(member_access.object_expr, env)
+        
+        if object_type == ANY_TYPE:
+            return ANY_TYPE
+        
+        member_name = member_access.member_name
+        
+        # Handle class types
+        if isinstance(object_type, ClassType):
+            # Check if it's a property access
+            if member_name in object_type.properties:
+                return object_type.properties[member_name]
+            
+            # Check if it's a method access
+            if member_name in object_type.methods:
+                method_type = object_type.methods[member_name]
+                
+                # If this is a method call (has arguments), return the return type
+                if hasattr(member_access, 'is_method_call') and member_access.is_method_call:
+                    if isinstance(method_type, FunctionType):
+                        return method_type.return_type
+                    return ANY_TYPE
+                else:
+                    # Return the method type itself (for function references)
+                    return method_type
+            
+            # Member not found in class
+            return ANY_TYPE
+        
+        # Handle list types - support common list operations
+        if isinstance(object_type, ListType):
+            if member_name in ('length', 'size', 'count'):
+                return INTEGER_TYPE
+            elif member_name in ('first', 'last'):
+                return object_type.element_type
+            elif member_name in ('append', 'add', 'push'):
+                # Return function type for method reference
+                return FunctionType([object_type.element_type], NULL_TYPE)
+            elif member_name in ('pop', 'remove'):
+                return FunctionType([INTEGER_TYPE], object_type.element_type)
+        
+        # Handle dictionary types
+        if isinstance(object_type, DictionaryType):
+            if member_name in ('keys',):
+                return ListType(object_type.key_type)
+            elif member_name in ('values',):
+                return ListType(object_type.value_type)
+            elif member_name in ('items',):
+                # Return list of tuples (simplified as ANY for now)
+                return ListType(ANY_TYPE)
+            elif member_name in ('get', 'has', 'contains'):
+                return FunctionType([object_type.key_type], object_type.value_type)
+        
+        # Handle string types
+        if object_type == STRING_TYPE:
+            if member_name in ('length', 'size'):
+                return INTEGER_TYPE
+            elif member_name in ('upper', 'lower', 'trim', 'strip'):
+                return STRING_TYPE
+            elif member_name in ('split',):
+                return FunctionType([STRING_TYPE], ListType(STRING_TYPE))
+            elif member_name in ('contains', 'starts_with', 'ends_with'):
+                return FunctionType([STRING_TYPE], BOOLEAN_TYPE)
+        
+        return ANY_TYPE
+    
+    def infer_index_expression_type(self, index_expr, env: Dict[str, Type]) -> Type:
+        """
+        Infer type of index expression: array[index]
+        
+        This handles:
+        - List indexing: list[0]
+        - Dictionary access: dict["key"]
+        - Nested indexing: matrix[i][j]
+        
+        Args:
+            index_expr: IndexExpression AST node
+            env: Type environment
+            
+        Returns:
+            Type of the indexed element
+        """
+        # Infer the type of the array/collection being indexed
+        array_type = self.infer_expression_type(index_expr.array_expr, env)
+        
+        if array_type == ANY_TYPE:
+            return ANY_TYPE
+        
+        # Handle list types
+        if isinstance(array_type, ListType):
+            # Index should be an integer
+            index_type = self.infer_expression_type(index_expr.index_expr, env)
+            if index_type not in (INTEGER_TYPE, ANY_TYPE):
+                # Type error - but return element type anyway for error recovery
+                pass
+            return array_type.element_type
+        
+        # Handle dictionary types
+        if isinstance(array_type, DictionaryType):
+            # Index should match key type
+            index_type = self.infer_expression_type(index_expr.index_expr, env)
+            if not index_type.is_compatible_with(array_type.key_type) and index_type != ANY_TYPE:
+                # Type error - but return value type anyway for error recovery
+                pass
+            return array_type.value_type
+        
+        # Handle string types (character access)
+        if array_type == STRING_TYPE:
+            # Index should be an integer
+            return STRING_TYPE  # Return single character as string
+        
+        return ANY_TYPE
+    
+    def infer_nested_call_type(self, call: FunctionCall, env: Dict[str, Type]) -> Type:
+        """
+        Infer type of nested function calls with proper argument type propagation.
+        
+        This handles:
+        - Simple nested calls: func1(func2(x))
+        - Generic instantiation: get_list<Integer>()
+        - Method chains as arguments: obj.method1().method2()
+        
+        Args:
+            call: FunctionCall AST node
+            env: Type environment
+            
+        Returns:
+            Return type of the outermost call
+        """
+        # First, check if this function has a known type
+        func_name = call.name
+        
+        if func_name in env:
+            func_type = env[func_name]
+        elif func_name in self.function_return_types:
+            # Return the cached return type
+            return self.function_return_types[func_name]
+        else:
+            # Unknown function - try to infer from arguments
+            func_type = ANY_TYPE
+        
+        # If we have a function type, use bidirectional inference for arguments
+        if isinstance(func_type, FunctionType):
+            # Infer argument types with expected types from function signature
+            arg_types = self.infer_argument_types_from_function(func_type, call.arguments, env)
+            
+            # Return the function's return type
+            return func_type.return_type
+        
+        return ANY_TYPE
