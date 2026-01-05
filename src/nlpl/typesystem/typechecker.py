@@ -207,6 +207,19 @@ class TypeChecker:
             return ANY_TYPE  # Dereference returns the pointed-to type (simplified)
         elif isinstance(statement, TypeCastExpression):
             return self.check_type_cast(statement, env)
+        elif statement.__class__.__name__ == 'LambdaExpression':
+            # Handle lambda expressions
+            return self.check_lambda_expression(statement, env)
+        elif statement.__class__.__name__ == 'MemberAccess':
+            return ANY_TYPE  # Member assignment valid, return ANY for now
+        elif isinstance(statement, SizeofExpression):
+            return INTEGER_TYPE  # sizeof returns integer
+        elif isinstance(statement, AddressOfExpression):
+            return ANY_TYPE  # Address-of returns pointer type (simplified)
+        elif isinstance(statement, DereferenceExpression):
+            return ANY_TYPE  # Dereference returns the pointed-to type (simplified)
+        elif isinstance(statement, TypeCastExpression):
+            return self.check_type_cast(statement, env)
         elif statement.__class__.__name__ == 'MemberAccess':
             # Handle member access: object.property or object.method()
             return self.check_member_access(statement, env)
@@ -248,6 +261,14 @@ class TypeChecker:
         if inferred_type != value_type and inferred_type != ANY_TYPE:
             # If inference came up with a more specific type, use it
             value_type = inferred_type
+        
+        # If value is a function reference, get its type
+        if hasattr(declaration.value, '__class__') and declaration.value.__class__.__name__ == 'Identifier':
+            try:
+                func_type = env.get_function_type(declaration.value.name)
+                value_type = func_type
+            except TypeCheckError:
+                pass  # Not a function, use inferred type
         
         # Define the variable with the inferred type
         env.define_variable(declaration.name, value_type)
@@ -637,12 +658,17 @@ class TypeChecker:
         return infer_type(literal.value)
     
     def check_identifier(self, identifier: Identifier, env: TypeEnvironment) -> Type:
-        """Check an identifier (variable reference)."""
+        """Check an identifier (variable or function reference)."""
         try:
+            # First try to get it as a variable
             return env.get_variable_type(identifier.name)
-        except TypeCheckError as e:
-            self.errors.append(str(e))
-            return ANY_TYPE
+        except TypeCheckError:
+            # If not a variable, try to get it as a function
+            try:
+                return env.get_function_type(identifier.name)
+            except TypeCheckError as e:
+                self.errors.append(str(e))
+                return ANY_TYPE
 
     def check_class_definition(self, definition: ClassDefinition, env: TypeEnvironment) -> Type:
         """Check the type of a class definition."""
@@ -955,6 +981,23 @@ class TypeChecker:
         if hasattr(statement, 'value') and statement.value:
             self.check_statement(statement.value, env)
         return ANY_TYPE
+    
+    def check_lambda_expression(self, lambda_expr, env: TypeEnvironment) -> FunctionType:
+        """
+        Check a lambda expression and infer its type.
+        
+        Uses type inference to determine parameter and return types.
+        Supports bidirectional type inference when expected type is available.
+        """
+        # Use type inference to get the lambda's function type
+        # The type inference engine handles bidirectional inference
+        lambda_type = self.type_inference.infer_lambda_types(
+            lambda_expr, 
+            None,  # No expected type (context-free checking)
+            env.variables
+        )
+        
+        return lambda_type
     
     def check_type_cast(self, expr: TypeCastExpression, env: TypeEnvironment) -> Type:
         """Check a type cast expression and return the target type."""

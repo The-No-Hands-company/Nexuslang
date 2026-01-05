@@ -1496,6 +1496,23 @@ class Interpreter:
             # Fallback to string conversion if format fails
             return str(value)
     
+    def execute_lambda_expression(self, node):
+        """Execute a lambda expression, creating a closure."""
+        # Create a closure that captures the current scope
+        captured_scope = dict(self.current_scope[-1])  # Copy current scope
+        
+        # Store lambda metadata
+        lambda_func = {
+            'type': 'lambda',
+            'parameters': node.parameters,
+            'body': node.body,
+            'return_type': node.return_type,
+            'captured_scope': captured_scope,
+            'interpreter': self  # Reference to interpreter for execution
+        }
+        
+        return lambda_func
+    
     def execute_list_expression(self, node):
         """Execute a list expression (array literal)."""
         # Evaluate all elements in the list

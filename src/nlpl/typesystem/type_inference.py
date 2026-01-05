@@ -173,19 +173,20 @@ class TypeInferenceEngine:
                 return expected
         
         # Handle lambda expressions with expected function type
-        if hasattr(expr, 'node_type') and expr.node_type == 'lambda':
+        if hasattr(expr, 'node_type') and expr.node_type == 'lambda_expression':
             if isinstance(expected, FunctionType):
-                # Create new environment with parameter types from expected
-                lambda_env = env.copy()
-                if hasattr(expr, 'parameters'):
-                    for param, expected_param_type in zip(expr.parameters, expected.param_types):
-                        param_name = param.name if hasattr(param, 'name') else param
-                        lambda_env[param_name] = expected_param_type
-                
-                # Infer body with expected return type
-                if hasattr(expr, 'body'):
-                    body_type = self.infer_with_expected_type(expr.body, expected.return_type, lambda_env)
-                    return FunctionType(expected.param_types, body_type)
+                # Infer lambda types from expected function type
+                return self.infer_lambda_types(expr, expected, env)
+            else:
+                # No expected function type, try to infer from lambda itself
+                return self.infer_lambda_types(expr, None, env)
+        
+        # Handle LambdaExpression class directly
+        if expr.__class__.__name__ == 'LambdaExpression':
+            if isinstance(expected, FunctionType):
+                return self.infer_lambda_types(expr, expected, env)
+            else:
+                return self.infer_lambda_types(expr, None, env)
         
         # Handle function calls with expected return type
         if isinstance(expr, FunctionCall):
@@ -439,4 +440,122 @@ class TypeInferenceEngine:
         Returns:
             Inferred type
         """
-        return self.infer_with_expected_type(expr, expected_return_type, env) 
+        return self.infer_with_expected_type(expr, expected_return_type, env)
+    
+    def infer_lambda_types(self, lambda_expr, expected_func_type: Optional[FunctionType], env: Dict[str, Type]) -> FunctionType:
+        """
+        Infer parameter and return types for a lambda expression.
+        
+        This is the core of lambda type inference, using bidirectional inference:
+        - If expected_func_type is provided, use it to guide parameter type inference
+        - If lambda has explicit types, use those
+        - Infer return type from body with expected return type context
+        
+        Args:
+            lambda_expr: LambdaExpression AST node
+            expected_func_type: Expected function type from context (or None)
+            env: Type environment
+            
+        Returns:
+            Inferred FunctionType for the lambda
+        """
+        from ..parser.ast import Parameter
+        
+        # Extract lambda parameters
+        params = lambda_expr.parameters if hasattr(lambda_expr, 'parameters') else []
+        body = lambda_expr.body if hasattr(lambda_expr, 'body') else None
+        explicit_return_type = lambda_expr.return_type if hasattr(lambda_expr, 'return_type') else None
+        
+        # Infer parameter types
+        param_types = []
+        lambda_env = env.copy()
+        
+        for i, param in enumerate(params):
+            param_name = param.name if hasattr(param, 'name') else str(param)
+            
+            # Check if parameter has explicit type annotation
+            if hasattr(param, 'type_annotation') and param.type_annotation:
+                # Use explicit type
+                param_type = get_type_by_name(param.type_annotation)
+            elif expected_func_type and i < len(expected_func_type.param_types):
+                # Use expected type from context (bidirectional inference!)
+                param_type = expected_func_type.param_types[i]
+            else:
+                # No type information available - use ANY
+                param_type = ANY_TYPE
+            
+            param_types.append(param_type)
+            lambda_env[param_name] = param_type
+        
+        # Infer return type
+        if explicit_return_type:
+            # Use explicit return type annotation
+            return_type = get_type_by_name(explicit_return_type)
+        elif expected_func_type:
+            # Use expected return type and infer body with it
+            if body:
+                if isinstance(body, list):
+                    # Multi-statement body - infer from return statements
+                    return_type = self._infer_lambda_body_type(body, expected_func_type.return_type, lambda_env)
+                else:
+                    # Single expression body
+                    return_type = self.infer_with_expected_type(body, expected_func_type.return_type, lambda_env)
+            else:
+                return_type = expected_func_type.return_type
+        else:
+            # No expected return type - infer from body without context
+            if body:
+                if isinstance(body, list):
+                    return_type = self._infer_lambda_body_type(body, None, lambda_env)
+                else:
+                    return_type = self.infer_expression_type(body, lambda_env)
+            else:
+                return_type = ANY_TYPE
+        
+        return FunctionType(param_types, return_type)
+    
+    def _infer_lambda_body_type(self, statements: List[Any], expected_return_type: Optional[Type], env: Dict[str, Type]) -> Type:
+        """
+        Infer return type from lambda body statements.
+        
+        Looks for return statements and infers their types.
+        
+        Args:
+            statements: List of statements in lambda body
+            expected_return_type: Expected return type (or None)
+            env: Type environment
+            
+        Returns:
+            Inferred return type
+        """
+        return_types = []
+        
+        for stmt in statements:
+            # Check if this is a return statement
+            if hasattr(stmt, 'node_type') and stmt.node_type == 'return_statement':
+                if hasattr(stmt, 'value') and stmt.value:
+                    if expected_return_type:
+                        # Use expected type to guide inference
+                        ret_type = self.infer_with_expected_type(stmt.value, expected_return_type, env)
+                    else:
+                        # Infer without context
+                        ret_type = self.infer_expression_type(stmt.value, env)
+                    return_types.append(ret_type)
+                else:
+                    return_types.append(NULL_TYPE)
+        
+        if not return_types:
+            # No return statements - lambda returns NULL
+            return NULL_TYPE if not expected_return_type else expected_return_type
+        
+        # Unify all return types
+        result_type = return_types[0]
+        for rt in return_types[1:]:
+            unified = self.unify_types(result_type, rt)
+            if unified:
+                result_type = unified
+            else:
+                # Can't unify - use ANY
+                return ANY_TYPE
+        
+        return result_type 
