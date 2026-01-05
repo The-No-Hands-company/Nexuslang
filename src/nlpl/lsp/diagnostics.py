@@ -23,35 +23,132 @@ class DiagnosticsProvider:
     
     def __init__(self, server):
         self.server = server
+        self.file_diagnostics_cache = {}  # Cache diagnostics per file
+        self.workspace_files = set()  # Track all files in workspace
     
-    def get_diagnostics(self, uri: str, text: str) -> List[Dict]:
+    def get_diagnostics(self, uri: str, text: str, check_imports: bool = True) -> List[Dict]:
         """
         Get diagnostics for document.
         
         Args:
             uri: Document URI
             text: Document text
+            check_imports: Whether to check imported files
             
         Returns:
             List of diagnostics
         """
         diagnostics = []
         
+        # Track this file in workspace
+        self.workspace_files.add(uri)
+        
         # Try parser-based syntax checking first
-        parser_diagnostics = self._check_parser_syntax(text)
+        parser_diagnostics = self._check_parser_syntax_enhanced(text, uri)
         if parser_diagnostics:
             diagnostics.extend(parser_diagnostics)
         else:
             # Fallback to basic syntax checks
             diagnostics.extend(self._check_syntax(text))
         
-        # Try type checker diagnostics
-        type_diagnostics = self._check_type_errors(text)
+        # Try type checker diagnostics with enhanced positioning
+        type_diagnostics = self._check_type_errors_enhanced(text, uri)
         if type_diagnostics:
             diagnostics.extend(type_diagnostics)
         
+        # Check for import errors (multi-file)
+        if check_imports:
+            import_diagnostics = self._check_imports(text, uri)
+            diagnostics.extend(import_diagnostics)
+        
         # Additional static checks
         diagnostics.extend(self._check_unused_vars(text))
+        
+        # Cache diagnostics for this file
+        self.file_diagnostics_cache[uri] = diagnostics
+        
+        return diagnostics
+    
+    def _check_parser_syntax_enhanced(self, text: str, uri: str) -> List[Dict]:
+        """
+        Check syntax using NLPL parser with enhanced error positioning.
+        
+        Returns:
+            List of diagnostics with accurate line/column info
+        """
+        diagnostics = []
+        
+        try:
+            from nlpl.parser.lexer import Lexer
+            from nlpl.parser.parser import Parser
+            
+            # Try to parse
+            lexer = Lexer(text)
+            tokens = lexer.tokenize()
+            parser = Parser(tokens)
+            ast = parser.parse()
+            
+            # Store AST for later use (type checking, etc.)
+            if not hasattr(self, 'ast_cache'):
+                self.ast_cache = {}
+            self.ast_cache[uri] = ast
+            
+            # If we got here without exception, no syntax errors
+            return []
+            
+        except Exception as e:
+            # Parse error - extract detailed position info
+            error_msg = str(e)
+            
+            # Try to extract line/column from error or token
+            line = 0
+            col = 0
+            end_col = 0
+            
+            # Check if error has line_number attribute (from parser)
+            if hasattr(e, 'line_number'):
+                line = e.line_number - 1
+            else:
+                # Extract from error message
+                line_match = re.search(r'line (\d+)', error_msg, re.IGNORECASE)
+                if line_match:
+                    line = int(line_match.group(1)) - 1
+            
+            if hasattr(e, 'column'):
+                col = e.column - 1
+            else:
+                col_match = re.search(r'column (\d+)', error_msg, re.IGNORECASE)
+                if col_match:
+                    col = int(col_match.group(1)) - 1
+            
+            # Get the problematic line for better highlighting
+            lines = text.split('\n')
+            if line < len(lines):
+                line_text = lines[line]
+                # Try to highlight the actual error token
+                if 'Unexpected token' in error_msg:
+                    token_match = re.search(r"token '([^']+)'", error_msg)
+                    if token_match:
+                        token = token_match.group(1)
+                        token_pos = line_text.find(token, col)
+                        if token_pos >= 0:
+                            col = token_pos
+                            end_col = col + len(token)
+                
+                if end_col == 0:
+                    end_col = min(col + 10, len(line_text))
+            else:
+                end_col = col + 1
+            
+            diagnostics.append({
+                "range": {
+                    "start": {"line": line, "character": col},
+                    "end": {"line": line, "character": end_col}
+                },
+                "severity": 1,  # Error
+                "message": f"Syntax error: {error_msg}",
+                "source": "nlpl-parser"
+            })
         
         return diagnostics
     
@@ -107,6 +204,87 @@ class DiagnosticsProvider:
             })
         
         return diagnostics
+    
+    def _check_type_errors_enhanced(self, text: str, uri: str) -> List[Dict]:
+        """
+        Check for type errors using NLPL type checker with AST-based positioning.
+        
+        Returns:
+            List of diagnostics with accurate positioning from AST nodes
+        """
+        diagnostics = []
+        
+        try:
+            # Use cached AST if available
+            if hasattr(self, 'ast_cache') and uri in self.ast_cache:
+                ast = self.ast_cache[uri]
+            else:
+                # Parse if not cached
+                from nlpl.parser.lexer import Lexer
+                from nlpl.parser.parser import Parser
+                
+                lexer = Lexer(text)
+                tokens = lexer.tokenize()
+                parser = Parser(tokens)
+                ast = parser.parse()
+            
+            # Type check
+            from nlpl.typesystem.typechecker import TypeChecker
+            typechecker = TypeChecker()
+            typechecker.check_program(ast)
+            
+            # Convert type errors to diagnostics with AST node positions
+            for error in typechecker.errors:
+                # Try to find the AST node related to this error
+                line, col, end_col = self._find_error_position(text, error, ast)
+                
+                diagnostics.append({
+                    "range": {
+                        "start": {"line": line, "character": col},
+                        "end": {"line": line, "character": end_col}
+                    },
+                    "severity": 1,  # Error
+                    "message": f"Type error: {error}",
+                    "source": "nlpl-typechecker"
+                })
+        
+        except Exception:
+            # If parsing fails, syntax errors will be caught by _check_parser_syntax_enhanced
+            pass
+        
+        return diagnostics
+    
+    def _find_error_position(self, text: str, error: str, ast) -> tuple:
+        """
+        Find accurate position for type error using AST.
+        
+        Returns:
+            (line, col, end_col) tuple
+        """
+        lines = text.split('\n')
+        
+        # Extract identifiers from error message
+        import re
+        words = re.findall(r"'([^']+)'", error)
+        
+        # Try to find the first identifier in the source
+        for word in words:
+            for i, line_text in enumerate(lines):
+                pos = line_text.find(word)
+                if pos >= 0:
+                    return (i, pos, pos + len(word))
+        
+        # Fallback: search for keywords in error
+        error_lower = error.lower()
+        for i, line_text in enumerate(lines):
+            line_lower = line_text.lower()
+            for word in error_lower.split():
+                if len(word) > 3 and word.isalpha() and word in line_lower:
+                    pos = line_lower.find(word)
+                    return (i, pos, pos + len(word))
+        
+        # Last resort: beginning of first line
+        return (0, 0, 10)
     
     def _check_type_errors(self, text: str) -> List[Dict]:
         """
@@ -282,6 +460,67 @@ class DiagnosticsProvider:
                 })
         
         return diagnostics
+    
+    def _check_imports(self, text: str, uri: str) -> List[Dict]:
+        """
+        Check for import errors (multi-file diagnostics).
+        
+        Returns:
+            List of diagnostics for missing/invalid imports
+        """
+        diagnostics = []
+        lines = text.split('\n')
+        
+        # Find import statements
+        import_pattern = r'import\s+(\w+)(?:\s+from\s+["\']([^"\']*)["\'])?'
+        
+        for i, line in enumerate(lines):
+            match = re.search(import_pattern, line, re.IGNORECASE)
+            if match:
+                module_name = match.group(1)
+                file_path = match.group(2) if match.group(2) else None
+                
+                # Check if module exists
+                if file_path:
+                    # Check if file exists
+                    import os
+                    base_dir = os.path.dirname(uri.replace('file://', ''))
+                    full_path = os.path.join(base_dir, file_path)
+                    
+                    if not os.path.exists(full_path) and not os.path.exists(full_path + '.nlpl'):
+                        diagnostics.append({
+                            "range": {
+                                "start": {"line": i, "character": 0},
+                                "end": {"line": i, "character": len(line)}
+                            },
+                            "severity": 1,  # Error
+                            "message": f"Cannot find module '{file_path}'",
+                            "source": "nlpl-imports"
+                        })
+                else:
+                    # Check stdlib modules
+                    stdlib_modules = ['math', 'string', 'io', 'system', 'collections', 'network']
+                    if module_name.lower() not in stdlib_modules:
+                        diagnostics.append({
+                            "range": {
+                                "start": {"line": i, "character": 0},
+                                "end": {"line": i, "character": len(line)}
+                            },
+                            "severity": 2,  # Warning
+                            "message": f"Unknown module '{module_name}' (not in stdlib)",
+                            "source": "nlpl-imports"
+                        })
+        
+        return diagnostics
+    
+    def get_workspace_diagnostics(self) -> Dict[str, List[Dict]]:
+        """
+        Get diagnostics for all files in workspace.
+        
+        Returns:
+            Dict mapping URIs to their diagnostics
+        """
+        return self.file_diagnostics_cache.copy()
 
 
 __all__ = ['DiagnosticsProvider']

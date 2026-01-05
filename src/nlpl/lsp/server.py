@@ -88,6 +88,8 @@ class NLPLLanguageServer:
         from ..lsp.diagnostics import DiagnosticsProvider
         from ..lsp.symbols import SymbolProvider
         from ..lsp.formatter import NLPLFormatter
+        from ..lsp.code_actions import CodeActionsProvider
+        from ..lsp.signature_help import SignatureHelpProvider
         
         self.completion_provider = CompletionProvider(self)
         self.definition_provider = DefinitionProvider(self)
@@ -95,6 +97,8 @@ class NLPLLanguageServer:
         self.diagnostics_provider = DiagnosticsProvider(self)
         self.symbol_provider = SymbolProvider(self)
         self.formatter = NLPLFormatter()
+        self.code_actions_provider = CodeActionsProvider(self)
+        self.signature_help_provider = SignatureHelpProvider(self)
         
         logger.info("NLPL Language Server initialized")
     
@@ -194,6 +198,12 @@ class NLPLLanguageServer:
         elif method == 'textDocument/hover':
             return self._handle_hover(msg_id, params)
         
+        elif method == 'textDocument/codeAction':
+            return self._handle_code_action(msg_id, params)
+        
+        elif method == 'textDocument/signatureHelp':
+            return self._handle_signature_help(msg_id, params)
+        
         elif method == 'textDocument/formatting':
             return self._handle_formatting(msg_id, params)
         
@@ -225,6 +235,18 @@ class NLPLLanguageServer:
             "completionProvider": {
                 "resolveProvider": False,
                 "triggerCharacters": [" ", "."]
+            },
+            "signatureHelpProvider": {
+                "triggerCharacters": ["(", ",", " "],
+                "retriggerCharacters": [","]
+            },
+            "codeActionProvider": {
+                "codeActionKinds": [
+                    "quickfix",
+                    "refactor",
+                    "refactor.extract",
+                    "refactor.rewrite"
+                ]
             },
             "definitionProvider": True,
             "hoverProvider": True,
@@ -328,6 +350,39 @@ class NLPLLanguageServer:
             "jsonrpc": "2.0",
             "id": msg_id,
             "result": hover_info
+        }
+    
+    def _handle_code_action(self, msg_id: int, params: Dict) -> Dict:
+        """Handle textDocument/codeAction request."""
+        uri = params['textDocument']['uri']
+        range_params = params['range']
+        context = params.get('context', {})
+        diagnostics = context.get('diagnostics', [])
+        
+        text = self.documents.get(uri, '')
+        actions = self.code_actions_provider.get_code_actions(uri, text, range_params, diagnostics)
+        
+        return {
+            "jsonrpc": "2.0",
+            "id": msg_id,
+            "result": actions
+        }
+    
+    def _handle_signature_help(self, msg_id: int, params: Dict) -> Dict:
+        """Handle textDocument/signatureHelp request."""
+        uri = params['textDocument']['uri']
+        position = Position(
+            params['position']['line'],
+            params['position']['character']
+        )
+        
+        text = self.documents.get(uri, '')
+        signature_help = self.signature_help_provider.get_signature_help(text, position)
+        
+        return {
+            "jsonrpc": "2.0",
+            "id": msg_id,
+            "result": signature_help
         }
     
     def _handle_formatting(self, msg_id: int, params: Dict) -> Dict:

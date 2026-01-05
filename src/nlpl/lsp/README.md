@@ -11,8 +11,10 @@ The NLPL LSP server provides IDE integration for NLPL, enabling modern developme
 1. **Real-time Diagnostics**
    - Syntax error detection (integrated with NLPL parser)
    - Type error checking (integrated with NLPL type checker)
+   - **Enhanced error positioning** using AST nodes for accurate line/column
    - Unused variable warnings
    - Unclosed string detection
+   - **Multi-file diagnostics** (import checking, workspace analysis)
 
 2. **Auto-Completion**
    - Keyword completion (function, class, set, etc.)
@@ -24,20 +26,33 @@ The NLPL LSP server provides IDE integration for NLPL, enabling modern developme
    - Variable and function name completion
    - Code snippets (function templates, class templates, etc.)
 
-3. **Go-to-Definition**
+3. **Code Actions (Quick Fixes)** ⭐ NEW
+   - Fix unclosed strings (add missing quote)
+   - Remove unused variables
+   - Add missing type annotations
+   - Extract function refactoring
+   - Convert to list comprehension
+
+4. **Signature Help** ⭐ NEW
+   - Parameter hints during function calls
+   - Shows parameter types and documentation
+   - Works with stdlib and user-defined functions
+   - Active parameter highlighting
+
+5. **Go-to-Definition**
    - Jump to function definitions
    - Jump to class definitions
    - Jump to variable declarations
 
-4. **Hover Information**
+6. **Hover Information**
    - Function signatures
    - Type information
    - Documentation for keywords and stdlib functions
 
-5. **Code Formatting**
+7. **Code Formatting**
    - Basic NLPL code formatting
 
-6. **Workspace Symbols**
+8. **Workspace Symbols**
    - Search for symbols across files
 
 ## Architecture
@@ -55,17 +70,18 @@ The NLPL LSP server provides IDE integration for NLPL, enabling modern developme
 │  (src/nlpl_lsp.py) │
 └────────┬────────┘
          │
-    ┌────┴─────┬──────────┬───────────┬────────────┐
-    │          │          │           │            │
-┌───▼──┐  ┌───▼──┐  ┌────▼────┐ ┌────▼─────┐ ┌───▼───┐
-│Diag- │  │Comp- │  │Defin-   │ │Hover     │ │Symbol │
-│nostic│  │letion│  │itions   │ │Provider  │ │Provider│
-│Provider│  │Provider│  │Provider │ │         │ │       │
-└───┬──┘  └──────┘  └─────────┘ └──────────┘ └───────┘
+    ┌────┴─────┬──────────┬───────────┬────────────┬──────────┬──────────┐
+    │          │          │           │            │          │          │
+┌───▼──┐  ┌───▼──┐  ┌────▼────┐ ┌────▼─────┐ ┌───▼───┐ ┌────▼────┐ ┌────▼────┐
+│Diag- │  │Comp- │  │Defin-   │ │Hover     │ │Symbol │ │Code     │ │Signature│
+│nostic│  │letion│  │itions   │ │Provider  │ │Provider│ │Actions  │ │Help     │
+│Provider│  │Provider│  │Provider │ │         │ │       │ │Provider │ │Provider │
+└───┬──┘  └──────┘  └─────────┘ └──────────┘ └───────┘ └─────────┘ └─────────┘
     │
 ┌───▼──────────────┐
 │   NLPL Parser    │
 │   Type Checker   │
+│   AST Cache      │
 └──────────────────┘
 ```
 
@@ -155,17 +171,70 @@ lspconfig.nlpl.setup{}
 
 ## Usage Examples
 
-### Diagnostics in Action
+### Enhanced Error Positioning
 
-When you type invalid NLPL code:
+AST-based error positioning provides accurate line/column information:
 
 ```nlpl
-set x to "unclosed string
+function greet that takes name as String returns Integer
+    return "hello"  # Type error at exact location
 ```
 
-You'll see:
-- **ERROR (line 1)**: `Syntax error: Unterminated string`
-- **Source**: `nlpl-parser`
+Shows:
+- **ERROR (line 2, col 42)**: `Type error: Return value of type 'String' is not compatible with 'Integer'`
+- **Source**: `nlpl-typechecker`
+
+### Code Actions in Action
+
+When you have code with issues:
+
+```nlpl
+set unused_var to 42
+set message to "unclosed string
+```
+
+Quick fixes available:
+- 💡 **Remove unused variable 'unused_var'**
+- 💡 **Add closing quote**
+
+Press `Ctrl+.` (VSCode) or `<leader>ca` (Neovim) to apply.
+
+### Signature Help
+
+Type a function call and see parameter hints:
+
+```nlpl
+set result to sqrt with |  # <- cursor here
+```
+
+Shows:
+```
+sqrt with number as Float returns Float
+          ^^^^^^
+Parameter: number - The number to calculate square root of
+```
+
+Works during typing:
+```nlpl
+set result to max with 5, |  # <- cursor here
+```
+
+Shows:
+```
+max with a as Float, b as Float returns Float
+                     ^
+Parameter: b - Second number
+```
+
+### Multi-File Diagnostics
+
+Import checking across files:
+
+```nlpl
+import math                        # ✓ OK (stdlib)
+import nonexistent_module          # ⚠ Warning: Unknown module
+import utils from "missing.nlpl"   # ❌ Error: Cannot find module
+```
 
 ### Auto-Completion
 
@@ -228,6 +297,39 @@ Diagnostics found: 5
 ...
 ```
 
+### Test Enhanced Features
+
+```bash
+python dev_tools/test_lsp_enhanced.py
+```
+
+Tests:
+- Enhanced error positioning (AST-based)
+- Code actions (quick fixes)
+- Signature help
+- Multi-file diagnostics
+
+Expected output:
+```
+Test 1: Enhanced Error Positioning
+[ERROR] Line 2:42 - Type error: Return value...
+
+Test 2: Code Actions (Quick Fixes)
+✓ Remove unused variable 'unused_var'
+✓ Add closing quote
+✓ Extract to function
+
+Test 3: Signature Help
+Signature: sqrt with number as Float returns Float
+Active parameter: 0
+
+Test 4: Multi-File Diagnostics
+[ERROR] Line 3 - Cannot find module 'missing_file.nlpl'
+[WARNING] Line 2 - Unknown module 'nonexistent_module'
+
+✅ All integration tests passed!
+```
+
 ### Test LSP Server Manually
 
 Start the server in debug mode:
@@ -248,7 +350,7 @@ Content-Length: 123
 
 ### Parser Integration
 
-The diagnostics provider integrates directly with NLPL's parser:
+The diagnostics provider integrates directly with NLPL's parser and caches AST:
 
 ```python
 from nlpl.parser.lexer import Lexer
@@ -258,23 +360,71 @@ lexer = Lexer(text)
 tokens = lexer.tokenize()
 parser = Parser(tokens)
 ast = parser.parse()  # Throws exception on syntax error
+
+# Cache AST for reuse in type checking
+self.ast_cache[uri] = ast
 ```
 
-Syntax errors are caught and converted to LSP diagnostics with line/column information.
+Syntax errors are caught and converted to LSP diagnostics with accurate line/column information from AST nodes.
 
 ### Type Checker Integration
 
-Type errors are detected using NLPL's type checker:
+Type errors are detected using NLPL's type checker with AST-based positioning:
 
 ```python
 from nlpl.typesystem.typechecker import TypeChecker
+
+# Reuse cached AST
+ast = self.ast_cache[uri]
 
 typechecker = TypeChecker()
 typechecker.check_program(ast)
 
 for error in typechecker.errors:
-    # Convert to LSP diagnostic
+    # Find accurate position using AST nodes
+    line, col, end_col = self._find_error_position(text, error, ast)
+    # Convert to LSP diagnostic with precise range
     ...
+```
+
+### Code Actions Implementation
+
+Quick fixes analyze diagnostics and provide edits:
+
+```python
+def _fix_unclosed_string(self, uri: str, text: str, diag_range: Dict):
+    """Fix unclosed string by adding closing quote."""
+    line_num = diag_range['start']['line']
+    line = text.split('\n')[line_num]
+    
+    if '"' in line and line.count('"') % 2 != 0:
+        return {
+            "title": "Add closing quote",
+            "kind": "quickfix",
+            "edit": {
+                "changes": {
+                    uri: [{
+                        "range": {"start": {...}, "end": {...}},
+                        "newText": '"'
+                    }]
+                }
+            }
+        }
+```
+
+### Signature Help Implementation
+
+Analyzes function call context:
+
+```python
+def _find_function_call(self, prefix: str) -> Dict:
+    """Find function call and parameter index."""
+    # Pattern: "func_name with arg1, arg2"
+    match = re.search(r'(\w+)\s+with\s+([^)]*?)$', prefix)
+    if match:
+        func_name = match.group(1)
+        param_index = match.group(2).count(',')
+        return {"name": func_name, "param_index": param_index}
 ```
 
 ### Context-Aware Completions
@@ -301,6 +451,18 @@ The NLPL LSP server reports these capabilities to clients:
     "resolveProvider": false,
     "triggerCharacters": [" ", "."]
   },
+  "signatureHelpProvider": {
+    "triggerCharacters": ["(", ",", " "],
+    "retriggerCharacters": [","]
+  },
+  "codeActionProvider": {
+    "codeActionKinds": [
+      "quickfix",
+      "refactor",
+      "refactor.extract",
+      "refactor.rewrite"
+    ]
+  },
   "definitionProvider": true,
   "hoverProvider": true,
   "documentFormattingProvider": true,
@@ -319,29 +481,37 @@ tail -f /tmp/nlpl-lsp.log
 
 ## Performance
 
-- **Diagnostics**: Real-time parsing on every keystroke
+- **Diagnostics**: Real-time parsing on every keystroke with AST caching
 - **Completions**: Cached keyword/stdlib data, dynamic variable extraction
 - **Go-to-definition**: Fast regex-based search (upgradable to AST-based)
+- **Code Actions**: On-demand generation from diagnostics
+- **Signature Help**: Lightweight pattern matching and signature lookup
+- **Multi-file**: Workspace file tracking with diagnostic caching
 
 ## Future Enhancements
 
-### Short Term (Session 2-3)
+### Short Term (Session 3)
+- [x] Enhanced error positioning (AST-based) ✅
+- [x] Code action providers (quick fixes) ✅
+- [x] Signature help for function calls ✅
+- [x] Multi-file diagnostics (imports) ✅
 - [ ] Semantic token highlighting
-- [ ] Code action providers (quick fixes)
-- [ ] Signature help for function calls
 - [ ] Document outline/symbols
+- [ ] Rename refactoring
 
 ### Medium Term
 - [ ] Incremental parsing for better performance
 - [ ] Workspace-wide type checking
-- [ ] Refactoring support (rename, extract function)
+- [ ] Advanced refactoring (extract method, inline variable)
 - [ ] Call hierarchy
+- [ ] Code lens (show references, implementations)
 
 ### Long Term
 - [ ] Debugger integration (DAP)
 - [ ] Test adapter integration
 - [ ] AI-assisted completions
 - [ ] Snippet library expansion
+- [ ] Performance profiling integration
 
 ## Troubleshooting
 
@@ -378,7 +548,9 @@ To extend the LSP server:
 1. **Add new diagnostics**: Edit `src/nlpl/lsp/diagnostics.py`
 2. **Add completions**: Edit `src/nlpl/lsp/completions.py`
 3. **Add hover info**: Edit `src/nlpl/lsp/hover.py`
-4. **Test changes**: Run `python dev_tools/test_lsp_diagnostics.py`
+4. **Add code actions**: Edit `src/nlpl/lsp/code_actions.py`
+5. **Add signature help**: Edit `src/nlpl/lsp/signature_help.py`
+6. **Test changes**: Run `python dev_tools/test_lsp_enhanced.py`
 
 ## References
 

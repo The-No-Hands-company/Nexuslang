@@ -20,6 +20,8 @@ from nlpl.lsp.definitions import DefinitionProvider
 from nlpl.lsp.hover import HoverProvider
 from nlpl.lsp.diagnostics import DiagnosticsProvider
 from nlpl.lsp.symbols import SymbolProvider
+from nlpl.lsp.code_actions import CodeActionsProvider
+from nlpl.lsp.signature_help import SignatureHelpProvider
 
 __all__ = [
     'NLPLLanguageServer',
@@ -27,5 +29,7 @@ __all__ = [
     'DefinitionProvider',
     'HoverProvider',
     'DiagnosticsProvider',
-    'SymbolProvider'
+    'SymbolProvider',
+    'CodeActionsProvider',
+    'SignatureHelpProvider'
 ]
