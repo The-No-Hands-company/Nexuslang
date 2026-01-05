@@ -787,25 +787,51 @@ class Parser:
         # Join multi-word names with underscore (e.g., "get name" -> "get_name")
         function_name = "_".join(function_name_parts)
         
-        # Check for generic type parameters: function name<T, R>
+        # Check for generic type parameters: function name<T, R> or function name<T: Comparable>
         type_parameters = []
-        type_constraints = []  # List of TypeConstraint nodes
+        type_constraints = {}  # Dict mapping parameter name to list of trait names
         
         if self.current_token and self.current_token.type == TokenType.LESS_THAN:
             self.advance()  # Eat '<'
             
-            # Parse type parameter names
-            if self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
-                type_parameters.append(self.current_token.lexeme)
+            # Parse type parameters with optional trait bounds
+            # Supports: <T>, <T: Comparable>, <T: Comparable + Printable>
+            while self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
+                param_name = self.current_token.lexeme
+                type_parameters.append(param_name)
                 self.advance()
-            
-            while self.current_token and self.current_token.type == TokenType.COMMA:
-                self.advance()  # Eat ','
-                if self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
-                    type_parameters.append(self.current_token.lexeme)
-                    self.advance()
+                
+                # Check for trait bounds: T: Comparable or T: Comparable + Printable
+                if self.current_token and self.current_token.type == TokenType.COLON:
+                    self.advance()  # Eat ':'
+                    
+                    # Parse trait names (one or more, separated by +)
+                    trait_bounds = []
+                    
+                    # Parse first trait
+                    if self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
+                        trait_bounds.append(self.current_token.lexeme)
+                        self.advance()
+                    else:
+                        self.error("Expected trait name after ':'")
+                    
+                    # Parse additional traits with + separator
+                    while self.current_token and self.current_token.type == TokenType.PLUS:
+                        self.advance()  # Eat '+'
+                        if self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
+                            trait_bounds.append(self.current_token.lexeme)
+                            self.advance()
+                        else:
+                            self.error("Expected trait name after '+'")
+                    
+                    # Store constraints for this parameter
+                    type_constraints[param_name] = trait_bounds
+                
+                # Check for comma (more parameters) or end
+                if self.current_token and self.current_token.type == TokenType.COMMA:
+                    self.advance()  # Eat ','
                 else:
-                    self.error("Expected type parameter name after comma")
+                    break
             
             # Expect '>'
             if self.current_token and self.current_token.type == TokenType.GREATER_THAN:

@@ -285,26 +285,34 @@ class TypeChecker:
                 # Find constraints for this parameter
                 constraints = []
                 if hasattr(definition, 'type_constraints'):
-                    for constraint in definition.type_constraints:
-                        if constraint.type_parameter == param_name:
-                            # Convert AST constraint to type system constraint
-                            constraint_type = get_type_by_name(constraint.constraint_type)
-                            constraints.append(
-                                GenericConstraint(
-                                    param_name,
-                                    constraint_type,
-                                    'comparable' if constraint.constraint_type == 'Comparable' else 'subtype'
-                                )
-                            )
+                    # New format: dict mapping parameter name to list of trait names
+                    if isinstance(definition.type_constraints, dict):
+                        trait_names = definition.type_constraints.get(param_name, [])
+                        for trait_name in trait_names:
+                            # For now, store trait names directly
+                            # Validation will happen at instantiation time
+                            constraints.append(trait_name)
+                    # Old format: list of constraint objects (for backward compatibility)
+                    elif isinstance(definition.type_constraints, list):
+                        for constraint in definition.type_constraints:
+                            if hasattr(constraint, 'type_parameter') and constraint.type_parameter == param_name:
+                                # Convert AST constraint to type system constraint
+                                constraint_type = get_type_by_name(constraint.constraint_type)
+                                constraints.append(constraint_type)
                 
-                type_param_info.append(TypeParameterInfo(
-                    name=param_name,
-                    constraints=constraints,
-                    variance='invariant'
-                ))
+                # Store parameter info with constraints
+                if constraints:
+                    # For now, we'll just track that constraints exist
+                    # Full validation happens during type checking
+                    pass
+                
+                type_param_info.append({
+                    'name': param_name,
+                    'constraints': constraints
+                })
             
-            # Enter generic scope
-            env.enter_generic_scope(type_param_info)
+            # Note: We don't enter a generic scope here anymore
+            # Just track that this is a generic function
         
         # Create a new environment for the function scope
         function_env = TypeEnvironment(env)
@@ -1197,4 +1205,91 @@ class TypeChecker:
         else:
             self.errors.append(f"Unknown generic type: {generic_name}")
             return ANY_TYPE
+
+    def check_generic_constraints(self, type_params: list, type_args: list, 
+                                   constraints: dict, context: str = "") -> bool:
+        """
+        Check if type arguments satisfy generic type parameter constraints.
+        
+        Args:
+            type_params: List of type parameter names (e.g., ['T', 'R'])
+            type_args: List of concrete types being substituted
+            constraints: Dict mapping parameter name to list of trait names
+            context: Context string for error messages (e.g., "function sum")
+            
+        Returns:
+            True if all constraints are satisfied, False otherwise
+        """
+        from nlpl.typesystem.types import TraitType, COMPARABLE_TRAIT, EQUATABLE_TRAIT, PRINTABLE_TRAIT
+        from nlpl.typesystem.generic_types import GenericTypeConstraint
+        
+        if len(type_params) != len(type_args):
+            self.errors.append(
+                f"Type error in {context}: Expected {len(type_params)} type arguments, got {len(type_args)}"
+            )
+            return False
+        
+        # Map of predefined traits
+        TRAIT_MAP = {
+            'Comparable': COMPARABLE_TRAIT,
+            'Equatable': EQUATABLE_TRAIT,
+            'Printable': PRINTABLE_TRAIT,
+            # Add more traits as they're defined
+        }
+        
+        all_satisfied = True
+        
+        for param_name, type_arg in zip(type_params, type_args):
+            # Check if this parameter has constraints
+            if param_name not in constraints:
+                continue
+            
+            trait_names = constraints[param_name]
+            
+            for trait_name in trait_names:
+                # Get the trait type
+                trait = TRAIT_MAP.get(trait_name)
+                
+                if trait is None:
+                    self.errors.append(
+                        f"Type error in {context}: Unknown trait '{trait_name}'"
+                    )
+                    all_satisfied = False
+                    continue
+                
+                # Check if the type argument implements the trait
+                if not trait.is_implemented_by(type_arg):
+                    self.errors.append(
+                        f"Type error in {context}: Type '{self._type_name(type_arg)}' does not implement trait '{trait_name}'"
+                    )
+                    all_satisfied = False
+        
+        return all_satisfied
+    
+    def validate_generic_function_call(self, func_name: str, func_def, type_args: list) -> bool:
+        """
+        Validate that a generic function call satisfies trait bounds.
+        
+        Args:
+            func_name: Name of the function being called
+            func_def: FunctionDefinition AST node
+            type_args: List of concrete type arguments
+            
+        Returns:
+            True if valid, False otherwise
+        """
+        if not hasattr(func_def, 'type_parameters') or not func_def.type_parameters:
+            return True  # Not a generic function
+        
+        # Get constraints from function definition
+        constraints = {}
+        if hasattr(func_def, 'type_constraints') and isinstance(func_def.type_constraints, dict):
+            constraints = func_def.type_constraints
+        
+        return self.check_generic_constraints(
+            func_def.type_parameters,
+            type_args,
+            constraints,
+            context=f"function '{func_name}'"
+        )
  

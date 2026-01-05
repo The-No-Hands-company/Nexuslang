@@ -735,3 +735,32 @@ class TypeInferenceEngine:
             return func_type.return_type
         
         return ANY_TYPE
+    def create_generic_context(self, func_name: str, type_parameters: list, 
+                               type_constraints: dict = None):
+        """
+        Create a generic context for a function with type parameters.
+        
+        Args:
+            func_name: Name of the function
+            type_parameters: List of type parameter names (e.g., ['T', 'R'])
+            type_constraints: Dict mapping parameter names to trait constraints
+            
+        Returns:
+            A simple object to track generic context (simplified for now)
+        """
+        from nlpl.typesystem.generic_types import GenericTypeContext
+        
+        context = GenericTypeContext()
+        
+        # Add type parameters to context
+        for param_name in type_parameters:
+            constraints = []
+            if type_constraints and param_name in type_constraints:
+                # Get trait constraints for this parameter
+                trait_names = type_constraints[param_name]
+                # Convert trait names to actual trait types would happen here
+                constraints = trait_names  # Simplified for now
+            
+            context.add_type_parameter(param_name, constraints if constraints else None)
+        
+        return context
