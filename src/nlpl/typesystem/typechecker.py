@@ -219,13 +219,16 @@ class TypeChecker:
         return self.check_statement(expression, env)
     
     def check_variable_declaration(self, declaration: VariableDeclaration, env: TypeEnvironment) -> Type:
-        """Check the type of a variable declaration."""
-        # Check the type of the value
-        value_type = self.check_expression(declaration.value, env)
-        
-        # If there's a type annotation, check that it's compatible
+        """Check the type of a variable declaration with bidirectional inference."""
+        # If there's a type annotation, use bidirectional inference
         if declaration.type_annotation:
             declared_type = get_type_by_name(declaration.type_annotation)
+            
+            # Use bidirectional inference: expected type guides value type inference
+            value_type = self.type_inference.infer_with_expected_type(
+                declaration.value, declared_type, env.variables
+            )
+            
             if not value_type.is_compatible_with(declared_type):
                 self.errors.append(
                     f"Line {declaration.line_number}: Type error: Cannot assign value of type "
@@ -239,7 +242,8 @@ class TypeChecker:
             env.define_variable(declaration.name, declared_type)
             return declared_type
         
-        # If there's no type annotation, use type inference for improved type information
+        # If there's no type annotation, infer without expected type
+        value_type = self.check_expression(declaration.value, env)
         inferred_type = self.type_inference.infer_variable_declaration(declaration, env.variables)
         if inferred_type != value_type and inferred_type != ANY_TYPE:
             # If inference came up with a more specific type, use it
@@ -481,22 +485,24 @@ class TypeChecker:
         return UnionType([try_type, catch_type])
     
     def check_function_call(self, call: FunctionCall, env: TypeEnvironment) -> Type:
-        """Check a function call."""
-        # Check the arguments
-        arg_types = [self.check_statement(arg, env) for arg in call.arguments]
-        
+        """Check a function call with bidirectional type inference."""
         try:
             # Get the function type
             function_type = env.get_function_type(call.name)
             
             # Check argument count
-            if len(arg_types) != len(function_type.param_types):
+            if len(call.arguments) != len(function_type.param_types):
                 self.errors.append(
-                    f"Type error: Function '{call.name}' expects {len(function_type.param_types)} arguments, got {len(arg_types)}"
+                    f"Type error: Function '{call.name}' expects {len(function_type.param_types)} arguments, got {len(call.arguments)}"
                 )
                 return function_type.return_type
             
-            # Check argument types
+            # Use bidirectional inference: infer argument types with expected parameter types
+            arg_types = self.type_inference.infer_argument_types_from_function(
+                function_type, call.arguments, env.variables
+            )
+            
+            # Check argument types against parameter types
             for i, (arg_type, param_type) in enumerate(zip(arg_types, function_type.param_types)):
                 if not arg_type.is_compatible_with(param_type):
                     self.errors.append(
@@ -505,8 +511,9 @@ class TypeChecker:
             
             return function_type.return_type
         except TypeCheckError:
-            # If the function is not defined, assume it's a built-in function
-            # In a real implementation, we would check against a registry of built-in functions
+            # If the function is not defined, check arguments without expected types
+            arg_types = [self.check_statement(arg, env) for arg in call.arguments]
+            # Assume it's a built-in function
             return ANY_TYPE
     
     def _type_name(self, type_: Type) -> str:

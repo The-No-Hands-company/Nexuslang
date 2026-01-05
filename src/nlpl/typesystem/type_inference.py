@@ -187,6 +187,15 @@ class TypeInferenceEngine:
                     body_type = self.infer_with_expected_type(expr.body, expected.return_type, lambda_env)
                     return FunctionType(expected.param_types, body_type)
         
+        # Handle function calls with expected return type
+        if isinstance(expr, FunctionCall):
+            # Even if we expect a specific return type, we still need to infer the actual return type
+            # But we can use the expected type to guide argument type inference
+            inferred = self.infer_expression_type(expr, env)
+            if inferred.is_compatible_with(expected):
+                return expected
+            return inferred
+        
         # For other expressions, check if inferred type matches expected
         inferred = self.infer_expression_type(expr, env)
         if inferred.is_compatible_with(expected):
@@ -384,4 +393,50 @@ class TypeInferenceEngine:
                 inferred_type = self.infer_variable_declaration(stmt, env, generic_context)
                 env[stmt.name] = inferred_type
         
-        return env 
+        return env
+    
+    def infer_argument_types_from_function(self, function_type: FunctionType, arguments: List[Expression], env: Dict[str, Type]) -> List[Type]:
+        """
+        Infer argument types using bidirectional inference from function signature.
+        
+        This uses the function's parameter types to guide inference of argument expressions.
+        Especially useful for lambdas and literals where type can be ambiguous.
+        
+        Args:
+            function_type: The function type being called
+            arguments: Argument expressions
+            env: Type environment
+            
+        Returns:
+            List of inferred argument types
+        """
+        inferred_types = []
+        
+        for i, arg in enumerate(arguments):
+            # Get expected type from function signature
+            expected_type = None
+            if i < len(function_type.param_types):
+                expected_type = function_type.param_types[i]
+            
+            # Use bidirectional inference with expected type
+            arg_type = self.infer_with_expected_type(arg, expected_type, env)
+            inferred_types.append(arg_type)
+        
+        return inferred_types
+    
+    def infer_from_return_context(self, expr: Expression, expected_return_type: Type, env: Dict[str, Type]) -> Type:
+        """
+        Infer expression type with expected return type context.
+        
+        This helps when the expression is in a return statement and we know
+        what type the function should return.
+        
+        Args:
+            expr: Expression being returned
+            expected_return_type: Expected return type of the function
+            env: Type environment
+            
+        Returns:
+            Inferred type
+        """
+        return self.infer_with_expected_type(expr, expected_return_type, env) 
