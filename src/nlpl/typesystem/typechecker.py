@@ -216,6 +216,9 @@ class TypeChecker:
         elif statement.__class__.__name__ == 'IndexExpression':
             # Handle index expressions: array[index] or dict[key]
             return self.check_index_expression(statement, env)
+        elif statement.__class__.__name__ == 'GenericTypeInstantiation':
+            # Handle generic type instantiation: create list, create list of Integer
+            return self.check_generic_type_instantiation(statement, env)
         else:
             raise TypeCheckError(f"Unsupported statement type: {statement.__class__.__name__}")
             return ANY_TYPE
@@ -1108,4 +1111,90 @@ class TypeChecker:
             )
         
         return inferred_type
+
+    def check_generic_type_instantiation(self, expr: Any, env: TypeEnvironment) -> Type:
+        """
+        Check a generic type instantiation: create list, create list of Integer
+        
+        Returns the appropriate generic type based on the instantiation:
+        - create list of Integer -> ListType(INTEGER_TYPE)
+        - create dict of String to Integer -> DictionaryType(STRING_TYPE, INTEGER_TYPE)
+        - create list (no type args) -> ListType(ANY_TYPE) with type inference
+        """
+        from nlpl.typesystem.types import ListType, DictionaryType, SetType, TupleType
+        
+        generic_name = expr.generic_name.lower()
+        
+        # Handle list types
+        if generic_name == "list":
+            if expr.type_args and len(expr.type_args) > 0:
+                # Explicit type: create list of Integer
+                element_type = get_type_by_name(expr.type_args[0])
+                return ListType(element_type)
+            else:
+                # Type inference: create list (will infer from usage)
+                # Check if there's an initial value to infer from
+                if expr.initial_value:
+                    # Infer element type from initial value
+                    init_type = self.check_statement(expr.initial_value, env)
+                    if isinstance(init_type, ListType):
+                        return init_type  # Already a list with inferred type
+                    else:
+                        return ListType(init_type)  # Single element
+                return ListType(ANY_TYPE)  # Will infer later
+        
+        # Handle dict/dictionary/map types
+        elif generic_name in ("dict", "dictionary", "map"):
+            if expr.type_args and len(expr.type_args) >= 2:
+                # Explicit types: create dict of String to Integer
+                key_type = get_type_by_name(expr.type_args[0])
+                value_type = get_type_by_name(expr.type_args[1])
+                return DictionaryType(key_type, value_type)
+            else:
+                # Type inference: create dict
+                if expr.initial_value:
+                    init_type = self.check_statement(expr.initial_value, env)
+                    if isinstance(init_type, DictionaryType):
+                        return init_type
+                return DictionaryType(ANY_TYPE, ANY_TYPE)
+        
+        # Handle set types
+        elif generic_name == "set":
+            if expr.type_args and len(expr.type_args) > 0:
+                element_type = get_type_by_name(expr.type_args[0])
+                return SetType(element_type)
+            else:
+                if expr.initial_value:
+                    init_type = self.check_statement(expr.initial_value, env)
+                    if isinstance(init_type, SetType):
+                        return init_type
+                    else:
+                        return SetType(init_type)
+                return SetType(ANY_TYPE)
+        
+        # Handle tuple types
+        elif generic_name == "tuple":
+            if expr.type_args and len(expr.type_args) > 0:
+                element_types = [get_type_by_name(t) for t in expr.type_args]
+                return TupleType(element_types)
+            else:
+                if expr.initial_value:
+                    # Infer from initial values
+                    init_type = self.check_statement(expr.initial_value, env)
+                    if isinstance(init_type, TupleType):
+                        return init_type
+                return TupleType([ANY_TYPE])
+        
+        # Handle queue and stack (simplified as List)
+        elif generic_name in ("queue", "stack"):
+            if expr.type_args and len(expr.type_args) > 0:
+                element_type = get_type_by_name(expr.type_args[0])
+                return ListType(element_type)
+            else:
+                return ListType(ANY_TYPE)
+        
+        # Unknown generic type
+        else:
+            self.errors.append(f"Unknown generic type: {generic_name}")
+            return ANY_TYPE
  

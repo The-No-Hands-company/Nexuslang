@@ -288,6 +288,57 @@ def list_append(target, value):
     return None
 
 
+def dict_set(target, key, value):
+    """Set a key-value pair in a dictionary or map.
+    
+    Args:
+        target: dict, HashMap, or any mapping type
+        key: Key to set
+        value: Value to associate with key
+        
+    Returns:
+        None (modifies target in-place)
+    """
+    if isinstance(target, dict):
+        target[key] = value
+    elif isinstance(target, HashMap):
+        target.insert(key, value)
+    elif hasattr(target, '__setitem__'):
+        target[key] = value
+    else:
+        raise TypeError(f"Cannot set key in type {type(target).__name__}")
+    return None
+
+
+def dict_get(target, key, default=None):
+    """Get a value from a dictionary or map.
+    
+    Args:
+        target: dict, HashMap, or any mapping type
+        key: Key to retrieve
+        default: Default value if key not found
+        
+    Returns:
+        Value associated with key, or default if not found
+    """
+    if isinstance(target, dict):
+        return target.get(key, default)
+    elif isinstance(target, HashMap):
+        result = target.get(key)
+        if hasattr(result, 'is_some') and result.is_some():
+            return result.unwrap()
+        return default
+    elif hasattr(target, 'get'):
+        return target.get(key, default)
+    elif hasattr(target, '__getitem__'):
+        try:
+            return target[key]
+        except (KeyError, IndexError):
+            return default
+    else:
+        raise TypeError(f"Cannot get key from type {type(target).__name__}")
+
+
 def register_collections_functions(runtime):
     """Register collection constructors with runtime."""
     runtime.register_function("Vec", Vec)
@@ -295,3 +346,5 @@ def register_collections_functions(runtime):
     runtime.register_function("Set", Set)
     runtime.register_function("list_append", list_append)
     runtime.register_function("append", list_append)  # Alias
+    runtime.register_function("dict_set", dict_set)
+    runtime.register_function("dict_get", dict_get)

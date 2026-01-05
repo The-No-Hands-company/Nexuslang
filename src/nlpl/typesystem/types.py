@@ -132,6 +132,71 @@ class DictionaryType(Type):
     def __hash__(self) -> int:
         return hash(("Dict", self.key_type, self.value_type))
 
+class SetType(Type):
+    """Represents a set type with an element type."""
+    
+    def __init__(self, element_type: Type):
+        self.element_type = element_type
+    
+    def is_compatible_with(self, other: Type) -> bool:
+        if isinstance(other, SetType):
+            return self.element_type.is_compatible_with(other.element_type)
+        return isinstance(other, AnyType)
+    
+    def get_common_supertype(self, other: Type) -> Optional[Type]:
+        if isinstance(other, SetType):
+            common_element_type = self.element_type.get_common_supertype(other.element_type)
+            if common_element_type:
+                return SetType(common_element_type)
+        return ANY_TYPE
+    
+    def _equals(self, other: Type) -> bool:
+        return self.element_type == other.element_type
+
+    def __hash__(self) -> int:
+        return hash(("Set", self.element_type))
+
+class TupleType(Type):
+    """Represents a tuple type with fixed element types."""
+    
+    def __init__(self, element_types: list):
+        self.element_types = element_types if element_types else []
+    
+    def is_compatible_with(self, other: Type) -> bool:
+        if isinstance(other, TupleType):
+            if len(self.element_types) != len(other.element_types):
+                return False
+            return all(
+                self_type.is_compatible_with(other_type)
+                for self_type, other_type in zip(self.element_types, other.element_types)
+            )
+        return isinstance(other, AnyType)
+    
+    def get_common_supertype(self, other: Type) -> Optional[Type]:
+        if isinstance(other, TupleType):
+            if len(self.element_types) != len(other.element_types):
+                return ANY_TYPE
+            common_types = []
+            for self_type, other_type in zip(self.element_types, other.element_types):
+                common_type = self_type.get_common_supertype(other_type)
+                if common_type:
+                    common_types.append(common_type)
+                else:
+                    return ANY_TYPE
+            return TupleType(common_types)
+        return ANY_TYPE
+    
+    def _equals(self, other: Type) -> bool:
+        if len(self.element_types) != len(other.element_types):
+            return False
+        return all(
+            self_type == other_type
+            for self_type, other_type in zip(self.element_types, other.element_types)
+        )
+
+    def __hash__(self) -> int:
+        return hash(("Tuple", tuple(self.element_types)))
+
 class FunctionType(Type):
     """Represents a function type with parameter types and return type."""
     

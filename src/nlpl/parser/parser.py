@@ -4551,8 +4551,10 @@ class Parser:
         Parse generic type instantiation:
         - create list of Integer
         - create list of String with ["a", "b", "c"]
+        - create list  (type inference)
         - create dict of String to Integer
         - create dict of String to List of Integer
+        - create dictionary  (type inference)
         
         Returns a GenericTypeInstantiation AST node.
         """
@@ -4561,37 +4563,48 @@ class Parser:
         line_num = self.current_token.line if hasattr(self.current_token, 'line') else 0
         self.eat(TokenType.CREATE)  # consume 'create'
         
-        # Expect type name (list, dict, etc.)
-        if not self.current_token or self.current_token.type not in [TokenType.LIST, TokenType.DICTIONARY, TokenType.IDENTIFIER]:
-            self.error("Expected type name after 'create' (e.g., 'list', 'dict')")
+        # Expect type name (list, dict, set, tuple, queue, stack, etc.)
+        # Note: Some collection names may be keywords (SET, STRUCT, etc.)
+        # We allow them in this context as type names
+        valid_types = [
+            TokenType.LIST, TokenType.DICTIONARY, TokenType.IDENTIFIER,
+            TokenType.SET,  # Allow SET keyword as collection type name
+            TokenType.STRUCT, TokenType.ENUM, TokenType.UNION  # Allow struct/enum/union as type names
+        ]
         
-        generic_name = self.current_token.lexeme.lower()  # "list", "dict", etc.
+        if not self.current_token or self.current_token.type not in valid_types:
+            self.error("Expected type name after 'create' (e.g., 'list', 'dict', 'set', 'tuple')")
+        
+        generic_name = self.current_token.lexeme.lower()  # "list", "dict", "set", "tuple", etc.
         self.advance()
         
-        # Expect 'of'
-        if not self.current_token or self.current_token.type != TokenType.OF:
-            self.error(f"Expected 'of' after 'create {generic_name}'")
-        self.advance()  # consume 'of'
+        # Check for 'of' - now optional for type inference
+        has_explicit_type = False
+        if self.current_token and self.current_token.type == TokenType.OF:
+            has_explicit_type = True
+            self.advance()  # consume 'of'
         
-        # Parse type arguments
+        # Parse type arguments (only if explicit type provided)
         type_args = []
         
-        if generic_name == "dict" or generic_name == "dictionary":
-            # Dictionary requires: create dict of KeyType to ValueType
-            key_type = self._parse_generic_type_argument()
-            type_args.append(key_type)
-            
-            # Expect 'to'
-            if not self.current_token or self.current_token.type != TokenType.TO:
-                self.error("Expected 'to' between key and value types in dictionary creation")
-            self.advance()  # consume 'to'
-            
-            value_type = self._parse_generic_type_argument()
-            type_args.append(value_type)
-        else:
-            # List or other single-parameter generic: create list of ElementType
-            element_type = self._parse_generic_type_argument()
-            type_args.append(element_type)
+        if has_explicit_type:
+            if generic_name == "dict" or generic_name == "dictionary":
+                # Dictionary requires: create dict of KeyType to ValueType
+                key_type = self._parse_generic_type_argument()
+                type_args.append(key_type)
+                
+                # Expect 'to'
+                if not self.current_token or self.current_token.type != TokenType.TO:
+                    self.error("Expected 'to' between key and value types in dictionary creation")
+                self.advance()  # consume 'to'
+                
+                value_type = self._parse_generic_type_argument()
+                type_args.append(value_type)
+            else:
+                # List or other single-parameter generic: create list of ElementType
+                element_type = self._parse_generic_type_argument()
+                type_args.append(element_type)
+        # If no explicit type, type_args remains empty - type inference will handle it
         
         # Check for optional initial value: with [...]
         initial_value = None
