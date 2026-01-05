@@ -1,0 +1,96 @@
+{
+  "scopeName": "source.nlpl",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#types"
+    },
+    {
+      "include": "#functions"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.number-sign.nlpl",
+          "match": "#.*$"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.nlpl",
+          "match": "\\b(if|else|while|for|each|in|return|break|continue|match|case)\\b"
+        },
+        {
+          "name": "keyword.declaration.nlpl",
+          "match": "\\b(function|class|struct|union|enum|set|to|as|of|with|called|that|takes|returns)\\b"
+        },
+        {
+          "name": "keyword.operator.nlpl",
+          "match": "\\b(plus|minus|times|divided by|modulo|is|equal|greater|less|than|and|or|not)\\b"
+        },
+        {
+          "name": "keyword.other.nlpl",
+          "match": "\\b(import|export|from|new|delete|sizeof|typeof|address of|dereference|allocate|free)\\b"
+        },
+        {
+          "name": "constant.language.nlpl",
+          "match": "\\b(true|false|null)\\b"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.nlpl",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.nlpl",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.nlpl",
+          "match": "\\b\\d+(\\.\\d+)?\\b"
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "name": "storage.type.nlpl",
+          "match": "\\b(Integer|Float|String|Boolean|List|Dictionary|Set|Tuple|Optional|Result|Pointer|Array|Queue|Stack)\\b"
+        }
+      ]
+    },
+    "functions": {
+      "patterns": [
+        {
+          "name": "entity.name.function.nlpl",
+          "match": "\\b([a-z_][a-z0-9_]*)(?=\\s*\\(|\\s+with|\\s+that)"
+        }
+      ]
+    }
+  }
+}

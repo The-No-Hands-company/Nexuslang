@@ -1,0 +1,8 @@
+{
+  "nlpl.languageServer.enabled": true,
+  "nlpl.languageServer.path": "${workspaceFolder}/src/nlpl_lsp.py",
+  "nlpl.trace.server": "verbose",
+  "files.associations": {
+    "*.nlpl": "nlpl"
+  }
+}
