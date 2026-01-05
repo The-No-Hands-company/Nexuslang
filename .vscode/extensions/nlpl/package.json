@@ -1,14 +1,35 @@
 {
   "name": "nlpl-language-support",
   "displayName": "NLPL Language Support",
-  "description": "Language support for NLPL (Natural Language Programming Language)",
+  "description": "Complete language support for NLPL - Natural Language Programming Language with LSP features",
   "version": "0.1.0",
-  "publisher": "nlpl",
+  "publisher": "nlpl-lang",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Zajfan/NLPL.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Zajfan/NLPL/issues"
+  },
+  "homepage": "https://github.com/Zajfan/NLPL#readme",
+  "license": "MIT",
+  "keywords": [
+    "nlpl",
+    "natural-language",
+    "programming",
+    "language-server",
+    "lsp",
+    "syntax-highlighting",
+    "code-completion"
+  ],
   "engines": {
     "vscode": "^1.75.0"
   },
   "categories": [
-    "Programming Languages"
+    "Programming Languages",
+    "Linters",
+    "Formatters"
   ],
   "main": "./extension.js",
   "contributes": {
