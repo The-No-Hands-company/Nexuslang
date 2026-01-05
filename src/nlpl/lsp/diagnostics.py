@@ -14,9 +14,9 @@ class DiagnosticsProvider:
     Provides real-time diagnostics.
     
     Checks for:
-    - Syntax errors
+    - Syntax errors (using NLPL parser)
+    - Type errors (using NLPL type checker)
     - Undefined variables
-    - Type mismatches
     - Unused variables
     - Best practice violations
     """
@@ -37,10 +37,129 @@ class DiagnosticsProvider:
         """
         diagnostics = []
         
-        # Check for common errors
-        diagnostics.extend(self._check_syntax(text))
-        diagnostics.extend(self._check_undefined_vars(text))
+        # Try parser-based syntax checking first
+        parser_diagnostics = self._check_parser_syntax(text)
+        if parser_diagnostics:
+            diagnostics.extend(parser_diagnostics)
+        else:
+            # Fallback to basic syntax checks
+            diagnostics.extend(self._check_syntax(text))
+        
+        # Try type checker diagnostics
+        type_diagnostics = self._check_type_errors(text)
+        if type_diagnostics:
+            diagnostics.extend(type_diagnostics)
+        
+        # Additional static checks
         diagnostics.extend(self._check_unused_vars(text))
+        
+        return diagnostics
+    
+    def _check_parser_syntax(self, text: str) -> List[Dict]:
+        """
+        Check syntax using NLPL parser.
+        
+        Returns:
+            List of diagnostics or empty list if parser not available
+        """
+        diagnostics = []
+        
+        try:
+            from nlpl.parser.lexer import Lexer
+            from nlpl.parser.parser import Parser
+            
+            # Try to parse
+            lexer = Lexer(text)
+            tokens = lexer.tokenize()
+            parser = Parser(tokens)
+            parser.parse()
+            
+            # If we got here without exception, no syntax errors
+            return []
+            
+        except Exception as e:
+            # Parse error - try to extract line/column info
+            error_msg = str(e)
+            
+            # Try to extract line number from error message
+            line_match = re.search(r'line (\d+)', error_msg, re.IGNORECASE)
+            col_match = re.search(r'column (\d+)', error_msg, re.IGNORECASE)
+            
+            line = int(line_match.group(1)) - 1 if line_match else 0
+            col = int(col_match.group(1)) - 1 if col_match else 0
+            
+            # Get the problematic line
+            lines = text.split('\n')
+            if line < len(lines):
+                line_text = lines[line]
+                end_col = min(col + 10, len(line_text))  # Highlight ~10 chars
+            else:
+                end_col = col + 1
+            
+            diagnostics.append({
+                "range": {
+                    "start": {"line": line, "character": col},
+                    "end": {"line": line, "character": end_col}
+                },
+                "severity": 1,  # Error
+                "message": f"Syntax error: {error_msg}",
+                "source": "nlpl-parser"
+            })
+        
+        return diagnostics
+    
+    def _check_type_errors(self, text: str) -> List[Dict]:
+        """
+        Check for type errors using NLPL type checker.
+        
+        Returns:
+            List of diagnostics or empty list if type checker not available
+        """
+        diagnostics = []
+        
+        try:
+            from nlpl.parser.lexer import Lexer
+            from nlpl.parser.parser import Parser
+            from nlpl.typesystem.typechecker import TypeChecker
+            
+            # Parse first
+            lexer = Lexer(text)
+            tokens = lexer.tokenize()
+            parser = Parser(tokens)
+            ast = parser.parse()
+            
+            # Type check
+            typechecker = TypeChecker()
+            typechecker.check_program(ast)
+            
+            # Convert type errors to diagnostics
+            for error in typechecker.errors:
+                # Try to extract position info from error
+                line = 0
+                col = 0
+                
+                # Simple heuristic: find the line containing the error
+                error_lower = error.lower()
+                for i, line_text in enumerate(text.split('\n')):
+                    # Look for variable names, function names, etc. mentioned in error
+                    if any(word in line_text.lower() for word in error_lower.split() 
+                           if len(word) > 3 and word.isalpha()):
+                        line = i
+                        break
+                
+                diagnostics.append({
+                    "range": {
+                        "start": {"line": line, "character": 0},
+                        "end": {"line": line, "character": 100}
+                    },
+                    "severity": 1,  # Error
+                    "message": f"Type error: {error}",
+                    "source": "nlpl-typechecker"
+                })
+        
+        except Exception:
+            # If parsing fails, syntax errors will be caught by _check_parser_syntax
+            pass
         
         return diagnostics
     

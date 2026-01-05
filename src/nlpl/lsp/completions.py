@@ -117,54 +117,143 @@ class CompletionProvider:
         word_match = re.search(r'(\w+)$', prefix)
         current_word = word_match.group(1) if word_match else ''
         
-        # Add keyword completions
-        for keyword in self.keywords:
-            if keyword.startswith(current_word.lower()):
+        # Context-aware completions
+        # After "set X to" - suggest values/functions
+        if re.search(r'\bset\s+\w+\s+to\s*$', prefix, re.IGNORECASE):
+            completions.extend(self._get_value_completions(text, current_word))
+        
+        # After "function X that takes" - suggest parameter patterns
+        elif re.search(r'\bfunction\s+\w+\s+that\s+takes\s*$', prefix, re.IGNORECASE):
+            completions.append({
+                "label": "param as Type",
+                "kind": 15,
+                "insertText": "${1:param_name} as ${2:Type}",
+                "documentation": "Parameter declaration"
+            })
+        
+        # After "returns" - suggest types
+        elif re.search(r'\breturns\s*$', prefix, re.IGNORECASE):
+            completions.extend(self._get_type_completions(current_word))
+        
+        # After "as" - suggest types  
+        elif re.search(r'\bas\s*$', prefix, re.IGNORECASE):
+            completions.extend(self._get_type_completions(current_word))
+        
+        # After "create" - suggest collection types
+        elif re.search(r'\bcreate\s*$', prefix, re.IGNORECASE):
+            for coll_type in ["list", "dictionary", "set", "tuple", "queue", "stack"]:
                 completions.append({
-                    "label": keyword,
-                    "kind": 14,  # Keyword
-                    "detail": "NLPL keyword",
-                    "insertText": keyword
+                    "label": f"{coll_type}",
+                    "kind": 14,
+                    "insertText": f"{coll_type}",
+                    "documentation": f"Create a {coll_type}"
                 })
         
-        # Add snippet completions
-        for name, snippet in self.snippets.items():
-            if name.startswith(current_word.lower()):
-                completions.append(snippet)
-        
-        # Add standard library completions
-        for module, functions in self.stdlib_modules.items():
+        # General completions
+        else:
+            # Add keyword completions
+            for keyword in self.keywords:
+                if keyword.lower().startswith(current_word.lower()):
+                    completions.append({
+                        "label": keyword,
+                        "kind": 14,  # Keyword
+                        "detail": "NLPL keyword",
+                        "insertText": keyword
+                    })
+            
+            # Add snippet completions
+            for name, snippet in self.snippets.items():
+                if name.startswith(current_word.lower()):
+                    completions.append(snippet)
+            
+            # Add standard library completions
+            for module, functions in self.stdlib_modules.items():
+                for func in functions:
+                    if func.startswith(current_word.lower()):
+                        completions.append({
+                            "label": func,
+                            "kind": 3,  # Function
+                            "detail": f"from {module}",
+                            "documentation": f"Standard library function from {module} module",
+                            "insertText": func
+                        })
+            
+            # Add variable completions from current document
+            variables = self._extract_variables(text)
+            for var in variables:
+                if var.lower().startswith(current_word.lower()):
+                    completions.append({
+                        "label": var,
+                        "kind": 6,  # Variable
+                        "detail": "Variable",
+                        "insertText": var
+                    })
+            
+            # Add function completions from current document
+            functions = self._extract_functions(text)
             for func in functions:
-                if func.startswith(current_word.lower()):
+                if func.lower().startswith(current_word.lower()):
                     completions.append({
                         "label": func,
                         "kind": 3,  # Function
-                        "detail": f"from {module}",
-                        "documentation": f"Standard library function from {module} module",
+                        "detail": "Function",
                         "insertText": func
                     })
         
-        # Add variable completions from current document
-        variables = self._extract_variables(text)
-        for var in variables:
-            if var.startswith(current_word.lower()):
+        return completions
+    
+    def _get_type_completions(self, current_word: str) -> List[Dict]:
+        """Get type name completions."""
+        types = [
+            "Integer", "Float", "String", "Boolean",
+            "List", "Dictionary", "Set", "Tuple",
+            "Optional", "Result", "Pointer", "Array",
+            "Queue", "Stack"
+        ]
+        
+        completions = []
+        for type_name in types:
+            if type_name.lower().startswith(current_word.lower()):
                 completions.append({
-                    "label": var,
-                    "kind": 6,  # Variable
-                    "detail": "Variable",
-                    "insertText": var
+                    "label": type_name,
+                    "kind": 7,  # Class (type)
+                    "detail": "Type",
+                    "insertText": type_name
                 })
         
-        # Add function completions from current document
-        functions = self._extract_functions(text)
-        for func in functions:
-            if func.startswith(current_word.lower()):
+        return completions
+    
+    def _get_value_completions(self, text: str, current_word: str) -> List[Dict]:
+        """Get value/expression completions."""
+        completions = []
+        
+        # Add constants
+        for const in ["true", "false", "null"]:
+            if const.startswith(current_word.lower()):
                 completions.append({
-                    "label": func,
-                    "kind": 3,  # Function
-                    "detail": "Function",
-                    "insertText": func
+                    "label": const,
+                    "kind": 21,  # Constant
+                    "detail": "Constant",
+                    "insertText": const
                 })
+        
+        # Add "create" for collection initialization
+        if "create".startswith(current_word.lower()):
+            completions.append({
+                "label": "create",
+                "kind": 14,
+                "detail": "Create collection",
+                "insertText": "create ${1:list}"
+            })
+        
+        # Add "new" for object instantiation
+        if "new".startswith(current_word.lower()):
+            completions.append({
+                "label": "new",
+                "kind": 14,
+                "detail": "Create object",
+                "insertText": "new ${1:ClassName}"
+            })
         
         return completions
     
