@@ -129,9 +129,56 @@ pip install -r requirements.txt
 
 ### Running NLPL Programs
 
+**Execute a file:**
+
 ```bash
-python src/main.py path/to/your/program.nlpl
+python -m nlpl.main path/to/your/program.nlpl
 ```
+
+**Start interactive REPL:**
+
+```bash
+python -m nlpl.main
+# or
+python nlpl_repl.py
+```
+
+**With options:**
+
+```bash
+python -m nlpl.main --debug              # Enable debug mode
+python -m nlpl.main --no-type-check      # Disable type checking
+python -m nlpl.main program.nlpl --repl  # Run file then enter REPL
+```
+
+### Interactive REPL
+
+NLPL includes a powerful interactive REPL (Read-Eval-Print Loop) with:
+
+- **Multi-line input**: Automatic detection of incomplete statements
+- **Command history**: Navigate previous commands with arrow keys (persistent)
+- **Auto-completion**: Tab completion for keywords, variables, functions
+- **Error recovery**: Catch exceptions and continue running
+- **Special commands**: `:help`, `:vars`, `:funcs`, `:debug`, `:reset`, etc.
+
+Example REPL session:
+
+```nlpl
+>>> set x to 42
+=> 42
+>>> function greet with name as String returns String
+... return "Hello, " plus name
+... end
+=> greet
+>>> greet with "World"
+=> Hello, World
+>>> :vars
+Variables:
+  x = 42
+  greet = <function>
+```
+
+See `docs/7_development/repl.md` for full REPL documentation.
 
 ## Examples
 

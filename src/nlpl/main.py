@@ -80,11 +80,26 @@ def print_ast(node, indent=0):
 def main():
     """Main entry point for the NLPL interpreter."""
     parser = argparse.ArgumentParser(description='Natural Language Programming Language Interpreter')
-    parser.add_argument('file', help='The NLPL file to execute')
+    parser.add_argument('file', nargs='?', help='The NLPL file to execute (omit for interactive REPL)')
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')
     parser.add_argument('--no-type-check', action='store_true', help='Disable type checking')
+    parser.add_argument('--repl', action='store_true', help='Start interactive REPL (default if no file)')
     
     args = parser.parse_args()
+    
+    # Start REPL if no file specified or --repl flag
+    if args.file is None or args.repl:
+        from .repl.repl import REPL
+        repl = REPL(debug=args.debug, type_check=not args.no_type_check)
+        try:
+            repl.run()
+        except Exception as e:
+            print(f"REPL Error: {e}")
+            if args.debug:
+                import traceback
+                traceback.print_exc()
+            sys.exit(1)
+        return
     
     # Check if the file exists
     if not os.path.isfile(args.file):
