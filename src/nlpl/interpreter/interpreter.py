@@ -77,6 +77,11 @@ class Interpreter:
             self.type_checker = TypeChecker()
             self.type_inference = TypeInferenceEngine()
         
+        # Debugger integration (optional)
+        self.debugger = None
+        self.current_file = None
+        self.current_line = None
+        
     def create_function_wrapper(self, function_def):
         """Create a callable wrapper for a user-defined function."""
         def wrapper(*args):
@@ -144,16 +149,30 @@ class Interpreter:
                 error_msg = "\n".join(errors)
                 raise NLPLTypeError(f"Type checking failed:\n{error_msg}")
             
-        if isinstance(ast, Program):
-            result = None
-            for statement in ast.statements:
-                result = self.execute(statement)
-            return result
-        else:
-            return self.execute(ast)
+        try:
+            if isinstance(ast, Program):
+                result = None
+                for statement in ast.statements:
+                    result = self.execute(statement)
+                return result
+            else:
+                return self.execute(ast)
+        except Exception as e:
+            # Debugger hook: trace exception
+            if self.debugger:
+                self.debugger.trace_exception(e)
+            raise
             
     def execute(self, node):
         """Execute a node in the AST."""
+        # Debugger hook: trace execution if debugger attached
+        if self.debugger and hasattr(node, 'line'):
+            file = getattr(node, 'file', self.current_file or '<unknown>')
+            line = getattr(node, 'line', self.current_line or 0)
+            self.current_file = file
+            self.current_line = line
+            self.debugger.trace_line(file, line)
+        
         # Get node type from either node_type attribute or class name
         if hasattr(node, 'node_type'):
             node_type = node.node_type
@@ -1628,6 +1647,17 @@ class Interpreter:
         if function_name in self.functions:
             function_def = self.functions[function_name]
             
+            # Debugger hook: trace function call
+            if self.debugger:
+                local_vars = {param.name: args[i] if i < len(args) else None 
+                             for i, param in enumerate(function_def.parameters)}
+                self.debugger.trace_call(
+                    function_name,
+                    getattr(function_def, 'file', self.current_file or '<unknown>'),
+                    getattr(function_def, 'line', self.current_line or 0),
+                    local_vars
+                )
+            
             # Create a new scope for the function
             self.enter_scope()
             
@@ -1651,6 +1681,10 @@ class Interpreter:
                 # Properly capture the return value
                 result = ret.value
             finally:
+                # Debugger hook: trace function return
+                if self.debugger:
+                    self.debugger.trace_return(function_name, result)
+                
                 # Always clean up the function scope
                 self.exit_scope()
             

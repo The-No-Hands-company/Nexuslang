@@ -84,11 +84,14 @@ def main():
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')
     parser.add_argument('--no-type-check', action='store_true', help='Disable type checking')
     parser.add_argument('--repl', action='store_true', help='Start interactive REPL (default if no file)')
+    parser.add_argument('--debugger', action='store_true', help='Enable interactive debugger')
+    parser.add_argument('--break', '-b', dest='breakpoints', action='append',
+                       help='Set breakpoint at line (can be used multiple times)')
     
     args = parser.parse_args()
     
     # Start REPL if no file specified or --repl flag
-    if args.file is None or args.repl:
+    if args.file is None or (args.repl and not args.file):
         from .repl.repl import REPL
         repl = REPL(debug=args.debug, type_check=not args.no_type_check)
         try:
@@ -110,7 +113,72 @@ def main():
     with open(args.file, 'r') as f:
         source_code = f.read()
     
-    # Run the program
+    # Run with debugger if requested
+    if args.debugger or args.breakpoints:
+        from .debugger.debugger import Debugger
+        from .parser.lexer import Lexer
+        from .parser.parser import Parser
+        
+        # Setup runtime and interpreter
+        runtime = Runtime()
+        register_stdlib(runtime)
+        interpreter = Interpreter(runtime, enable_type_checking=not args.no_type_check)
+        
+        # Create and attach debugger
+        debugger = Debugger(interpreter, interactive=True)
+        interpreter.debugger = debugger
+        interpreter.current_file = args.file
+        
+        # Set breakpoints from command line
+        if args.breakpoints:
+            for bp in args.breakpoints:
+                try:
+                    line = int(bp)
+                    debugger.add_breakpoint(args.file, line)
+                except ValueError:
+                    print(f"Warning: Invalid breakpoint: {bp}")
+        
+        print(f"Debugging: {args.file}")
+        if args.breakpoints:
+            print(f"Breakpoints: {len(debugger.list_breakpoints())}")
+        print()
+        
+        try:
+            # Parse
+            lexer = Lexer(source_code)
+            tokens = lexer.tokenize()
+            
+            if args.debug:
+                print("Tokens:")
+                for token in tokens:
+                    print(f"  {token}")
+            
+            parser = Parser(tokens)
+            ast = parser.parse()
+            
+            if args.debug:
+                print("\nAST:")
+                print_ast(ast)
+            
+            # Execute with debugger
+            result = interpreter.interpret(ast)
+            
+            if result is not None:
+                print(f"\nProgram result: {result}")
+            
+            print("\n" + "="*60)
+            debugger.print_statistics()
+        
+        except Exception as e:
+            print(f"\nError: {e}")
+            if args.debug:
+                import traceback
+                traceback.print_exc()
+            sys.exit(1)
+        
+        return
+    
+    # Run normally without debugger
     try:
         result = run_program(source_code, args.debug, not args.no_type_check)
         if result is not None:
