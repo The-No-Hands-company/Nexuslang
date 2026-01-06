@@ -78,8 +78,149 @@ class FFIManager:
             return self.type_map[type_name]
         elif type_name == 'void':
             return None
+        elif type_name.startswith('struct_'):
+            # Handle struct types - will be resolved at runtime
+            return ctypes.c_void_p  # Placeholder for struct pointers
         else:
             raise ValueError(f"Unknown FFI type: {type_name}")
+    
+    def struct_to_ctypes(self, struct_instance, struct_name: str) -> ctypes.Structure:
+        """
+        Convert NLPL StructureInstance to ctypes.Structure for FFI calls.
+        Enables passing structs by value to C functions.
+        """
+        from ...runtime.structures import StructureInstance
+        
+        if not isinstance(struct_instance, StructureInstance):
+            raise TypeError(f"Expected StructureInstance, got {type(struct_instance).__name__}")
+        
+        # Create dynamic ctypes.Structure class
+        fields = []
+        for field_name, field_info in struct_instance.definition.fields.items():
+            # Map NLPL types to ctypes types
+            type_code = field_info.type_code
+            if type_code in ('i', 'I'):  # int
+                ctype = ctypes.c_int
+            elif type_code in ('l', 'L'):  # long
+                ctype = ctypes.c_long
+            elif type_code in ('q', 'Q'):  # long long
+                ctype = ctypes.c_longlong
+            elif type_code == 'f':  # float
+                ctype = ctypes.c_float
+            elif type_code == 'd':  # double
+                ctype = ctypes.c_double
+            elif type_code == 'c':  # char
+                ctype = ctypes.c_char
+            elif type_code == 'b':  # signed char
+                ctype = ctypes.c_byte
+            elif type_code == 'B':  # unsigned char
+                ctype = ctypes.c_ubyte
+            elif type_code == 'h':  # short
+                ctype = ctypes.c_short
+            elif type_code == 'H':  # unsigned short
+                ctype = ctypes.c_ushort
+            else:
+                ctype = ctypes.c_void_p  # Default to pointer
+            
+            fields.append((field_name, ctype))
+        
+        # Create ctypes Structure class
+        class CStruct(ctypes.Structure):
+            _fields_ = fields
+        
+        # Create instance and populate from NLPL struct
+        c_struct = CStruct()
+        for field_name in struct_instance.definition.fields:
+            value = struct_instance.get_field(field_name)
+            setattr(c_struct, field_name, value)
+        
+        return c_struct
+    
+    def register_callback(self, callback_func: Callable, arg_types: List[str], return_type: str) -> Any:
+        """
+        Register NLPL function as C callback (function pointer).
+        Enables C→NLPL callbacks for event handlers, qsort comparators, etc.
+        
+        Example:
+            def my_handler(value):
+                print(f"Callback called with {value}")
+                return 0
+            
+            callback_ptr = register_callback(my_handler, ['int'], 'int')
+            # Pass callback_ptr to C function expecting function pointer
+        """
+        # Map types
+        c_arg_types = [self.map_type(t) for t in arg_types]
+        c_return_type = self.map_type(return_type) or None
+        
+        # Create ctypes function prototype
+        CFUNCTYPE = ctypes.CFUNCTYPE(c_return_type, *c_arg_types)
+        
+        # Wrap NLPL function to match C calling convention
+        def c_wrapper(*args):
+            try:
+                result = callback_func(*args)
+                return result if c_return_type else None
+            except Exception as e:
+                print(f"Error in callback: {e}")
+                return 0 if c_return_type else None
+        
+        # Create and return function pointer
+        callback_ptr = CFUNCTYPE(c_wrapper)
+        return callback_ptr
+    
+    def call_variadic(self, lib_name: str, func_name: str,
+                     fixed_arg_types: List[str], return_type: str,
+                     fixed_args: List[Any], variadic_args: List[Any]) -> Any:
+        """
+        Call variadic C function (like printf, sprintf).
+        Supports functions with variable number of arguments.
+        
+        Example:
+            call_variadic('c', 'printf', ['char*'], 'int', 
+                         ['Hello %s %d'], ['World', 42])
+        """
+        if lib_name not in self.libraries:
+            raise RuntimeError(f"Library '{lib_name}' not loaded")
+        
+        library = self.libraries[lib_name]
+        
+        # Map fixed argument types
+        c_fixed_types = [self.map_type(t) for t in fixed_arg_types]
+        c_return_type = self.map_type(return_type)
+        
+        # Get the function without setting argtypes (variadic functions need this)
+        func = getattr(library.handle, func_name)
+        func.restype = c_return_type
+        # Don't set argtypes for variadic functions!
+        
+        # Convert fixed arguments
+        c_fixed_args = []
+        for arg, arg_type in zip(fixed_args, c_fixed_types):
+            if arg_type == ctypes.c_char_p and isinstance(arg, str):
+                c_fixed_args.append(arg.encode('utf-8'))
+            else:
+                c_fixed_args.append(arg)
+        
+        # Convert variadic arguments (best-effort type inference)
+        c_variadic_args = []
+        for arg in variadic_args:
+            if isinstance(arg, str):
+                c_variadic_args.append(arg.encode('utf-8'))
+            elif isinstance(arg, float):
+                c_variadic_args.append(ctypes.c_double(arg))
+            elif isinstance(arg, int):
+                c_variadic_args.append(ctypes.c_int(arg))
+            else:
+                c_variadic_args.append(arg)
+        
+        # Call function with all arguments
+        result = func(*c_fixed_args, *c_variadic_args)
+        
+        # Convert result
+        if c_return_type == ctypes.c_char_p and result:
+            return result.decode('utf-8')
+        return result
     
     def call_function(self, lib_name: str, func_name: str, 
                      arg_types: List[str], return_type: str, 
@@ -239,3 +380,48 @@ def register_ffi_functions(runtime: Runtime) -> None:
     runtime.register_function("from_c_string", from_c_string)
     runtime.register_function("string_to_pointer", string_to_pointer)
     runtime.register_function("pointer_to_string", pointer_to_string)
+    
+    # FFI Enhancements: Struct passing, callbacks, variadic functions
+    
+    def ffi_struct_to_ctypes(struct_instance, struct_name: str = ""):
+        """Convert NLPL struct to ctypes Structure for passing by value."""
+        return ffi_manager.struct_to_ctypes(struct_instance, struct_name)
+    
+    def ffi_register_callback(callback_func: Callable, arg_types: List[str], return_type: str):
+        """
+        Register NLPL function as C callback (function pointer).
+        Returns function pointer that can be passed to C functions.
+        
+        Example:
+            function my_comparator with a as Integer and b as Integer returns Integer
+                if a is less than b
+                    return -1
+                else if a is greater than b
+                    return 1
+                else
+                    return 0
+                end
+            end
+            
+            set callback_ptr to ffi_register_callback with my_comparator and ["int", "int"] and "int"
+            # Pass callback_ptr to qsort or other C function expecting comparator
+        """
+        return ffi_manager.register_callback(callback_func, arg_types, return_type)
+    
+    def ffi_call_variadic(lib_name: str, func_name: str,
+                         fixed_arg_types: List[str], return_type: str,
+                         fixed_args: List[Any], variadic_args: List[Any]):
+        """
+        Call variadic C function (like printf, sprintf, scanf).
+        
+        Example:
+            # Call printf("Hello %s, value: %d\n", "World", 42)
+            ffi_call_variadic with "c" and "printf" and ["char*"] and "int" 
+                              and ["Hello %s, value: %d\n"] and ["World", 42]
+        """
+        return ffi_manager.call_variadic(lib_name, func_name, fixed_arg_types, 
+                                        return_type, fixed_args, variadic_args)
+    
+    runtime.register_function("ffi_struct_to_ctypes", ffi_struct_to_ctypes)
+    runtime.register_function("ffi_register_callback", ffi_register_callback)
+    runtime.register_function("ffi_call_variadic", ffi_call_variadic)
