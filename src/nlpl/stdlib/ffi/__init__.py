@@ -153,3 +153,89 @@ def register_ffi_functions(runtime: Runtime) -> None:
     runtime.register_function("c_strlen", c_strlen)
     runtime.register_function("c_malloc", c_malloc)
     runtime.register_function("c_free", c_free)
+    
+    # String conversion functions for explicit C ↔ NLPL string conversion
+    def to_c_string(s: str) -> bytes:
+        """
+        Convert NLPL string to C string (bytes with null terminator).
+        Returns bytes object that can be passed to C functions expecting char*.
+        
+        Example:
+            set c_str to to_c_string with "Hello, World!"
+            # c_str is now b'Hello, World!\x00'
+        """
+        if not isinstance(s, str):
+            raise TypeError(f"to_c_string expects string, got {type(s).__name__}")
+        return s.encode('utf-8') + b'\x00'
+    
+    def from_c_string(c_str: bytes) -> str:
+        """
+        Convert C string (bytes or char*) to NLPL string.
+        Handles null-terminated strings from C functions.
+        
+        Example:
+            set result to from_c_string with c_string_pointer
+            # result is now a regular NLPL string
+        """
+        if isinstance(c_str, bytes):
+            # Remove null terminator if present
+            if c_str.endswith(b'\x00'):
+                c_str = c_str[:-1]
+            return c_str.decode('utf-8')
+        elif isinstance(c_str, str):
+            return c_str  # Already a Python string
+        elif isinstance(c_str, int):
+            # Handle pointer (ctypes address)
+            char_p = ctypes.cast(c_str, ctypes.c_char_p)
+            if char_p.value:
+                return char_p.value.decode('utf-8')
+            return ""
+        else:
+            raise TypeError(f"from_c_string expects bytes, string, or pointer, got {type(c_str).__name__}")
+    
+    def string_to_pointer(s: str) -> int:
+        """
+        Convert NLPL string to C char* pointer address.
+        Returns an integer address that can be used in FFI calls.
+        WARNING: The pointer is only valid while the string object exists.
+        
+        Example:
+            set ptr to string_to_pointer with "Hello"
+            # ptr is now an integer address pointing to the string data
+        """
+        if not isinstance(s, str):
+            raise TypeError(f"string_to_pointer expects string, got {type(s).__name__}")
+        c_str = s.encode('utf-8')
+        ptr = ctypes.cast(ctypes.c_char_p(c_str), ctypes.c_void_p).value
+        return ptr if ptr is not None else 0
+    
+    def pointer_to_string(ptr: int, length: Optional[int] = None) -> str:
+        """
+        Convert C char* pointer address to NLPL string.
+        If length is provided, reads exactly that many bytes.
+        Otherwise, reads until null terminator.
+        
+        Example:
+            set text to pointer_to_string with address
+            # Or with explicit length:
+            set text to pointer_to_string with address and 10
+        """
+        if not isinstance(ptr, int):
+            raise TypeError(f"pointer_to_string expects integer pointer, got {type(ptr).__name__}")
+        
+        if ptr == 0:
+            raise ValueError("Cannot dereference null pointer")
+        
+        if length is not None:
+            # Read specific length
+            c_array = ctypes.cast(ptr, ctypes.POINTER(ctypes.c_char * length))
+            return c_array.contents.value.decode('utf-8')
+        else:
+            # Read until null terminator
+            c_str = ctypes.cast(ptr, ctypes.c_char_p)
+            return c_str.value.decode('utf-8') if c_str.value else ""
+    
+    runtime.register_function("to_c_string", to_c_string)
+    runtime.register_function("from_c_string", from_c_string)
+    runtime.register_function("string_to_pointer", string_to_pointer)
+    runtime.register_function("pointer_to_string", pointer_to_string)
