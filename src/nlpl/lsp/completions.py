@@ -139,6 +139,28 @@ class CompletionProvider:
         elif re.search(r'\bas\s*$', prefix, re.IGNORECASE):
             completions.extend(self._get_type_completions(current_word))
         
+        # After "from" - suggest modules
+        elif re.search(r'\bfrom\s*$', prefix, re.IGNORECASE):
+            for module in self.stdlib_modules.keys():
+                if module.lower().startswith(current_word.lower()):
+                    completions.append({
+                        "label": module,
+                        "kind": 9,  # Module
+                        "detail": "Module",
+                        "insertText": module
+                    })
+        
+        # After "import" - suggest modules
+        elif re.search(r'\bimport\s*$', prefix, re.IGNORECASE):
+            for module in self.stdlib_modules.keys():
+                if module.lower().startswith(current_word.lower()):
+                    completions.append({
+                        "label": module,
+                        "kind": 9,
+                        "detail": "Module",
+                        "insertText": module
+                    })
+        
         # After "create" - suggest collection types
         elif re.search(r'\bcreate\s*$', prefix, re.IGNORECASE):
             for coll_type in ["list", "dictionary", "set", "tuple", "queue", "stack"]:
@@ -198,6 +220,17 @@ class CompletionProvider:
                         "kind": 3,  # Function
                         "detail": "Function",
                         "insertText": func
+                    })
+            
+            # Add class completions from current document
+            classes = self._extract_classes(text)
+            for cls in classes:
+                if cls.lower().startswith(current_word.lower()):
+                    completions.append({
+                        "label": cls,
+                        "kind": 7,  # Class
+                        "detail": "Class",
+                        "insertText": cls
                     })
         
         return completions
@@ -278,6 +311,17 @@ class CompletionProvider:
         functions.update(matches)
         
         return list(functions)
+    
+    def _extract_classes(self, text: str) -> List[str]:
+        """Extract class names from text."""
+        classes = set()
+        
+        # Match: class ClassName ...
+        pattern = r'class\s+(\w+)'
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        classes.update(matches)
+        
+        return list(classes)
 
 
 __all__ = ['CompletionProvider']

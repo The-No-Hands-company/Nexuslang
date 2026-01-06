@@ -90,6 +90,7 @@ class NLPLLanguageServer:
         from ..lsp.formatter import NLPLFormatter
         from ..lsp.code_actions import CodeActionsProvider
         from ..lsp.signature_help import SignatureHelpProvider
+        from ..lsp.references import ReferencesProvider
         
         self.completion_provider = CompletionProvider(self)
         self.definition_provider = DefinitionProvider(self)
@@ -98,6 +99,7 @@ class NLPLLanguageServer:
         self.symbol_provider = SymbolProvider(self)
         self.formatter = NLPLFormatter()
         self.code_actions_provider = CodeActionsProvider(self)
+        self.references_provider = ReferencesProvider(self)
         self.signature_help_provider = SignatureHelpProvider(self)
         
         logger.info("NLPL Language Server initialized")
@@ -198,6 +200,9 @@ class NLPLLanguageServer:
         elif method == 'textDocument/hover':
             return self._handle_hover(msg_id, params)
         
+        elif method == 'textDocument/references':
+            return self._handle_references(msg_id, params)
+        
         elif method == 'textDocument/codeAction':
             return self._handle_code_action(msg_id, params)
         
@@ -250,6 +255,7 @@ class NLPLLanguageServer:
             },
             "definitionProvider": True,
             "hoverProvider": True,
+            "referencesProvider": True,
             "documentFormattingProvider": True,
             "workspaceSymbolProvider": True,
             "renameProvider": True
@@ -350,6 +356,30 @@ class NLPLLanguageServer:
             "jsonrpc": "2.0",
             "id": msg_id,
             "result": hover_info
+        }
+    
+    def _handle_references(self, msg_id: int, params: Dict) -> Dict:
+        """Handle textDocument/references request."""
+        uri = params['textDocument']['uri']
+        position = Position(
+            params['position']['line'],
+            params['position']['character']
+        )
+        context = params.get('context', {})
+        include_declaration = context.get('includeDeclaration', True)
+        
+        text = self.documents.get(uri, '')
+        references = self.references_provider.find_references(
+            text, 
+            position, 
+            uri, 
+            include_declaration
+        )
+        
+        return {
+            "jsonrpc": "2.0",
+            "id": msg_id,
+            "result": references
         }
     
     def _handle_code_action(self, msg_id: int, params: Dict) -> Dict:
