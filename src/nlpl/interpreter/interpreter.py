@@ -366,8 +366,18 @@ class Interpreter:
                 )
         
     def execute_function_definition(self, node):
-        """Execute a function definition."""
+        """Execute a function definition.
+        
+        Stores the function definition and creates a callable function value
+        that can be used as a first-class value (assigned to variables, passed as arguments, etc.)
+        """
         self.functions[node.name] = node
+        
+        # Create a callable wrapper and store it as a variable too
+        # This enables first-class function support
+        function_value = self.create_function_wrapper(node)
+        self.set_variable(node.name, function_value)
+        
         return node.name
     
     def execute_async_function_definition(self, node):
@@ -1587,15 +1597,34 @@ class Interpreter:
             raise NameError(f"Variable or function '{node.name}' is not defined")
         
     def execute_function_call(self, node):
-        """Execute a function call."""
+        """Execute a function call.
+        
+        Supports both:
+        - Direct function calls: add with 5 and 10
+        - Callable values: (function stored in variable or passed as argument)
+        """
         function_name = node.name
         args = [self.execute(arg) for arg in node.arguments]
+        
+        # If function_name is already a callable (function value), call it directly
+        if callable(function_name):
+            return function_name(*args)
+        
+        # Handle expressions that evaluate to callables (e.g., function pointers)
+        # Check if function_name is actually an expression node
+        if not isinstance(function_name, str):
+            # It's an expression - evaluate it to get the callable
+            func_value = self.execute(function_name)
+            if callable(func_value):
+                return func_value(*args)
+            else:
+                raise TypeError(f"Cannot call non-function value: {type(func_value).__name__}")
         
         # Check for built-in functions in the runtime
         if function_name in self.runtime.functions:
             return self.runtime.functions[function_name](*args)
         
-        # Check for user-defined functions
+        # Check for user-defined functions (for backward compatibility)
         if function_name in self.functions:
             function_def = self.functions[function_name]
             
@@ -1626,6 +1655,14 @@ class Interpreter:
                 self.exit_scope()
             
             return result
+        
+        # Try to get it as a variable (might be a function value)
+        try:
+            func_value = self.get_variable(function_name)
+            if callable(func_value):
+                return func_value(*args)
+        except:
+            pass
         
         raise NameError(f"Function '{function_name}' is not defined")
         
