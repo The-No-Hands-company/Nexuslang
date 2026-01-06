@@ -4185,6 +4185,7 @@ class Parser:
                 return self._parse_member_access(expr)
             
             # Check if this is a function call with "with" keyword (e.g., "func with args")
+            # This enables inline function calls without needing the 'call' keyword
             elif self.current_token and self.current_token.type == TokenType.WITH:
                 self.advance()  # consume "with"
                 arguments = []
@@ -4205,6 +4206,12 @@ class Parser:
                 expr = FunctionCall(name, arguments, type_arguments, line_num)
                 # Check for member access on function result
                 return self._parse_member_access(expr)
+            
+            # Check if this is a zero-argument function call (just identifier, but it's a function)
+            # This is tricky: we need to distinguish between variable reference and function call
+            # For now, we'll treat it as an identifier and let the interpreter handle it
+            # The interpreter can check if it's a function and call it if needed
+            # Or we can require explicit '()' for zero-arg functions: func()
             
             # It's just an identifier - check for member access
             expr = Identifier(name)
