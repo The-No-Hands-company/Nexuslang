@@ -18,6 +18,7 @@ from ..stdlib.iterators import register_iterator_functions
 from ..stdlib.ffi import register_ffi_functions
 from ..stdlib.asm import register_asm_functions
 from ..stdlib.testing import register_testing_functions
+from ..stdlib.graphics import register_graphics_functions
 from ..stdlib.modules import register_module_functions
 from ..stdlib.filesystem import register_filesystem_functions
 from ..stdlib.json_utils import register_json_functions
@@ -96,6 +97,13 @@ def register_stdlib(runtime: Runtime) -> None:
     
     # Register FFI (Foreign Function Interface)
     register_ffi_functions(runtime)
+    
+    # Register graphics (OpenGL/GLFW wrapper)
+    try:
+        register_graphics_functions(runtime)
+    except Exception as e:
+        # Graphics module is optional (requires GLFW and PyOpenGL)
+        pass
     
     # Register inline assembly support
     register_asm_functions(runtime)
