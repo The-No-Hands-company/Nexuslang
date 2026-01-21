@@ -49,7 +49,7 @@ end
     parser = Parser(tokens)
     ast = parser.parse()
     
-    print(f"\n✓ Parsed {len(ast.statements)} statements")
+    print(f"\n Parsed {len(ast.statements)} statements")
     
     # Generate C
     generator = CCodeGenerator(target="c")
@@ -60,7 +60,7 @@ end
     print(c_code)
     print("="*70)
     
-    print("\n✨ FEATURES DEMONSTRATED:")
+    print("\n FEATURES DEMONSTRATED:")
     print("-"*70)
     
     checks = [
@@ -76,12 +76,12 @@ end
     
     for desc, pattern in checks:
         if pattern in c_code:
-            print(f"  ✓ {desc}")
+            print(f"   {desc}")
         else:
-            print(f"  ✗ {desc} (missing '{pattern}')")
+            print(f"   {desc} (missing '{pattern}')")
     
     print("\n" + "="*70)
-    print("🚀 Arrays + For-Each Loops: FULLY FUNCTIONAL!")
+    print(" Arrays + For-Each Loops: FULLY FUNCTIONAL!")
     print("="*70)
 
 if __name__ == "__main__":

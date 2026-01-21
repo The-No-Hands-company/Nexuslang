@@ -6,7 +6,7 @@ Function pointers in NLPL allow you to store references to functions and pass th
 
 ## Current Implementation Status
 
-**✅ Implemented:**
+** Implemented:**
 - `address of function_name` - Get function address as pointer
 - `call (value at func_ptr) with args` - Indirect function calls through pointers
 - Storing function pointers in variables
@@ -15,7 +15,7 @@ Function pointers in NLPL allow you to store references to functions and pass th
 - Proper LLVM IR generation with function type casting
 - Support for functions with 0, 1, or multiple parameters
 
-**🚧 Planned:**
+** Planned:**
 - Function pointers as function parameters
 - Arrays of function pointers
 - Function pointer type declarations
@@ -27,7 +27,7 @@ Function pointers in NLPL allow you to store references to functions and pass th
 
 ```nlpl
 function add_numbers that takes a as Integer and b as Integer returns Integer
-    return a plus b
+ return a plus b
 
 set func_ptr to address of add_numbers
 ```
@@ -38,7 +38,7 @@ set func_ptr to address of add_numbers
 
 ```nlpl
 function add_numbers that takes a as Integer and b as Integer returns Integer
-    return a plus b
+ return a plus b
 
 set func_ptr to address of add_numbers
 print text "Function pointer obtained"
@@ -50,7 +50,7 @@ print text "Function pointer obtained"
 
 ```nlpl
 function add_numbers that takes a as Integer and b as Integer returns Integer
-    return a plus b
+ return a plus b
 
 set func_ptr to address of add_numbers
 set result to call (value at func_ptr) with 5 and 3
@@ -68,13 +68,13 @@ print number result
 
 ```nlpl
 function add_numbers that takes a as Integer and b as Integer returns Integer
-    return a plus b
+ return a plus b
 
 function multiply_numbers that takes x as Integer and y as Integer returns Integer
-    return x times y
+ return x times y
 
 function subtract_numbers that takes a as Integer and b as Integer returns Integer
-    return a minus b
+ return a minus b
 
 set add_ptr to address of add_numbers
 set mult_ptr to address of multiply_numbers
@@ -87,7 +87,7 @@ print text "Multiple function pointers obtained"
 
 ```nlpl
 function square_number that takes n as Integer returns Integer
-    return n times n
+ return n times n
 
 set square_ptr to address of square_number
 print text "Single parameter function pointer obtained"
@@ -97,7 +97,7 @@ print text "Single parameter function pointer obtained"
 
 ```nlpl
 function get_constant returns Integer
-    return 42
+ return 42
 
 set const_ptr to address of get_constant
 print text "No parameter function pointer obtained"
@@ -107,10 +107,10 @@ print text "No parameter function pointer obtained"
 
 ```nlpl
 function add_numbers that takes a as Integer and b as Integer returns Integer
-    return a plus b
+ return a plus b
 
 function multiply_numbers that takes x as Integer and y as Integer returns Integer
-    return x times y
+ return x times y
 
 set operation_ptr to address of add_numbers
 print text "Initial pointer set to add_numbers"
@@ -134,7 +134,7 @@ Function pointers are compiled to generic `i8*` (byte pointers) in LLVM IR:
 **NLPL Code:**
 ```nlpl
 function add_numbers that takes a as Integer and b as Integer returns Integer
-    return a plus b
+ return a plus b
 
 set func_ptr to address of add_numbers
 ```
@@ -142,16 +142,16 @@ set func_ptr to address of add_numbers
 **Generated LLVM IR:**
 ```llvm
 define i64 @add_numbers(i64 %a, i64 %b) {
-  ; ... function body
+ ; ... function body
 }
 
 @func_ptr = private unnamed_addr global i8* null, align 8
 
 define i32 @main(i32 %argc, i8** %argv) {
 entry:
-  %0 = bitcast i64 (i64, i64)* @add_numbers to i8*
-  store i8* %0, i8** @func_ptr, align 8
-  ret i32 0
+ %0 = bitcast i64 (i64, i64)* @add_numbers to i8*
+ store i8* %0, i8** @func_ptr, align 8
+ ret i32 0
 }
 ```
 
@@ -185,9 +185,9 @@ This allows all function pointers to be stored uniformly as `i8*` regardless of 
 ```nlpl
 # Planned syntax for callbacks
 function process_data with data as Integer and callback as FunctionPointer
-    set result to data times 2
-    # Call callback with result
-    # callback with result
+ set result to data times 2
+ # Call callback with result
+ # callback with result
 ```
 
 ### Strategy Pattern (Future)
@@ -197,9 +197,9 @@ function process_data with data as Integer and callback as FunctionPointer
 set operation to address of add_numbers
 
 if user_choice is equal to 1
-    set operation to address of multiply_numbers
+ set operation to address of multiply_numbers
 else if user_choice is equal to 2
-    set operation to address of subtract_numbers
+ set operation to address of subtract_numbers
 
 # Call selected operation
 # set result to call operation with 10 and 5
@@ -210,9 +210,9 @@ else if user_choice is equal to 2
 ```nlpl
 # Planned: Array of function pointers for dispatch
 set operations to [
-    address of add_numbers,
-    address of subtract_numbers,
-    address of multiply_numbers
+ address of add_numbers,
+ address of subtract_numbers,
+ address of multiply_numbers
 ]
 
 # Call based on index
@@ -234,7 +234,7 @@ int result = func_ptr(5, 3);
 ```nlpl
 # NLPL
 function add_numbers that takes a as Integer and b as Integer returns Integer
-    return a plus b
+ return a plus b
 
 set func_ptr to address of add_numbers
 # Indirect calls coming soon
@@ -245,7 +245,7 @@ set func_ptr to address of add_numbers
 ```python
 # Python
 def add(a, b):
-    return a + b
+ return a + b
 
 func_ptr = add
 result = func_ptr(5, 3)
@@ -254,7 +254,7 @@ result = func_ptr(5, 3)
 ```nlpl
 # NLPL
 function add_numbers that takes a as Integer and b as Integer returns Integer
-    return a plus b
+ return a plus b
 
 set func_ptr to address of add_numbers
 # Indirect calls coming soon
@@ -273,7 +273,7 @@ let result = func_ptr(5, 3);
 ```nlpl
 # NLPL
 function add_numbers that takes a as Integer and b as Integer returns Integer
-    return a plus b
+ return a plus b
 
 set func_ptr to address of add_numbers
 # Indirect calls coming soon
@@ -282,19 +282,19 @@ set func_ptr to address of add_numbers
 ## Current Limitations
 
 1. **No Function Pointer Types**: Cannot declare explicit function pointer types
-   - All function pointers are generic `i8*`
-   - Type-safe function pointers planned for future
-   - Return types assumed to be i64 for indirect calls
+ - All function pointers are generic `i8*`
+ - Type-safe function pointers planned for future
+ - Return types assumed to be i64 for indirect calls
 
 2. **No Function Pointers as Parameters**: Cannot pass function pointers to functions yet
-   - Requires function parameter type annotations to support pointer types
+ - Requires function parameter type annotations to support pointer types
 
 3. **No Arrays of Function Pointers**: Cannot create arrays holding function pointers
-   - Requires proper array type inference for pointer types
+ - Requires proper array type inference for pointer types
 
 4. **Variable Scope Limitations**: Variables declared inside if/else blocks have scope issues
-   - Variables should be hoisted to entry block for proper SSA form
-   - Current workaround: declare variables before conditional blocks
+ - Variables should be hoisted to entry block for proper SSA form
+ - Current workaround: declare variables before conditional blocks
 
 ## Future Enhancements
 
@@ -305,7 +305,7 @@ set func_ptr to address of add_numbers
 type BinaryOperation as Function that takes Integer and Integer returns Integer
 
 function add_numbers that takes a as Integer and b as Integer returns Integer
-    return a plus b
+ return a plus b
 
 set operation as BinaryOperation to address of add_numbers
 set result to call (value at operation) with 10 and 5
@@ -316,7 +316,7 @@ set result to call (value at operation) with 10 and 5
 ```nlpl
 # Planned syntax
 function apply_operation with x as Integer and y as Integer and op as FunctionPointer returns Integer
-    return call (value at op) with x and y
+ return call (value at op) with x and y
 
 set result to apply_operation with 10 and 5 and address of add_numbers
 ```
@@ -326,11 +326,11 @@ set result to apply_operation with 10 and 5 and address of add_numbers
 ```nlpl
 # Future: Pointers to class methods
 class Calculator
-    public function add that takes a as Integer and b as Integer returns Integer
-        return a plus b
+ public function add that takes a as Integer and b as Integer returns Integer
+ return a plus b
 
 set calc to new Calculator
-set method_ptr to address of calc.add  # Method pointer
+set method_ptr to address of calc.add # Method pointer
 ```
 
 ## Testing
@@ -356,19 +356,19 @@ Run tests:
 ./nlplc test_programs/compiler/test_indirect_calls.nlpl --run
 ```
 
-All 11 tests passing ✅
+All 11 tests passing 
 
 ## Implementation Notes
 
 ### Compiler Pipeline
 
-1. **Parser**: `address of function_name` → `AddressOfExpression(Identifier("function_name"))`
-2. **Type Inference**: `AddressOfExpression` → `i8*`
+1. **Parser**: `address of function_name` `AddressOfExpression(Identifier("function_name"))`
+2. **Type Inference**: `AddressOfExpression` `i8*`
 3. **Code Generation**: 
-   - Look up function in `self.functions`
-   - Apply name mangling
-   - Generate `bitcast FunctionType* @function_name to i8*`
-   - Return temporary register holding the pointer
+ - Look up function in `self.functions`
+ - Apply name mangling
+ - Generate `bitcast FunctionType* @function_name to i8*`
+ - Return temporary register holding the pointer
 
 ### Key Code Locations
 

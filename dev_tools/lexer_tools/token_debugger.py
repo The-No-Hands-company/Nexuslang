@@ -189,7 +189,7 @@ class TokenStatistics:
         print(f"\n{Style.BRIGHT}Token Type Distribution:{Style.RESET_ALL}")
         sorted_types = sorted(stats['by_type'].items(), key=lambda x: x[1], reverse=True)
         for token_type, count in sorted_types:
-            bar = '█' * min(50, count)
+            bar = '' * min(50, count)
             print(f"  {token_type:<25} {count:4d} {Fore.CYAN}{bar}{Style.RESET_ALL}")
 
 

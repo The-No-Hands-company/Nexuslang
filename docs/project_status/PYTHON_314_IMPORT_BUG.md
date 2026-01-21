@@ -2,10 +2,10 @@
 
 ## Issue Summary
 
-**Status**: BLOCKING - All NLPL tools hang on startup  
-**Affected**: Python 3.14.0  
-**Cause**: Import system regression in Python 3.14  
-**Impact**: Cannot use nlplc_llvm.py, tests, or any NLPL tooling  
+**Status**: BLOCKING - All NLPL tools hang on startup 
+**Affected**: Python 3.14.0 
+**Cause**: Import system regression in Python 3.14 
+**Impact**: Cannot use nlplc_llvm.py, tests, or any NLPL tooling 
 
 ## Symptoms
 
@@ -40,8 +40,8 @@ The lexer.py module itself is valid Python code and works when loaded via `exec(
 
 ```bash
 # Install Python 3.13
-sudo pacman -S python313  # Arch/Manjaro
-sudo apt install python3.13  # Ubuntu/Debian
+sudo pacman -S python313 # Arch/Manjaro
+sudo apt install python3.13 # Ubuntu/Debian
 
 # Use it for NLPL
 python3.13 nlplc_llvm.py program.nlpl -o output
@@ -73,29 +73,29 @@ systems with only Python 3.14.
 ## Action Items
 
 - [ ] Test on Python 3.13 / 3.12 / 3.11
-- [ ] File bug report with Python  
+- [ ] File bug report with Python 
 - [ ] Add Python version check to nlplc_llvm.py
 - [ ] Document Python version requirement in README
 
 ## Testing Status
 
-- ✅ Lexer code is valid (exec test passes)
-- ✅ Tokenization works (via exec workaround)  
-- ❌ Cannot import normally
-- ❌ Cannot run compiler
-- ❌ Cannot run tests
-- ❌ FFI tests blocked
+- Lexer code is valid (exec test passes)
+- Tokenization works (via exec workaround) 
+- Cannot import normally
+- Cannot run compiler
+- Cannot run tests
+- FFI tests blocked
 
 ## Files Affected
 
 - `nlplc_llvm.py` - Compiler entry point
-- `src/nlpl/__init__.py` - Package initialization  
+- `src/nlpl/__init__.py` - Package initialization 
 - All test files in `tests/`
 - All dev tools importing nlpl modules
 
 ---
 
-**Date**: 2025-11-26  
-**Reporter**: AI Development Session  
-**Python Version**: 3.14.0  
+**Date**: 2025-11-26 
+**Reporter**: AI Development Session 
+**Python Version**: 3.14.0 
 **OS**: Linux (Manjaro/Arch)

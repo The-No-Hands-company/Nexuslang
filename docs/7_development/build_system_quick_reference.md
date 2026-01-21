@@ -20,13 +20,13 @@ cd my_project
 This creates:
 ```
 my_project/
-├── src/
-│   └── main.nlpl       # Main source file
-├── build/              # Build artifacts
-├── bin/                # Compiled executables
-├── tests/              # Test files
-├── nlpl.toml           # Project configuration
-└── .gitignore          # Git ignore file
+ src/
+ main.nlpl # Main source file
+ build/ # Build artifacts
+ bin/ # Compiled executables
+ tests/ # Test files
+ nlpl.toml # Project configuration
+ .gitignore # Git ignore file
 ```
 
 ### Build Your Project
@@ -140,9 +140,9 @@ Initialize a new NLPL project.
 
 ```bash
 nlplbuild init [NAME]
-  --version VERSION      Set initial version (default: 0.1.0)
-  --authors AUTHOR...    Set authors
-  --license LICENSE      Set license (default: MIT)
+ --version VERSION Set initial version (default: 0.1.0)
+ --authors AUTHOR... Set authors
+ --license LICENSE Set license (default: MIT)
 ```
 
 **Examples:**
@@ -157,20 +157,20 @@ Build the project or a specific target.
 
 ```bash
 nlplbuild build [TARGET]
-  -O, --optimization LEVEL    Optimization level (0-3)
-  -g, --debug                 Include debug information
-  --profile PROFILE           Build profile (dev/release)
-  --no-incremental            Disable incremental compilation
-  -v, --verbose               Verbose output
+ -O, --optimization LEVEL Optimization level (0-3)
+ -g, --debug Include debug information
+ --profile PROFILE Build profile (dev/release)
+ --no-incremental Disable incremental compilation
+ -v, --verbose Verbose output
 ```
 
 **Examples:**
 ```bash
-nlplbuild build                  # Build all targets
-nlplbuild build main             # Build specific target
-nlplbuild build -O3              # Build with optimization
+nlplbuild build # Build all targets
+nlplbuild build main # Build specific target
+nlplbuild build -O3 # Build with optimization
 nlplbuild build --profile release # Use release profile
-nlplbuild build -v               # Verbose output
+nlplbuild build -v # Verbose output
 ```
 
 ### nlplbuild run
@@ -179,19 +179,19 @@ Build and run a target.
 
 ```bash
 nlplbuild run [TARGET] [PROGRAM_ARGS...]
-  -O, --optimization LEVEL    Optimization level (0-3)
-  -g, --debug                 Include debug information
-  --profile PROFILE           Build profile (dev/release)
-  --no-incremental            Disable incremental compilation
-  -v, --verbose               Verbose output
+ -O, --optimization LEVEL Optimization level (0-3)
+ -g, --debug Include debug information
+ --profile PROFILE Build profile (dev/release)
+ --no-incremental Disable incremental compilation
+ -v, --verbose Verbose output
 ```
 
 **Examples:**
 ```bash
-nlplbuild run                    # Run default target
-nlplbuild run main               # Run specific target
-nlplbuild run -- arg1 arg2       # Pass arguments to program
-nlplbuild run -O2                # Run with optimization
+nlplbuild run # Run default target
+nlplbuild run main # Run specific target
+nlplbuild run -- arg1 arg2 # Pass arguments to program
+nlplbuild run -O2 # Run with optimization
 ```
 
 ### nlplbuild clean
@@ -200,7 +200,7 @@ Remove build artifacts.
 
 ```bash
 nlplbuild clean
-  -v, --verbose    Verbose output
+ -v, --verbose Verbose output
 ```
 
 **Examples:**
@@ -221,7 +221,7 @@ Optimized for fast compilation and debugging:
 
 Optimized for production deployment:
 - Optimization: O3 (maximum)
-- Debug info: disabled  
+- Debug info: disabled 
 - Use with: `--profile release`
 
 **Example:**
@@ -268,7 +268,7 @@ source = "src/main.nlpl"
 type = "executable"
 ```
 
-### Library  
+### Library 
 ```toml
 [target.my_lib]
 source = "src/lib.nlpl"
@@ -372,7 +372,7 @@ dependencies = []
 ```bash
 # Clean and rebuild
 ./nlplbuild clean
-./nlplbuild build -v  # Verbose output shows details
+./nlplbuild build -v # Verbose output shows details
 ```
 
 ### Incremental Build Issues

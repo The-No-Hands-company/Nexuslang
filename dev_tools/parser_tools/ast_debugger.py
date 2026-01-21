@@ -27,8 +27,8 @@ class ASTVisualizer:
         """Display AST as a tree structure."""
         
         # Determine connector
-        connector = "└── " if is_last else "├── "
-        extension = "    " if is_last else "│   "
+        connector = " " if is_last else " "
+        extension = "    " if is_last else "   "
         
         # Get node information
         if hasattr(node, '__class__'):
@@ -208,7 +208,7 @@ class SyntaxValidator:
     def print_issues(issues: List[dict]) -> None:
         """Print validation issues."""
         if not issues:
-            print("\n✓ No syntax issues found!")
+            print("\n No syntax issues found!")
             return
         
         print(f"\n{'='*80}")
@@ -273,7 +273,7 @@ def main():
         parser_obj = Parser(tokens)
         ast_tree = parser_obj.parse()
         
-        print("✓ Parsing successful!\n")
+        print(" Parsing successful!\n")
         
         # Show tree view
         if args.tree or not args.json:

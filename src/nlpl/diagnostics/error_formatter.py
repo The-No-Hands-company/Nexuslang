@@ -80,11 +80,11 @@ class ErrorFormatter:
     Output format inspired by Rust compiler:
     
     error[E0001]: undefined variable 'nmae'
-      ┌─ example.nlpl:5:12
-      │
-    5 │ print text nmae
-      │            ^^^^ not found in this scope
-      │
+       example.nlpl:5:12
+      
+    5  print text nmae
+                  ^^^^ not found in this scope
+      
       = help: did you mean 'name'?
     """
     
@@ -99,7 +99,7 @@ class ErrorFormatter:
         # Header: error[E0001]: message
         lines.append(self._format_header(diagnostic))
         
-        # Location: ┌─ file:line:col
+        # Location:  file:line:col
         lines.append(self._format_location(diagnostic))
         
         # Source context with caret pointer
@@ -149,12 +149,12 @@ class ErrorFormatter:
         return f"{level_text}: {diagnostic.message}"
     
     def _format_location(self, diagnostic: Diagnostic) -> str:
-        """Format: ┌─ file:line:col"""
+        """Format:  file:line:col"""
         location = f"{diagnostic.file}:{diagnostic.line}:{diagnostic.column}"
         
         if self.use_colors:
-            return f"  {Colors.BLUE}┌─{Colors.RESET} {location}"
-        return f"  ┌─ {location}"
+            return f"  {Colors.BLUE}{Colors.RESET} {location}"
+        return f"   {location}"
     
     def _format_source_context(self, diagnostic: Diagnostic, source_code: str) -> List[str]:
         """Format source code context with line numbers and caret pointer."""
@@ -166,7 +166,7 @@ class ErrorFormatter:
         end_line = min(len(source_lines), diagnostic.line + self.context_lines)
         
         # Empty line with gutter
-        lines.append(f"  {Colors.BLUE}│{Colors.RESET}" if self.use_colors else "  │")
+        lines.append(f"  {Colors.BLUE}{Colors.RESET}" if self.use_colors else "  ")
         
         # Show source lines
         for i in range(start_line, end_line + 1):
@@ -176,29 +176,29 @@ class ErrorFormatter:
             # Highlight error line
             if i == diagnostic.line:
                 if self.use_colors:
-                    gutter = f"{Colors.BLUE}{line_num} │{Colors.RESET}"
+                    gutter = f"{Colors.BLUE}{line_num} {Colors.RESET}"
                 else:
-                    gutter = f"{line_num} │"
+                    gutter = f"{line_num} "
                 
                 lines.append(f"{gutter} {line_text}")
                 
                 # Caret pointer
                 spaces = ' ' * (diagnostic.column - 1)
                 if self.use_colors:
-                    pointer = f"  {Colors.BLUE}│{Colors.RESET} {spaces}{Colors.BRIGHT_RED}^^^^ {diagnostic.message}{Colors.RESET}"
+                    pointer = f"  {Colors.BLUE}{Colors.RESET} {spaces}{Colors.BRIGHT_RED}^^^^ {diagnostic.message}{Colors.RESET}"
                 else:
-                    pointer = f"  │ {spaces}^^^^ {diagnostic.message}"
+                    pointer = f"   {spaces}^^^^ {diagnostic.message}"
                 lines.append(pointer)
             else:
                 if self.use_colors:
-                    gutter = f"{Colors.DIM}{line_num} │{Colors.RESET}"
+                    gutter = f"{Colors.DIM}{line_num} {Colors.RESET}"
                 else:
-                    gutter = f"{line_num} │"
+                    gutter = f"{line_num} "
                 
                 lines.append(f"{gutter} {line_text}")
         
         # Empty line
-        lines.append(f"  {Colors.BLUE}│{Colors.RESET}" if self.use_colors else "  │")
+        lines.append(f"  {Colors.BLUE}{Colors.RESET}" if self.use_colors else "  ")
         
         return lines
     

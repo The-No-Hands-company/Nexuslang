@@ -41,9 +41,9 @@ def test_type_inference():
         
         # Check if expected declaration is in the code
         if expected_decl in c_code:
-            print(f"  ✓ PASS: Found '{expected_decl}'")
+            print(f"   PASS: Found '{expected_decl}'")
         else:
-            print(f"  ✗ FAIL: Expected '{expected_decl}'")
+            print(f"   FAIL: Expected '{expected_decl}'")
             # Show what we actually got
             lines = [l.strip() for l in c_code.split('\n') if '[]' in l or 'double' in l or 'const char*' in l]
             if lines:
@@ -52,9 +52,9 @@ def test_type_inference():
     
     print("\n" + "="*70)
     if all_passed:
-        print("✓ ALL TYPE INFERENCE TESTS PASSED!")
+        print(" ALL TYPE INFERENCE TESTS PASSED!")
     else:
-        print("✗ Some type inference tests failed")
+        print(" Some type inference tests failed")
     print("="*70)
     
     return 0 if all_passed else 1

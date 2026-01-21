@@ -39,7 +39,7 @@ set first to numbers[0]
             if isinstance(stmt.value, IndexExpression):
                 print(f"      array: {type(stmt.value.array_expr).__name__}")
                 print(f"      index: {type(stmt.value.index_expr).__name__}")
-                print("      ✓ Array indexing parsed successfully!")
+                print("       Array indexing parsed successfully!")
     
 if __name__ == "__main__":
     test_array_indexing()

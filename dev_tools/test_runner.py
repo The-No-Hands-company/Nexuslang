@@ -158,9 +158,9 @@ class TestRunner:
             
             if not self.verbose and not self.quiet:
                 if result.passed:
-                    print(f"{Colors.GREEN}✓ PASS{Colors.RESET} ({result.duration:.2f}s)")
+                    print(f"{Colors.GREEN} PASS{Colors.RESET} ({result.duration:.2f}s)")
                 else:
-                    print(f"{Colors.RED}✗ FAIL{Colors.RESET} ({result.duration:.2f}s)")
+                    print(f"{Colors.RED} FAIL{Colors.RESET} ({result.duration:.2f}s)")
                     if result.error:
                         print(f"    Error: {result.error}")
         

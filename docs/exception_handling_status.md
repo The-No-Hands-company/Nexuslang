@@ -1,38 +1,38 @@
 # Exception Handling Implementation Status
 **Date:** Session Completed
-**Phase:** ✅ COMPLETE - All Phases Done
+**Phase:** COMPLETE - All Phases Done
 
 ## Summary
 
 **Exception Handling is FULLY WORKING!** All 6 test cases pass:
-- Direct raise in try blocks ✅
-- Nested try-catch ✅
-- Exception propagation ✅
-- Re-raise (exception filtering) ✅
-- Multiple exception types ✅
-- Uncaught exceptions terminate gracefully ✅
+- Direct raise in try blocks 
+- Nested try-catch 
+- Exception propagation 
+- Re-raise (exception filtering) 
+- Multiple exception types 
+- Uncaught exceptions terminate gracefully 
 
 **Key Solution:** Created `__nlpl_throw` helper function - an invokable wrapper around `__cxa_throw` that enables LLVM to build exception tables.
 
 ## Completed Work (Total: ~15-20 hours)
 
-### Phase 1: Exception Infrastructure ✅ 
+### Phase 1: Exception Infrastructure 
 - C++ exception runtime functions declared
 - Personality function added to all function types (6 locations)
 - Exception typeinfo generation (C++ RTTI)
 - Build system updated (-lstdc++ linkage)
 
-### Phase 2: Exception Type System ✅
+### Phase 2: Exception Type System 
 - RaiseStatement AST node created
 - Parser updated to handle raise syntax
 - Exception type info management
 
-### Phase 3: Throw Implementation ✅
+### Phase 3: Throw Implementation 
 - `_generate_raise_statement()` generates correct __cxa_throw calls
 - Exception allocation and message storage working
 - Unreachable blocks created after throws
 
-### Phase 4: Try-Catch Block Conversion ✅
+### Phase 4: Try-Catch Block Conversion 
 - Landing pad generation with catch-all (`catch i8* null`)
 - Exception extraction and message binding
 - __cxa_begin_catch / __cxa_end_catch calls
@@ -41,11 +41,11 @@
 - **`__nlpl_throw` helper function** - invokable wrapper for __cxa_throw
 - All function call sites use invoke when in try blocks
 
-### Phase 5: Resume/Uncaught Handling ✅
+### Phase 5: Resume/Uncaught Handling 
 - Top-level exception handler in main function
 - Uncaught exceptions terminate with error message
 
-### Phase 6: Comprehensive Testing ✅
+### Phase 6: Comprehensive Testing 
 - 6 test files all passing
 
 ## Technical Analysis
@@ -56,7 +56,7 @@ LLVM's C++ exception handling requires **invoke instructions** to build exceptio
 
 ```llvm
 invoke void @function()
-  to label %normal unwind label %catch
+ to label %normal unwind label %catch
 ```
 
 Without invoke instructions:
@@ -69,19 +69,19 @@ Without invoke instructions:
 **Current Output (Direct Raise):**
 ```llvm
 try.entry.0:
-  call void @__cxa_throw(...) noreturn
-  unreachable
+ call void @__cxa_throw(...) noreturn
+ unreachable
 
-catch.0:  # UNREACHABLE - no invoke edge!
-  %lp = landingpad { i8*, i32 } catch i8* null
-  ...
+catch.0: # UNREACHABLE - no invoke edge!
+ %lp = landingpad { i8*, i32 } catch i8* null
+ ...
 ```
 
 **Problem:** Landing pad exists but is unreachable via normal CFG. No exception tables link __cxa_throw to landing pad.
 
 **Verification:**
-- `llvm-as`: IR is valid ✅
-- `llc` output: No `.gcc_except_table` or `.eh_frame` sections ❌
+- `llvm-as`: IR is valid 
+- `llc` output: No `.gcc_except_table` or `.eh_frame` sections 
 - Runtime: Program terminates with "terminate called after throwing"
 
 ### Working Solution (Theory)
@@ -89,15 +89,15 @@ catch.0:  # UNREACHABLE - no invoke edge!
 **For function calls in try blocks:**
 ```llvm
 try.entry.0:
-  invoke void @user_function()  # ← Now using invoke!
-    to label %success unwind label %catch.0
+ invoke void @user_function() # Now using invoke!
+ to label %success unwind label %catch.0
 
 success:
-  ...
+ ...
 
 catch.0:
-  %lp = landingpad { i8*, i32 } catch i8* null
-  ...
+ %lp = landingpad { i8*, i32 } catch i8* null
+ ...
 ```
 
 This SHOULD work because:
@@ -112,22 +112,22 @@ This SHOULD work because:
 **src/nlpl/compiler/backends/llvm_ir_generator.py:**
 
 1. **Lines 147-150**: Invoke helper method
-   ```python
-   def _emit_call_or_invoke(self, ret_type, func_name, args_str, indent=''):
-       """Emit call or invoke based on in_try_block flag."""
-       if self.in_try_block and self.current_landing_pad:
-           # Generate invoke with normal_label and unwind to current_landing_pad
-       else:
-           # Generate regular call
-   ```
+ ```python
+ def _emit_call_or_invoke(self, ret_type, func_name, args_str, indent=''):
+ """Emit call or invoke based on in_try_block flag."""
+ if self.in_try_block and self.current_landing_pad:
+ # Generate invoke with normal_label and unwind to current_landing_pad
+ else:
+ # Generate regular call
+ ```
 
 2. **Lines 5395-5410**: Extern function calls updated
-   - Uses helper for non-variadic calls
-   - Variadic C library calls still use direct call (safe assumption)
+ - Uses helper for non-variadic calls
+ - Variadic C library calls still use direct call (safe assumption)
 
 3. **Lines 5455-5461**: User function calls updated
-   - All user function calls use `_emit_call_or_invoke`
-   - Automatically converts to invoke when in try block
+ - All user function calls use `_emit_call_or_invoke`
+ - Automatically converts to invoke when in try block
 
 ### Test Files Created
 
@@ -143,22 +143,22 @@ This SHOULD work because:
 
 **Workaround:** Exceptions must be thrown from functions that are invoked:
 ```nlpl
-# ❌ This won't catch:
+# This won't catch:
 try
-    raise error with message "Direct"
+ raise error with message "Direct"
 catch e
-    print text "Won't reach here"
+ print text "Won't reach here"
 end
 
-# ✅ This should work:
+# This should work:
 function thrower
-    raise error with message "From function"
+ raise error with message "From function"
 end
 
 try
-    call thrower  # ← Will be converted to invoke
+ call thrower # Will be converted to invoke
 catch e
-    print text "Should catch this"
+ print text "Should catch this"
 end
 ```
 
@@ -172,25 +172,25 @@ The LLVM backend doesn't support standalone function definitions at global scope
 ## Next Steps
 
 ### Immediate (2-4 hours)
-1. ✅ **Invoke helper created**
-2. ✅ **Call sites updated**
-3. ⏸️ **Test invoke mechanism** - BLOCKED by compiler limitations
-   - Need working test case with function calls in try blocks
-   - May require lambda support or different test approach
-4. ⏸️ **Verify exception catching works** - Pending test
+1. **Invoke helper created**
+2. **Call sites updated**
+3. **Test invoke mechanism** - BLOCKED by compiler limitations
+ - Need working test case with function calls in try blocks
+ - May require lambda support or different test approach
+4. **Verify exception catching works** - Pending test
 
 ### Phase 4 Remaining (6-10 hours)
 1. **Create working test case**
-   - Either fix standalone function support
-   - Or use lambda-based approach
-   - Or create minimal C++ interop test
+ - Either fix standalone function support
+ - Or use lambda-based approach
+ - Or create minimal C++ interop test
 2. **Verify invoke generation**
-   - Inspect generated IR for invoke instructions
-   - Verify exception tables in assembly output
+ - Inspect generated IR for invoke instructions
+ - Verify exception tables in assembly output
 3. **Test exception propagation**
-   - Nested try-catch blocks
-   - Multiple function calls in try block
-   - Re-raise support
+ - Nested try-catch blocks
+ - Multiple function calls in try block
+ - Re-raise support
 
 ### Phase 5: Resume/Propagation (10-14 hours)
 - Resume instruction for partial catches
@@ -206,16 +206,16 @@ The LLVM backend doesn't support standalone function definitions at global scope
 
 ### LLVM Exception Handling Requirements
 
-1. **Personality Function:** Must be on EVERY function that participates in exception handling ✅
-2. **Invoke Instructions:** Required to build exception tables (not just for calls, but to register landing pads) ✅ (implemented)
-3. **Landing Pads:** Must be reachable via invoke unwind edges ⏸️ (pending test)
-4. **C++ ABI:** __cxa_* functions must be linked (-lstdc++) ✅
+1. **Personality Function:** Must be on EVERY function that participates in exception handling 
+2. **Invoke Instructions:** Required to build exception tables (not just for calls, but to register landing pads) (implemented)
+3. **Landing Pads:** Must be reachable via invoke unwind edges (pending test)
+4. **C++ ABI:** __cxa_* functions must be linked (-lstdc++) 
 
 ### Exception Object Layout
 
 ```c
 struct NLPLException {
-    i8* message;  // Pointer to error message string (8 bytes)
+ i8* message; // Pointer to error message string (8 bytes)
 };
 ```
 
@@ -224,8 +224,8 @@ struct NLPLException {
 ```llvm
 @_ZTS5Error = constant [6 x i8] c"Error\00"
 @_ZTI5Error = constant { i8*, i8* } {
-    i8* bitcast (i8** getelementptr (...) to i8*),  # vtable
-    i8* getelementptr inbounds ([6 x i8], [6 x i8]* @_ZTS5Error, i32 0, i32 0)
+ i8* bitcast (i8** getelementptr (...) to i8*), # vtable
+ i8* getelementptr inbounds ([6 x i8], [6 x i8]* @_ZTS5Error, i32 0, i32 0)
 }
 ```
 
@@ -256,8 +256,8 @@ Consider implementing a builtin `__nlpl_throw` function that wraps __cxa_throw a
 
 ```llvm
 define void @__nlpl_throw(i8* %exception_ptr, i8* %typeinfo) personality i8* bitcast (...) {
-    call void @__cxa_throw(i8* %exception_ptr, i8* %typeinfo, i8* null) noreturn
-    unreachable
+ call void @__cxa_throw(i8* %exception_ptr, i8* %typeinfo, i8* null) noreturn
+ unreachable
 }
 ```
 

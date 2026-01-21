@@ -24,8 +24,8 @@ print text "Word Size: " plus call get_word_size plus " bytes"
 print text ""
 
 # Confirm Cross-Platform
-print text "✓ NLPL is FULLY cross-platform!"
-print text "✓ The interpreter runs on Windows, Linux, macOS, and BSD"
-print text "✓ FFI supports .dll (Windows), .so (Linux/BSD), and .dylib (macOS)"
+print text " NLPL is FULLY cross-platform!"
+print text " The interpreter runs on Windows, Linux, macOS, and BSD"
+print text " FFI supports .dll (Windows), .so (Linux/BSD), and .dylib (macOS)"
 print text ""
 print text "See docs/CROSS_PLATFORM_GUIDE.md for detailed examples."

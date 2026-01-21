@@ -11,7 +11,7 @@ Successfully implemented comprehensive FFI (Foreign Function Interface) struct m
 #### Struct Type Registration
 ```python
 def register_struct_type(self, name: str, fields: List[Tuple[str, str]]):
-    """Register a struct type for FFI marshalling."""
+ """Register a struct type for FFI marshalling."""
 ```
 - Tracks NLPL struct definitions for marshalling
 - Maps field names to LLVM types
@@ -20,7 +20,7 @@ def register_struct_type(self, name: str, fields: List[Tuple[str, str]]):
 #### Type Mapping System
 ```python
 def map_type(self, type_name: str) -> ir.Type:
-    """Map NLPL type name to LLVM type."""
+ """Map NLPL type name to LLVM type."""
 ```
 - Extended to handle struct types
 - Supports pointer types (`StructName*`)
@@ -51,20 +51,20 @@ Comprehensive struct marshalling utilities:
 **Changes Made:**
 
 1. **Member Assignment** (`_generate_member_assignment`)
-   - Now checks both `local_vars` and `global_vars`
-   - Loads global pointer before accessing fields
-   - Properly handles struct field stores
+ - Now checks both `local_vars` and `global_vars`
+ - Loads global pointer before accessing fields
+ - Properly handles struct field stores
 
-2. **Member Access** (`_generate_member_access`)  
-   - Extended to support global struct variables
-   - Loads pointer from global before field access
-   - Works with both structs and classes
+2. **Member Access** (`_generate_member_access`) 
+ - Extended to support global struct variables
+ - Loads pointer from global before field access
+ - Works with both structs and classes
 
 3. **Type Inference** (`_infer_expression_type`)
-   - Fixed `MemberAccess` type inference for globals
-   - Now checks both local and global symbol tables
-   - Returns correct field types for struct members
-   - Supports class property types as well
+ - Fixed `MemberAccess` type inference for globals
+ - Now checks both local and global symbol tables
+ - Returns correct field types for struct members
+ - Supports class property types as well
 
 #### Variadic Function Support
 
@@ -82,38 +82,38 @@ Comprehensive struct marshalling utilities:
 Comprehensive test demonstrating:
 
 1. **Basic Struct Creation**
-   ```nlpl
-   struct Point
-       x as Integer
-       y as Integer
-   end
-   
-   set p to new Point
-   set p.x to 10
-   set p.y to 20
-   ```
+ ```nlpl
+ struct Point
+ x as Integer
+ y as Integer
+ end
+ 
+ set p to new Point
+ set p.x to 10
+ set p.y to 20
+ ```
 
 2. **Struct Field Access**
-   ```nlpl
-   call printf with "Point: (%lld, %lld)\n", p.x, p.y
-   ```
+ ```nlpl
+ call printf with "Point: (%lld, %lld)\n", p.x, p.y
+ ```
 
 3. **Multiple Struct Instances**
-   ```nlpl
-   set p1 to new Point
-   set p2 to new Point
-   ```
+ ```nlpl
+ set p1 to new Point
+ set p2 to new Point
+ ```
 
 4. **3D Structs with Floats**
-   ```nlpl
-   struct Point3D
-       x as Float
-       y as Float
-       z as Float
-   end
-   
-   call printf with "3D Point: (%.1f, %.1f, %.1f)\n", p3d.x, p3d.y, p3d.z
-   ```
+ ```nlpl
+ struct Point3D
+ x as Float
+ y as Float
+ z as Float
+ end
+ 
+ call printf with "3D Point: (%.1f, %.1f, %.1f)\n", p3d.x, p3d.y, p3d.z
+ ```
 
 ### Test Results
 
@@ -125,7 +125,7 @@ Distance: 20
 Struct marshalling test complete!
 ```
 
-✅ All tests passing!
+ All tests passing!
 
 ## Technical Details
 
@@ -165,71 +165,71 @@ Example for `p.x` access in expression:
 
 ## Capabilities
 
-### ✅ Supported Features
+### Supported Features
 
 1. **Struct Definition & Instantiation**
-   - Stack-allocated structs
-   - Zero-initialized on creation
-   - Field assignment and access
+ - Stack-allocated structs
+ - Zero-initialized on creation
+ - Field assignment and access
 
 2. **FFI Integration**
-   - Pass struct fields to C functions
-   - Mixed int/float arguments
-   - Variadic function support (printf, etc.)
+ - Pass struct fields to C functions
+ - Mixed int/float arguments
+ - Variadic function support (printf, etc.)
 
 3. **Type System**
-   - Integer fields (i64)
-   - Float/Double fields
-   - Nested structs (infrastructure ready)
+ - Integer fields (i64)
+ - Float/Double fields
+ - Nested structs (infrastructure ready)
 
 4. **Scope Support**
-   - Local struct variables
-   - Global struct variables
-   - Proper lifetime management
+ - Local struct variables
+ - Global struct variables
+ - Proper lifetime management
 
-### 🚧 Advanced Features (Infrastructure Ready)
+### Advanced Features (Infrastructure Ready)
 
 1. **Struct Passing**
-   - By value (load from pointer)
-   - By reference (pass pointer)
-   - Return structs from functions
+ - By value (load from pointer)
+ - By reference (pass pointer)
+ - Return structs from functions
 
 2. **Nested Structs**
-   - Type registration supports nesting
-   - Field access needs recursive handling
+ - Type registration supports nesting
+ - Field access needs recursive handling
 
 3. **Struct Arrays**
-   - Allocation primitives exist
-   - Indexing into struct arrays
+ - Allocation primitives exist
+ - Indexing into struct arrays
 
 ## Next Steps
 
 The remaining FFI Phase 3 components are:
 
 1. **Callback Functions** (6-8 hours)
-   - Function pointers from NLPL to C
-   - Trampoline generation
-   - Type safety for callbacks
+ - Function pointers from NLPL to C
+ - Trampoline generation
+ - Type safety for callbacks
 
 2. **Variadic NLPL Functions** (4-5 hours)
-   - Accept variable arguments in NLPL
-   - va_list handling
-   - Type-safe variadic calls
+ - Accept variable arguments in NLPL
+ - va_list handling
+ - Type-safe variadic calls
 
 3. **Advanced Types** (3-4 hours)
-   - Union marshalling
-   - Bitfields
-   - Packed structs
-   - Custom alignment
+ - Union marshalling
+ - Bitfields
+ - Packed structs
+ - Custom alignment
 
 ## Files Modified
 
 1. `/src/nlpl/compiler/ffi.py` - Added `register_struct_type()` and `StructMarshaller` class
 2. `/src/nlpl/compiler/backends/llvm_ir_generator.py` - Fixed global variable support in:
-   - `_generate_member_assignment()`
-   - `_generate_member_access()`
-   - `_infer_expression_type()`
-   - `_generate_function_call_expression()` (variadic fix)
+ - `_generate_member_assignment()`
+ - `_generate_member_access()`
+ - `_infer_expression_type()`
+ - `_generate_function_call_expression()` (variadic fix)
 
 ## Impact
 
@@ -243,7 +243,7 @@ The infrastructure supports future enhancements like callbacks, unions, and adva
 
 ---
 
-**Status**: ✅ Complete and tested
+**Status**: Complete and tested
 **Test Program**: `test_programs/ffi/test_ffi_struct.nlpl`
 **Lines of Code**: ~200 (FFI module) + ~100 (IR generator fixes)
 **Time Investment**: ~4 hours

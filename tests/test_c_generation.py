@@ -27,7 +27,7 @@ set second to numbers[1]
     parser = Parser(tokens)
     ast = parser.parse()
     
-    print(f"✓ Parsed successfully: {len(ast.statements)} statements\n")
+    print(f" Parsed successfully: {len(ast.statements)} statements\n")
     
     # Generate C code
     generator = CCodeGenerator(target="c")
@@ -49,15 +49,15 @@ set second to numbers[1]
     all_passed = True
     for name, pattern in checks:
         if pattern in c_code:
-            print(f"  ✓ {name}: Found '{pattern}'")
+            print(f"   {name}: Found '{pattern}'")
         else:
-            print(f"  ✗ {name}: Missing '{pattern}'")
+            print(f"   {name}: Missing '{pattern}'")
             all_passed = False
     
     if all_passed:
-        print("\n✓ All checks passed!")
+        print("\n All checks passed!")
     else:
-        print("\n✗ Some checks failed")
+        print("\n Some checks failed")
     
     return all_passed
 

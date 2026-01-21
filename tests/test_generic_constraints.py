@@ -18,7 +18,7 @@ def test_multiple_trait_constraints():
     
     # Integer implements Comparable
     assert constraint.check(INTEGER_TYPE), "Integer should satisfy Comparable constraint"
-    print("   ✓ Single trait constraint works")
+    print("    Single trait constraint works")
     
     # Test 2: Multiple trait constraints (T: Comparable + Equatable)
     print("\n2. Testing multiple trait constraints:")
@@ -26,7 +26,7 @@ def test_multiple_trait_constraints():
     
     # Integer implements both
     assert multi_constraint.check(INTEGER_TYPE), "Integer should satisfy Comparable + Equatable"
-    print("   ✓ Multiple trait constraints work")
+    print("    Multiple trait constraints work")
     
     # Test 3: Class satisfying multiple constraints
     print("\n3. Testing class with multiple trait implementations:")
@@ -45,7 +45,7 @@ def test_multiple_trait_constraints():
     # Should satisfy Comparable + Equatable + Printable
     triple_constraint = GenericTypeConstraint("T", [COMPARABLE_TRAIT, EQUATABLE_TRAIT, PRINTABLE_TRAIT])
     assert triple_constraint.check(point_class), "Point should satisfy all three traits"
-    print("   ✓ Class satisfies multiple trait constraints")
+    print("    Class satisfies multiple trait constraints")
     
     # Test 4: GenericTypeContext with constraints
     print("\n4. Testing GenericTypeContext:")
@@ -56,15 +56,15 @@ def test_multiple_trait_constraints():
     # Check constraints
     substitutions = {"T": INTEGER_TYPE}
     assert context.check_constraints(substitutions), "Integer should satisfy T: Comparable + Equatable"
-    print("   ✓ GenericTypeContext validates constraints correctly")
+    print("    GenericTypeContext validates constraints correctly")
     
     # Test 5: Constraint string representation
     print("\n5. Testing constraint string representation:")
     constraint_str = str(multi_constraint)
     assert "Comparable" in constraint_str and "Equatable" in constraint_str
-    print(f"   ✓ Constraint string: {constraint_str}")
+    print(f"    Constraint string: {constraint_str}")
     
-    print("\n✅ All enhanced generic constraint tests passed!")
+    print("\n All enhanced generic constraint tests passed!")
 
 if __name__ == "__main__":
     from nlpl.typesystem.types import STRING_TYPE

@@ -40,9 +40,9 @@ def run_test(name, code, expected_patterns):
     all_passed = True
     for pattern in expected_patterns:
         if pattern in main_body:
-            print(f"  ✓ Found: {pattern}")
+            print(f"   Found: {pattern}")
         else:
-            print(f"  ✗ Missing: {pattern}")
+            print(f"   Missing: {pattern}")
             all_passed = False
     
     return all_passed
@@ -90,16 +90,16 @@ def main():
     total_count = len(results)
     
     for name, passed in results:
-        status = "✓ PASS" if passed else "✗ FAIL"
+        status = " PASS" if passed else " FAIL"
         print(f"{status}: {name}")
     
     print(f"\nResult: {passed_count}/{total_count} tests passed")
     
     if passed_count == total_count:
-        print("\n🎉 ALL TESTS PASSED! Array indexing feature is complete.")
+        print("\n ALL TESTS PASSED! Array indexing feature is complete.")
         return 0
     else:
-        print(f"\n⚠️  {total_count - passed_count} test(s) failed")
+        print(f"\n  {total_count - passed_count} test(s) failed")
         return 1
 
 if __name__ == "__main__":

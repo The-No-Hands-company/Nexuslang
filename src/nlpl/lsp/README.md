@@ -6,7 +6,7 @@ The NLPL LSP server provides IDE integration for NLPL, enabling modern developme
 
 ## Features
 
-### ✅ Implemented
+###  Implemented
 
 1. **Real-time Diagnostics**
    - Syntax error detection (integrated with NLPL parser)
@@ -26,14 +26,14 @@ The NLPL LSP server provides IDE integration for NLPL, enabling modern developme
    - Variable and function name completion
    - Code snippets (function templates, class templates, etc.)
 
-3. **Code Actions (Quick Fixes)** ⭐ NEW
+3. **Code Actions (Quick Fixes)**  NEW
    - Fix unclosed strings (add missing quote)
    - Remove unused variables
    - Add missing type annotations
    - Extract function refactoring
    - Convert to list comprehension
 
-4. **Signature Help** ⭐ NEW
+4. **Signature Help**  NEW
    - Parameter hints during function calls
    - Shows parameter types and documentation
    - Works with stdlib and user-defined functions
@@ -58,31 +58,31 @@ The NLPL LSP server provides IDE integration for NLPL, enabling modern developme
 ## Architecture
 
 ```
-┌─────────────────┐
-│   VSCode/IDE    │
-│     Client      │
-└────────┬────────┘
-         │ JSON-RPC
-         │ (stdio)
-┌────────▼────────┐
-│  NLPL LSP       │
-│   Server        │
-│  (src/nlpl_lsp.py) │
-└────────┬────────┘
-         │
-    ┌────┴─────┬──────────┬───────────┬────────────┬──────────┬──────────┐
-    │          │          │           │            │          │          │
-┌───▼──┐  ┌───▼──┐  ┌────▼────┐ ┌────▼─────┐ ┌───▼───┐ ┌────▼────┐ ┌────▼────┐
-│Diag- │  │Comp- │  │Defin-   │ │Hover     │ │Symbol │ │Code     │ │Signature│
-│nostic│  │letion│  │itions   │ │Provider  │ │Provider│ │Actions  │ │Help     │
-│Provider│  │Provider│  │Provider │ │         │ │       │ │Provider │ │Provider │
-└───┬──┘  └──────┘  └─────────┘ └──────────┘ └───────┘ └─────────┘ └─────────┘
-    │
-┌───▼──────────────┐
-│   NLPL Parser    │
-│   Type Checker   │
-│   AST Cache      │
-└──────────────────┘
+
+   VSCode/IDE    
+     Client      
+
+          JSON-RPC
+          (stdio)
+
+  NLPL LSP       
+   Server        
+  (src/nlpl_lsp.py) 
+
+         
+    
+                                                                   
+        
+Diag-   Comp-   Defin-    Hover      Symbol  Code      Signature
+nostic  letion  itions    Provider   Provider Actions   Help     
+Provider  Provider  Provider                    Provider  Provider 
+        
+    
+
+   NLPL Parser    
+   Type Checker   
+   AST Cache      
+
 ```
 
 ## Installation & Setup
@@ -194,8 +194,8 @@ set message to "unclosed string
 ```
 
 Quick fixes available:
-- 💡 **Remove unused variable 'unused_var'**
-- 💡 **Add closing quote**
+-  **Remove unused variable 'unused_var'**
+-  **Add closing quote**
 
 Press `Ctrl+.` (VSCode) or `<leader>ca` (Neovim) to apply.
 
@@ -231,9 +231,9 @@ Parameter: b - Second number
 Import checking across files:
 
 ```nlpl
-import math                        # ✓ OK (stdlib)
-import nonexistent_module          # ⚠ Warning: Unknown module
-import utils from "missing.nlpl"   # ❌ Error: Cannot find module
+import math                        #  OK (stdlib)
+import nonexistent_module          #  Warning: Unknown module
+import utils from "missing.nlpl"   #  Error: Cannot find module
 ```
 
 ### Auto-Completion
@@ -315,9 +315,9 @@ Test 1: Enhanced Error Positioning
 [ERROR] Line 2:42 - Type error: Return value...
 
 Test 2: Code Actions (Quick Fixes)
-✓ Remove unused variable 'unused_var'
-✓ Add closing quote
-✓ Extract to function
+ Remove unused variable 'unused_var'
+ Add closing quote
+ Extract to function
 
 Test 3: Signature Help
 Signature: sqrt with number as Float returns Float
@@ -327,7 +327,7 @@ Test 4: Multi-File Diagnostics
 [ERROR] Line 3 - Cannot find module 'missing_file.nlpl'
 [WARNING] Line 2 - Unknown module 'nonexistent_module'
 
-✅ All integration tests passed!
+ All integration tests passed!
 ```
 
 ### Test LSP Server Manually
@@ -491,10 +491,10 @@ tail -f /tmp/nlpl-lsp.log
 ## Future Enhancements
 
 ### Short Term (Session 3)
-- [x] Enhanced error positioning (AST-based) ✅
-- [x] Code action providers (quick fixes) ✅
-- [x] Signature help for function calls ✅
-- [x] Multi-file diagnostics (imports) ✅
+- [x] Enhanced error positioning (AST-based) 
+- [x] Code action providers (quick fixes) 
+- [x] Signature help for function calls 
+- [x] Multi-file diagnostics (imports) 
 - [ ] Semantic token highlighting
 - [ ] Document outline/symbols
 - [ ] Rename refactoring

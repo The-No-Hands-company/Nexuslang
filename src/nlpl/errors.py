@@ -59,7 +59,7 @@ class NLPLSyntaxError(NLPLError):
             base += f"\n  Got: {self.got}"
         
         if self.suggestion:
-            base += f"\n\n  💡 Suggestion: {self.suggestion}"
+            base += f"\n\n   Suggestion: {self.suggestion}"
         
         return base
 
@@ -112,9 +112,9 @@ class NLPLNameError(NLPLError):
         
         if self.suggestions:
             if len(self.suggestions) == 1:
-                base += f"\n\n  💡 Did you mean: '{self.suggestions[0]}'?"
+                base += f"\n\n   Did you mean: '{self.suggestions[0]}'?"
             else:
-                base += f"\n\n  💡 Did you mean one of these?"
+                base += f"\n\n   Did you mean one of these?"
                 for suggestion in self.suggestions[:3]:  # Show top 3
                     base += f"\n    • {suggestion}"
         

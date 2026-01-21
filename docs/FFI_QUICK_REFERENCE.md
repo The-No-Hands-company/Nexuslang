@@ -118,7 +118,7 @@ set text to "Hello"
 set len to strlen(text)
 
 # Compare strings
-set result to strcmp("apple", "banana")  # result < 0
+set result to strcmp("apple", "banana") # result < 0
 
 # Copy strings
 set dest to malloc(100)
@@ -145,41 +145,41 @@ extern function fabs with x as Float returns Float from library "m"
 ```nlpl
 # Calculate square root
 set num to 16.0
-set result to sqrt(num)  # 4.0
+set result to sqrt(num) # 4.0
 
 # Power function
-set squared to pow(5.0, 2.0)  # 25.0
+set squared to pow(5.0, 2.0) # 25.0
 
 # Trigonometry
-set angle to 1.5708  # pi/2
-set sine to sin(angle)  # ~1.0
+set angle to 1.5708 # pi/2
+set sine to sin(angle) # ~1.0
 ```
 
 ---
 
 ## Type Mappings
 
-### NLPL → C Type Correspondence
+### NLPL C Type Correspondence
 
-| NLPL Type    | C Type           | LLVM Type | Notes                    |
+| NLPL Type | C Type | LLVM Type | Notes |
 |--------------|------------------|-----------|--------------------------|
-| `Integer`    | `long` (64-bit)  | `i64`     | Default integer type     |
-| `Int8`       | `char`           | `i8`      | 8-bit signed             |
-| `Int16`      | `short`          | `i16`     | 16-bit signed            |
-| `Int32`      | `int`            | `i32`     | 32-bit signed            |
-| `Int64`      | `long`           | `i64`     | 64-bit signed            |
-| `UInt8`      | `unsigned char`  | `i8`      | 8-bit unsigned           |
-| `UInt16`     | `unsigned short` | `i16`     | 16-bit unsigned          |
-| `UInt32`     | `unsigned int`   | `i32`     | 32-bit unsigned          |
-| `UInt64`     | `unsigned long`  | `i64`     | 64-bit unsigned          |
-| `Float`      | `double`         | `double`  | Double precision         |
-| `Float32`    | `float`          | `float`   | Single precision         |
-| `Float64`    | `double`         | `double`  | Double precision         |
-| `Boolean`    | `bool` / `int`   | `i1`      | True/False               |
-| `Char`       | `char`           | `i8`      | Single character         |
-| `Pointer`    | `void*`          | `i8*`     | Generic pointer          |
-| `String`     | `char*`          | `i8*`     | Null-terminated string   |
-| `nothing`    | `void`           | `void`    | No return value          |
+| `Integer` | `long` (64-bit) | `i64` | Default integer type |
+| `Int8` | `char` | `i8` | 8-bit signed |
+| `Int16` | `short` | `i16` | 16-bit signed |
+| `Int32` | `int` | `i32` | 32-bit signed |
+| `Int64` | `long` | `i64` | 64-bit signed |
+| `UInt8` | `unsigned char` | `i8` | 8-bit unsigned |
+| `UInt16` | `unsigned short` | `i16` | 16-bit unsigned |
+| `UInt32` | `unsigned int` | `i32` | 32-bit unsigned |
+| `UInt64` | `unsigned long` | `i64` | 64-bit unsigned |
+| `Float` | `double` | `double` | Double precision |
+| `Float32` | `float` | `float` | Single precision |
+| `Float64` | `double` | `double` | Double precision |
+| `Boolean` | `bool` / `int` | `i1` | True/False |
+| `Char` | `char` | `i8` | Single character |
+| `Pointer` | `void*` | `i8*` | Generic pointer |
+| `String` | `char*` | `i8*` | Null-terminated string |
+| `nothing` | `void` | `void` | No return value |
 
 ---
 
@@ -192,20 +192,20 @@ extern function malloc with size as Integer returns Pointer from library "c"
 extern function free with ptr as Pointer from library "c"
 
 function allocate_buffer with size as Integer returns Pointer
-    set buffer to malloc(size)
-    
-    if buffer is null
-        print text "Memory allocation failed!"
-        return null
-    end
-    
-    return buffer
+ set buffer to malloc(size)
+ 
+ if buffer is null
+ print text "Memory allocation failed!"
+ return null
+ end
+ 
+ return buffer
 end
 
 function cleanup with buffer as Pointer
-    if buffer is not null
-        free(buffer)
-    end
+ if buffer is not null
+ free(buffer)
+ end
 end
 ```
 
@@ -217,14 +217,14 @@ extern function strcpy with dest as Pointer with src as Pointer returns Pointer 
 extern function malloc with size as Integer returns Pointer from library "c"
 
 function duplicate_string with original as String returns String
-    set len to strlen(original)
-    set copy to malloc(len plus 1)  # +1 for null terminator
-    
-    if copy is not null
-        strcpy(copy, original)
-    end
-    
-    return copy
+ set len to strlen(original)
+ set copy to malloc(len plus 1) # +1 for null terminator
+ 
+ if copy is not null
+ strcpy(copy, original)
+ end
+ 
+ return copy
 end
 ```
 
@@ -235,12 +235,12 @@ extern function sqrt with x as Float returns Float from library "m"
 extern function pow with base as Float with exponent as Float returns Float from library "m"
 
 function distance with x1 as Float with y1 as Float with x2 as Float with y2 as Float returns Float
-    set dx to x2 minus x1
-    set dy to y2 minus y1
-    set dx_squared to pow(dx, 2.0)
-    set dy_squared to pow(dy, 2.0)
-    set sum to dx_squared plus dy_squared
-    return sqrt(sum)
+ set dx to x2 minus x1
+ set dy to y2 minus y1
+ set dx_squared to pow(dx, 2.0)
+ set dy_squared to pow(dy, 2.0)
+ set sum to dx_squared plus dy_squared
+ return sqrt(sum)
 end
 ```
 
@@ -252,15 +252,15 @@ extern function fclose with stream as Pointer returns Integer from library "c"
 extern function fprintf with stream as Pointer with format as Pointer returns Integer from library "c"
 
 function write_to_file with filename as String with content as String
-    set file to fopen(filename, "w")
-    
-    if file is not null
-        fprintf(file, "%s", content)
-        fclose(file)
-        return true
-    end
-    
-    return false
+ set file to fopen(filename, "w")
+ 
+ if file is not null
+ fprintf(file, "%s", content)
+ fclose(file)
+ return true
+ end
+ 
+ return false
 end
 ```
 
@@ -308,14 +308,14 @@ extern function malloc with size as Integer returns Pointer from library "c"
 extern function printf with format as Pointer returns Integer from library "c"
 
 function safe_malloc with size as Integer returns Pointer
-    set buffer to malloc(size)
-    
-    if buffer is null
-        printf("ERROR: malloc failed for %d bytes\n", size)
-        # Handle error (exit, throw, return error code, etc.)
-    end
-    
-    return buffer
+ set buffer to malloc(size)
+ 
+ if buffer is null
+ printf("ERROR: malloc failed for %d bytes\n", size)
+ # Handle error (exit, throw, return error code, etc.)
+ end
+ 
+ return buffer
 end
 ```
 
@@ -327,9 +327,9 @@ extern function strerror with errnum as Integer returns Pointer from library "c"
 extern function printf with format as Pointer returns Integer from library "c"
 
 function print_error
-    set error_code to errno
-    set error_msg to strerror(error_code)
-    printf("Error %d: %s\n", error_code, error_msg)
+ set error_code to errno
+ set error_msg to strerror(error_code)
+ printf("Error %d: %s\n", error_code, error_msg)
 end
 ```
 
@@ -341,8 +341,8 @@ end
 ```nlpl
 set buffer to malloc(1024)
 if buffer is null
-    # Handle error
-    return error
+ # Handle error
+ return error
 end
 # ... use buffer ...
 free(buffer)
@@ -366,7 +366,7 @@ set data to malloc(100)
 extern function strlen with str as Pointer returns Integer from library "c"
 
 # Bad: Wrong return type
-extern function strlen with str as Pointer returns Float from library "c"  # WRONG!
+extern function strlen with str as Pointer returns Float from library "c" # WRONG!
 ```
 
 ### 4. Specify Libraries Correctly
@@ -393,7 +393,7 @@ printf("DEBUG: Pointer = %p\n", ptr)
 ### 2. Check NULL Pointers
 ```nlpl
 if my_pointer is null
-    printf("ERROR: Pointer is NULL!\n")
+ printf("ERROR: Pointer is NULL!\n")
 end
 ```
 
@@ -403,7 +403,7 @@ set result to some_c_function()
 printf("Function returned: %d\n", result)
 
 if result is less than 0
-    printf("ERROR: Function failed!\n")
+ printf("ERROR: Function failed!\n")
 end
 ```
 
@@ -415,13 +415,13 @@ end
 ```nlpl
 # Pass NLPL function to C library
 function my_comparator with a as Integer with b as Integer returns Integer
-    if a is less than b
-        return -1
-    else if a is greater than b
-        return 1
-    else
-        return 0
-    end
+ if a is less than b
+ return -1
+ else if a is greater than b
+ return 1
+ else
+ return 0
+ end
 end
 
 extern function qsort with base as Pointer with count as Integer with size as Integer with comparator as Pointer from library "c"
@@ -460,5 +460,5 @@ printf("Name: %s, Age: %d, Score: %f\n", name, age, score)
 
 ---
 
-**Last Updated**: 2025-11-25  
+**Last Updated**: 2025-11-25 
 **Version**: 1.0 (Phase 1 Complete)

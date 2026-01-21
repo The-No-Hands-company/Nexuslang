@@ -3,9 +3,9 @@
 ## Starting the REPL
 
 ```bash
-python -m nlpl.main              # Start REPL
-python -m nlpl.main --debug      # Start with debug mode
-python nlpl_repl.py              # Alternative entry point
+python -m nlpl.main # Start REPL
+python -m nlpl.main --debug # Start with debug mode
+python nlpl_repl.py # Alternative entry point
 ```
 
 ## Special Commands
@@ -27,8 +27,8 @@ python nlpl_repl.py              # Alternative entry point
 | Key | Action |
 |-----|--------|
 | `Tab` | Auto-complete |
-| `↑` | Previous command |
-| `↓` | Next command |
+| `` | Previous command |
+| `` | Next command |
 | `Ctrl+C` | Interrupt (doesn't exit) |
 | `Ctrl+D` | Exit REPL |
 | `Ctrl+L` | Clear screen |
@@ -82,7 +82,7 @@ Press Enter on empty line to execute.
 ## Tips
 
 1. **Tab completion**: Type partial keyword/variable and press Tab
-2. **History**: Use ↑/↓ to navigate previous commands
+2. **History**: Use / to navigate previous commands
 3. **Reset**: Use `:reset` if state gets messy
 4. **Debug**: Enable `:debug` to see tokens/AST
 5. **Inspect**: Use `:vars` and `:funcs` frequently

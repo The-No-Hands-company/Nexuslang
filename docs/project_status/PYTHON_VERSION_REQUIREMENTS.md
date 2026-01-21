@@ -2,10 +2,10 @@
 
 ## Supported Python Versions
 
-- ✅ **Python 3.11**: Fully supported, recommended
-- ✅ **Python 3.12**: Fully supported, recommended  
-- ✅ **Python 3.13**: Fully supported, recommended
-- ❌ **Python 3.14**: **NOT SUPPORTED** due to import system regression
+- **Python 3.11**: Fully supported, recommended
+- **Python 3.12**: Fully supported, recommended 
+- **Python 3.13**: Fully supported, recommended
+- **Python 3.14**: **NOT SUPPORTED** due to import system regression
 
 ## Installation Guide
 
@@ -63,9 +63,9 @@ python3.13 nlplc_llvm.py program.nlpl -o output
 python3.13 -m venv venv
 
 # Activate
-source venv/bin/activate  # Linux/macOS
+source venv/bin/activate # Linux/macOS
 # or
-venv\Scripts\activate  # Windows
+venv\Scripts\activate # Windows
 
 # Install dependencies
 pip install -r requirements.txt
@@ -92,7 +92,7 @@ Python 3.14.0 (released 2024) has a regression in the import system that causes
 infinite hangs when loading certain module patterns, including NLPL's lexer module.
 
 **Symptoms**:
-- Scripts hang on `from nlpl.parser.lexer import Lexer`  
+- Scripts hang on `from nlpl.parser.lexer import Lexer` 
 - No error message, just infinite loop
 - Affects all NLPL tools (compiler, tests, etc.)
 
@@ -116,7 +116,7 @@ alias nlpl-python=python3.13
 python3.13 nlplc_llvm.py examples/01_basic_concepts.nlpl -o test
 ./test
 
-# 5. Run tests  
+# 5. Run tests 
 python3.13 -m pytest tests/
 ```
 
@@ -127,8 +127,8 @@ For CI/CD pipelines, specify Python version explicitly:
 ```yaml
 # GitHub Actions
 - uses: actions/setup-python@v4
-  with:
-    python-version: '3.13'
+ with:
+ python-version: '3.13'
 
 # GitLab CI
 image: python:3.13
@@ -147,5 +147,5 @@ These work with Python 3.11-3.13.
 
 ---
 
-**Last Updated**: 2025-11-26  
+**Last Updated**: 2025-11-26 
 **Issue**: Python 3.14 import regression blocking NLPL development

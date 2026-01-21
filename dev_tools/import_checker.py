@@ -157,7 +157,7 @@ def main():
     issues = find_duplicate_imports(project_root)
     
     if not issues:
-        print(f"{Fore.GREEN}✓ No import inconsistencies found!\n")
+        print(f"{Fore.GREEN} No import inconsistencies found!\n")
         return 0
     
     # Report issues
@@ -165,7 +165,7 @@ def main():
     
     for i, issue in enumerate(issues, 1):
         print(f"{Fore.YELLOW}Issue #{i}: {issue['module']}")
-        print(f"{Fore.YELLOW}{'─'*80}")
+        print(f"{Fore.YELLOW}{''*80}")
         
         print(f"\n{Fore.RED}  This module is imported via {len(issue['variants'])} DIFFERENT paths:")
         
@@ -186,15 +186,15 @@ def main():
             if len(locations) > 5:
                 print(f"    {Fore.YELLOW}... and {len(locations) - 5} more")
         
-        print(f"\n  {Fore.RED}⚠ WARNING:")
+        print(f"\n  {Fore.RED} WARNING:")
         print(f"    These different import paths create SEPARATE module instances!")
         print(f"    This breaks === comparison, isinstance() checks, and enum comparisons.")
         
-        print(f"\n  {Fore.GREEN}✓ FIX:")
+        print(f"\n  {Fore.GREEN} FIX:")
         canonical = f"src.{issue['module']}" if not issue['module'].startswith('src.') else issue['module']
         print(f"    Use ONE consistent import path: {Fore.CYAN}from {canonical.rsplit('.', 1)[0]} import {canonical.rsplit('.', 1)[1]}")
         
-        print(f"\n{Fore.YELLOW}{'═'*80}\n")
+        print(f"\n{Fore.YELLOW}{''*80}\n")
     
     # Show summary
     print(f"\n{Fore.RED}{'='*80}")

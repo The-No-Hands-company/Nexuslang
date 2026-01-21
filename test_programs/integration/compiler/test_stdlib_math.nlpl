@@ -37,7 +37,7 @@ set maximum to call max with x and y
 print number maximum
 # Expected: 7.0
 
-# Test 7: Sine function (π/2 ≈ 1.5708)
+# Test 7: Sine function (π/2 1.5708)
 set angle to 1.5708
 set sine to call sin with angle
 print number sine
@@ -49,7 +49,7 @@ set cosine to call cos with zero
 print number cosine
 # Expected: 1.0
 
-# Test 9: Tangent function (π/4 ≈ 0.7854)
+# Test 9: Tangent function (π/4 0.7854)
 set angle2 to 0.7854
 set tangent to call tan with angle2
 print number tangent

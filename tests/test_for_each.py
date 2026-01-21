@@ -37,7 +37,7 @@ def test_for_each_loop():
             has_for_loop = any(isinstance(stmt, ForLoop) for stmt in ast.statements)
             
             if has_for_loop:
-                print("  ✓ Parsing successful - ForLoop found")
+                print("   Parsing successful - ForLoop found")
                 
                 # Try to generate C code
                 generator = CCodeGenerator(target="c")
@@ -55,11 +55,11 @@ def test_for_each_loop():
                     if in_main and line.strip() == '}' and 'return' in lines[lines.index(line)-1]:
                         break
             else:
-                print("  ✗ No ForLoop found in AST")
+                print("   No ForLoop found in AST")
                 print(f"  AST statements: {[type(s).__name__ for s in ast.statements]}")
                 
         except Exception as e:
-            print(f"  ✗ Error: {e}")
+            print(f"   Error: {e}")
             import traceback
             traceback.print_exc()
 

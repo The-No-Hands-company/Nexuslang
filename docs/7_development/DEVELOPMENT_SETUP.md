@@ -160,19 +160,19 @@ pytest tests/ -v
 
 ```
 NLPL/
-├── src/nlpl/           # Main source code
-│   ├── parser/         # Lexer, parser, AST
-│   ├── interpreter/    # Interpreter implementation
-│   ├── runtime/        # Runtime environment
-│   ├── typesystem/     # Type checking and inference
-│   ├── stdlib/         # Standard library modules
-│   ├── modules/        # Module loading system
-│   └── compiler/       # Compiler backends (C, C++, etc.)
-├── tests/              # Unit and integration tests
-├── examples/           # Example NLPL programs
-├── test_programs/      # Test programs for validation
-├── docs/               # Documentation
-└── dev_tools/          # Development utilities
+ src/nlpl/ # Main source code
+ parser/ # Lexer, parser, AST
+ interpreter/ # Interpreter implementation
+ runtime/ # Runtime environment
+ typesystem/ # Type checking and inference
+ stdlib/ # Standard library modules
+ modules/ # Module loading system
+ compiler/ # Compiler backends (C, C++, etc.)
+ tests/ # Unit and integration tests
+ examples/ # Example NLPL programs
+ test_programs/ # Test programs for validation
+ docs/ # Documentation
+ dev_tools/ # Development utilities
 ```
 
 ## Common Issues
@@ -188,8 +188,8 @@ pip install -e .
 
 **Solution:** Activate the virtual environment first:
 ```bash
-source venv/bin/activate  # Linux/Mac
-venv\Scripts\activate     # Windows
+source venv/bin/activate # Linux/Mac
+venv\Scripts\activate # Windows
 ```
 
 ### "Permission denied" when running nlpl

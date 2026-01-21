@@ -35,7 +35,7 @@ def main():
     print(f"    ↓ {Fore.YELLOW}[GCC/Clang Compiler]")
     print(f"  Machine Code")
     print(f"    ↓ {Fore.YELLOW}[Linker]")
-    print(f"  {Fore.GREEN}✓ Native Executable{Style.RESET_ALL}")
+    print(f"  {Fore.GREEN} Native Executable{Style.RESET_ALL}")
     
     print(f"\n{Fore.MAGENTA}Why this path?")
     print(f"  • GCC has 40+ years of optimization")
@@ -50,7 +50,7 @@ def main():
     print(f"    ↓ {Fore.YELLOW}[JavaScript Generator]")
     print(f"  JavaScript (.js)")
     print(f"    ↓ {Fore.YELLOW}[Browser/Node.js Runtime]")
-    print(f"  {Fore.GREEN}✓ Running Web App{Style.RESET_ALL}")
+    print(f"  {Fore.GREEN} Running Web App{Style.RESET_ALL}")
     
     print(f"\n{Fore.MAGENTA}Why this path?")
     print(f"  • No compilation needed - instant deployment")
@@ -67,7 +67,7 @@ def main():
     print(f"    ↓ {Fore.YELLOW}[Assembler]")
     print(f"  Machine Code")
     print(f"    ↓ {Fore.YELLOW}[Linker - NO C Runtime]")
-    print(f"  {Fore.GREEN}✓ Kernel Binary{Style.RESET_ALL}")
+    print(f"  {Fore.GREEN} Kernel Binary{Style.RESET_ALL}")
     
     print(f"\n{Fore.MAGENTA}Why this path?")
     print(f"  • OS kernels run BEFORE C runtime exists")
@@ -86,7 +86,7 @@ def main():
     print(f"    ↓ {Fore.YELLOW}[LLVM Backend]")
     print(f"  Machine Code")
     print(f"    ↓ {Fore.YELLOW}[Linker]")
-    print(f"  {Fore.GREEN}✓ Highly Optimized Executable{Style.RESET_ALL}")
+    print(f"  {Fore.GREEN} Highly Optimized Executable{Style.RESET_ALL}")
     
     print(f"\n{Fore.MAGENTA}Why this path?")
     print(f"  • Professional-grade optimization (used by Rust, Swift)")

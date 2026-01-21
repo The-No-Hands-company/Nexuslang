@@ -532,7 +532,7 @@ class LLVMCodeGenerator(CodeGenerator):
             obj = target_machine.emit_object(mod)
             f.write(obj)
         
-        print(f"✓ Object file generated: {output_file}")
+        print(f" Object file generated: {output_file}")
     
     def compile_to_executable(self, output_file: str):
         """Compile LLVM IR to native executable."""
@@ -552,10 +552,10 @@ class LLVMCodeGenerator(CodeGenerator):
             result = subprocess.run(link_cmd, capture_output=True, text=True)
             
             if result.returncode == 0:
-                print(f"✓ Executable generated: {output_file}")
+                print(f" Executable generated: {output_file}")
                 return True
             else:
-                print(f"✗ Linking failed: {result.stderr}")
+                print(f" Linking failed: {result.stderr}")
                 return False
         
         finally:

@@ -2,9 +2,9 @@
 
 Complete overview of how NLPL can be used and distributed.
 
-## 🎯 Current Status (January 5, 2026)
+## Current Status (January 5, 2026)
 
-### ✅ What's Ready Now
+### What's Ready Now
 
 1. **VSCode Extension** - Fully functional, workspace-ready
 2. **LSP Server** - Complete with all features
@@ -12,7 +12,7 @@ Complete overview of how NLPL can be used and distributed.
 4. **Documentation** - Comprehensive guides for deployment
 5. **Installation Scripts** - Automated setup tools
 
-### 🚧 What's Coming Next
+### What's Coming Next
 
 1. **VSCode Marketplace** - Pending publisher account
 2. **PyPI Package** - Pending `pip install nlpl`
@@ -21,7 +21,7 @@ Complete overview of how NLPL can be used and distributed.
 
 ---
 
-## 📦 Using NLPL Extension
+## Using NLPL Extension
 
 ### In Your Current Project (This Repo)
 
@@ -29,20 +29,20 @@ Complete overview of how NLPL can be used and distributed.
 
 ```bash
 # Reload VSCode window
-Ctrl+Shift+P → "Developer: Reload Window"
+Ctrl+Shift+P "Developer: Reload Window"
 
 # Open any .nlpl file
 code examples/01_basic_concepts.nlpl
 ```
 
 **Features available:**
-- ✅ Syntax highlighting
-- ✅ Real-time diagnostics
-- ✅ Auto-completion (Ctrl+Space)
-- ✅ Signature help (parameter hints)
-- ✅ Code actions (quick fixes)
-- ✅ Go-to-definition (F12)
-- ✅ Hover information
+- Syntax highlighting
+- Real-time diagnostics
+- Auto-completion (Ctrl+Space)
+- Signature help (parameter hints)
+- Code actions (quick fixes)
+- Go-to-definition (F12)
+- Hover information
 
 ### In Other Projects
 
@@ -58,8 +58,8 @@ code examples/01_basic_concepts.nlpl
 **Configuration for new projects** (`.vscode/settings.json`):
 ```json
 {
-  "nlpl.languageServer.enabled": true,
-  "nlpl.languageServer.path": "/path/to/NLPL/src/nlpl_lsp.py"
+ "nlpl.languageServer.enabled": true,
+ "nlpl.languageServer.path": "/path/to/NLPL/src/nlpl_lsp.py"
 }
 ```
 
@@ -86,7 +86,7 @@ code --install-extension nlpl-language-support-0.1.0.vsix
 
 ---
 
-## 🚀 Deploying NLPL for Production
+## Deploying NLPL for Production
 
 ### Step 1: Publish to VSCode Marketplace
 
@@ -104,8 +104,8 @@ npm install -g @vscode/vsce
 **Publish:**
 ```bash
 cd .vscode/extensions/nlpl
-vsce package  # Creates .vsix
-vsce publish  # Publishes to marketplace
+vsce package # Creates .vsix
+vsce publish # Publishes to marketplace
 ```
 
 **Users install with:**
@@ -149,20 +149,20 @@ nlpl run hello.nlpl
 -- ~/.config/nvim/lua/nlpl.lua
 local lspconfig = require('lspconfig')
 lspconfig.nlpl.setup{
-  cmd = {'python3', '/path/to/nlpl_lsp.py'},
-  filetypes = {'nlpl'}
+ cmd = {'python3', '/path/to/nlpl_lsp.py'},
+ filetypes = {'nlpl'}
 }
 ```
 
 **Sublime Text:**
 ```json
 {
-  "clients": {
-    "nlpl": {
-      "command": ["python3", "/path/to/nlpl_lsp.py"],
-      "selector": "source.nlpl"
-    }
-  }
+ "clients": {
+ "nlpl": {
+ "command": ["python3", "/path/to/nlpl_lsp.py"],
+ "selector": "source.nlpl"
+ }
+ }
 }
 ```
 
@@ -170,10 +170,10 @@ lspconfig.nlpl.setup{
 ```elisp
 (lsp-register-client
  (make-lsp-client
-  :new-connection (lsp-stdio-connection
-                   '("python3" "/path/to/nlpl_lsp.py"))
-  :major-modes '(nlpl-mode)
-  :server-id 'nlpl-lsp))
+ :new-connection (lsp-stdio-connection
+ '("python3" "/path/to/nlpl_lsp.py"))
+ :major-modes '(nlpl-mode)
+ :server-id 'nlpl-lsp))
 ```
 
 ### Step 4: Package Managers
@@ -181,15 +181,15 @@ lspconfig.nlpl.setup{
 **Homebrew Formula:**
 ```ruby
 class Nlpl < Formula
-  desc "Natural Language Programming Language"
-  homepage "https://github.com/Zajfan/NLPL"
-  url "https://github.com/Zajfan/NLPL/archive/v1.0.0.tar.gz"
-  
-  depends_on "python@3.11"
-  
-  def install
-    virtualenv_install_with_resources
-  end
+ desc "Natural Language Programming Language"
+ homepage "https://github.com/Zajfan/NLPL"
+ url "https://github.com/Zajfan/NLPL/archive/v1.0.0.tar.gz"
+ 
+ depends_on "python@3.11"
+ 
+ def install
+ virtualenv_install_with_resources
+ end
 end
 ```
 
@@ -201,42 +201,42 @@ brew install nlpl
 
 ---
 
-## 📝 Configuration Examples
+## Configuration Examples
 
 ### Workspace Configuration (`.vscode/settings.json`)
 
 **Basic:**
 ```json
 {
-  "nlpl.languageServer.enabled": true,
-  "nlpl.languageServer.path": "${workspaceFolder}/src/nlpl_lsp.py"
+ "nlpl.languageServer.enabled": true,
+ "nlpl.languageServer.path": "${workspaceFolder}/src/nlpl_lsp.py"
 }
 ```
 
 **With Debugging:**
 ```json
 {
-  "nlpl.languageServer.enabled": true,
-  "nlpl.languageServer.path": "${workspaceFolder}/src/nlpl_lsp.py",
-  "nlpl.trace.server": "verbose"
+ "nlpl.languageServer.enabled": true,
+ "nlpl.languageServer.path": "${workspaceFolder}/src/nlpl_lsp.py",
+ "nlpl.trace.server": "verbose"
 }
 ```
 
 **Custom Installation:**
 ```json
 {
-  "nlpl.languageServer.enabled": true,
-  "nlpl.languageServer.path": "/usr/local/bin/nlpl-lsp",
-  "nlpl.trace.server": "off",
-  "files.associations": {
-    "*.nlpl": "nlpl"
-  }
+ "nlpl.languageServer.enabled": true,
+ "nlpl.languageServer.path": "/usr/local/bin/nlpl-lsp",
+ "nlpl.trace.server": "off",
+ "files.associations": {
+ "*.nlpl": "nlpl"
+ }
 }
 ```
 
 ---
 
-## 🎓 Example: Setting Up a New NLPL Project
+## Example: Setting Up a New NLPL Project
 
 ### From Scratch
 
@@ -252,8 +252,8 @@ cd my-nlpl-app
 mkdir -p .vscode
 cat > .vscode/settings.json << 'EOF'
 {
-  "nlpl.languageServer.enabled": true,
-  "nlpl.languageServer.path": "/path/to/NLPL/src/nlpl_lsp.py"
+ "nlpl.languageServer.enabled": true,
+ "nlpl.languageServer.path": "/path/to/NLPL/src/nlpl_lsp.py"
 }
 EOF
 
@@ -262,7 +262,7 @@ cat > main.nlpl << 'EOF'
 # main.nlpl - My first NLPL app
 
 function main
-    print text "Hello from my NLPL app!"
+ print text "Hello from my NLPL app!"
 
 call main
 EOF
@@ -296,7 +296,7 @@ nlpl run main.nlpl
 
 ---
 
-## 🔧 Development Workflow
+## Development Workflow
 
 ### For NLPL Contributors
 
@@ -315,17 +315,17 @@ pip install -e ".[dev]"
 
 # 5. Test changes
 pytest tests/
-./package_extension.sh  # Test packaging
+./package_extension.sh # Test packaging
 
 # 6. Reload VSCode to test extension
-# Ctrl+Shift+P → "Developer: Reload Window"
+# Ctrl+Shift+P "Developer: Reload Window"
 ```
 
 ### For NLPL Users
 
 ```bash
 # 1. Install NLPL
-pip install nlpl  # (Future - once on PyPI)
+pip install nlpl # (Future - once on PyPI)
 
 # 2. Install VSCode extension
 code --install-extension nlpl-lang.nlpl-language-support
@@ -341,51 +341,51 @@ nlpl run hello.nlpl
 
 ---
 
-## 📊 Distribution Roadmap
+## Distribution Roadmap
 
-### Phase 1: Local Development (✅ Complete)
-- ✅ Extension works in this repository
-- ✅ Manual installation scripts
-- ✅ Documentation complete
+### Phase 1: Local Development ( Complete)
+- Extension works in this repository
+- Manual installation scripts
+- Documentation complete
 
-### Phase 2: Public Release (🚧 In Progress)
-- 🔲 Register VSCode publisher account
-- 🔲 Publish to VSCode Marketplace
-- 🔲 Create PyPI package
-- 🔲 GitHub Releases with binaries
-- 🔲 Basic documentation website
+### Phase 2: Public Release ( In Progress)
+- Register VSCode publisher account
+- Publish to VSCode Marketplace
+- Create PyPI package
+- GitHub Releases with binaries
+- Basic documentation website
 
-### Phase 3: Package Managers (📅 Planned)
-- 🔲 Homebrew formula
-- 🔲 APT repository (Ubuntu/Debian)
-- 🔲 Chocolatey package (Windows)
-- 🔲 Snap package (Linux)
-- 🔲 Docker Hub images
+### Phase 3: Package Managers ( Planned)
+- Homebrew formula
+- APT repository (Ubuntu/Debian)
+- Chocolatey package (Windows)
+- Snap package (Linux)
+- Docker Hub images
 
-### Phase 4: Ecosystem (📅 Future)
-- 🔲 JetBrains plugin (IntelliJ, PyCharm)
-- 🔲 Online playground/REPL
-- 🔲 Language server in multiple languages (Rust, Go)
-- 🔲 Native compiler (LLVM backend)
-- 🔲 Package registry (like npm, PyPI)
+### Phase 4: Ecosystem ( Future)
+- JetBrains plugin (IntelliJ, PyCharm)
+- Online playground/REPL
+- Language server in multiple languages (Rust, Go)
+- Native compiler (LLVM backend)
+- Package registry (like npm, PyPI)
 
 ---
 
-## 🆘 Quick Troubleshooting
+## Quick Troubleshooting
 
 ### Extension not working?
 
 **Check 1: Language Server Running**
 ```bash
 # View output
-View → Output → "NLPL Language Server"
+View Output "NLPL Language Server"
 
 # Should see: "NLPL Language Server started"
 ```
 
 **Check 2: Python Version**
 ```bash
-python3 --version  # Must be 3.11+
+python3 --version # Must be 3.11+
 ```
 
 **Check 3: File Extension**
@@ -396,7 +396,7 @@ mv myfile myfile.nlpl
 
 **Check 4: Reload VSCode**
 ```bash
-Ctrl+Shift+P → "Developer: Reload Window"
+Ctrl+Shift+P "Developer: Reload Window"
 ```
 
 ### No auto-completion?
@@ -422,7 +422,7 @@ Ctrl+Shift+M
 
 ---
 
-## 📚 Resources
+## Resources
 
 ### Documentation
 - **Quick Start:** `QUICK_START.md` (5-minute tutorial)
@@ -443,21 +443,21 @@ Ctrl+Shift+M
 
 ---
 
-## 🎯 Summary
+## Summary
 
 ### What Works Today
 
-✅ **VSCode Extension** - Fully functional in workspace and globally  
-✅ **LSP Features** - Diagnostics, completion, signature help, code actions  
-✅ **Installation Scripts** - Automated setup and packaging  
-✅ **Documentation** - Complete guides for all use cases  
-✅ **Multi-Editor Support** - Configuration examples for 5+ editors  
+ **VSCode Extension** - Fully functional in workspace and globally 
+ **LSP Features** - Diagnostics, completion, signature help, code actions 
+ **Installation Scripts** - Automated setup and packaging 
+ **Documentation** - Complete guides for all use cases 
+ **Multi-Editor Support** - Configuration examples for 5+ editors 
 
 ### How to Use
 
 **In this project:**
 ```bash
-Ctrl+Shift+P → Reload Window
+Ctrl+Shift+P Reload Window
 ```
 
 **In other projects:**
@@ -480,4 +480,4 @@ Ctrl+Shift+P → Reload Window
 
 ---
 
-**NLPL is ready for development and distribution!** 🚀
+**NLPL is ready for development and distribution!** 

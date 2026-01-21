@@ -37,10 +37,10 @@ sys.path.insert(0, str(PROJECT_ROOT))
 def print_banner():
     """Print the NLPL dev tools banner."""
     banner = """
-╔════════════════════════════════════════════════════════════════════════════╗
-║                    NLPL Development Tools Suite                            ║
-║                    Natural Language Programming Language                   ║
-╚════════════════════════════════════════════════════════════════════════════╝
+
+                    NLPL Development Tools Suite                            
+                    Natural Language Programming Language                   
+
 """
     print(banner)
 
@@ -213,16 +213,16 @@ def run_doctor():
     # Print results
     all_ok = True
     for name, status, ok in checks:
-        symbol = "✓" if ok else "✗"
+        symbol = "" if ok else ""
         print(f"{symbol} {name:40} {status}")
         if not ok:
             all_ok = False
     
     print("\n" + "="*80)
     if all_ok:
-        print("✓ All checks passed! Environment is ready.")
+        print(" All checks passed! Environment is ready.")
     else:
-        print("✗ Some checks failed. Please fix the issues above.")
+        print(" Some checks failed. Please fix the issues above.")
         print("\nTo install missing packages:")
         print("  pip install -r requirements.txt")
     print()

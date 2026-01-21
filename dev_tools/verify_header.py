@@ -38,18 +38,18 @@ try:
     success, _ = compiler.compile(ast, CompilationTarget.C, output_c)
     
     if not success:
-        print("✗ Compilation failed")
+        print(" Compilation failed")
         sys.exit(1)
         
     # 4. Verify Header Content
     if not os.path.exists(header_file):
-        print(f"✗ Header file not generated: {header_file}")
+        print(f" Header file not generated: {header_file}")
         sys.exit(1)
         
     with open(header_file, 'r') as f:
         content = f.read()
     
-    print(f"✓ Header file generated: {header_file}")
+    print(f" Header file generated: {header_file}")
     print("\n--- Header Content ---")
     print(content)
     print("----------------------\n")
@@ -66,20 +66,20 @@ try:
             missing.append(proto)
             
     if missing:
-        print("✗ Missing prototypes:")
+        print(" Missing prototypes:")
         for m in missing:
             print(f"  - {m}")
         sys.exit(1)
         
     # Check that internal helper is NOT exported
     if "internal_helper" in content:
-        print("✗ Internal function 'internal_helper' was incorrectly exported")
+        print(" Internal function 'internal_helper' was incorrectly exported")
         sys.exit(1)
         
-    print("✓ Header content verification successful")
+    print(" Header content verification successful")
     
 except Exception as e:
-    print(f"✗ Verification failed with exception: {e}")
+    print(f" Verification failed with exception: {e}")
     import traceback
     traceback.print_exc()
     sys.exit(1)

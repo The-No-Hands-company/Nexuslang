@@ -28,7 +28,7 @@ interpreter = Interpreter(runtime)
 interpreter.interpret(ast)
 
 # Verify storage
-print("✅ Trait Implementation Verification:\n")
+print(" Trait Implementation Verification:\n")
 
 if hasattr(interpreter, 'traits'):
     for name, trait_def in interpreter.traits.items():
@@ -45,7 +45,7 @@ if hasattr(interpreter, 'traits'):
             print(f"    - {method.name}({params}){ret}")
         print()
     
-    print("✅ All trait features working correctly!")
-    print("✅ Trait definitions are production-ready!")
+    print(" All trait features working correctly!")
+    print(" Trait definitions are production-ready!")
 else:
-    print("❌ No traits attribute found")
+    print(" No traits attribute found")

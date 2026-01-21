@@ -13,8 +13,8 @@ Successfully reorganized the NLPL project structure to follow proper file organi
 - `verify_ffi.py` - FFI verification script
 - `verify_header.py` - Header verification script
 - `verify_panic.py` - Panic handling verification
-- `nlplbuild` → `dev_tools/build_scripts/`
-- `nlplbuild.backup` → `dev_tools/build_scripts/`
+- `nlplbuild` `dev_tools/build_scripts/`
+- `nlplbuild.backup` `dev_tools/build_scripts/`
 
 ### 2. Files Moved to `test_programs/ffi/`
 - `test_export.nlpl` - FFI export tests
@@ -71,33 +71,33 @@ Enhanced to prevent future accumulation of:
 
 ```
 NLPL/
-├── .github/              # GitHub configuration
-├── dev_tools/            # Development scripts and utilities
-│   ├── build_scripts/    # Build system scripts
-│   ├── interpreter_tools/
-│   ├── lexer_tools/
-│   ├── parser_tools/
-│   ├── runtime_tools/
-│   └── test_tools/
-├── docs/                 # Documentation
-│   ├── session_reports/  # Session summaries
-│   └── [10 category folders]
-├── examples/             # Tutorial/demonstration programs
-├── grammar/              # ANTLR grammar files
-├── src/                  # Source code
-│   └── nlpl/             # NLPL implementation
-├── test_programs/        # Test programs organized by category
-│   ├── compiler/         # Compiler tests
-│   ├── ffi/              # FFI tests
-│   ├── features/
-│   └── [other categories]
-├── tests/                # Python unit tests
-├── COMPILER_GUIDE.md     # Compiler quick reference
-├── Makefile              # Build automation
-├── nlplc                 # Compiler executable
-├── README.md             # Project overview
-├── requirements.txt      # Python dependencies
-└── pyproject.toml        # Python project config
+ .github/ # GitHub configuration
+ dev_tools/ # Development scripts and utilities
+ build_scripts/ # Build system scripts
+ interpreter_tools/
+ lexer_tools/
+ parser_tools/
+ runtime_tools/
+ test_tools/
+ docs/ # Documentation
+ session_reports/ # Session summaries
+ [10 category folders]
+ examples/ # Tutorial/demonstration programs
+ grammar/ # ANTLR grammar files
+ src/ # Source code
+ nlpl/ # NLPL implementation
+ test_programs/ # Test programs organized by category
+ compiler/ # Compiler tests
+ ffi/ # FFI tests
+ features/
+ [other categories]
+ tests/ # Python unit tests
+ COMPILER_GUIDE.md # Compiler quick reference
+ Makefile # Build automation
+ nlplc # Compiler executable
+ README.md # Project overview
+ requirements.txt # Python dependencies
+ pyproject.toml # Python project config
 ```
 
 ## Benefits

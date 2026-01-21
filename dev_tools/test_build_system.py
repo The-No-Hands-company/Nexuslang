@@ -65,7 +65,7 @@ def test_detect_main_entry_point():
         assert main_file is not None, "Should detect a main file"
         assert os.path.basename(main_file) == 'main.nlpl', "Should detect main.nlpl"
         
-        print("✓ Test passed: main.nlpl correctly detected")
+        print(" Test passed: main.nlpl correctly detected")
     
     print()
 
@@ -110,7 +110,7 @@ def test_detect_main_by_package_name():
         assert main_file is not None
         assert os.path.basename(main_file) == 'myapp.nlpl'
         
-        print("✓ Test passed: Package name file correctly detected")
+        print(" Test passed: Package name file correctly detected")
     
     print()
 
@@ -151,7 +151,7 @@ def test_detect_main_by_function():
         assert main_file is not None
         assert os.path.basename(main_file) == 'app.nlpl'
         
-        print("✓ Test passed: File with main() function correctly detected")
+        print(" Test passed: File with main() function correctly detected")
     
     print()
 
@@ -203,7 +203,7 @@ def test_group_into_modules():
         assert 'models' in modules
         assert len(modules['utils']) == 2
         
-        print("\n✓ Test passed: Modules correctly grouped by directory")
+        print("\n Test passed: Modules correctly grouped by directory")
     
     print()
 
@@ -236,7 +236,7 @@ def test_dependency_path_configuration():
         
         assert dep_lib_dir in builder.compiler.options.library_search_paths
         
-        print("\n✓ Test passed: Dependency paths correctly added to library search paths")
+        print("\n Test passed: Dependency paths correctly added to library search paths")
     
     print()
 
@@ -278,7 +278,7 @@ def test_find_executable():
         assert found_exe is not None
         assert os.path.basename(found_exe) == 'myapp'
         
-        print("\n✓ Test passed: Executable correctly found by package name")
+        print("\n Test passed: Executable correctly found by package name")
     
     print()
 
@@ -297,16 +297,16 @@ if __name__ == '__main__':
         test_find_executable()
         
         print("=" * 80)
-        print("✓ All tests passed!")
+        print(" All tests passed!")
         print("=" * 80)
         
     except AssertionError as e:
-        print(f"\n✗ Test failed: {e}")
+        print(f"\n Test failed: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
     except Exception as e:
-        print(f"\n✗ Error: {e}")
+        print(f"\n Error: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

@@ -42,13 +42,13 @@ def setup_nlpl_workaround():
 
 if __name__ == '__main__':
     lexer_module = setup_nlpl_workaround()
-    print(f"✅ Loaded lexer: {lexer_module.Lexer}")
-    print(f"✅ TokenType enum: {len(list(lexer_module.TokenType))} tokens")
+    print(f" Loaded lexer: {lexer_module.Lexer}")
+    print(f" TokenType enum: {len(list(lexer_module.TokenType))} tokens")
     
     # Test it
     code = "set x to 5"
     lex = lexer_module.Lexer(code)
     tokens = list(lex.tokenize())
-    print(f"✅ Tokenized '{code}': {len(tokens)} tokens")
+    print(f" Tokenized '{code}': {len(tokens)} tokens")
     for tok in tokens:
         print(f"   {tok.type.name}: {repr(tok.lexeme)}")

@@ -62,7 +62,7 @@ def test_diagnostics():
             print(f"   {msg}")
             print()
     else:
-        print("✅ No diagnostics found - code looks good!")
+        print(" No diagnostics found - code looks good!")
     
     print("=" * 60)
     print("Testing parser integration...")

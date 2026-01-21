@@ -27,7 +27,7 @@ def test_fstring_parsing():
     
     assert len(fstring.parts) == 3
     assert fstring.parts[0] == (True, "Hello, ")
-    print("   ✓ F-string AST node created")
+    print("    F-string AST node created")
     
     # Test 2: Expression interpolation
     print("\n2. Testing expression interpolation:")
@@ -37,9 +37,9 @@ def test_fstring_parsing():
     ]
     fstring2 = FStringExpression(parts2)
     assert len(fstring2.parts) == 2
-    print("   ✓ Expression interpolation works")
+    print("    Expression interpolation works")
     
-    print("\n✅ F-string AST tests passed!")
+    print("\n F-string AST tests passed!")
     print("Note: Parser integration pending")
 
 if __name__ == "__main__":

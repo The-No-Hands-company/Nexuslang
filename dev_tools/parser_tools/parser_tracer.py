@@ -85,7 +85,7 @@ class ParserTracer:
             
             # Check breakpoint
             if self.break_on_token and after and after.type == self.break_on_token:
-                print(f"\n{Fore.RED}🛑 BREAKPOINT: Token {self.break_on_token} encountered!")
+                print(f"\n{Fore.RED} BREAKPOINT: Token {self.break_on_token} encountered!")
                 print(f"{Fore.CYAN}Token history:")
                 for i, (num, b, a) in enumerate(self.token_history[-5:], 1):
                     print(f"  {num}. {self._format_token(b)} → {self._format_token(a)}")
@@ -120,7 +120,7 @@ class ParserTracer:
                 # Error
                 self.call_depth -= 1
                 indent = '  ' * self.call_depth
-                print(f"{Fore.RED}{indent}✗ {method_name}() raised {type(e).__name__}: {e}")
+                print(f"{Fore.RED}{indent} {method_name}() raised {type(e).__name__}: {e}")
                 
                 # Show call stack
                 print(f"\n{Fore.RED}Call Stack at Error:")
@@ -188,12 +188,12 @@ def main():
         print(f"{Fore.GREEN}Starting parse...\n")
         ast = parser_obj.parse()
         
-        print(f"\n{Fore.GREEN}✓ Parse completed successfully!")
+        print(f"\n{Fore.GREEN} Parse completed successfully!")
         print(f"  Statements: {len(ast.statements)}")
         print(f"  Total advances: {tracer.advance_count}")
         
     except Exception as e:
-        print(f"\n{Fore.RED}✗ Parse failed: {e}")
+        print(f"\n{Fore.RED} Parse failed: {e}")
         return 1
     
     return 0

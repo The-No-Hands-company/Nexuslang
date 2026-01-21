@@ -9,8 +9,8 @@ The NLPL compiler architecture is designed to translate natural language program
 The NLPL compiler follows a multi-stage pipeline architecture with specialized components for handling natural language processing:
 
 ```
-[Source Code] → [Lexer] → [Parser] → [Semantic Analyzer] → [NLP Resolver] → 
-[Intermediate Code Generator] → [Optimizer] → [Code Generator] → [Machine Code]
+[Source Code] [Lexer] [Parser] [Semantic Analyzer] [NLP Resolver] 
+[Intermediate Code Generator] [Optimizer] [Code Generator] [Machine Code]
 ```
 
 Each component is designed to handle specific aspects of the translation process, with special emphasis on resolving the ambiguities inherent in natural language.
@@ -45,9 +45,9 @@ The parser constructs an Abstract Syntax Tree (AST) from the token stream, with 
 
 #### Implementation Strategy:
 - Implement a hybrid parsing approach combining:
-  - **Top-down parsing** for high-level program structure
-  - **Bottom-up parsing** for expressions and statements
-  - **Chart parsing** techniques from natural language processing
+ - **Top-down parsing** for high-level program structure
+ - **Bottom-up parsing** for expressions and statements
+ - **Chart parsing** techniques from natural language processing
 - Use a probabilistic context-free grammar (PCFG) to handle ambiguities
 - Implement a feedback mechanism to request clarification for highly ambiguous constructs
 
@@ -198,10 +198,10 @@ The final phase will focus on:
 
 **Solution**:
 - Implement a multi-strategy disambiguation system:
-  - Syntactic constraints to limit ambiguity
-  - Type-based disambiguation
-  - Contextual analysis using machine learning
-  - Interactive disambiguation for highly ambiguous constructs
+ - Syntactic constraints to limit ambiguity
+ - Type-based disambiguation
+ - Contextual analysis using machine learning
+ - Interactive disambiguation for highly ambiguous constructs
 
 ### Challenge 2: Performance Overhead
 

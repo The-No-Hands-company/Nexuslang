@@ -6,7 +6,7 @@ The NLPL Language Server provides IDE-level features for NLPL development throug
 
 ## Features
 
-### ✅ Find All References
+### Find All References
 
 Find all usages of a symbol (function, class, variable, method) across your entire workspace.
 
@@ -21,13 +21,13 @@ Find all usages of a symbol (function, class, variable, method) across your enti
 **Example**:
 ```nlpl
 function calculate that takes x as Integer returns Integer
-    return x times 2
+ return x times 2
 
-set result to calculate with 5    # ← Find references on "calculate"
-set another to calculate with 10  # Will find both these calls
+set result to calculate with 5 # Find references on "calculate"
+set another to calculate with 10 # Will find both these calls
 ```
 
-### ✅ Go-to-Definition (Enhanced)
+### Go-to-Definition (Enhanced)
 
 Jump to the definition of any symbol, even across files.
 
@@ -44,16 +44,16 @@ Jump to the definition of any symbol, even across files.
 ```nlpl
 # file: helpers.nlpl
 function process_data that takes values as List returns Float
-    return 0.0
+ return 0.0
 
 # file: main.nlpl
 import helpers
 
 set result to helpers.process_data with [1, 2, 3]
-#             ↑ Go-to-definition jumps to helpers.nlpl
+# Go-to-definition jumps to helpers.nlpl
 ```
 
-### ✅ Hover Documentation (Enhanced)
+### Hover Documentation (Enhanced)
 
 Rich documentation displayed on hover with parameter details, types, and examples.
 
@@ -85,22 +85,22 @@ function calculate that takes x as Integer, y as Float returns Float
 **Standard Library Hover**:
 ```nlpl
 set result to sqrt with 16
-#             ↑ Hover shows: "sqrt - Square root function"
-#               From: math
-#               Returns: Float
+# Hover shows: "sqrt - Square root function"
+# From: math
+# Returns: Float
 ```
 
-### ✅ Auto-Completion (Enhanced)
+### Auto-Completion (Enhanced)
 
 Context-aware intelligent code completion.
 
 **Completion Types**:
 1. **Keywords**: NLPL language keywords (function, class, set, if, for, etc.)
 2. **Context-aware suggestions**:
-   - After `set X to`: Suggests values (true, false, null, create, new)
-   - After `as`: Suggests types (Integer, Float, String, List, etc.)
-   - After `import` or `from`: Suggests stdlib modules
-   - After `returns`: Suggests return types
+ - After `set X to`: Suggests values (true, false, null, create, new)
+ - After `as`: Suggests types (Integer, Float, String, List, etc.)
+ - After `import` or `from`: Suggests stdlib modules
+ - After `returns`: Suggests return types
 3. **Variables in scope**: All variables defined in current file
 4. **Functions in scope**: All functions defined in current file
 5. **Classes in scope**: All classes defined in current file
@@ -112,21 +112,21 @@ Context-aware intelligent code completion.
 **Example**:
 ```nlpl
 set counter to 0
-set result to coun    # ← Auto-complete suggests "counter"
-#             ^^^^
+set result to coun # Auto-complete suggests "counter"
+# ^^^^
 ```
 
 **Module Completion**:
 ```nlpl
-import     # ← Shows: math, string, io, system, collections, network
+import # Shows: math, string, io, system, collections, network
 ```
 
 **Type Completion**:
 ```nlpl
-set value as    # ← Shows: Integer, Float, String, Boolean, List, etc.
+set value as # Shows: Integer, Float, String, Boolean, List, etc.
 ```
 
-### ✅ Symbol Search (Enhanced)
+### Symbol Search (Enhanced)
 
 Fast workspace-wide symbol search with fuzzy matching and relevance scoring.
 
@@ -139,29 +139,29 @@ Fast workspace-wide symbol search with fuzzy matching and relevance scoring.
 **LSP Method**: `workspace/symbol`
 
 **Example Fuzzy Matches**:
-- Query: `"ca"` → Matches: `calculate`, `calculate_average`, `calibrate`
-- Query: `"hf"` → Matches: `helper_function`
-- Query: `"proc"` → Matches: `process_data`, `DataProcessor`
+- Query: `"ca"` Matches: `calculate`, `calculate_average`, `calibrate`
+- Query: `"hf"` Matches: `helper_function`
+- Query: `"proc"` Matches: `process_data`, `DataProcessor`
 
-### ✅ Code Formatting
+### Code Formatting
 
 Automatic code formatting to maintain consistent style.
 
 **LSP Method**: `textDocument/formatting`
 
-### ✅ Signature Help
+### Signature Help
 
 Display function signatures and parameter information while typing function calls.
 
 **LSP Method**: `textDocument/signatureHelp`
 
-### ✅ Code Actions
+### Code Actions
 
 Quick fixes and refactoring suggestions.
 
 **LSP Method**: `textDocument/codeAction`
 
-### ✅ Diagnostics
+### Diagnostics
 
 Real-time syntax and semantic error detection.
 
@@ -176,18 +176,18 @@ Real-time syntax and semantic error detection.
 2. **Manual Setup** (`.vscode/settings.json`):
 ```json
 {
-  "nlpl.lsp.enabled": true,
-  "nlpl.lsp.serverPath": "/path/to/nlpl/src/nlpl_lsp.py"
+ "nlpl.lsp.enabled": true,
+ "nlpl.lsp.serverPath": "/path/to/nlpl/src/nlpl_lsp.py"
 }
 ```
 
 3. **Launch Configuration** (`.vscode/launch.json`):
 ```json
 {
-  "type": "nlpl",
-  "request": "attach",
-  "name": "NLPL LSP",
-  "port": 6009
+ "type": "nlpl",
+ "request": "attach",
+ "name": "NLPL LSP",
+ "port": 6009
 }
 ```
 
@@ -199,14 +199,14 @@ local configs = require('lspconfig.configs')
 
 -- Define NLPL LSP
 if not configs.nlpl then
-  configs.nlpl = {
-    default_config = {
-      cmd = {'python', '/path/to/nlpl/src/nlpl_lsp.py'},
-      filetypes = {'nlpl'},
-      root_dir = lspconfig.util.root_pattern('.git', '.nlplroot'),
-      settings = {},
-    },
-  }
+ configs.nlpl = {
+ default_config = {
+ cmd = {'python', '/path/to/nlpl/src/nlpl_lsp.py'},
+ filetypes = {'nlpl'},
+ root_dir = lspconfig.util.root_pattern('.git', '.nlplroot'),
+ settings = {},
+ },
+ }
 end
 
 -- Setup NLPL LSP
@@ -222,9 +222,9 @@ lspconfig.nlpl.setup{}
 
 (lsp-register-client
  (make-lsp-client
-  :new-connection (lsp-stdio-connection '("python" "/path/to/nlpl/src/nlpl_lsp.py"))
-  :major-modes '(nlpl-mode)
-  :server-id 'nlpl-lsp))
+ :new-connection (lsp-stdio-connection '("python" "/path/to/nlpl/src/nlpl_lsp.py"))
+ :major-modes '(nlpl-mode)
+ :server-id 'nlpl-lsp))
 
 (add-hook 'nlpl-mode-hook #'lsp)
 ```
@@ -234,13 +234,13 @@ lspconfig.nlpl.setup{}
 **Settings** (`LSP.sublime-settings`):
 ```json
 {
-  "clients": {
-    "nlpl": {
-      "enabled": true,
-      "command": ["python", "/path/to/nlpl/src/nlpl_lsp.py"],
-      "selector": "source.nlpl"
-    }
-  }
+ "clients": {
+ "nlpl": {
+ "enabled": true,
+ "command": ["python", "/path/to/nlpl/src/nlpl_lsp.py"],
+ "selector": "source.nlpl"
+ }
+ }
 }
 ```
 
@@ -283,23 +283,23 @@ tail -f /tmp/nlpl-lsp.log
 ### LSP Protocol Flow
 
 ```
-Editor                    LSP Server                 NLPL Parser
-  |                           |                           |
-  |-- initialize ------------>|                           |
-  |<- capabilities ---------- |                           |
-  |                           |                           |
-  |-- textDocument/didOpen -->|                           |
-  |                           |-- parse --------------->  |
-  |                           |<- AST/errors ----------   |
-  |<- publishDiagnostics ---- |                           |
-  |                           |                           |
-  |-- textDocument/hover ---->|                           |
-  |                           |-- extract symbol ------->  |
-  |                           |-- find definition ----->  |
-  |<- hover info ------------ |                           |
-  |                           |                           |
-  |-- textDocument/completion->|                          |
-  |<- completion items ------ |                           |
+Editor LSP Server NLPL Parser
+ | | |
+ |-- initialize ------------>| |
+ |<- capabilities ---------- | |
+ | | |
+ |-- textDocument/didOpen -->| |
+ | |-- parse ---------------> |
+ | |<- AST/errors ---------- |
+ |<- publishDiagnostics ---- | |
+ | | |
+ |-- textDocument/hover ---->| |
+ | |-- extract symbol -------> |
+ | |-- find definition -----> |
+ |<- hover info ------------ | |
+ | | |
+ |-- textDocument/completion->| |
+ |<- completion items ------ | |
 ```
 
 ## Standard Library Documentation
@@ -357,16 +357,16 @@ pytest tests/test_lsp_enhancements.py -v
 **File: `utils.nlpl`**
 ```nlpl
 function helper that takes value as Integer returns Integer
-    return value times 2
+ return value times 2
 
 class DataProcessor
-    property data as List of Float
-    
-    method process returns Float
-        set sum to 0.0
-        for each item in data
-            set sum to sum plus item
-        return sum
+ property data as List of Float
+ 
+ method process returns Float
+ set sum to 0.0
+ for each item in data
+ set sum to sum plus item
+ return sum
 ```
 
 **File: `main.nlpl`**
@@ -382,15 +382,15 @@ set processor to new utils.DataProcessor
 
 ### Using LSP Features
 
-1. **Hover** over `sqrt` → See documentation: "Square root function, From: math, Returns: Float"
+1. **Hover** over `sqrt` See documentation: "Square root function, From: math, Returns: Float"
 
-2. **Auto-complete** after `import` → Suggests: math, string, io, system, collections, network
+2. **Auto-complete** after `import` Suggests: math, string, io, system, collections, network
 
-3. **Go-to-definition** on variable → Jumps to closest assignment
+3. **Go-to-definition** on variable Jumps to closest assignment
 
-4. **Find references** on function → Shows all call sites
+4. **Find references** on function Shows all call sites
 
-5. **Symbol search** with `"proc"` → Finds: process, DataProcessor, process_data
+5. **Symbol search** with `"proc"` Finds: process, DataProcessor, process_data
 
 ## Troubleshooting
 
@@ -410,7 +410,7 @@ python src/nlpl_lsp.py
 ### Features Not Working
 
 **Check editor LSP client logs**:
-- VSCode: Output panel → "Language Server Protocol"
+- VSCode: Output panel "Language Server Protocol"
 - Neovim: `:LspInfo`, `:LspLog`
 - Emacs: `*lsp-log*` buffer
 
@@ -464,18 +464,18 @@ The LSP is implemented in pure Python and follows LSP specification 3.17.
 
 ## Status
 
-**Version**: 0.1.0  
-**Status**: ✅ Production Ready  
-**Test Coverage**: 20/20 tests passing  
+**Version**: 0.1.0 
+**Status**: Production Ready 
+**Test Coverage**: 20/20 tests passing 
 **Completion**: All core features implemented
 
 **Features Summary**:
-- ✅ Find All References
-- ✅ Go-to-Definition (cross-file)
-- ✅ Hover Documentation (enhanced)
-- ✅ Auto-Completion (context-aware)
-- ✅ Symbol Search (fuzzy matching)
-- ✅ Diagnostics
-- ✅ Code Formatting
-- ✅ Signature Help
-- ✅ Code Actions
+- Find All References
+- Go-to-Definition (cross-file)
+- Hover Documentation (enhanced)
+- Auto-Completion (context-aware)
+- Symbol Search (fuzzy matching)
+- Diagnostics
+- Code Formatting
+- Signature Help
+- Code Actions

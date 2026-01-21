@@ -189,12 +189,12 @@ class NullSafetyChecker:
         if self.errors:
             print("Null Safety Errors:")
             for error in self.errors:
-                print(f"  ✗ {error}")
+                print(f"   {error}")
         
         if self.warnings:
             print("\nNull Safety Warnings:")
             for warning in self.warnings:
-                print(f"  ⚠ {warning}")
+                print(f"   {warning}")
 
 
 __all__ = ['NullSafetyChecker', 'NullabilityInfo']

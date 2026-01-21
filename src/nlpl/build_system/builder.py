@@ -208,9 +208,9 @@ class Builder:
             )
             self.cache.add_artifact(artifact)
             self.built_targets.add(target_name)
-            print(f"✓ Built {target_name}")
+            print(f" Built {target_name}")
         else:
-            print(f"✗ Failed to build {target_name}")
+            print(f" Failed to build {target_name}")
         
         return success
     
@@ -325,7 +325,7 @@ class Builder:
             shutil.rmtree(output_dir)
             output_dir.mkdir()
         
-        print("✓ Cleaned")
+        print(" Cleaned")
     
     def run_target(self, target_name: str, args: List[str] = None) -> int:
         """Build and run a target."""

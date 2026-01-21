@@ -6594,7 +6594,7 @@ class LLVMIRGenerator(CodeGenerator):
                     self.emit(f'{indent}{result_reg} = call {ret_type} @{mangled_name}({args_str})')
                     return result_reg
             else:
-                print(f"⚠ Warning: Module function not found: {module_name}.{member_name}")
+                print(f" Warning: Module function not found: {module_name}.{member_name}")
                 return '0'
         
         # Check if this is an indirect call through a function pointer
@@ -8273,7 +8273,7 @@ class LLVMIRGenerator(CodeGenerator):
             return f'@{mangled_name}'
         
         # Unknown module member
-        print(f"⚠ Warning: Unknown module member: {module_name}.{member_name}")
+        print(f" Warning: Unknown module member: {module_name}.{member_name}")
         return '0'
     
     def _generate_callback_reference(self, expr, indent='') -> str:
@@ -8296,7 +8296,7 @@ class LLVMIRGenerator(CodeGenerator):
             # For LLVM IR, function names are used as-is when passed as pointers
             return f'@{func_name}'
         else:
-            print(f"⚠ Warning: Callback function '{func_name}' not found")
+            print(f" Warning: Callback function '{func_name}' not found")
             return '0'
     
     def _generate_object_instantiation(self, expr, indent='') -> str:
@@ -9278,10 +9278,10 @@ class LLVMIRGenerator(CodeGenerator):
         try:
             with open(ll_file, 'w') as f:
                 f.write(ir_code)
-            print(f"✓ Module IR: {ll_file}")
+            print(f" Module IR: {ll_file}")
             return ll_file
         except Exception as e:
-            print(f"✗ Failed to write module IR: {e}")
+            print(f" Failed to write module IR: {e}")
             return None
     
     def _process_imports(self, ast, source_dir: str = "."):
@@ -9344,7 +9344,7 @@ class LLVMIRGenerator(CodeGenerator):
                 break
                 
         if not module_file:
-            print(f"⚠ Warning: Module file not found: {module_name} (checked {search_paths})")
+            print(f" Warning: Module file not found: {module_name} (checked {search_paths})")
             return
         
         # Read and parse the module
@@ -9352,7 +9352,7 @@ class LLVMIRGenerator(CodeGenerator):
             with open(module_file, 'r') as f:
                 source_code = f.read()
         except Exception as e:
-            print(f"⚠ Warning: Failed to read module {module_name}: {e}")
+            print(f" Warning: Failed to read module {module_name}: {e}")
             return
         
         from ...parser.lexer import Lexer
@@ -9446,7 +9446,7 @@ class LLVMIRGenerator(CodeGenerator):
         clang = self._find_llvm_tool('clang')
         
         if not llc or not clang:
-            print("✗ LLVM tools not found. Install LLVM toolchain.")
+            print(" LLVM tools not found. Install LLVM toolchain.")
             return False
         
         try:
@@ -9462,7 +9462,7 @@ class LLVMIRGenerator(CodeGenerator):
             result = subprocess.run(llc_cmd, capture_output=True, text=True)
             
             if result.returncode != 0:
-                print(f"✗ Failed to compile main module:")
+                print(f" Failed to compile main module:")
                 print(result.stderr)
                 return False
             
@@ -9478,7 +9478,7 @@ class LLVMIRGenerator(CodeGenerator):
                 result = subprocess.run(llc_cmd, capture_output=True, text=True)
                 
                 if result.returncode != 0:
-                    print(f"✗ Failed to compile module {module_name}:")
+                    print(f" Failed to compile module {module_name}:")
                     print(result.stderr)
                     return False
                 
@@ -9504,15 +9504,15 @@ class LLVMIRGenerator(CodeGenerator):
             result = subprocess.run(clang_cmd, capture_output=True, text=True)
             
             if result.returncode != 0:
-                print(f"✗ Linking failed:")
+                print(f" Linking failed:")
                 print(result.stderr)
                 return False
             
-            print(f"✓ Linked successfully!")
+            print(f" Linked successfully!")
             return True
         
         except Exception as e:
-            print(f"✗ Linking error: {e}")
+            print(f" Linking error: {e}")
             return False
     
     # ========================================================================
@@ -9537,15 +9537,15 @@ class LLVMIRGenerator(CodeGenerator):
         clang = shutil.which('clang')
         
         if not opt_tool:
-            print("✗ opt not found. Please install LLVM: sudo apt install llvm")
+            print(" opt not found. Please install LLVM: sudo apt install llvm")
             return False
         
         if not llc:
-            print("✗ llc not found. Please install LLVM: sudo apt install llvm")
+            print(" llc not found. Please install LLVM: sudo apt install llvm")
             return False
         
         if not clang:
-            print("✗ clang not found. Please install: sudo apt install clang")
+            print(" clang not found. Please install: sudo apt install clang")
             return False
         
         try:
@@ -9568,7 +9568,7 @@ class LLVMIRGenerator(CodeGenerator):
             result = subprocess.run(opt_cmd, capture_output=True, text=True)
             
             if result.returncode != 0:
-                print(f"✗ opt coroutine pass failed:")
+                print(f" opt coroutine pass failed:")
                 print(result.stderr)
                 # Fall back to using original file (may fail with llc)
                 opt_output = ll_file
@@ -9585,7 +9585,7 @@ class LLVMIRGenerator(CodeGenerator):
             result = subprocess.run(llc_cmd, capture_output=True, text=True)
             
             if result.returncode != 0:
-                print(f"✗ llc compilation failed:")
+                print(f" llc compilation failed:")
                 print(result.stderr)
                 return False
             
@@ -9614,16 +9614,16 @@ class LLVMIRGenerator(CodeGenerator):
             result = subprocess.run(clang_cmd, capture_output=True, text=True)
             
             if result.returncode != 0:
-                print(f"✗ Linking failed:")
+                print(f" Linking failed:")
                 print(result.stderr)
                 return False
             
-            print(f"✓ Compilation successful!")
-            print(f"✓ Executable: {output_file}")
+            print(f" Compilation successful!")
+            print(f" Executable: {output_file}")
             return True
         
         except Exception as e:
-            print(f"✗ Compilation error: {e}")
+            print(f" Compilation error: {e}")
             return False
         
         finally:

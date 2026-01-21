@@ -46,7 +46,7 @@ set is_active to flags[0]
     parser = Parser(tokens)
     ast = parser.parse()
     
-    print(f"\n✓ Successfully parsed {len(ast.statements)} statements")
+    print(f"\n Successfully parsed {len(ast.statements)} statements")
     
     # Generate C
     generator = CCodeGenerator(target="c")
@@ -58,7 +58,7 @@ set is_active to flags[0]
     print("="*70)
     
     # Highlight key features
-    print("\n✨ KEY FEATURES DEMONSTRATED:")
+    print("\n KEY FEATURES DEMONSTRATED:")
     print("-"*70)
     
     features = [
@@ -74,12 +74,12 @@ set is_active to flags[0]
     
     for feature, pattern, description in features:
         if pattern in c_code:
-            print(f"  ✓ {feature:20} → {description}")
+            print(f"   {feature:20} → {description}")
         else:
-            print(f"  ✗ {feature:20} → Missing!")
+            print(f"   {feature:20} → Missing!")
     
     print("\n" + "="*70)
-    print("🎉 Array indexing feature is fully functional with type inference!")
+    print(" Array indexing feature is fully functional with type inference!")
     print("="*70)
 
 if __name__ == "__main__":

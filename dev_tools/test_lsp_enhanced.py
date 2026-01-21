@@ -70,7 +70,7 @@ print text x'''
     
     print(f"\nCode Actions available: {len(actions)}\n")
     for action in actions:
-        print(f"✓ {action['title']}")
+        print(f" {action['title']}")
         print(f"  Kind: {action['kind']}")
         if 'edit' in action:
             print(f"  Edit: Will modify the document")
@@ -193,7 +193,7 @@ print text result
     actions = server.code_actions_provider.get_code_actions(uri, code, range_params, diagnostics)
     print(f"\nCode Actions: {len(actions)}")
     for action in actions:
-        print(f"  ✓ {action['title']}")
+        print(f"   {action['title']}")
     
     # Get signature help at function call
     lines = code.split('\n')
@@ -207,7 +207,7 @@ print text result
         print(f"  Active parameter: {sig['activeParameter']}")
     
     print("\n" + "=" * 60)
-    print("✅ All integration tests passed!")
+    print(" All integration tests passed!")
     print("=" * 60)
 
 

@@ -17,7 +17,7 @@ def test_trait_implementation():
     assert COMPARABLE_TRAIT.is_implemented_by(INTEGER_TYPE), "Integer should implement Comparable"
     assert EQUATABLE_TRAIT.is_implemented_by(STRING_TYPE), "String should implement Equatable"
     assert PRINTABLE_TRAIT.is_implemented_by(BOOLEAN_TYPE), "Boolean should implement Printable"
-    print("   ✓ Primitive types correctly implement traits")
+    print("    Primitive types correctly implement traits")
     
     # Test 2: Class implementing trait
     print("\n2. Testing class trait implementation:")
@@ -34,7 +34,7 @@ def test_trait_implementation():
     
     assert COMPARABLE_TRAIT.is_implemented_by(point_class), "Point should implement Comparable"
     assert EQUATABLE_TRAIT.is_implemented_by(point_class), "Point should implement Equatable"
-    print("   ✓ Point class correctly implements Comparable and Equatable traits")
+    print("    Point class correctly implements Comparable and Equatable traits")
     
     # Test 3: Class NOT implementing trait
     print("\n3. Testing class without trait implementation:")
@@ -47,15 +47,15 @@ def test_trait_implementation():
     )
     
     assert not COMPARABLE_TRAIT.is_implemented_by(simple_class), "Simple should NOT implement Comparable"
-    print("   ✓ Simple class correctly does NOT implement Comparable")
+    print("    Simple class correctly does NOT implement Comparable")
     
     # Test 4: Trait compatibility
     print("\n4. Testing trait compatibility:")
     assert COMPARABLE_TRAIT.is_compatible_with(INTEGER_TYPE), "Comparable should be compatible with Integer"
     assert not COMPARABLE_TRAIT.is_compatible_with(simple_class), "Comparable should NOT be compatible with Simple"
-    print("   ✓ Trait compatibility checks work correctly")
+    print("    Trait compatibility checks work correctly")
     
-    print("\n✅ All trait system tests passed!")
+    print("\n All trait system tests passed!")
 
 if __name__ == "__main__":
     test_trait_implementation()

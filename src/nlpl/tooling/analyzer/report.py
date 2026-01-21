@@ -108,19 +108,19 @@ class Issue:
         # Suggestion
         if self.suggestion:
             lines.append(f"")
-            lines.append(f"  💡 Suggestion: {self.suggestion}")
+            lines.append(f"   Suggestion: {self.suggestion}")
         
         # Auto-fix
         if self.fix:
             lines.append(f"")
-            lines.append(f"  🔧 Auto-fix available:")
+            lines.append(f"   Auto-fix available:")
             for line in self.fix.split('\n'):
                 lines.append(f"     {line}")
         
         # Help URL
         if self.help_url:
             lines.append(f"")
-            lines.append(f"  📖 Learn more: {self.help_url}")
+            lines.append(f"   Learn more: {self.help_url}")
         
         return '\n'.join(lines)
 
@@ -195,7 +195,7 @@ class AnalysisReport:
         lines.append(f"  {yellow}Warnings: {counts[Severity.WARNING]:3d}{reset}")
         lines.append(f"  {blue}Info:     {counts[Severity.INFO]:3d}{reset}")
         lines.append(f"  {green}Hints:    {counts[Severity.HINT]:3d}{reset}")
-        lines.append(f"  {'─' * 60}")
+        lines.append(f"  {'' * 60}")
         lines.append(f"  Total:    {len(self.issues):3d}")
         
         # Category breakdown

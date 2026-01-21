@@ -42,4 +42,4 @@ set result to list_append(matrix, row2)
 print text "Matrix (list of lists):"
 print matrix
 
-print text "✓ Generic types working!"
+print text " Generic types working!"

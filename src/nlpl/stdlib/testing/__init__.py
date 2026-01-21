@@ -17,7 +17,7 @@ class TestResult:
         self.duration = duration
     
     def __str__(self):
-        status = "✓ PASS" if self.passed else "✗ FAIL"
+        status = " PASS" if self.passed else " FAIL"
         result = f"{status} {self.name} ({self.duration:.3f}s)"
         if self.error:
             result += f"\n  Error: {self.error}"

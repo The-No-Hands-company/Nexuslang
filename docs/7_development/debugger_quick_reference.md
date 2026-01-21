@@ -98,7 +98,7 @@ The NLPL compiler generates:
 
 ## Features
 
-✅ **Supported:**
+ **Supported:**
 - Set breakpoints at source lines
 - Step through code (next, step)
 - Inspect variables
@@ -106,7 +106,7 @@ The NLPL compiler generates:
 - Function-level debugging
 - GDB and LLDB support
 
-📋 **Future:**
+ **Future:**
 - Watch expressions
 - Conditional breakpoints
 - Variable formatting
@@ -114,7 +114,7 @@ The NLPL compiler generates:
 
 ## Status
 
-**Implementation:** ✅ Complete
+**Implementation:** Complete
 **Tested with:** GDB, LLDB
 **DWARF Version:** 4
 **Overhead:** Zero runtime impact

@@ -1,56 +1,56 @@
 # NLPL Multi-Level Implementation Roadmap
 
-**Version:** 2.0  
-**Date:** January 2, 2026  
+**Version:** 2.0 
+**Date:** January 2, 2026 
 **Target Completion:** December 2026
 
 ---
 
-## 🎯 Vision Statement
+## Vision Statement
 
 Implement **all five abstraction levels** in NLPL, creating the world's first language that truly spans from assembly to natural English, all with native performance.
 
 ---
 
-## 📊 Current Status (January 2026)
+## Current Status (January 2026)
 
 | Level | Name | Status | Completion | Priority |
 |-------|------|--------|------------|----------|
-| **Level 1** | Assembly-Level | 🚧 20% | Inline ASM pending | High |
-| **Level 2** | Systems Programming | ✅ 95% | Nearly complete | Done |
-| **Level 3** | Application Programming | ✅ 100% | Complete | Done |
-| **Level 4** | High-Level Abstractions | 🚧 10% | Goroutines pending | High |
-| **Level 5** | Natural Language | 🚧 5% | Future phase | Medium |
+| **Level 1** | Assembly-Level | 20% | Inline ASM pending | High |
+| **Level 2** | Systems Programming | 95% | Nearly complete | Done |
+| **Level 3** | Application Programming | 100% | Complete | Done |
+| **Level 4** | High-Level Abstractions | 10% | Goroutines pending | High |
+| **Level 5** | Natural Language | 5% | Future phase | Medium |
 
 **Overall Progress:** ~46% (weighted by implementation complexity)
 
 ---
 
-## 🗓️ Implementation Phases
+## Implementation Phases
 
-### Phase 1: Level 3 & 2 Foundations ✅ COMPLETE
-**Timeline:** Q3-Q4 2024 (Already done!)  
+### Phase 1: Level 3 & 2 Foundations COMPLETE
+**Timeline:** Q3-Q4 2024 (Already done!) 
 **Status:** 100% Complete
 
 #### Achievements
-- ✅ Full LLVM backend (9,594 lines)
-- ✅ Object-oriented programming
-- ✅ Generics with monomorphization
-- ✅ Pattern matching
-- ✅ Lambda functions
-- ✅ Exception handling
-- ✅ FFI to C libraries
-- ✅ Pointer operations
-- ✅ Manual memory management
-- ✅ Struct layouts
+- Full LLVM backend (9,594 lines)
+- Object-oriented programming
+- Generics with monomorphization
+- Pattern matching
+- Lambda functions
+- Exception handling
+- FFI to C libraries
+- Pointer operations
+- Manual memory management
+- Struct layouts
 
 #### Why This Was First
 Level 3 (Application) and Level 2 (Systems) provide the **foundation** that all other levels build upon. Without solid OOP, generics, and memory management, we can't implement higher or lower levels.
 
 ---
 
-### Phase 2: Level 4 - Goroutines & Channels 🚧 IN PROGRESS
-**Timeline:** Q1-Q2 2026 (6 months)  
+### Phase 2: Level 4 - Goroutines & Channels IN PROGRESS
+**Timeline:** Q1-Q2 2026 (6 months) 
 **Priority:** HIGH - Critical for modern applications
 
 #### Goals
@@ -62,13 +62,13 @@ Implement Go-style lightweight concurrency with M:N threading.
 - [ ] Design M:N scheduler architecture
 - [ ] Implement work-stealing queue
 - [ ] Create goroutine structure
-  - Stack management (2KB initial, grows to 1GB)
-  - State machine for suspend/resume
-  - Context switching
+ - Stack management (2KB initial, grows to 1GB)
+ - State machine for suspend/resume
+ - Context switching
 - [ ] Implement scheduler loop
-  - P (processors): One per OS thread
-  - M (machines): OS threads
-  - G (goroutines): Lightweight tasks
+ - P (processors): One per OS thread
+ - M (machines): OS threads
+ - G (goroutines): Lightweight tasks
 
 **Estimated:** 3-4 weeks, ~2,000 lines of runtime code
 
@@ -77,41 +77,41 @@ Implement Go-style lightweight concurrency with M:N threading.
 - [ ] Parse spawn blocks and expressions
 - [ ] AST nodes for spawn operations
 - [ ] Code generation
-  - Convert spawn block to goroutine function
-  - Generate scheduler calls
-  - Handle closures and captured variables
+ - Convert spawn block to goroutine function
+ - Generate scheduler calls
+ - Handle closures and captured variables
 - [ ] Type checking for spawned code
 
 **Estimated:** 3 weeks, ~500 lines compiler code
 
 **Month 3-4: Channels (March-April 2026)**
 - [ ] Channel type system
-  - `Channel of T` type
-  - Buffered vs unbuffered
+ - `Channel of T` type
+ - Buffered vs unbuffered
 - [ ] Channel operations
-  - `send value to channel`
-  - `set value to receive from channel`
-  - `close channel`
-  - `for each value from channel`
+ - `send value to channel`
+ - `set value to receive from channel`
+ - `close channel`
+ - `for each value from channel`
 - [ ] Lock-free channel implementation
-  - Fast path for common cases
-  - Fall back to locks for contention
+ - Fast path for common cases
+ - Fall back to locks for contention
 - [ ] Select statement
-  - Multi-channel waiting
-  - Timeout support
-  - Default case
+ - Multi-channel waiting
+ - Timeout support
+ - Default case
 
 **Estimated:** 4 weeks, ~1,500 lines runtime + 300 lines compiler
 
 **Month 5-6: Optimization & Testing (May-June 2026)**
 - [ ] Performance optimization
-  - Zero-copy channel sends where possible
-  - Inline fast paths
-  - Reduce syscalls
+ - Zero-copy channel sends where possible
+ - Inline fast paths
+ - Reduce syscalls
 - [ ] Comprehensive testing
-  - Stress tests (100,000+ goroutines)
-  - Race detection
-  - Deadlock detection
+ - Stress tests (100,000+ goroutines)
+ - Race detection
+ - Deadlock detection
 - [ ] Documentation and examples
 
 **Estimated:** 6 weeks
@@ -131,8 +131,8 @@ Implement Go-style lightweight concurrency with M:N threading.
 
 ---
 
-### Phase 3: Level 1 - Assembly Integration 🔜 NEXT
-**Timeline:** Q3 2026 (3 months)  
+### Phase 3: Level 1 - Assembly Integration NEXT
+**Timeline:** Q3 2026 (3 months) 
 **Priority:** HIGH - Completes low-level capabilities
 
 #### Goals
@@ -142,19 +142,19 @@ Enable direct assembly programming and hardware control.
 
 **Month 1: Inline Assembly (July 2026)**
 - [ ] Design inline assembly syntax
-  ```nlpl
-  inline assembly
-      mov rax, [value]
-      add rax, 42
-      ret
-  end
-  ```
+ ```nlpl
+ inline assembly
+ mov rax, [value]
+ add rax, 42
+ ret
+ end
+ ```
 - [ ] Parse assembly blocks
 - [ ] Generate LLVM inline assembly IR
 - [ ] Support for multiple architectures
-  - x86-64 (primary)
-  - ARM64 (secondary)
-  - RISC-V (future)
+ - x86-64 (primary)
+ - ARM64 (secondary)
+ - RISC-V (future)
 - [ ] Register constraints and clobbers
 - [ ] Memory operands
 
@@ -162,9 +162,9 @@ Enable direct assembly programming and hardware control.
 
 **Month 2: Register Allocation Hints (August 2026)**
 - [ ] Syntax for register hints
-  ```nlpl
-  set @rax to value  # Prefer RAX register
-  ```
+ ```nlpl
+ set @rax to value # Prefer RAX register
+ ```
 - [ ] LLVM register allocation hints
 - [ ] Verification and fallback
 - [ ] Architecture-specific registers
@@ -173,15 +173,15 @@ Enable direct assembly programming and hardware control.
 
 **Month 3: Hardware Access (September 2026)**
 - [ ] Memory-mapped I/O
-  ```nlpl
-  set port to 0x3F8 as Pointer to Byte
-  write value to port
-  ```
+ ```nlpl
+ set port to 0x3F8 as Pointer to Byte
+ write value to port
+ ```
 - [ ] I/O port operations (x86)
-  ```nlpl
-  outb port, value
-  set value to inb port
-  ```
+ ```nlpl
+ outb port, value
+ set value to inb port
+ ```
 - [ ] Interrupt handling setup
 - [ ] Documentation for kernel development
 
@@ -195,8 +195,8 @@ Enable direct assembly programming and hardware control.
 
 ---
 
-### Phase 4: Level 3 - Structured Concurrency ⏭️ AFTER LEVEL 4
-**Timeline:** Q4 2026 (2 months)  
+### Phase 4: Level 3 - Structured Concurrency AFTER LEVEL 4
+**Timeline:** Q4 2026 (2 months) 
 **Priority:** MEDIUM - Nice-to-have syntactic sugar
 
 #### Goals
@@ -206,12 +206,12 @@ Add explicit concurrency blocks and async/await syntax.
 
 **Month 1: Concurrent Blocks (October 2026)**
 - [ ] `concurrent` keyword and syntax
-  ```nlpl
-  concurrent
-      call task1
-      call task2
-  end
-  ```
+ ```nlpl
+ concurrent
+ call task1
+ call task2
+ end
+ ```
 - [ ] Automatic parallelization
 - [ ] Implicit barriers
 - [ ] Error handling across parallel tasks
@@ -233,8 +233,8 @@ Add explicit concurrency blocks and async/await syntax.
 
 ---
 
-### Phase 5: Level 5 - Natural Language 🔮 FUTURE
-**Timeline:** 2027+ (6+ months)  
+### Phase 5: Level 5 - Natural Language FUTURE
+**Timeline:** 2027+ (6+ months) 
 **Priority:** LOW - Polish and accessibility
 
 #### Goals
@@ -265,71 +265,71 @@ Enable almost-English syntax for maximum accessibility.
 
 ---
 
-## 📈 Dependency Graph
+## Dependency Graph
 
 ```
-Phase 1: Level 3 & 2 ✅
-    ↓
-    ├─→ Phase 2: Level 4 (Goroutines) 🚧 ← HIGH PRIORITY
-    │   ↓
-    │   └─→ Phase 4: Level 3 Extensions (Structured Concurrency)
-    │
-    └─→ Phase 3: Level 1 (Assembly) 🚧 ← HIGH PRIORITY
-        ↓
-        └─→ Kernel Development Possible
-    
-Phase 5: Level 5 (Natural Language) 🔮
-    (Independent, can be done anytime)
+Phase 1: Level 3 & 2 
+ 
+ Phase 2: Level 4 (Goroutines) HIGH PRIORITY
+ 
+ Phase 4: Level 3 Extensions (Structured Concurrency)
+ 
+ Phase 3: Level 1 (Assembly) HIGH PRIORITY
+ 
+ Kernel Development Possible
+ 
+Phase 5: Level 5 (Natural Language) 
+ (Independent, can be done anytime)
 ```
 
 ---
 
-## 🎯 Prioritization Rationale
+## Prioritization Rationale
 
 ### Why Level 4 (Goroutines) First?
 
 1. **Modern Applications Need It**
-   - Web servers
-   - Microservices
-   - Network applications
-   - Real-time systems
+ - Web servers
+ - Microservices
+ - Network applications
+ - Real-time systems
 
 2. **Competitive Advantage**
-   - Go's success proves concurrency is essential
-   - Rust async ecosystem is huge
-   - NLPL needs this to compete
+ - Go's success proves concurrency is essential
+ - Rust async ecosystem is huge
+ - NLPL needs this to compete
 
 3. **User Demand**
-   - Most requested feature
-   - Blocks adoption for web/network apps
+ - Most requested feature
+ - Blocks adoption for web/network apps
 
 ### Why Level 1 (Assembly) Next?
 
 1. **Completes the Vision**
-   - "Assembly to English" promise
-   - OS kernel development
-   - Bare metal programming
+ - "Assembly to English" promise
+ - OS kernel development
+ - Bare metal programming
 
 2. **Fills Unique Niche**
-   - No other readable language has this
-   - Attractive to systems programmers
-   - Education (teaching assembly with natural syntax)
+ - No other readable language has this
+ - Attractive to systems programmers
+ - Education (teaching assembly with natural syntax)
 
 ### Why Level 5 (Natural Language) Later?
 
 1. **Lower Priority Use Cases**
-   - Primarily educational
-   - Scriptwriting (Python alternative)
-   - Less critical for production
+ - Primarily educational
+ - Scriptwriting (Python alternative)
+ - Less critical for production
 
 2. **More Experimental**
-   - Ambiguity challenges
-   - AI integration uncertainty
-   - Can iterate based on feedback
+ - Ambiguity challenges
+ - AI integration uncertainty
+ - Can iterate based on feedback
 
 ---
 
-## 💻 Resource Allocation
+## Resource Allocation
 
 ### Development Team Needed
 
@@ -359,7 +359,7 @@ Phase 5: Level 5 (Natural Language) 🔮
 
 ---
 
-## 🧪 Testing Strategy
+## Testing Strategy
 
 ### Per Phase
 
@@ -385,7 +385,7 @@ Phase 5: Level 5 (Natural Language) 🔮
 
 ---
 
-## 📚 Documentation Requirements
+## Documentation Requirements
 
 ### Per Phase
 
@@ -409,7 +409,7 @@ Phase 5: Level 5 (Natural Language) 🔮
 
 ---
 
-## 🎓 Example Progression
+## Example Progression
 
 ### How Developers Will Experience This
 
@@ -417,12 +417,12 @@ Phase 5: Level 5 (Natural Language) 🔮
 ```nlpl
 # Level 2 & 3 available
 class Server
-    function handle_request with req as Request returns Response
-        # Manual threading needed
-        set thread to create thread with lambda: process with req
-        thread.join
-        return response
-    end
+ function handle_request with req as Request returns Response
+ # Manual threading needed
+ set thread to create thread with lambda: process with req
+ thread.join
+ return response
+ end
 end
 ```
 
@@ -430,11 +430,11 @@ end
 ```nlpl
 # Level 4 available - Goroutines!
 function handle_request with req as Request returns Response
-    spawn
-        set data to fetch_data with req
-        call process with data
-    end
-    return response
+ spawn
+ set data to fetch_data with req
+ call process with data
+ end
+ return response
 end
 ```
 
@@ -442,11 +442,11 @@ end
 ```nlpl
 # Level 1 available - Assembly!
 function initialize_kernel
-    inline assembly
-        cli
-        lgdt [gdt_descriptor]
-        sti
-    end
+ inline assembly
+ cli
+ lgdt [gdt_descriptor]
+ sti
+ end
 end
 ```
 
@@ -454,37 +454,37 @@ end
 ```nlpl
 # Level 3 extensions - Structured concurrency
 concurrent
-    call fetch_user
-    call fetch_posts
-    call fetch_comments
+ call fetch_user
+ call fetch_posts
+ call fetch_comments
 end
 ```
 
 ---
 
-## 🚀 Success Criteria
+## Success Criteria
 
 ### Phase 2 (Goroutines)
-- ✅ 100,000+ concurrent goroutines on 8 cores
-- ✅ Web server benchmark: 50,000 req/sec (comparable to Go)
-- ✅ Channel throughput: 1M+ messages/sec
-- ✅ Zero known data races in test suite
-- ✅ Documentation complete
+- 100,000+ concurrent goroutines on 8 cores
+- Web server benchmark: 50,000 req/sec (comparable to Go)
+- Channel throughput: 1M+ messages/sec
+- Zero known data races in test suite
+- Documentation complete
 
 ### Phase 3 (Assembly)
-- ✅ Successfully compile and run bootloader
-- ✅ Inline assembly works on x86-64 and ARM64
-- ✅ Can write minimal OS kernel in NLPL
-- ✅ Hardware I/O operations work on real hardware
+- Successfully compile and run bootloader
+- Inline assembly works on x86-64 and ARM64
+- Can write minimal OS kernel in NLPL
+- Hardware I/O operations work on real hardware
 
 ### Phase 4 (Structured Concurrency)
-- ✅ Concurrent blocks 2x faster than manual threading
-- ✅ Async/await compatible with goroutines
-- ✅ Clear migration path from other languages
+- Concurrent blocks 2x faster than manual threading
+- Async/await compatible with goroutines
+- Clear migration path from other languages
 
 ---
 
-## 🎯 Milestones
+## Milestones
 
 | Milestone | Target Date | Deliverable |
 |-----------|-------------|-------------|
@@ -498,28 +498,28 @@ end
 
 ---
 
-## 🔄 Feedback Loops
+## Feedback Loops
 
 ### Community Feedback Points
 
 1. **After M1 (Goroutine Runtime):**
-   - Performance benchmarks
-   - API ergonomics
-   - Real-world testing
+ - Performance benchmarks
+ - API ergonomics
+ - Real-world testing
 
 2. **After M3 (Level 4 Complete):**
-   - Production usage feedback
-   - Comparison with Go/Rust
-   - Pain points identification
+ - Production usage feedback
+ - Comparison with Go/Rust
+ - Pain points identification
 
 3. **After M5 (Level 1 Complete):**
-   - Kernel developer feedback
-   - Assembly syntax evaluation
-   - Hardware compatibility reports
+ - Kernel developer feedback
+ - Assembly syntax evaluation
+ - Hardware compatibility reports
 
 ---
 
-## 📊 Risk Assessment
+## Risk Assessment
 
 ### High Risks
 
@@ -547,39 +547,39 @@ end
 
 ---
 
-## 🎉 Expected Outcomes
+## Expected Outcomes
 
 ### By End of 2026
 
 NLPL will be the **only language** where you can:
 
-1. ✅ Write an OS kernel in readable English-like code
-2. ✅ Use inline assembly where needed
-3. ✅ Build high-performance concurrent servers
-4. ✅ Write application logic with OOP and generics
-5. ✅ Mix all levels seamlessly in one codebase
+1. Write an OS kernel in readable English-like code
+2. Use inline assembly where needed
+3. Build high-performance concurrent servers
+4. Write application logic with OOP and generics
+5. Mix all levels seamlessly in one codebase
 
 ### Competitive Position
 
 | Feature | NLPL | C/C++ | Rust | Go | Zig |
 |---------|------|-------|------|----|----|
-| **Assembly to High-Level** | ✅ | ⚠️ | ⚠️ | ❌ | ⚠️ |
-| **Readable Syntax** | ✅ | ❌ | ⚠️ | ✅ | ⚠️ |
-| **Lightweight Concurrency** | ✅ | ❌ | ⚠️ | ✅ | ❌ |
-| **Native Performance** | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Memory Safety** | ⚠️ | ❌ | ✅ | ✅ | ❌ |
-| **Fast Compilation** | ✅ | ❌ | ❌ | ✅ | ✅ |
+| **Assembly to High-Level** | | | | | |
+| **Readable Syntax** | | | | | |
+| **Lightweight Concurrency** | | | | | |
+| **Native Performance** | | | | | |
+| **Memory Safety** | | | | | |
+| **Fast Compilation** | | | | | |
 
-**NLPL: Most checkmarks in the industry.** ✅
+**NLPL: Most checkmarks in the industry.** 
 
 ---
 
-## 📝 Next Actions
+## Next Actions
 
 ### Immediate (This Week)
-1. ✅ Update progress documents with multi-level vision
-2. ✅ Create syntax design for all concurrency levels
-3. ✅ Create implementation roadmap
+1. Update progress documents with multi-level vision
+2. Create syntax design for all concurrency levels
+3. Create implementation roadmap
 4. [ ] Review and approve architecture
 5. [ ] Start M:N scheduler prototype
 
@@ -597,4 +597,4 @@ NLPL will be the **only language** where you can:
 
 ---
 
-**NLPL: From assembly to English, launching 2026.** 🚀
+**NLPL: From assembly to English, launching 2026.** 

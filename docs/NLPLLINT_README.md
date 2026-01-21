@@ -1,6 +1,6 @@
-# nlpllint - NLPL Static Analyzer 🔍
+# nlpllint - NLPL Static Analyzer 
 
-**Status:** ✅ **WORKING** - v0.1.0 Alpha  
+**Status:** **WORKING** - v0.1.0 Alpha 
 **Date:** January 2, 2026
 
 ---
@@ -40,16 +40,16 @@
 nlpllint [options] <file or directory>
 
 Options:
-  -r, --recursive       Recursively analyze directory
-  --strict              Enable all checks (including style)
-  --minimal             Only critical checks (memory, null, init)
-  --json                Output in JSON format
-  --fix                 Auto-fix issues (TODO)
-  --no-color            Disable colored output
-  --errors-only         Show only errors
-  --max-issues N        Limit displayed issues
-  --config FILE         Use configuration file (TODO)
-  -h, --help            Show help
+ -r, --recursive Recursively analyze directory
+ --strict Enable all checks (including style)
+ --minimal Only critical checks (memory, null, init)
+ --json Output in JSON format
+ --fix Auto-fix issues (TODO)
+ --no-color Disable colored output
+ --errors-only Show only errors
+ --max-issues N Limit displayed issues
+ --config FILE Use configuration file (TODO)
+ -h, --help Show help
 ```
 
 ---
@@ -58,7 +58,7 @@ Options:
 
 ### 1. Memory Safety (M001-M008)
 
-**✅ IMPLEMENTED AND WORKING**
+** IMPLEMENTED AND WORKING**
 
 | Code | Issue | Severity |
 |------|-------|----------|
@@ -75,28 +75,28 @@ Options:
 
 ```nlpl
 function buggy_code
-    set buffer to alloc with 1024
-    call dealloc with buffer
-    set value to dereference buffer  # ERROR: M006 - Use-after-free!
+ set buffer to alloc with 1024
+ call dealloc with buffer
+ set value to dereference buffer # ERROR: M006 - Use-after-free!
 end
 ```
 
 **Output:**
 ```
 ERROR: M006 at program.nlpl:4:5
-  Use-after-free: dereferencing freed pointer 'buffer'
+ Use-after-free: dereferencing freed pointer 'buffer'
 
-  4 |     set value to dereference buffer
-          ^
+ 4 | set value to dereference buffer
+ ^
 
-  💡 Suggestion: Do not use 'buffer' after freeing
+ Suggestion: Do not use 'buffer' after freeing
 ```
 
 ---
 
 ### 2. Null Safety (N001-N005)
 
-**✅ IMPLEMENTED**
+** IMPLEMENTED**
 
 | Code | Issue | Severity |
 |------|-------|----------|
@@ -110,14 +110,14 @@ ERROR: M006 at program.nlpl:4:5
 
 ```nlpl
 set ptr to null
-set value to dereference ptr  # ERROR: N004 - Null dereference!
+set value to dereference ptr # ERROR: N004 - Null dereference!
 ```
 
 ---
 
 ### 3. Resource Leaks (R001-R006)
 
-**✅ IMPLEMENTED**
+** IMPLEMENTED**
 
 | Code | Issue | Severity |
 |------|-------|----------|
@@ -129,26 +129,26 @@ set value to dereference ptr  # ERROR: N004 - Null dereference!
 | R006 | Resource leak on return | WARNING |
 
 **Tracked Resources:**
-- Files (`open` → `close`)
-- Memory (`alloc` → `dealloc`)
-- Locks (`lock` → `unlock`)
-- Connections (`connect` → `disconnect`)
+- Files (`open` `close`)
+- Memory (`alloc` `dealloc`)
+- Locks (`lock` `unlock`)
+- Connections (`connect` `disconnect`)
 
 **Example:**
 
 ```nlpl
 function leak_file
-    set file to open "data.txt"
-    set content to read_file with "data.txt"
-    # Missing: call close with file
-end  # WARNING: R005 - File 'file' not closed!
+ set file to open "data.txt"
+ set content to read_file with "data.txt"
+ # Missing: call close with file
+end # WARNING: R005 - File 'file' not closed!
 ```
 
 ---
 
 ### 4. Initialization (I001)
 
-**✅ IMPLEMENTED**
+** IMPLEMENTED**
 
 | Code | Issue | Severity |
 |------|-------|----------|
@@ -158,26 +158,26 @@ end  # WARNING: R005 - File 'file' not closed!
 
 ```nlpl
 set x to 0
-print number y  # ERROR: I001 - 'y' used before initialization!
+print number y # ERROR: I001 - 'y' used before initialization!
 ```
 
 ---
 
 ### 5. Type Safety (T001-T010)
 
-**🚧 STUB** - Full implementation TODO
+** STUB** - Full implementation TODO
 
 ---
 
 ### 6. Dead Code (D001-D005)
 
-**🚧 STUB** - Full implementation TODO
+** STUB** - Full implementation TODO
 
 ---
 
 ### 7. Style (S001-S020)
 
-**🚧 STUB** - Full implementation TODO
+** STUB** - Full implementation TODO
 
 ---
 
@@ -185,31 +185,25 @@ print number y  # ERROR: I001 - 'y' used before initialization!
 
 ```
 nlpllint
-    ↓
-┌─────────────────────────────────────┐
-│ StaticAnalyzer                      │
-│  - Coordinates all checkers         │
-│  - Configurable (default/strict)    │
-└─────────────────────────────────────┘
-    ↓
-┌──────────────────────┬──────────────────────┐
-│ MemorySafetyChecker  │ NullSafetyAnalyzer   │
-│ - Track alloc/dealloc│ - Track nullability  │
-│ - Use-after-free     │ - Null checks        │
-│ - Double-free        │ - Initialization     │
-└──────────────────────┴──────────────────────┘
-┌──────────────────────┬──────────────────────┐
-│ ResourceLeakChecker  │ InitializationChecker│
-│ - Files, locks, etc  │ - Use before assign  │
-└──────────────────────┴──────────────────────┘
-    ↓
-┌─────────────────────────────────────┐
-│ AnalysisReport                      │
-│  - Issues with severity/category    │
-│  - Colored output                   │
-│  - Auto-fix suggestions             │
-│  - JSON export                      │
-└─────────────────────────────────────┘
+ 
+ StaticAnalyzer 
+ - Coordinates all checkers 
+ - Configurable (default/strict) 
+
+ MemorySafetyChecker NullSafetyAnalyzer 
+ - Track alloc/dealloc - Track nullability 
+ - Use-after-free - Null checks 
+ - Double-free - Initialization 
+
+ ResourceLeakChecker InitializationChecker
+ - Files, locks, etc - Use before assign 
+
+ AnalysisReport 
+ - Issues with severity/category 
+ - Colored output 
+ - Auto-fix suggestions 
+ - JSON export 
+
 ```
 
 ---
@@ -221,29 +215,29 @@ nlpllint
 ```
 Analysis Summary for program.nlpl
 ============================================================
-  Errors:     3
-  Warnings:   2
-  Info:       0
-  Hints:      0
-  ────────────────────────────────────────────────────────────
-  Total:      5
+ Errors: 3
+ Warnings: 2
+ Info: 0
+ Hints: 0
+ 
+ Total: 5
 
 Issues by Category:
-  memory: 3
-  null-safety: 2
+ memory: 3
+ null-safety: 2
 
 Analysis Stats:
-  Lines analyzed: 45/50
-  Time: 12.3ms
+ Lines analyzed: 45/50
+ Time: 12.3ms
 ============================================================
 
 ERROR: M006 at program.nlpl:14:5
-  Use-after-free: dereferencing freed pointer 'buffer'
+ Use-after-free: dereferencing freed pointer 'buffer'
 
-  14 |     set value to dereference buffer
-           ^
+ 14 | set value to dereference buffer
+ ^
 
-  💡 Suggestion: Do not use 'buffer' after freeing
+ Suggestion: Do not use 'buffer' after freeing
 
 [... more issues ...]
 ```
@@ -252,41 +246,41 @@ ERROR: M006 at program.nlpl:14:5
 
 ```json
 {
-  "files": [
-    {
-      "path": "program.nlpl",
-      "lines_analyzed": 45,
-      "total_lines": 50,
-      "analysis_time_ms": 12.3,
-      "issues": [
-        {
-          "code": "M006",
-          "severity": "error",
-          "category": "memory",
-          "message": "Use-after-free: dereferencing freed pointer 'buffer'",
-          "location": {
-            "file": "program.nlpl",
-            "line": 14,
-            "column": 5
-          },
-          "suggestion": "Do not use 'buffer' after freeing"
-        }
-      ],
-      "counts": {
-        "errors": 3,
-        "warnings": 2,
-        "info": 0,
-        "hints": 0
-      }
-    }
-  ],
-  "summary": {
-    "total_files": 1,
-    "total_errors": 3,
-    "total_warnings": 2,
-    "total_info": 0,
-    "total_hints": 0
-  }
+ "files": [
+ {
+ "path": "program.nlpl",
+ "lines_analyzed": 45,
+ "total_lines": 50,
+ "analysis_time_ms": 12.3,
+ "issues": [
+ {
+ "code": "M006",
+ "severity": "error",
+ "category": "memory",
+ "message": "Use-after-free: dereferencing freed pointer 'buffer'",
+ "location": {
+ "file": "program.nlpl",
+ "line": 14,
+ "column": 5
+ },
+ "suggestion": "Do not use 'buffer' after freeing"
+ }
+ ],
+ "counts": {
+ "errors": 3,
+ "warnings": 2,
+ "info": 0,
+ "hints": 0
+ }
+ }
+ ],
+ "summary": {
+ "total_files": 1,
+ "total_errors": 3,
+ "total_warnings": 2,
+ "total_info": 0,
+ "total_hints": 0
+ }
 }
 ```
 
@@ -311,59 +305,59 @@ See `test_programs/static_analysis/test_bugs.nlpl` for example buggy code.
 
 ## Implementation Status
 
-### ✅ Completed (Week 1, Day 1)
+### Completed (Week 1, Day 1)
 
 - [x] Report system (`report.py`)
-  - Issue class with severity, category, location
-  - AnalysisReport with filtering, statistics
-  - Colored terminal output
-  - Source code display with caret pointers
+ - Issue class with severity, category, location
+ - AnalysisReport with filtering, statistics
+ - Colored terminal output
+ - Source code display with caret pointers
 
 - [x] Analyzer core (`analyzer.py`)
-  - StaticAnalyzer class
-  - Configurable checker system
-  - Default/strict/minimal presets
-  - File and directory analysis
+ - StaticAnalyzer class
+ - Configurable checker system
+ - Default/strict/minimal presets
+ - File and directory analysis
 
 - [x] Base checker infrastructure (`checks/base.py`)
-  - Abstract BaseChecker interface
-  - AST walking utilities
-  - Source line retrieval
+ - Abstract BaseChecker interface
+ - AST walking utilities
+ - Source line retrieval
 
 - [x] Memory safety checker (`checks/memory_safety.py`)
-  - 8 error codes (M001-M008)
-  - Allocation/deallocation tracking
-  - Use-after-free detection
-  - Double-free detection
-  - Memory leak detection
+ - 8 error codes (M001-M008)
+ - Allocation/deallocation tracking
+ - Use-after-free detection
+ - Double-free detection
+ - Memory leak detection
 
 - [x] Null safety checker (`checks/null_safety.py`)
-  - 5 error codes (N001-N005)
-  - Nullability tracking
-  - Null dereference warnings
-  - Uninitialized variable detection
+ - 5 error codes (N001-N005)
+ - Nullability tracking
+ - Null dereference warnings
+ - Uninitialized variable detection
 
 - [x] Resource leak checker (`checks/resource_leak.py`)
-  - 6 error codes (R001-R006)
-  - File/memory/lock/connection tracking
-  - Leak detection at scope end
-  - Leak detection on return
+ - 6 error codes (R001-R006)
+ - File/memory/lock/connection tracking
+ - Leak detection at scope end
+ - Leak detection on return
 
 - [x] Initialization checker (`checks/initialization.py`)
-  - 1 error code (I001)
-  - Use-before-assignment detection
+ - 1 error code (I001)
+ - Use-before-assignment detection
 
 - [x] CLI tool (`cli/nlpllint.py`)
-  - Full command-line interface
-  - Multiple output formats
-  - Configuration options
-  - Executable wrapper
+ - Full command-line interface
+ - Multiple output formats
+ - Configuration options
+ - Executable wrapper
 
 **Total:** ~2,000 lines of production-ready code
 
 ---
 
-### 🚧 TODO (Week 1, Days 2-7)
+### TODO (Week 1, Days 2-7)
 
 - [ ] Fix minor bugs (line number comparisons)
 - [ ] Implement type safety checker (full)
@@ -382,9 +376,9 @@ See `test_programs/static_analysis/test_bugs.nlpl` for example buggy code.
 
 | Metric | Target | Current |
 |--------|--------|---------|
-| Analysis time | <100ms per file | ~1-10ms ✅ |
-| Memory usage | <50MB | Unknown 🔍 |
-| False positives | <5% | Unknown 🔍 |
+| Analysis time | <100ms per file | ~1-10ms |
+| Memory usage | <50MB | Unknown |
+| False positives | <5% | Unknown |
 
 ---
 
@@ -394,23 +388,23 @@ See `test_programs/static_analysis/test_bugs.nlpl` for example buggy code.
 
 | Feature | clang-tidy | cppcheck | **nlpllint** |
 |---------|-----------|----------|-------------|
-| Memory safety | ✅ Partial | ✅ Partial | ✅ **Full** |
-| Null safety | ❌ | ❌ | ✅ **Yes** |
-| Resource leaks | ✅ | ✅ | ✅ |
-| Easy to use | ❌ Complex | ⚠️ Moderate | ✅ **Simple** |
-| Fast analysis | ⚠️ Slow | ⚠️ Moderate | ✅ **Fast** |
-| Helpful errors | ⚠️ Cryptic | ⚠️ Basic | ✅ **Educational** |
-| Auto-fix | ✅ | ❌ | 🚧 Coming |
+| Memory safety | Partial | Partial | **Full** |
+| Null safety | | | **Yes** |
+| Resource leaks | | | |
+| Easy to use | Complex | Moderate | **Simple** |
+| Fast analysis | Slow | Moderate | **Fast** |
+| Helpful errors | Cryptic | Basic | **Educational** |
+| Auto-fix | | | Coming |
 
 ### Python Linters
 
 | Feature | pylint | flake8 | mypy | **nlpllint** |
 |---------|--------|--------|------|-------------|
-| Type checking | ❌ | ❌ | ✅ | 🚧 Partial |
-| Memory safety | N/A | N/A | N/A | ✅ **Yes** |
-| Resource leaks | ⚠️ Basic | ❌ | ❌ | ✅ **Full** |
-| Speed | ⚠️ Slow | ✅ Fast | ⚠️ Moderate | ✅ **Fast** |
-| Setup | ❌ Complex | ✅ Easy | ⚠️ Moderate | ✅ **Easy** |
+| Type checking | | | | Partial |
+| Memory safety | N/A | N/A | N/A | **Yes** |
+| Resource leaks | Basic | | | **Full** |
+| Speed | Slow | Fast | Moderate | **Fast** |
+| Setup | Complex | Easy | Moderate | **Easy** |
 
 **NLPL's Advantage:** Combines memory safety (C/C++) with ease-of-use (Python).
 
@@ -423,7 +417,7 @@ See `test_programs/static_analysis/test_bugs.nlpl` for example buggy code.
 ```bash
 # Add to nlplbuild
 nlplbuild program.nlpl
-  ↓
+ 
 1. Run nlpllint (static analysis)
 2. Compile (if no errors)
 3. Link
@@ -433,13 +427,13 @@ nlplbuild program.nlpl
 
 ```json
 {
-  "nlpl.linting.enabled": true,
-  "nlpl.linting.onType": true,
-  "nlpl.linting.showQuickFixes": true
+ "nlpl.linting.enabled": true,
+ "nlpl.linting.onType": true,
+ "nlpl.linting.showQuickFixes": true
 }
 ```
 
-Real-time analysis as you type! 🎉
+Real-time analysis as you type! 
 
 ---
 
@@ -461,29 +455,29 @@ from .base import BaseChecker
 from ..report import Issue, Severity, Category
 
 class MyChecker(BaseChecker):
-    def check(self, ast, source, lines):
-        issues = []
-        # Analysis logic here
-        return issues
+ def check(self, ast, source, lines):
+ issues = []
+ # Analysis logic here
+ return issues
 ```
 
 ---
 
 ## FAQ
 
-**Q: Does nlpllint slow down compilation?**  
+**Q: Does nlpllint slow down compilation?** 
 A: No! Analysis is <10ms per file, much faster than compilation itself.
 
-**Q: Can I disable specific checks?**  
+**Q: Can I disable specific checks?** 
 A: Yes, use configuration file (coming soon) or modify StaticAnalyzer init.
 
-**Q: Will it work on existing code?**  
+**Q: Will it work on existing code?** 
 A: Yes! Tested on 312 existing test programs.
 
-**Q: Does it replace runtime checks?**  
+**Q: Does it replace runtime checks?** 
 A: No, it complements them. Static analysis catches many bugs early, but runtime checks (sanitizers, debug mode) catch the rest.
 
-**Q: Can I use it in CI/CD?**  
+**Q: Can I use it in CI/CD?** 
 A: Yes! Use `--json` output and check exit code (0 = no errors).
 
 ---
@@ -491,12 +485,12 @@ A: Yes! Use `--json` output and check exit code (0 = no errors).
 ## Roadmap
 
 ### v0.1.0 (Current) - Alpha
-- ✅ Core infrastructure
-- ✅ Memory safety
-- ✅ Null safety
-- ✅ Resource leaks
-- ✅ Initialization
-- ✅ CLI tool
+- Core infrastructure
+- Memory safety
+- Null safety
+- Resource leaks
+- Initialization
+- CLI tool
 
 ### v0.2.0 (Week 2) - Beta
 - [ ] Type safety (full)
@@ -528,27 +522,27 @@ A: Yes! Use `--json` output and check exit code (0 = no errors).
 
 ```
 src/nlpl/tooling/analyzer/
-├── __init__.py             # Package exports
-├── analyzer.py             # Main analyzer (200 lines)
-├── report.py               # Issue reporting (250 lines)
-└── checks/
-    ├── __init__.py         # Checker exports
-    ├── base.py             # Base class (100 lines)
-    ├── memory_safety.py    # Memory checks (300 lines)
-    ├── null_safety.py      # Null checks (250 lines)
-    ├── resource_leak.py    # Resource checks (250 lines)
-    ├── initialization.py   # Init checks (70 lines)
-    ├── type_safety.py      # Stub (10 lines)
-    ├── dead_code.py        # Stub (10 lines)
-    └── style.py            # Stub (10 lines)
+ __init__.py # Package exports
+ analyzer.py # Main analyzer (200 lines)
+ report.py # Issue reporting (250 lines)
+ checks/
+ __init__.py # Checker exports
+ base.py # Base class (100 lines)
+ memory_safety.py # Memory checks (300 lines)
+ null_safety.py # Null checks (250 lines)
+ resource_leak.py # Resource checks (250 lines)
+ initialization.py # Init checks (70 lines)
+ type_safety.py # Stub (10 lines)
+ dead_code.py # Stub (10 lines)
+ style.py # Stub (10 lines)
 
 src/nlpl/cli/
-├── __init__.py             # CLI package
-└── nlpllint.py             # CLI tool (250 lines)
+ __init__.py # CLI package
+ nlpllint.py # CLI tool (250 lines)
 
-nlpllint                    # Wrapper script
+nlpllint # Wrapper script
 test_programs/static_analysis/
-└── test_bugs.nlpl          # Test cases
+ test_bugs.nlpl # Test cases
 ```
 
 **Total:** ~1,700 lines of code (excluding stubs)
@@ -584,4 +578,4 @@ Part of the NLPL project.
 
 ---
 
-**nlpllint: Catch bugs before they catch you!** 🐛🔍✅
+**nlpllint: Catch bugs before they catch you!** 

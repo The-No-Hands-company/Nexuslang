@@ -4,17 +4,17 @@
 
 ```
 docs/
-├── 1_introduction/          # What is NLPL? Philosophy, overview, getting started
-├── 2_language_basics/       # Core syntax, variables, scoping
-├── 3_core_concepts/         # Advanced features (behaviors, events, game objects, etc.)
-├── 4_architecture/          # Compiler design, backends, technical architecture
-├── 5_type_system/          # Type system design, inference, generics
-├── 6_module_system/        # Module system, imports, namespaces
-├── 7_development/          # Developer guides, setup, style guide
-├── 8_planning/             # Roadmaps, requirements, development plans
-├── 9_status_reports/       # Progress reports, session results, milestones
-├── 10_assessments/         # Analysis documents, comparisons, readiness assessments
-└── Creating a Truly Natural Language Programming Language/  # Historical/archive
+ 1_introduction/ # What is NLPL? Philosophy, overview, getting started
+ 2_language_basics/ # Core syntax, variables, scoping
+ 3_core_concepts/ # Advanced features (behaviors, events, game objects, etc.)
+ 4_architecture/ # Compiler design, backends, technical architecture
+ 5_type_system/ # Type system design, inference, generics
+ 6_module_system/ # Module system, imports, namespaces
+ 7_development/ # Developer guides, setup, style guide
+ 8_planning/ # Roadmaps, requirements, development plans
+ 9_status_reports/ # Progress reports, session results, milestones
+ 10_assessments/ # Analysis documents, comparisons, readiness assessments
+ Creating a Truly Natural Language Programming Language/ # Historical/archive
 ```
 
 ## Document Categories

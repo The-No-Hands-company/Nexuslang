@@ -221,7 +221,7 @@ class Compiler:
             with open(output_file, 'w') as f:
                 f.write(code)
             
-            print(f"✓ Compilation successful: {output_file}")
+            print(f" Compilation successful: {output_file}")
             
             # Generate C header if requested and target is C/CPP
             if self.options.generate_header and target in [CompilationTarget.C, CompilationTarget.CPP]:
@@ -236,12 +236,12 @@ class Compiler:
                 header_code = header_gen.generate(ast, module_name)
                 with open(header_file, 'w') as f:
                     f.write(header_code)
-                print(f"✓ Header generation successful: {header_file}")
+                print(f" Header generation successful: {header_file}")
             
             return True, generator.required_libraries
             
         except Exception as e:
-            print(f"✗ Compilation failed: {e}")
+            print(f" Compilation failed: {e}")
             import traceback
             traceback.print_exc()
             return False, set()
@@ -293,7 +293,7 @@ class Compiler:
                 break
         
         if not compiler:
-            print(f"✗ No C/C++ compiler found. Please install GCC or Clang.")
+            print(f" No C/C++ compiler found. Please install GCC or Clang.")
             return False
         
         # Build compiler command
@@ -325,15 +325,15 @@ class Compiler:
             result = subprocess.run(cmd, capture_output=True, text=True)
             
             if result.returncode == 0:
-                print(f"✓ Linking successful: {output_file}")
+                print(f" Linking successful: {output_file}")
                 return True
             else:
-                print(f"✗ Linking failed:")
+                print(f" Linking failed:")
                 print(result.stderr)
                 return False
                 
         except Exception as e:
-            print(f"✗ Linking error: {e}")
+            print(f" Linking error: {e}")
             return False
     
     def _assemble_and_link(self, asm_file: str, output_file: str) -> bool:
@@ -343,7 +343,7 @@ class Compiler:
         
         # Check for assembler (nasm for x86-64)
         if not shutil.which('nasm'):
-            print("✗ NASM assembler not found. Please install NASM.")
+            print(" NASM assembler not found. Please install NASM.")
             return False
         
         # Assemble
@@ -353,10 +353,10 @@ class Compiler:
         try:
             result = subprocess.run(asm_cmd, capture_output=True, text=True)
             if result.returncode != 0:
-                print(f"✗ Assembly failed: {result.stderr}")
+                print(f" Assembly failed: {result.stderr}")
                 return False
         except Exception as e:
-            print(f"✗ Assembly error: {e}")
+            print(f" Assembly error: {e}")
             return False
         
         # Link
@@ -365,14 +365,14 @@ class Compiler:
         try:
             result = subprocess.run(link_cmd, capture_output=True, text=True)
             if result.returncode != 0:
-                print(f"✗ Linking failed: {result.stderr}")
+                print(f" Linking failed: {result.stderr}")
                 return False
             
-            print(f"✓ Assembly and linking successful: {output_file}")
+            print(f" Assembly and linking successful: {output_file}")
             return True
             
         except Exception as e:
-            print(f"✗ Linking error: {e}")
+            print(f" Linking error: {e}")
             return False
 
 

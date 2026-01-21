@@ -204,7 +204,7 @@ class StatementHandlerValidator:
         
         if critical:
             print(f"{Fore.RED}{'='*80}")
-            print(f"❌ CRITICAL ISSUES ({len(critical)})")
+            print(f" CRITICAL ISSUES ({len(critical)})")
             print(f"{'='*80}\n")
             
             for issue in critical:
@@ -222,7 +222,7 @@ class StatementHandlerValidator:
         
         if errors:
             print(f"{Fore.RED}{'='*80}")
-            print(f"❌ ERRORS ({len(errors)})")
+            print(f" ERRORS ({len(errors)})")
             print(f"{'='*80}\n")
             
             for issue in errors:
@@ -237,7 +237,7 @@ class StatementHandlerValidator:
         
         if warnings:
             print(f"{Fore.YELLOW}{'='*80}")
-            print(f"⚠ WARNINGS ({len(warnings)})")
+            print(f" WARNINGS ({len(warnings)})")
             print(f"{'='*80}\n")
             
             for issue in warnings:
@@ -251,13 +251,13 @@ class StatementHandlerValidator:
         total_issues = len(self.issues)
         
         if total_issues == 0:
-            print(f"{Fore.GREEN}✓ PASSED: All checks passed!")
+            print(f"{Fore.GREEN} PASSED: All checks passed!")
             print(f"{Fore.GREEN}  • All error_recovery tokens have handlers")
             print(f"{Fore.GREEN}  • All handlers have corresponding methods")
             print(f"{Fore.GREEN}  • No orphaned or missing implementations\n")
             return True
         else:
-            print(f"{Fore.RED}✗ FAILED: {total_issues} issue(s) found")
+            print(f"{Fore.RED} FAILED: {total_issues} issue(s) found")
             if critical:
                 print(f"{Fore.RED}  • {len(critical)} CRITICAL (will cause infinite loops)")
             if errors:

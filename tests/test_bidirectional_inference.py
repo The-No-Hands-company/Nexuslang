@@ -32,7 +32,7 @@ def test_bidirectional_inference():
     inferred = engine.infer_with_expected_type(list_expr, expected_type, {})
     
     assert inferred == expected_type, f"Expected {expected_type}, got {inferred}"
-    print(f"   ✓ List literal inferred as {inferred}")
+    print(f"    List literal inferred as {inferred}")
     
     # Test 2: Dictionary literal with expected type
     print("\n2. Testing dictionary literal with expected type:")
@@ -48,14 +48,14 @@ def test_bidirectional_inference():
     inferred_dict = engine.infer_with_expected_type(dict_expr, expected_dict_type, {})
     
     assert inferred_dict == expected_dict_type
-    print(f"   ✓ Dictionary literal inferred as {inferred_dict}")
+    print(f"    Dictionary literal inferred as {inferred_dict}")
     
     # Test 3: No expected type (fallback to regular inference)
     print("\n3. Testing fallback to regular inference:")
     
     inferred_no_expected = engine.infer_with_expected_type(list_expr, None, {})
     assert isinstance(inferred_no_expected, ListType)
-    print(f"   ✓ Falls back to regular inference: {inferred_no_expected}")
+    print(f"    Falls back to regular inference: {inferred_no_expected}")
     
     # Test 4: Type mismatch (should fall back)
     print("\n4. Testing type mismatch fallback:")
@@ -68,9 +68,9 @@ def test_bidirectional_inference():
     
     inferred_mismatch = engine.infer_with_expected_type(float_list, ListType(INTEGER_TYPE), {})
     # Should infer as List<float> instead
-    print(f"   ✓ Type mismatch handled: {inferred_mismatch}")
+    print(f"    Type mismatch handled: {inferred_mismatch}")
     
-    print("\n✅ All bidirectional inference tests passed!")
+    print("\n All bidirectional inference tests passed!")
 
 if __name__ == "__main__":
     test_bidirectional_inference()

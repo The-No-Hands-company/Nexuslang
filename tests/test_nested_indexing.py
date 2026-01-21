@@ -28,7 +28,7 @@ set cell to row[0]
     parser = Parser(tokens)
     ast = parser.parse()
     
-    print(f"✓ Parsed: {len(ast.statements)} statements\n")
+    print(f" Parsed: {len(ast.statements)} statements\n")
     
     # Analyze AST for nested indexing
     from nlpl.parser.ast import IndexExpression, VariableDeclaration
@@ -63,9 +63,9 @@ set cell to row[0]
     print("\nVerification:")
     for name, pattern in checks:
         if pattern in c_code:
-            print(f"  ✓ {name}: '{pattern}'")
+            print(f"   {name}: '{pattern}'")
         else:
-            print(f"  ✗ {name}: Missing '{pattern}'")
+            print(f"   {name}: Missing '{pattern}'")
 
 if __name__ == "__main__":
     test_nested_indexing()

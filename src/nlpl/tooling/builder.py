@@ -49,7 +49,7 @@ class BuildSystem:
         """Clean build directory."""
         if os.path.exists(self.config.build.output_dir):
             shutil.rmtree(self.config.build.output_dir)
-            print(f"✓ Cleaned {self.config.build.output_dir}")
+            print(f" Cleaned {self.config.build.output_dir}")
             
     def build(self) -> bool:
         """Build the project."""
@@ -63,7 +63,7 @@ class BuildSystem:
         sources = glob.glob(os.path.join(src_dir, "**/*.nlpl"), recursive=True)
         
         if not sources:
-            print(f"✗ No source files found in {src_dir}")
+            print(f" No source files found in {src_dir}")
             return False
             
         print(f"Building {self.config.package.name} v{self.config.package.version}...")
@@ -131,7 +131,7 @@ class BuildSystem:
                         return False
                     
             except Exception as e:
-                print(f"✗ Failed to compile {source_path}: {e}")
+                print(f" Failed to compile {source_path}: {e}")
                 import traceback
                 traceback.print_exc()
                 return False
@@ -143,7 +143,7 @@ class BuildSystem:
             if not self._link_multi_file_project(compiled_objects, final_executable):
                 return False
                 
-        print(f"✓ Built {success_count} files to {out_dir}")
+        print(f" Built {success_count} files to {out_dir}")
         return True
 
     def run(self):
@@ -160,10 +160,10 @@ class BuildSystem:
                 result = subprocess.run([executable], cwd=out_dir)
                 return result.returncode == 0
             except Exception as e:
-                print(f"✗ Failed to run executable: {e}")
+                print(f" Failed to run executable: {e}")
                 return False
         else:
-            print("✗ No executable found to run")
+            print(" No executable found to run")
             print(f"   Searched in: {out_dir}")
             return False
     
@@ -252,7 +252,7 @@ class BuildSystem:
                 break
         
         if not compiler:
-            print(f"✗ No C/C++ compiler found for linking")
+            print(f" No C/C++ compiler found for linking")
             return False
         
         # Build linker command
@@ -269,14 +269,14 @@ class BuildSystem:
         try:
             result = subprocess.run(cmd, capture_output=True, text=True)
             if result.returncode == 0:
-                print(f"✓ Linking successful: {output_executable}")
+                print(f" Linking successful: {output_executable}")
                 return True
             else:
-                print(f"✗ Linking failed:")
+                print(f" Linking failed:")
                 print(result.stderr)
                 return False
         except Exception as e:
-            print(f"✗ Linking error: {e}")
+            print(f" Linking error: {e}")
             return False
     
     def _find_executable(self, out_dir: str) -> Optional[str]:

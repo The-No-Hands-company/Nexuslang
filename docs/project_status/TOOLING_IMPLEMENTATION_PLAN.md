@@ -4,7 +4,7 @@
 Building professional development tools for NLPL to match modern language ecosystems.
 
 **Estimated Time:** 5-7 hours
-**Status:** 🚧 IN PROGRESS
+**Status:** IN PROGRESS
 
 ---
 
@@ -24,13 +24,13 @@ Building professional development tools for NLPL to match modern language ecosys
 **Example Output:**
 ```
 error[E0001]: undefined variable 'nmae'
-  ┌─ example.nlpl:5:12
-  │
-5 │ print text nmae
-  │            ^^^^ not found in this scope
-  │
-  = help: did you mean 'name'?
-  = note: available variables: name, age, counter
+ example.nlpl:5:12
+ 
+5 print text nmae
+ ^^^^ not found in this scope
+ 
+ = help: did you mean 'name'?
+ = note: available variables: name, age, counter
 ```
 
 ### 2. Language Server Protocol (2-3 hours)
@@ -53,20 +53,20 @@ error[E0001]: undefined variable 'nmae'
 - textDocument/rename
 - textDocument/formatting
 
-### 3. Debugger Integration (1.5 hours) ✅
+### 3. Debugger Integration (1.5 hours) 
 **Goal:** Debug NLPL programs like C/C++
 
-**Status:** ✅ **COMPLETE**
+**Status:** **COMPLETE**
 
 **Features:**
-- ✅ DWARF debug info generation
-- ✅ GDB/LLDB support
-- ✅ Source-level debugging
-- ✅ Breakpoint support
-- ✅ Variable inspection
-- ✅ Stack trace navigation
-- ✅ Function debug info
-- ✅ Type debug info
+- DWARF debug info generation
+- GDB/LLDB support
+- Source-level debugging
+- Breakpoint support
+- Variable inspection
+- Stack trace navigation
+- Function debug info
+- Type debug info
 
 **Files Created:**
 - `src/nlpl/debugger/__init__.py`
@@ -95,9 +95,9 @@ gdb ./program
 
 ## Implementation Order
 
-1. ✅ Enhanced Error Messages (COMPLETE)
-2. ✅ Language Server Protocol (COMPLETE)
-3. ✅ Debugger Integration (COMPLETE)
-4. → Build System (NEXT)
+1. Enhanced Error Messages (COMPLETE)
+2. Language Server Protocol (COMPLETE)
+3. Debugger Integration (COMPLETE)
+4. Build System (NEXT)
 
 Let's begin!

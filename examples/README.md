@@ -76,13 +76,13 @@ Standard library usage demonstrations:
 ## Learning Path
 
 ### Beginner
-Start with: 01 → 02 → 03 → 04 → 05
+Start with: 01 02 03 04 05
 
 ### Intermediate
-Progress to: 06 → 07 → 09 → 10 → 11 → 16 → 17
+Progress to: 06 07 09 10 11 16 17
 
 ### Advanced
-Explore: 08 (index) → 12-15 → 18-21 → 22-23
+Explore: 08 (index) 12-15 18-21 22-23
 
 ### Application Developer
 Focus on: 24-31

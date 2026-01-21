@@ -33,16 +33,16 @@ def test_ffi_program(program_path, expected_patterns=None):
     result = subprocess.run(compile_cmd, capture_output=True, text=True, timeout=10)
     
     if result.returncode != 0:
-        print(f"❌ COMPILATION FAILED")
+        print(f" COMPILATION FAILED")
         print(f"STDOUT: {result.stdout}")
         print(f"STDERR: {result.stderr}")
         return False
     
-    print("✅ Compilation successful")
+    print(" Compilation successful")
     
     # Check if executable exists
     if not os.path.exists(output):
-        print(f"❌ Executable not found: {output}")
+        print(f" Executable not found: {output}")
         return False
     
     # Run
@@ -59,14 +59,14 @@ def test_ffi_program(program_path, expected_patterns=None):
     if expected_patterns:
         for pattern in expected_patterns:
             if pattern not in run_result.stdout:
-                print(f"❌ Expected pattern not found: {pattern}")
+                print(f" Expected pattern not found: {pattern}")
                 return False
     
     # Cleanup
     if os.path.exists(output):
         os.remove(output)
     
-    print("✅ Test passed")
+    print(" Test passed")
     return True
 
 
@@ -101,7 +101,7 @@ def main():
             else:
                 failed += 1
         except Exception as e:
-            print(f"❌ Test error: {e}")
+            print(f" Test error: {e}")
             failed += 1
     
     print(f"\n{'='*60}")

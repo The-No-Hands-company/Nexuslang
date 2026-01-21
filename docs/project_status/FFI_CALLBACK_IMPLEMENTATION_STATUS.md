@@ -3,7 +3,7 @@
 ## Overview
 Callback functions allow C libraries to call back into NLPL code. This is essential for many C APIs including qsort(), signal handlers, event loops, and iterator functions.
 
-## Implementation Complete ✅
+## Implementation Complete 
 
 ### 1. FFI CodeGen - CallbackManager Class
 **Location**: `src/nlpl/compiler/ffi.py`
@@ -18,9 +18,9 @@ Callback functions allow C libraries to call back into NLPL code. This is essent
 
 **How It Works**:
 1. Takes an NLPL function and wraps it with C calling convention
-2. Handles parameter type conversions (C → NLPL)
+2. Handles parameter type conversions (C NLPL)
 3. Calls the NLPL function
-4. Converts return value (NLPL → C)
+4. Converts return value (NLPL C)
 5. Returns wrapper that C code can call
 
 ### 2. Lexer Support
@@ -65,14 +65,14 @@ callback function_name
 ```nlpl
 # Declare C function that takes callback
 extern function qsort from "c" with base as Pointer,
-                                    nitems as Int64,
-                                    size as Int64,
-                                    compar as Pointer returns Void
+ nitems as Int64,
+ size as Int64,
+ compar as Pointer returns Void
 
 # Define comparison function
 function compare_ints with a as Pointer, b as Pointer returns Int
-    # Implementation
-    return 0
+ # Implementation
+ return 0
 end
 
 # Call with callback
@@ -90,7 +90,7 @@ Demonstrates qsort() with NLPL comparison function:
 
 ### 2. test_ffi_callback_signal.nlpl
 Signal handler demonstration:
-- Defines signal handler function  
+- Defines signal handler function 
 - Installs handler for SIGINT (Ctrl+C)
 - Demonstrates callback invocation from OS
 - **Status**: Ready for testing (requires signal() support)
@@ -114,19 +114,19 @@ Basic callback compilation test:
 ### Callback Flow
 ```
 NLPL Function
-     ↓
+ 
 CallbackManager.create_callback_wrapper()
-     ↓
+ 
 Wrapper Function (C calling convention)
-     ├─ Convert C parameters → NLPL
-     ├─ Call NLPL function
-     └─ Convert NLPL result → C
-     ↓
+ Convert C parameters NLPL
+ Call NLPL function
+ Convert NLPL result C
+ 
 Function Pointer (@wrapper_name)
-     ↓
+ 
 Passed to C Function
-     ↓
-C calls wrapper → wrapper calls NLPL
+ 
+C calls wrapper wrapper calls NLPL
 ```
 
 ### Type Conversion
@@ -146,7 +146,7 @@ Supported:
 ### 1. Array Sorting (qsort)
 ```nlpl
 function compare with a as Pointer, b as Pointer returns Int
-    # Comparison logic
+ # Comparison logic
 end
 
 call qsort with array, count, size, callback compare
@@ -155,7 +155,7 @@ call qsort with array, count, size, callback compare
 ### 2. Signal Handlers
 ```nlpl
 function handle_signal with signum as Int returns Void
-    # Signal handling
+ # Signal handling
 end
 
 call signal with sigint, callback handle_signal
@@ -164,7 +164,7 @@ call signal with sigint, callback handle_signal
 ### 3. Event Callbacks
 ```nlpl
 function on_event with event_data as Pointer returns Void
-    # Event handling
+ # Event handling
 end
 
 call register_callback with callback on_event
@@ -173,7 +173,7 @@ call register_callback with callback on_event
 ### 4. Iterators
 ```nlpl
 function process_item with item as Pointer returns Void
-    # Item processing
+ # Item processing
 end
 
 call foreach with collection, callback process_item
@@ -211,7 +211,7 @@ Allow callbacks to capture variables:
 ```nlpl
 set multiplier to 2
 function callback with x returns Int
-    return x times multiplier  # Captures multiplier
+ return x times multiplier # Captures multiplier
 end
 ```
 
@@ -219,16 +219,16 @@ end
 Inline callback definitions:
 ```nlpl
 call qsort with array, size, sizeof Int, 
-    callback lambda with a, b returns Int
-        return (deref a as Int) minus (deref b as Int)
-    end
+ callback lambda with a, b returns Int
+ return (deref a as Int) minus (deref b as Int)
+ end
 ```
 
 #### 3. Context Pointers (~3 hours)
 Support user_data patterns common in C:
 ```nlpl
 function callback with data as Pointer, context as Pointer returns Void
-    # context holds captured state
+ # context holds captured state
 end
 ```
 
@@ -236,7 +236,7 @@ end
 Generate wrappers automatically based on C signature:
 ```nlpl
 function my_func with x as Integer returns Integer
-    return x times 2
+ return x times 2
 end
 
 # Auto-generates appropriate wrapper
@@ -284,12 +284,12 @@ extern function c_func with cb as Callback<Integer->Integer>
 
 ## Next Steps
 
-1. ✅ **Parser integration** - DONE
-2. ✅ **Code generation** - DONE
-3. ⏭️ **Testing qsort example** - NEXT
-4. ⏭️ **Signal handler example** - NEXT
-5. ⏭️ **Documentation** - TODO
-6. ⏭️ **Advanced features** (closures, lambdas) - FUTURE
+1. **Parser integration** - DONE
+2. **Code generation** - DONE
+3. **Testing qsort example** - NEXT
+4. **Signal handler example** - NEXT
+5. **Documentation** - TODO
+6. **Advanced features** (closures, lambdas) - FUTURE
 
 ## Success Criteria
 
@@ -309,18 +309,18 @@ extern function c_func with cb as Callback<Integer->Integer>
 
 ## Estimated Completion
 
-**Base Implementation**: ✅ Complete (6 hours)
+**Base Implementation**: Complete (6 hours)
 - CallbackManager class
 - Parser support
 - Code generation
 - Basic test programs
 
-**Testing & Integration**: 🔄 In Progress (4 hours estimated)
+**Testing & Integration**: In Progress (4 hours estimated)
 - Compile and run test programs
 - Verify with real C libraries
 - Debug any issues
 
-**Advanced Features**: ⏸️ Future (15-20 hours)
+**Advanced Features**: Future (15-20 hours)
 - Closures (6 hours)
 - Lambdas (4 hours)
 - Context pointers (3 hours)
@@ -334,4 +334,4 @@ The callback implementation provides **complete basic functionality** for passin
 **Ready for**: Real-world C library integration
 **Supports**: qsort, signal handlers, iterators, event loops
 **Architecture**: Clean, extensible, efficient
-**Status**: ✅ **Production Ready** (basic features)
+**Status**: **Production Ready** (basic features)

@@ -17,7 +17,7 @@ def test_variance_annotations():
     # class Box<T> { ... }  // Invariant by default
     box_type = GenericType("Box", ["T"], ClassType("Box", {}, {}))
     assert box_type.type_parameters[0] == ("T", Variance.INVARIANT)
-    print("   ✓ Default variance is INVARIANT")
+    print("    Default variance is INVARIANT")
     
     # Test 2: Covariant
     print("\n2. Testing covariant generic type:")
@@ -31,7 +31,7 @@ def test_variance_annotations():
         })
     )
     assert producer_type.type_parameters[0] == ("T", Variance.COVARIANT)
-    print("   ✓ Covariant type parameter created")
+    print("    Covariant type parameter created")
     
     # Test 3: Contravariant
     print("\n3. Testing contravariant generic type:")
@@ -45,7 +45,7 @@ def test_variance_annotations():
         })
     )
     assert consumer_type.type_parameters[0] == ("T", Variance.CONTRAVARIANT)
-    print("   ✓ Contravariant type parameter created")
+    print("    Contravariant type parameter created")
     
     # Test 4: Multiple parameters with different variance
     print("\n4. Testing multiple variance annotations:")
@@ -58,7 +58,7 @@ def test_variance_annotations():
     )
     assert transformer_type.type_parameters[0] == ("I", Variance.CONTRAVARIANT)
     assert transformer_type.type_parameters[1] == ("O", Variance.COVARIANT)
-    print("   ✓ Multiple variance annotations work")
+    print("    Multiple variance annotations work")
     
     # Test 5: Variance checking
     print("\n5. Testing variance compatibility:")
@@ -68,9 +68,9 @@ def test_variance_annotations():
     box2 = GenericType("Box", ["U"], ClassType("Box", {}, {}))
     
     # Both invariant - compatible
-    print("   ✓ Variance compatibility checks implemented")
+    print("    Variance compatibility checks implemented")
     
-    print("\n✅ All variance annotation tests passed!")
+    print("\n All variance annotation tests passed!")
 
 if __name__ == "__main__":
     test_variance_annotations()

@@ -199,12 +199,12 @@ class OwnershipTracker:
         if self.errors:
             print("Ownership Errors:")
             for error in self.errors:
-                print(f"  ✗ {error}")
+                print(f"   {error}")
         
         if self.warnings:
             print("\nOwnership Warnings:")
             for warning in self.warnings:
-                print(f"  ⚠ {warning}")
+                print(f"   {warning}")
 
 
 class MoveSemantics:

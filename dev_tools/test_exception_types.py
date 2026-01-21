@@ -38,7 +38,7 @@ def test_ast_exception_type_field():
     assert hasattr(try_catch, 'exception_type'), "TryCatch should have exception_type field"
     assert try_catch.exception_type == "ValueError", "Exception type should be ValueError"
     
-    print(f"✓ TryCatch node has exception_type field: {try_catch.exception_type}")
+    print(f" TryCatch node has exception_type field: {try_catch.exception_type}")
     
     # Test RaiseStatement node
     raise_stmt = RaiseStatement(
@@ -50,7 +50,7 @@ def test_ast_exception_type_field():
     assert hasattr(raise_stmt, 'exception_type'), "RaiseStatement should have exception_type field"
     assert raise_stmt.exception_type == "RuntimeError", "Exception type should be RuntimeError"
     
-    print(f"✓ RaiseStatement node has exception_type field: {raise_stmt.exception_type}")
+    print(f" RaiseStatement node has exception_type field: {raise_stmt.exception_type}")
     print()
 
 
@@ -79,7 +79,7 @@ end
     assert try_catch1.exception_var == "e", "Exception var should be 'e'"
     assert try_catch1.exception_type is None, "Exception type should be None for generic catch"
     
-    print(f"✓ Generic catch: exception_var={try_catch1.exception_var}, exception_type={try_catch1.exception_type}")
+    print(f" Generic catch: exception_var={try_catch1.exception_var}, exception_type={try_catch1.exception_type}")
     
     # Test 2: Typed catch (with 'as ExceptionType')
     code2 = """
@@ -100,7 +100,7 @@ end
     assert try_catch2.exception_var == "e", "Exception var should be 'e'"
     assert try_catch2.exception_type == "ValueError", "Exception type should be ValueError"
     
-    print(f"✓ Typed catch: exception_var={try_catch2.exception_var}, exception_type={try_catch2.exception_type}")
+    print(f" Typed catch: exception_var={try_catch2.exception_var}, exception_type={try_catch2.exception_type}")
     
     # Test 3: Raise with specific type
     code3 = """
@@ -116,7 +116,7 @@ raise ValueError with message "test"
     assert raise_stmt.node_type == "raise_statement", "Should be raise_statement node"
     assert raise_stmt.exception_type == "ValueError", "Exception type should be ValueError"
     
-    print(f"✓ Raise statement: exception_type={raise_stmt.exception_type}")
+    print(f" Raise statement: exception_type={raise_stmt.exception_type}")
     print()
 
 
@@ -151,8 +151,8 @@ end
     assert '__cxa_begin_catch' in llvm_ir, "LLVM IR should contain __cxa_begin_catch call"
     assert '__cxa_end_catch' in llvm_ir, "LLVM IR should contain __cxa_end_catch call"
     
-    print("✓ LLVM IR contains exception handling instructions")
-    print("✓ LLVM IR references exception type information")
+    print(" LLVM IR contains exception handling instructions")
+    print(" LLVM IR references exception type information")
     
     # Print relevant sections
     print("\nRelevant LLVM IR sections:")
@@ -194,7 +194,7 @@ end
         try_catch = ast.statements[0]
         assert try_catch.exception_type == exc_type, f"Should capture {exc_type}"
         
-        print(f"✓ {exc_type}: Correctly parsed and captured")
+        print(f" {exc_type}: Correctly parsed and captured")
     
     print()
 
@@ -230,9 +230,9 @@ end
     assert inner_try.node_type == "try_catch", "Inner should be try_catch"
     assert inner_try.exception_type == "ValueError", "Inner should catch ValueError"
     
-    print(f"✓ Outer try-catch: exception_type={outer_try.exception_type}")
-    print(f"✓ Inner try-catch: exception_type={inner_try.exception_type}")
-    print("✓ Nested exception handling correctly parsed")
+    print(f" Outer try-catch: exception_type={outer_try.exception_type}")
+    print(f" Inner try-catch: exception_type={inner_try.exception_type}")
+    print(" Nested exception handling correctly parsed")
     print()
 
 
@@ -276,9 +276,9 @@ end
     assert try_catch.node_type == "try_catch", "Should be try_catch"
     assert try_catch.exception_type == "ValueError", "Should catch ValueError"
     
-    print(f"✓ Function raises: {raise_stmt.exception_type}")
-    print(f"✓ Try-catch catches: {try_catch.exception_type}")
-    print("✓ Exception handling in function context works correctly")
+    print(f" Function raises: {raise_stmt.exception_type}")
+    print(f" Try-catch catches: {try_catch.exception_type}")
+    print(" Exception handling in function context works correctly")
     print()
 
 
@@ -296,16 +296,16 @@ if __name__ == '__main__':
         test_exception_in_function()
         
         print("=" * 80)
-        print("✓ All tests passed!")
+        print(" All tests passed!")
         print("=" * 80)
         
     except AssertionError as e:
-        print(f"\n✗ Test failed: {e}")
+        print(f"\n Test failed: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
     except Exception as e:
-        print(f"\n✗ Error: {e}")
+        print(f"\n Error: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

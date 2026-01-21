@@ -73,18 +73,18 @@ python src/main.py test_programs/unit/type_system/test_type_inference.nlpl --deb
 ## Test Coverage
 
 These tests cover:
-- ✅ Basic type inference (literals, expressions)
-- ✅ Bidirectional type inference (lambdas, expected types)
-- ✅ Generic type instantiation (List<T>, Dictionary<K, V>)
-- ✅ Type parameter inference (automatic type argument deduction)
-- ✅ User-defined class types
-- ✅ Inheritance and subtyping
-- ✅ Type compatibility checking
-- ✅ Method and property type checking
-- ✅ Lambda type inference
-- ✅ Nested generic types
-- ⚠️ Generic constraints (partially - awaiting full implementation)
-- ⚠️ Variance annotations (conceptual tests)
+- Basic type inference (literals, expressions)
+- Bidirectional type inference (lambdas, expected types)
+- Generic type instantiation (List<T>, Dictionary<K, V>)
+- Type parameter inference (automatic type argument deduction)
+- User-defined class types
+- Inheritance and subtyping
+- Type compatibility checking
+- Method and property type checking
+- Lambda type inference
+- Nested generic types
+- Generic constraints (partially - awaiting full implementation)
+- Variance annotations (conceptual tests)
 
 ## Expected Behavior
 

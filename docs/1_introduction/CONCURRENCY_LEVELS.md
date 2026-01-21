@@ -1,6 +1,6 @@
 # NLPL Concurrency: Syntax Design for All Levels
 
-**Date:** January 2, 2026  
+**Date:** January 2, 2026 
 **Status:** Design Specification
 
 ---
@@ -11,7 +11,7 @@ NLPL provides **five levels of concurrency abstractions**, allowing developers t
 
 ---
 
-## 🎯 Level 1: Manual Threading (Assembly-Level)
+## Level 1: Manual Threading (Assembly-Level)
 
 **Philosophy:** Maximum control, zero overhead, explicit everything
 
@@ -21,29 +21,29 @@ NLPL provides **five levels of concurrency abstractions**, allowing developers t
 ```nlpl
 # Direct system calls
 extern function pthread_create with 
-    thread as Pointer to Integer,
-    attr as Pointer,
-    start_routine as FunctionPointer,
-    arg as Pointer
+ thread as Pointer to Integer,
+ attr as Pointer,
+ start_routine as FunctionPointer,
+ arg as Pointer
 returns Integer from library "pthread"
 
 extern function pthread_join with
-    thread as Integer,
-    retval as Pointer
+ thread as Integer,
+ retval as Pointer
 returns Integer from library "pthread"
 
 function worker_thread with arg as Pointer returns Pointer
-    # Thread work here
-    return null
+ # Thread work here
+ return null
 end
 
 # Create thread manually
 set thread_id as Integer
 set result to call pthread_create with
-    address of thread_id,
-    null,
-    address of worker_thread,
-    null
+ address of thread_id,
+ null,
+ address of worker_thread,
+ null
 
 # Wait for completion
 call pthread_join with thread_id, null
@@ -53,19 +53,19 @@ call pthread_join with thread_id, null
 ```nlpl
 # Direct atomic instructions via inline assembly
 function atomic_increment with ptr as Pointer to Integer
-    inline assembly
-        lock inc dword ptr [ptr]
-    end
+ inline assembly
+ lock inc dword ptr [ptr]
+ end
 end
 
 function compare_and_swap with ptr as Pointer to Integer, old_val as Integer, new_val as Integer returns Boolean
-    inline assembly
-        mov rax, [old_val]
-        mov rbx, [new_val]
-        lock cmpxchg [ptr], rbx
-        setz al
-        movzx rax, al
-    end
+ inline assembly
+ mov rax, [old_val]
+ mov rbx, [new_val]
+ lock cmpxchg [ptr], rbx
+ setz al
+ movzx rax, al
+ end
 end
 ```
 
@@ -73,19 +73,19 @@ end
 ```nlpl
 # Manual spinlock implementation
 struct SpinLock
-    locked as Integer  # 0 = unlocked, 1 = locked
+ locked as Integer # 0 = unlocked, 1 = locked
 end
 
 function acquire with lock as Pointer to SpinLock
-    inline assembly
-    spin_wait:
-        lock bts dword ptr [lock], 0
-        jc spin_wait
-    end
+ inline assembly
+ spin_wait:
+ lock bts dword ptr [lock], 0
+ jc spin_wait
+ end
 end
 
 function release with lock as Pointer to SpinLock
-    set lock.locked to 0
+ set lock.locked to 0
 end
 ```
 
@@ -97,7 +97,7 @@ end
 
 ---
 
-## ⚙️ Level 2: Explicit Threading (Systems Programming)
+## Level 2: Explicit Threading (Systems Programming)
 
 **Philosophy:** RAII-style thread management, manual but safe
 
@@ -110,13 +110,13 @@ import from stdlib/threading
 
 # Create thread with RAII cleanup
 function process_data_threaded with data as List of Integer
-    set thread1 to create thread with lambda: process_chunk with data, 0, 1000
-    set thread2 to create thread with lambda: process_chunk with data, 1000, 2000
-    
-    # Threads automatically joined when going out of scope
-    # Or explicitly:
-    thread1.join
-    thread2.join
+ set thread1 to create thread with lambda: process_chunk with data, 0, 1000
+ set thread2 to create thread with lambda: process_chunk with data, 1000, 2000
+ 
+ # Threads automatically joined when going out of scope
+ # Or explicitly:
+ thread1.join
+ thread2.join
 end
 ```
 
@@ -126,47 +126,47 @@ import from stdlib/sync
 
 # Mutex-protected data
 struct SharedCounter
-    property value as Integer
-    property mutex as Mutex
+ property value as Integer
+ property mutex as Mutex
 end
 
 function increment_counter with counter as Pointer to SharedCounter
-    # Lock scope guard
-    using lock as counter.mutex.lock
-        set counter.value to counter.value plus 1
-    end  # Automatically unlocks
+ # Lock scope guard
+ using lock as counter.mutex.lock
+ set counter.value to counter.value plus 1
+ end # Automatically unlocks
 end
 
 # Condition variables
 struct WorkQueue
-    property items as List of WorkItem
-    property mutex as Mutex
-    property cond_var as ConditionVariable
+ property items as List of WorkItem
+ property mutex as Mutex
+ property cond_var as ConditionVariable
 end
 
 function producer with queue as Pointer to WorkQueue
-    while true
-        set item to create_work_item
-        
-        using lock as queue.mutex.lock
-            queue.items.add with item
-            queue.cond_var.notify_one
-        end
-    end
+ while true
+ set item to create_work_item
+ 
+ using lock as queue.mutex.lock
+ queue.items.add with item
+ queue.cond_var.notify_one
+ end
+ end
 end
 
 function consumer with queue as Pointer to WorkQueue
-    while true
-        using lock as queue.mutex.lock
-            while queue.items.is_empty
-                queue.cond_var.wait with lock
-            end
-            
-            set item to queue.items.remove_first
-        end
-        
-        call process with item
-    end
+ while true
+ using lock as queue.mutex.lock
+ while queue.items.is_empty
+ queue.cond_var.wait with lock
+ end
+ 
+ set item to queue.items.remove_first
+ end
+ 
+ call process with item
+ end
 end
 ```
 
@@ -179,7 +179,7 @@ set pool to create thread pool with 8 threads
 
 # Submit work
 for each item in work_items
-    pool.submit with lambda: process with item
+ pool.submit with lambda: process with item
 end
 
 # Wait for all work to complete
@@ -197,7 +197,7 @@ pool.shutdown
 
 ---
 
-## 🏗️ Level 3: Structured Concurrency (Application Programming)
+## Level 3: Structured Concurrency (Application Programming)
 
 **Philosophy:** Explicit concurrency boundaries, automatic cleanup
 
@@ -207,9 +207,9 @@ pool.shutdown
 ```nlpl
 # Explicit parallel execution
 concurrent
-    set result1 to fetch_data with "url1"
-    set result2 to fetch_data with "url2"
-    set result3 to fetch_data with "url3"
+ set result1 to fetch_data with "url1"
+ set result2 to fetch_data with "url2"
+ set result3 to fetch_data with "url3"
 end
 # All three complete before continuing
 
@@ -221,11 +221,11 @@ print text result1, result2, result3
 ```nlpl
 # For developers who prefer async/await style
 async function fetch_user_data with user_id as Integer returns eventually UserData
-    set user to await fetch_user with user_id
-    set posts to await fetch_posts with user_id
-    set comments to await fetch_comments with user_id
-    
-    return UserData with user, posts, comments
+ set user to await fetch_user with user_id
+ set posts to await fetch_posts with user_id
+ set comments to await fetch_comments with user_id
+ 
+ return UserData with user, posts, comments
 end
 
 # Call async function
@@ -238,14 +238,14 @@ set data to await future
 ```nlpl
 # Process items in parallel automatically
 parallel for each image in images
-    call resize with image, 800, 600
-    call apply_filter with image
-    call save with image
+ call resize with image, 800, 600
+ call apply_filter with image
+ call save with image
 end
 
 # Or with explicit chunk size
 parallel for each batch in batches with chunk size 100
-    call process_batch with batch
+ call process_batch with batch
 end
 ```
 
@@ -258,14 +258,14 @@ set promise to create promise of Integer
 
 # Pass to another thread
 spawn
-    # Do work
-    set result to expensive_calculation
-    promise.set_value with result
+ # Do work
+ set result to expensive_calculation
+ promise.set_value with result
 end
 
 # Get future and wait for result
 set future to promise.get_future
-set value to future.get  # Blocks until ready
+set value to future.get # Blocks until ready
 ```
 
 **Use Cases:**
@@ -276,7 +276,7 @@ set value to future.get  # Blocks until ready
 
 ---
 
-## 🚀 Level 4: Goroutines (High-Level Abstractions)
+## Level 4: Goroutines (High-Level Abstractions)
 
 **Philosophy:** Lightweight concurrency, implicit scheduling, CSP model
 
@@ -286,9 +286,9 @@ set value to future.get  # Blocks until ready
 ```nlpl
 # Spawn lightweight concurrent task
 spawn
-    set data to fetch_from_network with url
-    call process with data
-    call save_results
+ set data to fetch_from_network with url
+ call process with data
+ call save_results
 end
 
 # Spawn with named function
@@ -296,11 +296,11 @@ spawn call handle_client with connection
 
 # Spawn in loop (handles 100,000+ concurrent connections)
 for each connection in server.connections
-    spawn
-        set request to receive from connection
-        set response to handle_request with request
-        send response to connection
-    end
+ spawn
+ set request to receive from connection
+ set response to handle_request with request
+ send response to connection
+ end
 end
 ```
 
@@ -314,14 +314,14 @@ set results to create channel of Result
 set messages to create channel of String with capacity 100
 
 # Send and receive
-send work_item to jobs      # Blocks if full
-set item to receive from jobs  # Blocks if empty
+send work_item to jobs # Blocks if full
+set item to receive from jobs # Blocks if empty
 
 # Non-blocking operations
 if try send item to jobs
-    print text "Sent successfully"
+ print text "Sent successfully"
 otherwise
-    print text "Channel full"
+ print text "Channel full"
 end
 
 set value to try receive from results or default_value
@@ -331,7 +331,7 @@ close jobs
 
 # Range over channel (receives until closed)
 for each item from jobs
-    call process with item
+ call process with item
 end
 ```
 
@@ -339,17 +339,17 @@ end
 ```nlpl
 # Wait on multiple channels
 select
-    case message from channel1
-        print text "From channel1: ", message
-    
-    case result from channel2
-        print text "From channel2: ", result
-    
-    case timeout after 5 seconds
-        print text "Timed out"
-    
-    case default
-        print text "Nothing ready"
+ case message from channel1
+ print text "From channel1: ", message
+ 
+ case result from channel2
+ print text "From channel2: ", result
+ 
+ case timeout after 5 seconds
+ print text "Timed out"
+ 
+ case default
+ print text "Nothing ready"
 end
 ```
 
@@ -361,24 +361,24 @@ set results to create channel of Result
 
 # Start workers
 for set i to 0 while i is less than num_workers
-    spawn
-        for each job from jobs
-            set result to process with job
-            send result to results
-        end
-    end
+ spawn
+ for each job from jobs
+ set result to process with job
+ send result to results
+ end
+ end
 end
 
 # Send work
 for each job in all_jobs
-    send job to jobs
+ send job to jobs
 end
 close jobs
 
 # Collect results
 for set i to 0 while i is less than all_jobs.length
-    set result to receive from results
-    print text "Got result: ", result
+ set result to receive from results
+ print text "Got result: ", result
 end
 ```
 
@@ -389,15 +389,15 @@ set ctx to create context with timeout 30 seconds
 
 # Spawn with context
 spawn with ctx
-    while not ctx.is_cancelled
-        set data to fetch_data
-        call process with data
-        
-        # Check cancellation
-        if ctx.is_cancelled
-            break
-        end
-    end
+ while not ctx.is_cancelled
+ set data to fetch_data
+ call process with data
+ 
+ # Check cancellation
+ if ctx.is_cancelled
+ break
+ end
+ end
 end
 
 # Cancel all spawned tasks
@@ -413,7 +413,7 @@ ctx.cancel
 
 ---
 
-## 🗣️ Level 5: Natural Language Parallelism
+## Level 5: Natural Language Parallelism
 
 **Philosophy:** Automatic parallelization, no explicit concurrency
 
@@ -423,11 +423,11 @@ ctx.cancel
 ```nlpl
 # Compiler automatically parallelizes
 process these files in parallel
-    for each file in directory
-        read the file
-        transform the data
-        save the results
-    end
+ for each file in directory
+ read the file
+ transform the data
+ save the results
+ end
 end
 
 # Natural language barriers
@@ -439,14 +439,14 @@ show "All done!"
 ```nlpl
 # Multiple operations happen concurrently automatically
 fetch user data from database
-fetch posts from database  
+fetch posts from database 
 fetch comments from database
 
 # Compiler detects these can run in parallel
 
 when all data is ready
-    combine everything
-    show the results
+ combine everything
+ show the results
 end
 ```
 
@@ -461,8 +461,8 @@ ask the cache for preferences
 # Execution continues automatically
 
 when everything is available
-    create the response
-    send to client
+ create the response
+ send to client
 end
 ```
 
@@ -475,7 +475,7 @@ end
 
 ---
 
-## 📊 Feature Comparison Matrix
+## Feature Comparison Matrix
 
 | Feature | L1: Manual | L2: Explicit | L3: Structured | L4: Goroutines | L5: Natural |
 |---------|-----------|--------------|----------------|----------------|-------------|
@@ -488,39 +488,39 @@ end
 
 ---
 
-## 🎯 Choosing the Right Level
+## Choosing the Right Level
 
 ### Decision Tree
 
 ```
 Need hardware-level control? (kernel, drivers)
-    ↓ YES → Level 1: Manual Threading
-    ↓ NO
-    
+ YES Level 1: Manual Threading
+ NO
+ 
 Need deterministic behavior? (real-time, embedded)
-    ↓ YES → Level 2: Explicit Threading
-    ↓ NO
-    
+ YES Level 2: Explicit Threading
+ NO
+ 
 Need structured parallelism? (desktop apps, tools)
-    ↓ YES → Level 3: Structured Concurrency
-    ↓ NO
-    
+ YES Level 3: Structured Concurrency
+ NO
+ 
 Building server/network app? (web, API, services)
-    ↓ YES → Level 4: Goroutines
-    ↓ NO
-    
+ YES Level 4: Goroutines
+ NO
+ 
 Scripting or prototyping?
-    ↓ YES → Level 5: Natural Language
+ YES Level 5: Natural Language
 ```
 
 ---
 
-## 🔧 Implementation Roadmap
+## Implementation Roadmap
 
 ### Phase 1: Foundations (Q1 2026)
-- ✅ Level 2: Basic threading via FFI
-- ✅ Mutex and lock primitives
-- 🚧 Thread pool implementation
+- Level 2: Basic threading via FFI
+- Mutex and lock primitives
+- Thread pool implementation
 
 ### Phase 2: Goroutines (Q2 2026)
 - M:N scheduler implementation
@@ -542,7 +542,7 @@ Scripting or prototyping?
 
 ---
 
-## 📚 Examples
+## Examples
 
 ### Web Server (All Levels)
 
@@ -555,18 +555,18 @@ extern function accept from library "c"
 extern function pthread_create from library "pthread"
 
 function handle_connection with fd as Integer returns Pointer
-    # Manual request handling
-    return null
+ # Manual request handling
+ return null
 end
 
 function start_server
-    set sock to call socket with 2, 1, 0
-    # Manual bind, listen, accept loop
-    while true
-        set client_fd to call accept with sock, null, null
-        set thread as Integer
-        call pthread_create with address of thread, null, address of handle_connection, client_fd
-    end
+ set sock to call socket with 2, 1, 0
+ # Manual bind, listen, accept loop
+ while true
+ set client_fd to call accept with sock, null, null
+ set thread as Integer
+ call pthread_create with address of thread, null, address of handle_connection, client_fd
+ end
 end
 ```
 
@@ -576,13 +576,13 @@ import from stdlib/net
 import from stdlib/threading
 
 function start_server
-    set server to create tcp server on port 8080
-    set pool to create thread pool with 16 threads
-    
-    while true
-        set connection to server.accept
-        pool.submit with lambda: handle_connection with connection
-    end
+ set server to create tcp server on port 8080
+ set pool to create thread pool with 16 threads
+ 
+ while true
+ set connection to server.accept
+ pool.submit with lambda: handle_connection with connection
+ end
 end
 ```
 
@@ -591,15 +591,15 @@ end
 import from stdlib/http
 
 function start_server
-    set server to create http server on port 8080
-    
-    concurrent
-        server.on "GET /" do with req
-            return "Hello World"
-        end
-        
-        server.listen
-    end
+ set server to create http server on port 8080
+ 
+ concurrent
+ server.on "GET /" do with req
+ return "Hello World"
+ end
+ 
+ server.listen
+ end
 end
 ```
 
@@ -608,16 +608,16 @@ end
 import from stdlib/http
 
 function start_server
-    set server to create http server on port 8080
-    
-    server.on "GET /" do with req
-        spawn
-            set data to fetch_data with req
-            return json with data
-        end
-    end
-    
-    server.listen
+ set server to create http server on port 8080
+ 
+ server.on "GET /" do with req
+ spawn
+ set data to fetch_data with req
+ return json with data
+ end
+ end
+ 
+ server.listen
 end
 ```
 
@@ -626,13 +626,13 @@ end
 create a web server on port 8080
 
 when someone visits the homepage
-    fetch their data
-    show them a welcome page
+ fetch their data
+ show them a welcome page
 end
 
 when someone requests user data
-    get it from the database
-    send it as JSON
+ get it from the database
+ send it as JSON
 end
 
 start listening for requests
@@ -640,7 +640,7 @@ start listening for requests
 
 ---
 
-## 🎓 Migration Between Levels
+## Migration Between Levels
 
 Developers can **start at any level** and **move between levels** as needed:
 
@@ -650,21 +650,21 @@ process all files in parallel
 
 # Optimize critical section with goroutines (Level 4)
 for each file in files
-    spawn
-        call process_file with file
-    end
+ spawn
+ call process_file with file
+ end
 end
 
 # Further optimize with explicit threading (Level 2)
 set pool to create thread pool with 8 threads
 for each file in files
-    pool.submit with lambda: process_file with file
+ pool.submit with lambda: process_file with file
 end
 ```
 
 ---
 
-## 🚀 Future: AI-Assisted Level Selection
+## Future: AI-Assisted Level Selection
 
 Future NLPL IDE will **automatically suggest** the right level:
 
@@ -673,12 +673,12 @@ Future NLPL IDE will **automatically suggest** the right level:
 process files in parallel
 
 # IDE suggests:
-"💡 This could be optimized with Level 4 goroutines for better performance"
+" This could be optimized with Level 4 goroutines for better performance"
 
 # Or:
-"⚠️ This critical section should use Level 2 explicit locks for safety"
+" This critical section should use Level 2 explicit locks for safety"
 ```
 
 ---
 
-**NLPL Concurrency: The right abstraction for every task.** 🚀
+**NLPL Concurrency: The right abstraction for every task.** 

@@ -11,7 +11,7 @@ def verify_ffi():
     print("Building local C library...")
     try:
         subprocess.run(['gcc', '-shared', '-fPIC', '-o', 'libmylib.so', 'mylib.c'], check=True)
-        print("✓ libmylib.so built")
+        print(" libmylib.so built")
     except subprocess.CalledProcessError as e:
         print(f"Failed to build C library: {e}")
         return False

@@ -11,8 +11,8 @@ print text "Example 1: Point Structure"
 print text "-------------------------"
 
 struct Point
-    x as Integer
-    y as Integer
+ x as Integer
+ y as Integer
 end
 
 set origin to new Point
@@ -24,12 +24,12 @@ set corner.x to 100
 set corner.y to 200
 
 print text "Created two Point structures:"
-print text "  origin: ("
+print text " origin: ("
 print number origin.x
 print text ", "
 print number origin.y
 print text ")"
-print text "  corner: ("
+print text " corner: ("
 print number corner.x
 print text ", "
 print number corner.y
@@ -47,9 +47,9 @@ print text "Example 2: Mixed-Type Structure"
 print text "-------------------------------"
 
 struct Person
-    age as Integer
-    height as Float
-    is_active as Boolean
+ age as Integer
+ height as Float
+ is_active as Boolean
 end
 
 set person to new Person
@@ -58,11 +58,11 @@ set person.height to 5.9
 set person.is_active to true
 
 print text "Person structure:"
-print text "  age: "
+print text " age: "
 print number person.age
-print text "  height: "
+print text " height: "
 print number person.height
-print text "  is_active: true"
+print text " is_active: true"
 
 print text ""
 
@@ -71,9 +71,9 @@ print text "Example 3: Packed Structure"
 print text "--------------------------"
 
 packed struct Header
-    version as Integer
-    flags as Integer
-    checksum as Integer
+ version as Integer
+ flags as Integer
+ checksum as Integer
 end
 
 set header to new Header
@@ -94,19 +94,19 @@ print text "FFI Struct Marshalling Summary"
 print text "============================================="
 print text ""
 print text "NLPL can now:"
-print text "  ✓ Define C-compatible structs"
-print text "  ✓ Pass structs to C functions"
-print text "  ✓ Receive structs from C functions"
-print text "  ✓ Handle nested structures"
-print text "  ✓ Control memory layout (packed/aligned)"
-print text "  ✓ Mix different field types"
+print text " Define C-compatible structs"
+print text " Pass structs to C functions"
+print text " Receive structs from C functions"
+print text " Handle nested structures"
+print text " Control memory layout (packed/aligned)"
+print text " Mix different field types"
 print text ""
 print text "This enables:"
-print text "  • System API calls (stat, time, socket)"
-print text "  • Graphics libraries (OpenGL, SDL)"
-print text "  • Audio processing"
-print text "  • Network protocols"
-print text "  • File format parsing"
-print text "  • Hardware interfacing"
+print text " • System API calls (stat, time, socket)"
+print text " • Graphics libraries (OpenGL, SDL)"
+print text " • Audio processing"
+print text " • Network protocols"
+print text " • File format parsing"
+print text " • Hardware interfacing"
 print text ""
 print text "============================================="

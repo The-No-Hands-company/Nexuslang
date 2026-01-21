@@ -56,6 +56,60 @@ def compile_to_ir(source_file: str, output_file: str, verbose: bool = False) -> 
             traceback.print_exc()
         return (False, [])
 
+def optimize_ir(ir_file: str, opt_level: str, verbose: bool = False) -> bool:
+    """Run LLVM optimization passes on IR file."""
+    if opt_level == '0':
+        return True  # No optimization
+    
+    try:
+        optimized_file = ir_file.replace('.ll', '.opt.ll')
+        
+        if verbose:
+            print(f"Running LLVM optimization passes (O{opt_level})...")
+        
+        # Map optimization levels to LLVM opt passes
+        opt_passes = {
+            '1': ['-mem2reg', '-simplifycfg', '-instcombine'],
+            '2': ['-mem2reg', '-simplifycfg', '-instcombine', '-reassociate', 
+                  '-gvn', '-sccp', '-deadargelim', '-inline'],
+            '3': ['-mem2reg', '-simplifycfg', '-instcombine', '-reassociate',
+                  '-gvn', '-sccp', '-deadargelim', '-inline', '-loop-unroll',
+                  '-loop-vectorize', '-slp-vectorizer', '-aggressive-instcombine'],
+            's': ['-mem2reg', '-simplifycfg', '-instcombine', '-dce', '-dse']  # Size optimization
+        }
+        
+        passes = opt_passes.get(opt_level, [])
+        
+        # Use opt command if available, otherwise rely on clang optimization
+        cmd = ['opt'] + passes + ['-S', ir_file, '-o', optimized_file]
+        
+        if verbose:
+            print(f"  Optimization passes: {', '.join(passes)}")
+        
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        if result.returncode == 0:
+            # Replace original IR with optimized version
+            os.replace(optimized_file, ir_file)
+            if verbose:
+                print(f"✓ Optimized IR: {ir_file}")
+            return True
+        else:
+            if verbose:
+                print(f"Warning: LLVM opt not available, will use compiler optimization only")
+            # Clean up if opt failed
+            if os.path.exists(optimized_file):
+                os.remove(optimized_file)
+            return True  # Continue anyway - clang will optimize
+            
+    except FileNotFoundError:
+        if verbose:
+            print(f"Warning: LLVM opt not found, using compiler optimization only")
+        return True  # Continue - clang will still optimize
+    except Exception as e:
+        print(f"Warning during optimization: {e}", file=sys.stderr)
+        return True  # Non-fatal, continue
+
 def link_executable(ir_file: str, output_file: str, imported_modules: list = None, 
                     compiler: str = 'clang', opt_level: str = '0', verbose: bool = False) -> bool:
     """Link LLVM IR to executable binary."""
@@ -141,21 +195,32 @@ Examples:
     if not success:
         sys.exit(1)
     
+    # Step 2: Optimize IR (if requested)
+    if args.optimize != '0':
+        if not optimize_ir(ir_file, args.optimize, args.verbose):
+            print("Warning: Optimization failed, continuing with unoptimized IR", file=sys.stderr)
+        # Also optimize imported modules
+        if imported_modules:
+            for mod_ir in imported_modules:
+                optimize_ir(mod_ir, args.optimize, args.verbose)
+    
     if args.ir_only:
-        print(f"✓ Compiled {args.source} → {ir_file}")
+        opt_suffix = f" (O{args.optimize})" if args.optimize != '0' else ""
+        print(f"✓ Compiled {args.source} → {ir_file}{opt_suffix}")
         sys.exit(0)
     
-    # Step 2: Link to executable
+    # Step 3: Link to executable
     if not link_executable(ir_file, exe_file, imported_modules, args.compiler, args.optimize, args.verbose):
         sys.exit(1)
     
-    print(f"✓ Built {args.source} → {exe_file}")
+    opt_suffix = f" (O{args.optimize})" if args.optimize != '0' else ""
+    print(f"✓ Built {args.source} → {exe_file}{opt_suffix}")
     
     if args.verbose:
         file_size = os.path.getsize(exe_file)
         print(f"  Binary size: {file_size:,} bytes")
     
-    # Step 3: Run if requested
+    # Step 4: Run if requested
     if args.run:
         print(f"\n{'='*60}")
         print(f"Running {exe_file}:")

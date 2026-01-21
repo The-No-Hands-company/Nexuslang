@@ -1,4 +1,4 @@
-# NLPL → Native Code via LLVM Backend
+# NLPL Native Code via LLVM Backend
 # Comprehensive test of compiler features
 
 print text "=== NLPL LLVM Compiler Test ==="
@@ -13,14 +13,14 @@ set quot to a divided by b
 
 print text "Arithmetic:"
 print text sum
-print text diff  
+print text diff 
 print text prod
 print text quot
 
 # Boolean comparisons
 set x to 50
 set y to 30
-set is_greater to x is greater than y  # Returns 1 (true)
+set is_greater to x is greater than y # Returns 1 (true)
 
 print text "Comparison (50 > 30):"
 print text is_greater

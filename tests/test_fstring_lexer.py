@@ -27,7 +27,7 @@ def test_fstring_lexer():
     assert parts[0] == ('literal', 'Hello, ')
     assert parts[1] == ('expr', 'name')
     assert parts[2] == ('literal', '!')
-    print("   ✓ Simple f-string lexed correctly")
+    print("    Simple f-string lexed correctly")
     
     # Test 2: Expression in f-string
     print("\n2. Testing expression in f-string:")
@@ -39,7 +39,7 @@ def test_fstring_lexer():
     parts2 = fstring_tokens2[0].literal
     print(f"   Parts: {parts2}")
     assert parts2[1] == ('expr', 'x + y')
-    print("   ✓ Expression f-string lexed correctly")
+    print("    Expression f-string lexed correctly")
     
     # Test 3: Multiple interpolations
     print("\n3. Testing multiple interpolations:")
@@ -51,9 +51,9 @@ def test_fstring_lexer():
     parts3 = fstring_tokens3[0].literal
     print(f"   Parts: {parts3}")
     assert len(parts3) == 5
-    print("   ✓ Multiple interpolations work")
+    print("    Multiple interpolations work")
     
-    print("\n✅ All f-string lexer tests passed!")
+    print("\n All f-string lexer tests passed!")
 
 if __name__ == "__main__":
     test_fstring_lexer()

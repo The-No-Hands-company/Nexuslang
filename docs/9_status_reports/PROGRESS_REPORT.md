@@ -6,10 +6,10 @@
 
 - **Total Tests**: 320
 - **Passing**: 215 (67%)
-- **Failing**: 98 (31%)  
+- **Failing**: 98 (31%) 
 - **Skipped**: 7 (2%)
 
-### What's Working Well ✅
+### What's Working Well 
 
 #### Strong Areas (>80% passing)
 
@@ -26,7 +26,7 @@
 - **Dictionaries** - Basic operations work, some advanced features missing
 - **Try/Catch** - Basic exception handling present
 
-### What Needs Work ❌
+### What Needs Work 
 
 #### Legacy Test Issues
 
@@ -38,39 +38,39 @@
 #### Language Features Needing Attention
 
 1. **String Operations**
-   - Single quote strings not supported (only double quotes work)
-   - Concatenation with `+` operator not working (use `plus` keyword)
-   - Some string methods missing
+ - Single quote strings not supported (only double quotes work)
+ - Concatenation with `+` operator not working (use `plus` keyword)
+ - Some string methods missing
 
 2. **Operators**
-   - Tests use `+`, `-`, `*`, `/` operators directly
-   - NLPL requires natural keywords: `plus`, `minus`, `times`, `divided by`
+ - Tests use `+`, `-`, `*`, `/` operators directly
+ - NLPL requires natural keywords: `plus`, `minus`, `times`, `divided by`
 
 3. **Error Handling**
-   - Try/catch implementation incomplete
-   - Error messages could be more helpful
+ - Try/catch implementation incomplete
+ - Error messages could be more helpful
 
 4. **Dictionary Operations**
-   - Some advanced operations failing
-   - Key access edge cases
+ - Some advanced operations failing
+ - Key access edge cases
 
-## Development Environment Setup ✅
+## Development Environment Setup 
 
 ### Virtual Environment
 
 ```bash
-source venv/bin/activate  # Activate venv
-pytest tests/test_parser.py -v  # Run specific tests
-python -m nlpl.main examples/01_basic_concepts.nlpl  # Run NLPL programs
+source venv/bin/activate # Activate venv
+pytest tests/test_parser.py -v # Run specific tests
+python -m nlpl.main examples/01_basic_concepts.nlpl # Run NLPL programs
 ```
 
 ### Recent Improvements
 
-1. ✅ Set up virtual environment with all dependencies
-2. ✅ Fixed import paths in tests (nlpl.runtime.runtime)
-3. ✅ Added string parsing support to interpreter.interpret()
-4. ✅ Rewrote test_parser.py with correct syntax
-5. ✅ Created DEVELOPMENT_SETUP.md guide
+1. Set up virtual environment with all dependencies
+2. Fixed import paths in tests (nlpl.runtime.runtime)
+3. Added string parsing support to interpreter.interpret()
+4. Rewrote test_parser.py with correct syntax
+5. Created DEVELOPMENT_SETUP.md guide
 
 ## Recommended Next Steps
 
@@ -90,7 +90,7 @@ python -m nlpl.main examples/01_basic_concepts.nlpl  # Run NLPL programs
 
 1. Implement missing string methods (slice, length, etc.)
 2. Complete try/catch error handling
-3. Add operator aliases (`+` → `plus`) for convenience
+3. Add operator aliases (`+` `plus`) for convenience
 4. Improve dictionary operations
 
 ### Priority 4: Core Features (from ROADMAP.md)
@@ -157,53 +157,53 @@ set first to numbers[0]
 
 # Functions
 function calculate_sum with numbers as List of Float returns Float
-    if numbers is empty
-        return 0.0
-    
-    set total to 0.0
-    for each number in numbers
-        set total to total plus number
-    
-    return total divided by length of numbers
+ if numbers is empty
+ return 0.0
+ 
+ set total to 0.0
+ for each number in numbers
+ set total to total plus number
+ 
+ return total divided by length of numbers
 
 # Control Flow
 if count is greater than 10
-    print text "Large"
+ print text "Large"
 else
-    print text "Small"
+ print text "Small"
 
 # Loops
 while count is greater than 0
-    print text count
-    set count to count minus 1
+ print text count
+ set count to count minus 1
 
 for each item in numbers
-    print text item
+ print text item
 ```
 
 ### What Doesn't Work Yet
 
 ```nlpl
 # Single quotes - NOT SUPPORTED
-set msg to 'hello'  # ❌ Use double quotes
+set msg to 'hello' # Use double quotes
 
-# Direct operators - NOT SUPPORTED  
-set sum to 5 + 3  # ❌ Use 'plus' keyword
-set sum to 5 plus 3  # ✅ Correct
+# Direct operators - NOT SUPPORTED 
+set sum to 5 + 3 # Use 'plus' keyword
+set sum to 5 plus 3 # Correct
 
 # Multi-line if with indentation - PARTIALLY BROKEN
 if x is greater than 0
-    print text "positive"  # Works in files, fails in some tests
+ print text "positive" # Works in files, fails in some tests
 ```
 
 ## Summary
 
 NLPL is **67% functional** with strong fundamentals in place:
 
-- ✅ Parser and lexer working well
-- ✅ Basic interpreter execution
-- ✅ While loops fully functional
-- ✅ Type system foundation present
-- ✅ Module system operational
+- Parser and lexer working well
+- Basic interpreter execution
+- While loops fully functional
+- Type system foundation present
+- Module system operational
 
 Main gaps are in **test modernization** and **syntax sugar** (operator aliases, quote styles). The core language works - we just need to update tests to match the natural language syntax and fill in missing conveniences.

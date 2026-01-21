@@ -103,7 +103,7 @@ def main():
     changed_count = 0
     for file_path in sorted(python_files):
         if fix_imports_in_file(file_path, root_path):
-            print(f"✓ Fixed: {file_path.relative_to(root_path)}")
+            print(f" Fixed: {file_path.relative_to(root_path)}")
             changed_count += 1
     
     print(f"\n{'='*60}")

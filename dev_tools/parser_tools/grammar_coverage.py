@@ -133,8 +133,8 @@ class GrammarAnalyzer:
         missing_handlers = self.recognized_in_error_recovery - self.handled_in_statement
         
         if missing_handlers:
-            print(f"{Fore.RED}❌ CRITICAL: Recognized tokens WITHOUT handlers!")
-            print(f"{Fore.RED}{'─'*80}\n")
+            print(f"{Fore.RED} CRITICAL: Recognized tokens WITHOUT handlers!")
+            print(f"{Fore.RED}{''*80}\n")
             print(f"{Fore.YELLOW}These tokens are recognized as statement boundaries in error_recovery()")
             print(f"{Fore.YELLOW}but have NO implementation in statement() method:\n")
             
@@ -146,14 +146,14 @@ class GrammarAnalyzer:
             print(f"\n{Fore.RED}This is EXACTLY what happened with PRINT!")
             print(f"{Fore.YELLOW}PRINT was in error_recovery list but had no handler → infinite loop\n")
         else:
-            print(f"{Fore.GREEN}✓ All recognized tokens have handlers\n")
+            print(f"{Fore.GREEN} All recognized tokens have handlers\n")
         
         # Check 2: Handled but not in error recovery
         handled_but_not_recognized = self.handled_in_statement - self.recognized_in_error_recovery
         
         if handled_but_not_recognized:
-            print(f"{Fore.YELLOW}⚠ WARNING: Tokens handled but NOT in error_recovery list")
-            print(f"{Fore.YELLOW}{'─'*80}\n")
+            print(f"{Fore.YELLOW} WARNING: Tokens handled but NOT in error_recovery list")
+            print(f"{Fore.YELLOW}{''*80}\n")
             print(f"These tokens have handlers but won't be recognized for error recovery:\n")
             
             for token in sorted(handled_but_not_recognized):
@@ -183,7 +183,7 @@ class GrammarAnalyzer:
             
             print(f"{Fore.GREEN}Implemented statement/expression methods: {len(self.parser_methods)}\n")
             for method in sorted(self.parser_methods)[:20]:
-                called = "✓" if method in self.called_methods else " "
+                called = "" if method in self.called_methods else " "
                 color = Fore.GREEN if method in self.called_methods else Fore.YELLOW
                 print(f"  {color}[{called}] {method}()")
             
@@ -211,7 +211,7 @@ class GrammarAnalyzer:
         print(f"{'='*80}\n")
         
         if missing_handlers:
-            print(f"{Fore.RED}❌ FAILED: {len(missing_handlers)} token(s) missing handlers")
+            print(f"{Fore.RED} FAILED: {len(missing_handlers)} token(s) missing handlers")
             print(f"\n{Fore.YELLOW}Action Required:")
             print(f"  1. Implement handlers in statement() for:")
             for token in sorted(missing_handlers):
@@ -219,8 +219,8 @@ class GrammarAnalyzer:
             print(f"  2. OR remove from error_recovery() if not a statement type")
             return False
         else:
-            print(f"{Fore.GREEN}✓ PASSED: All recognized tokens have handlers")
-            print(f"{Fore.GREEN}✓ Parser grammar coverage is complete\n")
+            print(f"{Fore.GREEN} PASSED: All recognized tokens have handlers")
+            print(f"{Fore.GREEN} Parser grammar coverage is complete\n")
             return True
 
 

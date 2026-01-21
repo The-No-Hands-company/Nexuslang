@@ -42,16 +42,16 @@ vsce publish
 **Update package.json before publishing:**
 ```json
 {
-  "publisher": "nlpl-lang",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/Zajfan/NLPL.git"
-  },
-  "bugs": {
-    "url": "https://github.com/Zajfan/NLPL/issues"
-  },
-  "homepage": "https://github.com/Zajfan/NLPL#readme",
-  "keywords": ["nlpl", "natural-language", "programming", "language-server"]
+ "publisher": "nlpl-lang",
+ "repository": {
+ "type": "git",
+ "url": "https://github.com/Zajfan/NLPL.git"
+ },
+ "bugs": {
+ "url": "https://github.com/Zajfan/NLPL/issues"
+ },
+ "homepage": "https://github.com/Zajfan/NLPL#readme",
+ "keywords": ["nlpl", "natural-language", "programming", "language-server"]
 }
 ```
 
@@ -92,24 +92,24 @@ local configs = require('lspconfig.configs')
 
 -- Register NLPL LSP
 if not configs.nlpl then
-  configs.nlpl = {
-    default_config = {
-      cmd = {'python3', '/path/to/NLPL/src/nlpl_lsp.py'},
-      filetypes = {'nlpl'},
-      root_dir = lspconfig.util.root_pattern('.git', 'main.nlpl'),
-      settings = {},
-    },
-  }
+ configs.nlpl = {
+ default_config = {
+ cmd = {'python3', '/path/to/NLPL/src/nlpl_lsp.py'},
+ filetypes = {'nlpl'},
+ root_dir = lspconfig.util.root_pattern('.git', 'main.nlpl'),
+ settings = {},
+ },
+ }
 end
 
 lspconfig.nlpl.setup{}
 
 -- Set filetype
 vim.cmd([[
-  augroup nlpl
-    autocmd!
-    autocmd BufRead,BufNewFile *.nlpl set filetype=nlpl
-  augroup END
+ augroup nlpl
+ autocmd!
+ autocmd BufRead,BufNewFile *.nlpl set filetype=nlpl
+ augroup END
 ]])
 ```
 
@@ -118,14 +118,14 @@ vim.cmd([[
 Add to `~/.vim/coc-settings.json`:
 ```json
 {
-  "languageserver": {
-    "nlpl": {
-      "command": "python3",
-      "args": ["/path/to/NLPL/src/nlpl_lsp.py"],
-      "filetypes": ["nlpl"],
-      "rootPatterns": [".git/", "main.nlpl"]
-    }
-  }
+ "languageserver": {
+ "nlpl": {
+ "command": "python3",
+ "args": ["/path/to/NLPL/src/nlpl_lsp.py"],
+ "filetypes": ["nlpl"],
+ "rootPatterns": [".git/", "main.nlpl"]
+ }
+ }
 }
 ```
 
@@ -135,17 +135,17 @@ Add to `~/.vim/coc-settings.json`:
 - Install Package Control
 - Install "LSP" package
 
-**Configure LSP-nlpl** (`Preferences` → `Package Settings` → `LSP` → `Settings`):
+**Configure LSP-nlpl** (`Preferences` `Package Settings` `LSP` `Settings`):
 ```json
 {
-  "clients": {
-    "nlpl": {
-      "enabled": true,
-      "command": ["python3", "/path/to/NLPL/src/nlpl_lsp.py"],
-      "selector": "source.nlpl",
-      "syntaxes": ["Packages/User/NLPL.sublime-syntax"]
-    }
-  }
+ "clients": {
+ "nlpl": {
+ "enabled": true,
+ "command": ["python3", "/path/to/NLPL/src/nlpl_lsp.py"],
+ "selector": "source.nlpl",
+ "syntaxes": ["Packages/User/NLPL.sublime-syntax"]
+ }
+ }
 }
 ```
 
@@ -158,15 +158,15 @@ file_extensions: [nlpl]
 scope: source.nlpl
 
 contexts:
-  main:
-    - match: '\b(function|set|to|if|else|while|for|each|in|return|class|struct|union)\b'
-      scope: keyword.control.nlpl
-    - match: '\b(Integer|String|Float|Boolean|List|Dict)\b'
-      scope: storage.type.nlpl
-    - match: '"[^"]*"'
-      scope: string.quoted.double.nlpl
-    - match: '#.*$'
-      scope: comment.line.number-sign.nlpl
+ main:
+ - match: '\b(function|set|to|if|else|while|for|each|in|return|class|struct|union)\b'
+ scope: keyword.control.nlpl
+ - match: '\b(Integer|String|Float|Boolean|List|Dict)\b'
+ scope: storage.type.nlpl
+ - match: '"[^"]*"'
+ scope: string.quoted.double.nlpl
+ - match: '#.*$'
+ scope: comment.line.number-sign.nlpl
 ```
 
 ### 2.3 Emacs (via lsp-mode)
@@ -180,16 +180,16 @@ Add to `~/.emacs` or `~/.emacs.d/init.el`:
 ;; Define NLPL LSP client
 (lsp-register-client
  (make-lsp-client
-  :new-connection (lsp-stdio-connection
-                   '("python3" "/path/to/NLPL/src/nlpl_lsp.py"))
-  :major-modes '(nlpl-mode)
-  :server-id 'nlpl-lsp))
+ :new-connection (lsp-stdio-connection
+ '("python3" "/path/to/NLPL/src/nlpl_lsp.py"))
+ :major-modes '(nlpl-mode)
+ :server-id 'nlpl-lsp))
 
 ;; Define NLPL major mode
 (define-derived-mode nlpl-mode prog-mode "NLPL"
-  "Major mode for NLPL."
-  (setq-local comment-start "# ")
-  (setq-local comment-end ""))
+ "Major mode for NLPL."
+ (setq-local comment-start "# ")
+ (setq-local comment-end ""))
 
 ;; Auto-activate for .nlpl files
 (add-to-list 'auto-mode-alist '("\\.nlpl\\'" . nlpl-mode))
@@ -205,39 +205,39 @@ Add to `~/.emacs` or `~/.emacs.d/init.el`:
 Requires IntelliJ Plugin Development Kit. Structure:
 ```
 nlpl-intellij-plugin/
-├── src/
-│   └── main/
-│       ├── java/
-│       │   └── com/nlpl/
-│       │       ├── NLPLLanguage.java
-│       │       ├── NLPLFileType.java
-│       │       └── NLPLSyntaxHighlighter.java
-│       └── resources/
-│           ├── META-INF/plugin.xml
-│           └── icons/nlpl.png
-└── build.gradle
+ src/
+ main/
+ java/
+ com/nlpl/
+ NLPLLanguage.java
+ NLPLFileType.java
+ NLPLSyntaxHighlighter.java
+ resources/
+ META-INF/plugin.xml
+ icons/nlpl.png
+ build.gradle
 ```
 
 **plugin.xml:**
 ```xml
 <idea-plugin>
-  <id>com.nlpl.language</id>
-  <name>NLPL Language Support</name>
-  <vendor>NLPL Team</vendor>
-  <description>Support for NLPL programming language</description>
-  
-  <depends>com.intellij.modules.platform</depends>
-  
-  <extensions defaultExtensionNs="com.intellij">
-    <fileType name="NLPL" 
-              implementationClass="com.nlpl.NLPLFileType" 
-              fieldName="INSTANCE" 
-              language="NLPL" 
-              extensions="nlpl"/>
-    <lang.syntaxHighlighterFactory 
-              language="NLPL" 
-              implementationClass="com.nlpl.NLPLSyntaxHighlighterFactory"/>
-  </extensions>
+ <id>com.nlpl.language</id>
+ <name>NLPL Language Support</name>
+ <vendor>NLPL Team</vendor>
+ <description>Support for NLPL programming language</description>
+ 
+ <depends>com.intellij.modules.platform</depends>
+ 
+ <extensions defaultExtensionNs="com.intellij">
+ <fileType name="NLPL" 
+ implementationClass="com.nlpl.NLPLFileType" 
+ fieldName="INSTANCE" 
+ language="NLPL" 
+ extensions="nlpl"/>
+ <lang.syntaxHighlighterFactory 
+ language="NLPL" 
+ implementationClass="com.nlpl.NLPLSyntaxHighlighterFactory"/>
+ </extensions>
 </idea-plugin>
 ```
 
@@ -256,7 +256,7 @@ nlpl-lsp = "nlpl.lsp.server:main"
 
 # Install as system service
 pip install -e .
-nlpl-lsp  # Now available globally
+nlpl-lsp # Now available globally
 ```
 
 **Docker Container:**
@@ -335,9 +335,9 @@ pip install pyinstaller
 
 # Create standalone binary
 pyinstaller --onefile \
-            --name nlpl \
-            --add-data "src/nlpl:nlpl" \
-            src/main.py
+ --name nlpl \
+ --add-data "src/nlpl:nlpl" \
+ src/main.py
 
 # Result: dist/nlpl (Linux/Mac) or dist/nlpl.exe (Windows)
 ```
@@ -353,21 +353,21 @@ pyinstaller --onefile \
 **Homebrew Formula** (`nlpl.rb`):
 ```ruby
 class Nlpl < Formula
-  desc "Natural Language Programming Language"
-  homepage "https://github.com/Zajfan/NLPL"
-  url "https://github.com/Zajfan/NLPL/archive/v1.0.0.tar.gz"
-  sha256 "..."
-  license "MIT"
+ desc "Natural Language Programming Language"
+ homepage "https://github.com/Zajfan/NLPL"
+ url "https://github.com/Zajfan/NLPL/archive/v1.0.0.tar.gz"
+ sha256 "..."
+ license "MIT"
 
-  depends_on "python@3.11"
+ depends_on "python@3.11"
 
-  def install
-    virtualenv_install_with_resources
-  end
+ def install
+ virtualenv_install_with_resources
+ end
 
-  test do
-    system "#{bin}/nlpl", "--version"
-  end
+ test do
+ system "#{bin}/nlpl", "--version"
+ end
 end
 ```
 
@@ -382,10 +382,10 @@ brew install nlpl
 Create `debian/` directory structure:
 ```
 debian/
-├── control
-├── rules
-├── changelog
-└── compat
+ control
+ rules
+ changelog
+ compat
 ```
 
 Build:
@@ -412,23 +412,23 @@ sudo dpkg -i ../nlpl_1.0.0_all.deb
 1. **Tag release:** `git tag -a v1.0.0 -m "Release 1.0.0"`
 2. **Push tag:** `git push origin v1.0.0`
 3. **GitHub Release:**
-   - Create release from tag
-   - Attach: `.vsix` file, binaries, source archives
-   - Write release notes
+ - Create release from tag
+ - Attach: `.vsix` file, binaries, source archives
+ - Write release notes
 
 4. **Publish to registries:**
-   ```bash
-   # PyPI
-   python -m build
-   twine upload dist/*
-   
-   # VSCode Marketplace
-   cd .vscode/extensions/nlpl
-   vsce publish
-   
-   # npm (if Node.js components)
-   npm publish
-   ```
+ ```bash
+ # PyPI
+ python -m build
+ twine upload dist/*
+ 
+ # VSCode Marketplace
+ cd .vscode/extensions/nlpl
+ vsce publish
+ 
+ # npm (if Node.js components)
+ npm publish
+ ```
 
 ### 5.2 Installation Quick Start
 
@@ -471,13 +471,13 @@ pytest tests/
 
 | Platform | Installation Command | Status |
 |----------|---------------------|--------|
-| **PyPI** | `pip install nlpl` | 🚧 Pending |
-| **VSCode Marketplace** | Search "NLPL" in Extensions | 🚧 Pending |
-| **Homebrew** | `brew install nlpl` | 🚧 Pending |
-| **APT** | `apt install nlpl` | 🚧 Pending |
-| **Chocolatey** | `choco install nlpl` | 🚧 Pending |
-| **Snap** | `snap install nlpl` | 🚧 Pending |
-| **Docker Hub** | `docker pull nlpl/nlpl` | 🚧 Pending |
+| **PyPI** | `pip install nlpl` | Pending |
+| **VSCode Marketplace** | Search "NLPL" in Extensions | Pending |
+| **Homebrew** | `brew install nlpl` | Pending |
+| **APT** | `apt install nlpl` | Pending |
+| **Chocolatey** | `choco install nlpl` | Pending |
+| **Snap** | `snap install nlpl` | Pending |
+| **Docker Hub** | `docker pull nlpl/nlpl` | Pending |
 
 ### 5.4 Documentation Website
 
@@ -489,20 +489,20 @@ pytest tests/
 **Content structure:**
 ```
 docs/
-├── getting-started/
-│   ├── installation.md
-│   ├── quickstart.md
-│   └── hello-world.md
-├── language-guide/
-│   ├── syntax.md
-│   ├── types.md
-│   └── stdlib.md
-├── editor-setup/
-│   ├── vscode.md
-│   ├── vim.md
-│   └── emacs.md
-├── api-reference/
-└── examples/
+ getting-started/
+ installation.md
+ quickstart.md
+ hello-world.md
+ language-guide/
+ syntax.md
+ types.md
+ stdlib.md
+ editor-setup/
+ vscode.md
+ vim.md
+ emacs.md
+ api-reference/
+ examples/
 ```
 
 ---
@@ -510,31 +510,31 @@ docs/
 ## 6. Next Steps for Production Readiness
 
 ### Immediate (Week 1-2):
-1. ✅ Create global install script (done)
-2. 🔲 Update extension `package.json` with publisher info
-3. 🔲 Test extension in multiple VSCode versions
-4. 🔲 Create `.vsix` package for manual distribution
+1. Create global install script (done)
+2. Update extension `package.json` with publisher info
+3. Test extension in multiple VSCode versions
+4. Create `.vsix` package for manual distribution
 
 ### Short-term (Month 1):
-1. 🔲 Register VSCode publisher account
-2. 🔲 Publish to VSCode Marketplace
-3. 🔲 Create PyPI package
-4. 🔲 Write comprehensive installation docs
-5. 🔲 Create demonstration videos
+1. Register VSCode publisher account
+2. Publish to VSCode Marketplace
+3. Create PyPI package
+4. Write comprehensive installation docs
+5. Create demonstration videos
 
 ### Medium-term (Month 2-3):
-1. 🔲 Add Neovim/Vim LSP configuration
-2. 🔲 Create Sublime Text package
-3. 🔲 Build standalone binaries with PyInstaller
-4. 🔲 Create Homebrew formula
-5. 🔲 Setup CI/CD for automated releases
+1. Add Neovim/Vim LSP configuration
+2. Create Sublime Text package
+3. Build standalone binaries with PyInstaller
+4. Create Homebrew formula
+5. Setup CI/CD for automated releases
 
 ### Long-term (Month 4+):
-1. 🔲 JetBrains plugin development
-2. 🔲 APT/RPM package repositories
-3. 🔲 Docker Hub images
-4. 🔲 Documentation website
-5. 🔲 Package manager integration (Snap, Chocolatey)
+1. JetBrains plugin development
+2. APT/RPM package repositories
+3. Docker Hub images
+4. Documentation website
+5. Package manager integration (Snap, Chocolatey)
 
 ---
 

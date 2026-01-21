@@ -6,7 +6,7 @@ NLPL aims to be truly universal - one language from OS kernels to web apps. This
 
 ## Backend Priorities
 
-### ✅ Phase 1: C Backend (COMPLETE)
+### Phase 1: C Backend (COMPLETE)
 **Status:** Working - compiles NLPL to C, then to native executables
 **Use Cases:**
 - Rapid prototyping
@@ -16,7 +16,7 @@ NLPL aims to be truly universal - one language from OS kernels to web apps. This
 
 **How It Works:**
 ```
-NLPL → C source → GCC/Clang → Native Executable
+NLPL C source GCC/Clang Native Executable
 ```
 
 **Advantages:**
@@ -33,7 +33,7 @@ NLPL → C source → GCC/Clang → Native Executable
 
 ---
 
-### 🚧 Phase 2: C++ Backend (IN PROGRESS)
+### Phase 2: C++ Backend (IN PROGRESS)
 **Status:** Skeleton created, needs completion
 **Use Cases:**
 - Object-oriented NLPL programs
@@ -43,7 +43,7 @@ NLPL → C source → GCC/Clang → Native Executable
 
 **How It Works:**
 ```
-NLPL → C++ source → Clang++ → Native Executable
+NLPL C++ source Clang++ Native Executable
 ```
 
 **Advantages:**
@@ -60,7 +60,7 @@ NLPL → C++ source → Clang++ → Native Executable
 
 ---
 
-### ⏳ Phase 3: JavaScript/TypeScript Backend (FUTURE)
+### Phase 3: JavaScript/TypeScript Backend (FUTURE)
 **Status:** Not started
 **Use Cases:**
 - Web applications
@@ -70,7 +70,7 @@ NLPL → C++ source → Clang++ → Native Executable
 
 **How It Works:**
 ```
-NLPL → JavaScript/TypeScript → Node/Browser
+NLPL JavaScript/TypeScript Node/Browser
 ```
 
 **Advantages:**
@@ -87,7 +87,7 @@ NLPL → JavaScript/TypeScript → Node/Browser
 
 ---
 
-### ⏳ Phase 4: WebAssembly Backend (FUTURE)
+### Phase 4: WebAssembly Backend (FUTURE)
 **Status:** Not started
 **Use Cases:**
 - High-performance web applications
@@ -97,7 +97,7 @@ NLPL → JavaScript/TypeScript → Node/Browser
 
 **How It Works:**
 ```
-NLPL → WASM → Browser/WASI Runtime
+NLPL WASM Browser/WASI Runtime
 ```
 
 **Advantages:**
@@ -113,7 +113,7 @@ NLPL → WASM → Browser/WASI Runtime
 
 ---
 
-### 🎯 Phase 5: LLVM Backend (PRIORITY FUTURE)
+### Phase 5: LLVM Backend (PRIORITY FUTURE)
 **Status:** Not started
 **Use Cases:**
 - Production-quality native executables
@@ -123,7 +123,7 @@ NLPL → WASM → Browser/WASI Runtime
 
 **How It Works:**
 ```
-NLPL → LLVM IR → LLVM Optimizer → Native Executable
+NLPL LLVM IR LLVM Optimizer Native Executable
 ```
 
 **Advantages:**
@@ -147,7 +147,7 @@ NLPL → LLVM IR → LLVM Optimizer → Native Executable
 
 ---
 
-### 🔥 Phase 6: Native Assembly Backend (OS KERNEL WORK)
+### Phase 6: Native Assembly Backend (OS KERNEL WORK)
 **Status:** Not started
 **Use Cases:**
 - Operating system kernels
@@ -158,7 +158,7 @@ NLPL → LLVM IR → LLVM Optimizer → Native Executable
 
 **How It Works:**
 ```
-NLPL → x86-64/ARM Assembly → Assembler → Native Executable
+NLPL x86-64/ARM Assembly Assembler Native Executable
 ```
 
 **Advantages:**
@@ -186,37 +186,37 @@ NLPL → x86-64/ARM Assembly → Assembler → Native Executable
 ### Simple Application (Hello World)
 ```
 Option 1 (C Backend):
-  NLPL → C → GCC → Executable
-  Time: ~100ms
-  Binary: ~16 KB
+ NLPL C GCC Executable
+ Time: ~100ms
+ Binary: ~16 KB
 
 Option 2 (LLVM Backend):
-  NLPL → LLVM IR → Optimized → Executable
-  Time: ~200ms
-  Binary: ~14 KB (better optimization)
+ NLPL LLVM IR Optimized Executable
+ Time: ~200ms
+ Binary: ~14 KB (better optimization)
 
 Option 3 (Direct Assembly):
-  NLPL → x86-64 ASM → Executable
-  Time: ~50ms
-  Binary: ~8 KB (minimal runtime)
+ NLPL x86-64 ASM Executable
+ Time: ~50ms
+ Binary: ~8 KB (minimal runtime)
 ```
 
 ### Web Application
 ```
 Option 1 (JavaScript Backend):
-  NLPL → JavaScript → Browser
-  No compilation, instant deployment
+ NLPL JavaScript Browser
+ No compilation, instant deployment
 
 Option 2 (WASM Backend):
-  NLPL → WASM → Browser
-  Time: ~500ms, faster runtime execution
+ NLPL WASM Browser
+ Time: ~500ms, faster runtime execution
 ```
 
 ### Operating System Kernel
 ```
 MUST use Assembly Backend:
-  NLPL → x86-64 ASM → Bootloader/Kernel
-  Direct hardware access required
+ NLPL x86-64 ASM Bootloader/Kernel
+ Direct hardware access required
 ```
 
 ---
@@ -227,10 +227,10 @@ MUST use Assembly Backend:
 
 **A: Because NLPL has DIFFERENT use cases that need DIFFERENT backends:**
 
-1. **Quick prototyping?** → C backend (fast development)
-2. **Production app?** → LLVM backend (best optimization)
-3. **Web app?** → JavaScript/WASM backend
-4. **OS kernel?** → Assembly backend (direct hardware access)
+1. **Quick prototyping?** C backend (fast development)
+2. **Production app?** LLVM backend (best optimization)
+3. **Web app?** JavaScript/WASM backend
+4. **OS kernel?** Assembly backend (direct hardware access)
 
 **The C backend is NOT a limitation** - it's **ONE of many targets** we'll support.
 
@@ -239,11 +239,11 @@ MUST use Assembly Backend:
 ## Current Implementation Status
 
 ### Working Now:
-- ✅ C backend (basic features)
-- ✅ Variable declarations
-- ✅ Print statements
-- ✅ Literals (strings, numbers)
-- ✅ GCC linking to create executables
+- C backend (basic features)
+- Variable declarations
+- Print statements
+- Literals (strings, numbers)
+- GCC linking to create executables
 
 ### Next Steps (Priority Order):
 1. **Expand C++ backend** (for OOP features)
@@ -260,13 +260,13 @@ MUST use Assembly Backend:
 NLPL won't have "a compiler" - it will have a **compilation suite**:
 
 ```
-nlpl compile myapp.nlpl --target c        # Generate C code
-nlpl compile myapp.nlpl --target cpp      # Generate C++ code
-nlpl compile myapp.nlpl --target js       # Generate JavaScript
-nlpl compile myapp.nlpl --target wasm     # Generate WebAssembly
-nlpl compile myapp.nlpl --target llvm     # Use LLVM (production)
-nlpl compile myapp.nlpl --target asm-x64  # Direct assembly (OS kernels)
-nlpl compile myapp.nlpl --target asm-arm  # ARM assembly (embedded)
+nlpl compile myapp.nlpl --target c # Generate C code
+nlpl compile myapp.nlpl --target cpp # Generate C++ code
+nlpl compile myapp.nlpl --target js # Generate JavaScript
+nlpl compile myapp.nlpl --target wasm # Generate WebAssembly
+nlpl compile myapp.nlpl --target llvm # Use LLVM (production)
+nlpl compile myapp.nlpl --target asm-x64 # Direct assembly (OS kernels)
+nlpl compile myapp.nlpl --target asm-arm # ARM assembly (embedded)
 ```
 
 **All from the SAME source code.** That's the power of NLPL.

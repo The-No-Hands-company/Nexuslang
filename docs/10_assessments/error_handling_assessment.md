@@ -14,9 +14,9 @@ NLPL's error handling is **significantly better** than traditional programming l
 
 ### The Core Question
 
-**Will debugging NLPL be pure hell?** → **No, definitely not.**
+**Will debugging NLPL be pure hell?** **No, definitely not.**
 
-**Will it be as straightforward as fixing typos/grammar?** → **Almost, but not quite yet.**
+**Will it be as straightforward as fixing typos/grammar?** **Almost, but not quite yet.**
 
 ---
 
@@ -29,35 +29,35 @@ NLPL implements comprehensive error detection across all compilation/interpretat
 #### **1.1 Lexical Errors (Lexer)**
 - **Location:** `src/nlpl/parser/lexer.py:743-755`
 - **Detects:**
-  - Invalid characters
-  - Unterminated strings
-  - Indentation errors (Python-style blocks)
+ - Invalid characters
+ - Unterminated strings
+ - Indentation errors (Python-style blocks)
 - **Context:** Stores source line, line number, and column for each token
 
 #### **1.2 Syntax Errors (Parser)**
 - **Location:** `src/nlpl/parser/parser.py:36-66`
 - **Detects:**
-  - Missing keywords/tokens
-  - Unexpected tokens
-  - Malformed statements
+ - Missing keywords/tokens
+ - Unexpected tokens
+ - Malformed statements
 - **Features:** Provides expected vs. got information, context-specific suggestions
 
 #### **1.3 Type Errors (Type Checker)**
 - **Location:** `src/nlpl/typesystem/typechecker.py:27-465`
 - **Detects:**
-  - Type mismatches in assignments
-  - Incompatible types in operations
-  - Wrong number/types of function arguments
-  - Invalid return types
+ - Type mismatches in assignments
+ - Incompatible types in operations
+ - Wrong number/types of function arguments
+ - Invalid return types
 
 #### **1.4 Runtime Errors (Interpreter)**
 - **Location:** `src/nlpl/interpreter/interpreter.py` (multiple locations)
 - **Detects:**
-  - Division by zero
-  - Index out of bounds
-  - Key not found in dictionaries
-  - Undefined variables/functions
-  - Module import errors
+ - Division by zero
+ - Index out of bounds
+ - Key not found in dictionaries
+ - Undefined variables/functions
+ - Module import errors
 
 ### Error Class Hierarchy
 
@@ -68,23 +68,23 @@ NLPL implements comprehensive error detection across all compilation/interpretat
 **Specialized Classes:**
 
 1. **`NLPLSyntaxError`** (lines 42-63)
-   - Includes expected vs. got tokens
-   - Provides contextual suggestions
-   - Example: "💡 Suggestion: Make sure to close all blocks with 'end'"
+ - Includes expected vs. got tokens
+ - Provides contextual suggestions
+ - Example: " Suggestion: Make sure to close all blocks with 'end'"
 
 2. **`NLPLRuntimeError`** (lines 66-92)
-   - Shows stack trace with numbered frames
-   - Displays local variables at error point (truncated to 50 chars)
+ - Shows stack trace with numbered frames
+ - Displays local variables at error point (truncated to 50 chars)
 
 3. **`NLPLNameError`** (lines 95-120)
-   - **Most user-friendly feature:** "Did you mean?" suggestions
-   - Uses fuzzy string matching (difflib) with 0.6 similarity cutoff
-   - Shows top 3 similar names
-   - Example: "conter" → suggests "counter"
+ - **Most user-friendly feature:** "Did you mean?" suggestions
+ - Uses fuzzy string matching (difflib) with 0.6 similarity cutoff
+ - Shows top 3 similar names
+ - Example: "conter" suggests "counter"
 
 4. **`NLPLTypeError`** (lines 123-140)
-   - Shows expected vs. got types clearly
-   - Example: "Expected type: Integer / Got type: String"
+ - Shows expected vs. got types clearly
+ - Example: "Expected type: Integer / Got type: String"
 
 ---
 
@@ -95,18 +95,18 @@ NLPL implements comprehensive error detection across all compilation/interpretat
 **Example Error Message:**
 ```
 Name Error: Name 'conter' is not defined
-  at line 5, column 11
+ at line 5, column 11
 
-  5 | print text conter
-                 ^
+ 5 | print text conter
+ ^
 
-  💡 Did you mean: 'counter'?
+ Did you mean: 'counter'?
 ```
 
 **Features:**
 - Line numbers with source code context
 - Caret pointer (^) showing exact error location
-- Emoji indicators (💡) for suggestions
+- Emoji indicators () for suggestions
 - Bullet points (•) for multiple suggestions
 - Proper indentation and spacing
 - Shows 2 lines before and after error for context
@@ -179,8 +179,8 @@ For runtime errors:
 
 **Example of what's needed:**
 ```
-💡 Did you mean: 'counter'?
-📚 Learn more about variables: https://nlpl.dev/docs/variables
+ Did you mean: 'counter'?
+ Learn more about variables: https://nlpl.dev/docs/variables
 ```
 
 ### 3.3 No "Common Fixes" Examples
@@ -190,17 +190,17 @@ For runtime errors:
 **Current:**
 ```
 Name Error: Name 'conter' is not defined
-💡 Did you mean: 'counter'?
+ Did you mean: 'counter'?
 ```
 
 **Should be:**
 ```
 Name Error: Name 'conter' is not defined
-💡 Did you mean: 'counter'?
+ Did you mean: 'counter'?
 
 Common fix:
-  Wrong: print text conter
-  Right: print text counter
+ Wrong: print text conter
+ Right: print text counter
 ```
 
 ### 3.4 Stops at First Runtime Error
@@ -215,9 +215,9 @@ Common fix:
 **Desired behavior:**
 ```
 Found 3 issues:
-  1. Line 5: Name 'conter' not defined → Did you mean 'counter'?
-  2. Line 7: Missing 'end' to close if block
-  3. Line 12: Can't add text to number
+ 1. Line 5: Name 'conter' not defined Did you mean 'counter'?
+ 2. Line 7: Missing 'end' to close if block
+ 3. Line 12: Can't add text to number
 ```
 
 ### 3.5 No Beginner Mode
@@ -240,10 +240,10 @@ What to do:
 Create the variable first: set conter to 0
 Or did you mean: 'counter'?
 
-💡 Variables are like labeled boxes that hold information.
-   You need to create them before you can use them.
+ Variables are like labeled boxes that hold information.
+ You need to create them before you can use them.
 
-📚 Learn more: https://nlpl.dev/docs/variables
+ Learn more: https://nlpl.dev/docs/variables
 ```
 
 ---
@@ -253,8 +253,8 @@ Or did you mean: 'counter'?
 ### Traditional Programming (C++, Java): 3/10 for Beginners
 ```
 error: 'conter' was not declared in this scope
-     5 | std::cout << conter;
-       |              ^~~~~~
+ 5 | std::cout << conter;
+ | ^~~~~~
 ```
 - Cryptic messages
 - Technical jargon
@@ -264,7 +264,7 @@ error: 'conter' was not declared in this scope
 ### Python: 6/10 for Beginners
 ```
 NameError: name 'conter' is not defined
-  File "test.py", line 5, in <module>
+ File "test.py", line 5, in <module>
 ```
 - Clearer than C++
 - Still technical
@@ -274,12 +274,12 @@ NameError: name 'conter' is not defined
 ### NLPL Today: 7.5-8/10 for Beginners
 ```
 Name Error: Name 'conter' is not defined
-  at line 5, column 11
+ at line 5, column 11
 
-  5 | print text conter
-                 ^
+ 5 | print text conter
+ ^
 
-  💡 Did you mean: 'counter'?
+ Did you mean: 'counter'?
 ```
 - Clear, visual
 - Shows exact location
@@ -289,29 +289,29 @@ Name Error: Name 'conter' is not defined
 ### Target Goal: 9-10/10
 ```
 Name Error: I don't recognize 'conter'
-  at line 5, column 11
+ at line 5, column 11
 
-  5 | print text conter
-                 ^
+ 5 | print text conter
+ ^
 
-💡 Did you mean: 'counter'?
+ Did you mean: 'counter'?
 
 Common fix:
-  Wrong: print text conter
-  Right: print text counter
+ Wrong: print text conter
+ Right: print text counter
 
 Why this happened:
-  You need to create a variable before using it.
-  Set it up first: set counter to 0
+ You need to create a variable before using it.
+ Set it up first: set counter to 0
 
-📚 Learn more about variables: https://nlpl.dev/docs/variables
+ Learn more about variables: https://nlpl.dev/docs/variables
 ```
 
 ---
 
 ## 5. Who Will Succeed vs. Struggle
 
-### ✓ Who Will Succeed Today
+### Who Will Succeed Today
 
 **People comfortable with:**
 - Basic logic (if/then thinking)
@@ -327,7 +327,7 @@ Why this happened:
 - People who don't fear error messages
 - Those willing to learn incrementally
 
-### ✗ Who Might Struggle
+### Who Might Struggle
 
 **People expecting:**
 - Zero learning curve
@@ -341,7 +341,7 @@ Why this happened:
 - Expect it to "just work" magically
 - Have no patience for iteration
 
-### 🎯 Sweet Spot Target Audience
+### Sweet Spot Target Audience
 
 **Best fit for:**
 - Creative professionals who understand systems
@@ -373,10 +373,10 @@ Why this happened:
 ```
 
 **Additional jargon to fix:**
-- "iterable" → "list or collection you can loop through"
-- "boolean" → "true or false value"
-- "index out of range" → "you're asking for item #10 but the list only has 5 items"
-- "compatible types" → "matching types (both numbers, or both text)"
+- "iterable" "list or collection you can loop through"
+- "boolean" "true or false value"
+- "index out of range" "you're asking for item #10 but the list only has 5 items"
+- "compatible types" "matching types (both numbers, or both text)"
 
 ### Priority 2: Add "Common Fixes" Examples (HIGH PRIORITY)
 
@@ -385,30 +385,30 @@ Why this happened:
 **Implementation suggestion:**
 ```python
 def get_fix_example(error_type: str, context: dict) -> Optional[str]:
-    """Get example fix for common errors."""
-    examples = {
-        "undefined_variable": {
-            "wrong": "print text {name}",
-            "right": "set {name} to \"some value\"\nprint text {name}"
-        },
-        "missing_end": {
-            "wrong": "if condition is true\n    do something",
-            "right": "if condition is true\n    do something\nend"
-        },
-        "type_mismatch": {
-            "wrong": "set result to 5 + \"hello\"",
-            "right": "set result to 5 + 10  # Both numbers\n# OR\nset result to \"hello\" + \" world\"  # Both text"
-        }
-    }
-    return examples.get(error_type)
+ """Get example fix for common errors."""
+ examples = {
+ "undefined_variable": {
+ "wrong": "print text {name}",
+ "right": "set {name} to \"some value\"\nprint text {name}"
+ },
+ "missing_end": {
+ "wrong": "if condition is true\n do something",
+ "right": "if condition is true\n do something\nend"
+ },
+ "type_mismatch": {
+ "wrong": "set result to 5 + \"hello\"",
+ "right": "set result to 5 + 10 # Both numbers\n# OR\nset result to \"hello\" + \" world\" # Both text"
+ }
+ }
+ return examples.get(error_type)
 ```
 
 **Update error formatting to include:**
 ```python
 if fix_example:
-    base += f"\n\n  Common fix:"
-    base += f"\n    Wrong: {fix_example['wrong']}"
-    base += f"\n    Right: {fix_example['right']}"
+ base += f"\n\n Common fix:"
+ base += f"\n Wrong: {fix_example['wrong']}"
+ base += f"\n Right: {fix_example['right']}"
 ```
 
 ### Priority 3: Create Beginner Mode (MEDIUM PRIORITY)
@@ -425,19 +425,19 @@ if fix_example:
 **Example implementation:**
 ```python
 class NLPLError(Exception):
-    def __init__(self, ..., beginner_mode: bool = False):
-        self.beginner_mode = beginner_mode
-        ...
+ def __init__(self, ..., beginner_mode: bool = False):
+ self.beginner_mode = beginner_mode
+ ...
 
-    def _format_error(self) -> str:
-        base = self._format_basic_error()
+ def _format_error(self) -> str:
+ base = self._format_basic_error()
 
-        if self.beginner_mode:
-            base += self._add_beginner_explanation()
-            base += self._add_analogy()
-            base += self._add_fix_steps()
+ if self.beginner_mode:
+ base += self._add_beginner_explanation()
+ base += self._add_analogy()
+ base += self._add_fix_steps()
 
-        return base
+ return base
 ```
 
 ### Priority 4: Add Documentation Links (MEDIUM PRIORITY)
@@ -449,16 +449,16 @@ class NLPLError(Exception):
 **Implementation:**
 ```python
 ERROR_DOCS = {
-    "undefined_variable": "https://nlpl.dev/docs/variables",
-    "type_mismatch": "https://nlpl.dev/docs/types",
-    "missing_end": "https://nlpl.dev/docs/blocks",
-    "undefined_function": "https://nlpl.dev/docs/functions",
+ "undefined_variable": "https://nlpl.dev/docs/variables",
+ "type_mismatch": "https://nlpl.dev/docs/types",
+ "missing_end": "https://nlpl.dev/docs/blocks",
+ "undefined_function": "https://nlpl.dev/docs/functions",
 }
 
 def _format_error(self) -> str:
-    ...
-    if self.error_type in ERROR_DOCS:
-        base += f"\n\n  📚 Learn more: {ERROR_DOCS[self.error_type]}"
+ ...
+ if self.error_type in ERROR_DOCS:
+ base += f"\n\n Learn more: {ERROR_DOCS[self.error_type]}"
 ```
 
 ### Priority 5: Collect Multiple Errors (LOW PRIORITY)
@@ -485,40 +485,40 @@ def _format_error(self) -> str:
 
 ### Phase 1: Quick Wins (1-2 weeks)
 1. **Replace technical jargon** in existing error messages
-   - Update `src/nlpl/errors.py:211-223`
-   - Review all error messages in lexer, parser, type checker, interpreter
-   - Create glossary of natural language replacements
+ - Update `src/nlpl/errors.py:211-223`
+ - Review all error messages in lexer, parser, type checker, interpreter
+ - Create glossary of natural language replacements
 
 2. **Add common fix examples**
-   - Implement `get_fix_example()` function
-   - Add 10-15 most common error examples
-   - Integrate into error formatting
+ - Implement `get_fix_example()` function
+ - Add 10-15 most common error examples
+ - Integrate into error formatting
 
 ### Phase 2: Enhanced UX (2-3 weeks)
 3. **Create beginner mode**
-   - Add CLI flag support
-   - Write educational explanations for top 20 errors
-   - Create analogy library
-   - Add step-by-step fix instructions
+ - Add CLI flag support
+ - Write educational explanations for top 20 errors
+ - Create analogy library
+ - Add step-by-step fix instructions
 
 4. **Add documentation links**
-   - Create error documentation pages
-   - Map error types to URLs
-   - Integrate links into error messages
+ - Create error documentation pages
+ - Map error types to URLs
+ - Integrate links into error messages
 
 ### Phase 3: Advanced Features (3-4 weeks)
 5. **Implement multiple error collection**
-   - Design error collection system
-   - Determine fatal vs. non-fatal errors
-   - Implement error summary display
-   - Add error filtering options
+ - Design error collection system
+ - Determine fatal vs. non-fatal errors
+ - Implement error summary display
+ - Add error filtering options
 
 ### Phase 4: Polish & Testing (1-2 weeks)
 6. **User testing with non-programmers**
-   - Create test scenarios
-   - Record user reactions
-   - Iterate based on feedback
-   - Measure comprehension and fix success rate
+ - Create test scenarios
+ - Record user reactions
+ - Iterate based on feedback
+ - Measure comprehension and fix success rate
 
 ---
 
@@ -532,11 +532,11 @@ NLPL has comprehensive error testing:
 - `test_programs/test_*.nlpl` - Various error scenarios
 
 **Tested Categories:**
-- ✓ Lexer errors (invalid characters, unterminated strings)
-- ✓ Parser errors (missing tokens, invalid syntax)
-- ✓ Type errors (type mismatches, wrong argument types)
-- ✓ Runtime errors (division by zero, index errors, undefined names)
-- ✓ Module errors (missing imports, undefined attributes)
+- Lexer errors (invalid characters, unterminated strings)
+- Parser errors (missing tokens, invalid syntax)
+- Type errors (type mismatches, wrong argument types)
+- Runtime errors (division by zero, index errors, undefined names)
+- Module errors (missing imports, undefined attributes)
 
 **Gaps in testing:**
 - Need user comprehension tests (do non-programmers understand the messages?)
@@ -578,14 +578,14 @@ NLPL has comprehensive error testing:
 
 | Feature | Traditional Languages | Python | NLPL |
 |---------|----------------------|---------|------|
-| Visual error location | ❌ | ⚠️ | ✅ |
-| Natural language messages | ❌ | ⚠️ | ✅ |
-| "Did you mean?" suggestions | ❌ | ❌ | ✅ |
-| Shows expected vs. got | ⚠️ | ⚠️ | ✅ |
-| Context-aware hints | ❌ | ❌ | ✅ |
-| Beginner-friendly | ❌ | ⚠️ | ⚠️ (in progress) |
+| Visual error location | | | |
+| Natural language messages | | | |
+| "Did you mean?" suggestions | | | |
+| Shows expected vs. got | | | |
+| Context-aware hints | | | |
+| Beginner-friendly | | | (in progress) |
 
-Legend: ✅ Yes, ⚠️ Partial, ❌ No
+Legend: Yes, Partial, No
 
 ---
 
@@ -596,40 +596,40 @@ Legend: ✅ Yes, ⚠️ Partial, ❌ No
 **To measure error handling effectiveness:**
 
 1. **Error Fix Rate**
-   - Metric: % of errors fixed on first attempt after reading message
-   - Target: >70% for common errors (undefined variable, typos, missing end)
-   - Current: Unknown (needs testing)
+ - Metric: % of errors fixed on first attempt after reading message
+ - Target: >70% for common errors (undefined variable, typos, missing end)
+ - Current: Unknown (needs testing)
 
 2. **Time to Fix**
-   - Metric: Average time from error to successful fix
-   - Target: <2 minutes for common errors
-   - Current: Unknown (needs testing)
+ - Metric: Average time from error to successful fix
+ - Target: <2 minutes for common errors
+ - Current: Unknown (needs testing)
 
 3. **Errors per Session**
-   - Metric: Average number of errors encountered per coding session
-   - Target: Decreasing over time as user learns
-   - Track: First session vs. 10th session
+ - Metric: Average number of errors encountered per coding session
+ - Target: Decreasing over time as user learns
+ - Track: First session vs. 10th session
 
 4. **Abandonment Rate**
-   - Metric: % of users who quit after hitting errors
-   - Target: <15% in first session
-   - Current: Unknown (needs user testing)
+ - Metric: % of users who quit after hitting errors
+ - Target: <15% in first session
+ - Current: Unknown (needs user testing)
 
 ### Qualitative Metrics
 
 **User feedback questions:**
 
 1. "How well did you understand what went wrong?" (1-5 scale)
-   - Target: 4+ average
+ - Target: 4+ average
 
 2. "How helpful was the error message in fixing the issue?" (1-5 scale)
-   - Target: 4+ average
+ - Target: 4+ average
 
 3. "How frustrated did you feel?" (1-5 scale, lower is better)
-   - Target: <2 average
+ - Target: <2 average
 
 4. "Would you recommend NLPL to a non-programmer friend?" (Yes/No)
-   - Target: >70% yes
+ - Target: >70% yes
 
 ---
 
@@ -809,121 +809,121 @@ It's already quite good and with the recommended improvements, it can become exc
 ### Example 1: Undefined Variable (Current)
 ```
 Name Error: Name 'conter' is not defined
-  at line 5, column 11
+ at line 5, column 11
 
-  5 | print text conter
-                 ^
+ 5 | print text conter
+ ^
 
-  💡 Did you mean: 'counter'?
+ Did you mean: 'counter'?
 ```
 
 ### Example 1: Undefined Variable (Proposed Beginner Mode)
 ```
 Name Error: I don't recognize the name 'conter'
-  at line 5, column 11
+ at line 5, column 11
 
-  5 | print text conter
-                 ^
+ 5 | print text conter
+ ^
 
-💡 Did you mean: 'counter'?
+ Did you mean: 'counter'?
 
 What happened:
-  You're trying to use 'conter', but I haven't seen it before.
-  Think of it like asking me to grab a box labeled 'conter' -
-  I can't find any box with that label.
+ You're trying to use 'conter', but I haven't seen it before.
+ Think of it like asking me to grab a box labeled 'conter' -
+ I can't find any box with that label.
 
 How to fix:
-  1. If you meant 'counter', fix the typo
-  2. If 'conter' is new, create it first:
-     set conter to 0
+ 1. If you meant 'counter', fix the typo
+ 2. If 'conter' is new, create it first:
+ set conter to 0
 
 Common fix:
-  Wrong: print text conter
-  Right: set conter to 0
-         print text conter
+ Wrong: print text conter
+ Right: set conter to 0
+ print text conter
 
-📚 Learn more about variables: https://nlpl.dev/docs/variables
+ Learn more about variables: https://nlpl.dev/docs/variables
 ```
 
 ### Example 2: Type Mismatch (Current)
 ```
 Type Error: Cannot add String and Integer
-  at line 10, column 15
+ at line 10, column 15
 
-  10 | set result to "hello" + 5
-                          ^
+ 10 | set result to "hello" + 5
+ ^
 
-  Expected type: String
-  Got type: Integer
+ Expected type: String
+ Got type: Integer
 ```
 
 ### Example 2: Type Mismatch (Proposed Beginner Mode)
 ```
 Type Error: Can't mix text and numbers
-  at line 10, column 15
+ at line 10, column 15
 
-  10 | set result to "hello" + 5
-                          ^
+ 10 | set result to "hello" + 5
+ ^
 
 What happened:
-  You're trying to add "hello" (text) and 5 (a number).
-  This is like trying to add apples and oranges - they don't combine.
+ You're trying to add "hello" (text) and 5 (a number).
+ This is like trying to add apples and oranges - they don't combine.
 
 How to fix:
-  Make both sides match:
-  - Both text: "hello" + "5" → "hello5"
-  - Both numbers: 10 + 5 → 15
+ Make both sides match:
+ - Both text: "hello" + "5" "hello5"
+ - Both numbers: 10 + 5 15
 
 Common fix:
-  Wrong: set result to "hello" + 5
-  Right: set result to "hello" + " world"  # Both text
-    OR:  set result to 10 + 5              # Both numbers
+ Wrong: set result to "hello" + 5
+ Right: set result to "hello" + " world" # Both text
+ OR: set result to 10 + 5 # Both numbers
 
-📚 Learn more about types: https://nlpl.dev/docs/types
+ Learn more about types: https://nlpl.dev/docs/types
 ```
 
 ### Example 3: Missing End (Current)
 ```
 Syntax Error: Expected 'end' to close block
-  at line 8, column 1
+ at line 8, column 1
 
-  8 | print text "done"
-      ^
+ 8 | print text "done"
+ ^
 
-  💡 Suggestion: Make sure to close all blocks with 'end'
+ Suggestion: Make sure to close all blocks with 'end'
 ```
 
 ### Example 3: Missing End (Proposed Beginner Mode)
 ```
 Syntax Error: Missing 'end' to close your block
-  at line 8, column 1
+ at line 8, column 1
 
-  3 | if score is greater than 10
-  4 |     print text "You win!"
-  5 |     add 1 to wins
-  6 |
-  7 | # Missing 'end' here!
-  8 | print text "done"
-      ^
+ 3 | if score is greater than 10
+ 4 | print text "You win!"
+ 5 | add 1 to wins
+ 6 |
+ 7 | # Missing 'end' here!
+ 8 | print text "done"
+ ^
 
 What happened:
-  You started an 'if' block on line 3, but forgot to close it.
-  Every block (if, while, for, function) needs an 'end' to mark
-  where it stops.
+ You started an 'if' block on line 3, but forgot to close it.
+ Every block (if, while, for, function) needs an 'end' to mark
+ where it stops.
 
 How to fix:
-  Add 'end' after the last line that belongs in the if block:
+ Add 'end' after the last line that belongs in the if block:
 
-  if score is greater than 10
-      print text "You win!"
-      add 1 to wins
-  end  ← Add this!
-  print text "done"
+ if score is greater than 10
+ print text "You win!"
+ add 1 to wins
+ end Add this!
+ print text "done"
 
-💡 Tip: Every 'if', 'while', 'for', 'function', or 'class'
-        needs a matching 'end'. Count them to make sure they match!
+ Tip: Every 'if', 'while', 'for', 'function', or 'class'
+ needs a matching 'end'. Count them to make sure they match!
 
-📚 Learn more about blocks: https://nlpl.dev/docs/blocks
+ Learn more about blocks: https://nlpl.dev/docs/blocks
 ```
 
 ---

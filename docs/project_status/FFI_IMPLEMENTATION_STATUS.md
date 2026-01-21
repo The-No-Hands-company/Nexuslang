@@ -3,45 +3,45 @@
 ## Overview
 The FFI system enables NLPL to interface with C libraries and external code, allowing seamless integration with existing ecosystems.
 
-**Last Updated**: 2025-11-26  
-**Status**: ✅ **PHASE 2 COMPLETE - Ready for Phase 3**
+**Last Updated**: 2025-11-26 
+**Status**: **PHASE 2 COMPLETE - Ready for Phase 3**
 
 ---
 
 ## Implementation Progress
 
-### ✅ Phase 1: Core FFI Infrastructure (COMPLETE)
+### Phase 1: Core FFI Infrastructure (COMPLETE)
 
 [Previous content remains the same...]
 
-### ✅ Phase 2: Compiler Integration (COMPLETE - 2025-11-26)
+### Phase 2: Compiler Integration (COMPLETE - 2025-11-26)
 
-#### 1. LLVM IR Generator Integration ✅
+#### 1. LLVM IR Generator Integration 
 - **File**: `src/nlpl/compiler/backends/llvm_ir_generator.py`
 - **Changes**:
-  - Added `extern_functions` dict to track FFI declarations
-  - Added `required_libraries` set for linker flags
-  - Added `_collect_extern_function()` method
-  - Integrated FFI into first-pass collection
-  - Generate extern function declarations in LLVM IR
-  - Prevent duplicate declarations (FFI overrides standard lib)
-  - Added Pointer type mapping (`'pointer' -> 'i8*'`)
-  - Enhanced type conversion to handle pointer types
-  - Updated function call generation to recognize extern functions
-  - Variadic function support for printf-style functions
+ - Added `extern_functions` dict to track FFI declarations
+ - Added `required_libraries` set for linker flags
+ - Added `_collect_extern_function()` method
+ - Integrated FFI into first-pass collection
+ - Generate extern function declarations in LLVM IR
+ - Prevent duplicate declarations (FFI overrides standard lib)
+ - Added Pointer type mapping (`'pointer' -> 'i8*'`)
+ - Enhanced type conversion to handle pointer types
+ - Updated function call generation to recognize extern functions
+ - Variadic function support for printf-style functions
 
-#### 2. Linker Integration ✅
+#### 2. Linker Integration 
 - **Method**: `get_library_link_flags()`
 - Automatically generates `-lc`, `-lm`, `-lpthread`, etc.
 - Integrated into `compile_to_executable()` method
 - Library flags added to clang command
 
-#### 3. Type System Enhancements ✅
+#### 3. Type System Enhancements 
 - Pointer type mapping added
 - Pointer-to-pointer conversions (bitcast)
 - Prevented invalid conversions between pointers and integers
 
-#### 4. Successfully Compiled and Tested ✅
+#### 4. Successfully Compiled and Tested 
 
 **Test Program**: `test_ffi_simple.nlpl`
 ```nlpl
@@ -51,16 +51,16 @@ set message to "Hello from NLPL FFI!\n"
 call printf with message
 ```
 
-**Compilation**: ✅ Success
+**Compilation**: Success
 ```bash
 $ python nlplc_llvm.py test_ffi_simple.nlpl -o test_ffi
 Compiling test_ffi_simple.nlpl...
 Compiling IR to object file (O0)...
 Linking executable...
-✓ Compilation successful!
+ Compilation successful!
 ```
 
-**Execution**: ✅ Success  
+**Execution**: Success 
 ```bash
 $ ./test_ffi
 Hello from NLPL FFI!
@@ -74,36 +74,36 @@ declare i32 @printf(i8*, ...)
 ; Main function
 define i32 @main(i32 %argc, i8** %argv) {
 entry:
-  %1 = getelementptr inbounds [22 x i8], [22 x i8]* @.str.0, i64 0, i64 0
-  store i8* %1, i8** @message, align 8
-  %2 = load i8*, i8** @message, align 8
-  %3 = call i32 (i8*, ...) @printf(i8* %2)
-  ret i32 0
+ %1 = getelementptr inbounds [22 x i8], [22 x i8]* @.str.0, i64 0, i64 0
+ store i8* %1, i8** @message, align 8
+ %2 = load i8*, i8** @message, align 8
+ %3 = call i32 (i8*, ...) @printf(i8* %2)
+ ret i32 0
 }
 ```
 
-#### 5. Parser Enhancements ✅
+#### 5. Parser Enhancements 
 
-**Multi-Parameter Support**: ✅ FIXED
+**Multi-Parameter Support**: FIXED
 - Parser now handles comma-separated parameters in extern declarations
 - Syntax: `extern function func with p1 as Type1, p2 as Type2 returns RetType`
 - Properly parses parameter lists for C functions with multiple arguments
 
-**Function Call Syntax**: ✅ FIXED  
+**Function Call Syntax**: FIXED 
 - Implemented `call <function> with <args>` expression syntax
 - Properly parses `set result to call sqrt with 16.0` as assignment with function call value
 - Multiple arguments supported with commas: `call printf with format, value`
 
-**Function Name Flexibility**: ✅ FIXED
-- Allow C keywords (malloc, sin, cos, pow, etc.) as extern function names  
+**Function Name Flexibility**: FIXED
+- Allow C keywords (malloc, sin, cos, pow, etc.) as extern function names 
 - Parser recognizes common C function names even when they conflict with NLPL keywords
 
-**Return Type Inference**: ✅ FIXED
+**Return Type Inference**: FIXED
 - Extended `_infer_expression_type()` to check extern functions
 - Function call expressions now correctly infer return types from extern declarations
-- Proper type propagation: `double sqrt(double)` → variable gets `double` type
+- Proper type propagation: `double sqrt(double)` variable gets `double` type
 
-#### 6. Test Programs All Passing ✅
+#### 6. Test Programs All Passing 
 
 **Test 1: Basic Printf** (`test_ffi_basic.nlpl`)
 ```nlpl
@@ -111,7 +111,7 @@ extern function printf with format as Pointer returns Integer from library "c"
 set greeting to "Hello from NLPL calling C printf!\n"
 call printf with greeting
 ```
-✅ Output: `Hello from NLPL calling C printf!`
+ Output: `Hello from NLPL calling C printf!`
 
 **Test 2: Math Functions** (`test_ffi_math.nlpl`)
 ```nlpl
@@ -119,11 +119,11 @@ extern function sqrt with x as Float returns Float from library "m"
 extern function pow with x as Float, y as Float returns Float from library "m"
 extern function sin with x as Float returns Float from library "m"
 
-set result to call sqrt with 16.0        # 4.0
-set power_result to call pow with 2.0, 8.0  # 256.0
-set sin_result to call sin with 1.5708       # 1.0
+set result to call sqrt with 16.0 # 4.0
+set power_result to call pow with 2.0, 8.0 # 256.0
+set sin_result to call sin with 1.5708 # 1.0
 ```
-✅ Output:
+ Output:
 ```
 sqrt(16.0) = 4.000000
 pow(2.0, 8.0) = 256.000000
@@ -137,11 +137,11 @@ extern function strcmp with s1 as Pointer, s2 as Pointer returns Integer from li
 extern function strcpy with dest as Pointer, src as Pointer returns Pointer from library "c"
 extern function strcat with dest as Pointer, src as Pointer returns Pointer from library "c"
 
-set str_len to call strlen with "Hello"         # 5
-set cmp_result to call strcmp with "Test", "Test"  # 0
+set str_len to call strlen with "Hello" # 5
+set cmp_result to call strcmp with "Test", "Test" # 0
 # ... strcpy/strcat operations
 ```
-✅ Output:
+ Output:
 ```
 Length of 'Hello': 5
 strcmp result: 0 (equal)
@@ -155,62 +155,62 @@ extern function malloc with size as Integer returns Pointer from library "c"
 set bytes to 100
 set ptr to call malloc with bytes
 ```
-✅ Output:
+ Output:
 ```
 Allocated 100 bytes at: 0xb45d310
 Memory operations complete
 ```
 
-#### 7. Generated LLVM IR Quality ✅
+#### 7. Generated LLVM IR Quality 
 
 **Correct Type Inference** (After Fix):
 ```llvm
 ; Global variables with correct types
-@result = global double 0.0, align 8       ; ✅ Double, not i64
-@str_len = global i64 0, align 8           ; ✅ Integer for strlen
-@ptr = global i8* null, align 8            ; ✅ Pointer for malloc
+@result = global double 0.0, align 8 ; Double, not i64
+@str_len = global i64 0, align 8 ; Integer for strlen
+@ptr = global i8* null, align 8 ; Pointer for malloc
 
 ; Extern declarations
-declare double @sqrt(double)               ; ✅ Correct signature
-declare i32 @printf(i8*, ...)              ; ✅ Variadic syntax
-declare i64 @strlen(i8*)                   ; ✅ Pointer parameter
-declare i8* @malloc(i64)                   ; ✅ Returns pointer
+declare double @sqrt(double) ; Correct signature
+declare i32 @printf(i8*, ...) ; Variadic syntax
+declare i64 @strlen(i8*) ; Pointer parameter
+declare i8* @malloc(i64) ; Returns pointer
 
 ; Function calls with proper types
-%2 = call double @sqrt(double %1)          ; ✅ Returns double
-store double %2, double* @result           ; ✅ Stores as double
-%5 = call i64 @strlen(i8* %4)              ; ✅ Returns i64
-%8 = call i8* @malloc(i64 %7)              ; ✅ Returns pointer
+%2 = call double @sqrt(double %1) ; Returns double
+store double %2, double* @result ; Stores as double
+%5 = call i64 @strlen(i8* %4) ; Returns i64
+%8 = call i8* @malloc(i64 %7) ; Returns pointer
 ```
 
-#### 8. Library Linking ✅
+#### 8. Library Linking 
 
 **Automatic Detection**:
-- Functions from `"c"` → links with `-lc` (implicit, always linked)
-- Functions from `"m"` → links with `-lm` (math library)
-- Functions from `"pthread"` → links with `-lpthread`
-- Functions from `"dl"` → links with `-ldl`
+- Functions from `"c"` links with `-lc` (implicit, always linked)
+- Functions from `"m"` links with `-lm` (math library)
+- Functions from `"pthread"` links with `-lpthread`
+- Functions from `"dl"` links with `-ldl`
 
 **Example Linker Command**:
 ```bash
-clang test.o -o test -lm  # Automatically adds -lm for sqrt/pow/sin
+clang test.o -o test -lm # Automatically adds -lm for sqrt/pow/sin
 ```
 
 ---
 
 ## Next Steps
 
-### ✅ Phase 2 Complete - All Tests Passing
+### Phase 2 Complete - All Tests Passing
 
 **Achievements**:
-- ✅ Multi-parameter extern functions
-- ✅ Function call syntax with `call <func> with <args>`
-- ✅ Return type inference from extern declarations
-- ✅ Proper LLVM IR generation
-- ✅ Automatic library linking
-- ✅ All test programs compile and run correctly
+- Multi-parameter extern functions
+- Function call syntax with `call <func> with <args>`
+- Return type inference from extern declarations
+- Proper LLVM IR generation
+- Automatic library linking
+- All test programs compile and run correctly
 
-### 📋 Phase 3: Advanced FFI Features (12-18 hours remaining)
+### Phase 3: Advanced FFI Features (12-18 hours remaining)
 
 **1. Struct Marshalling** (4-6 hours)
 - Pass NLPL structs to C functions
@@ -244,24 +244,24 @@ clang test.o -o test -lm  # Automatically adds -lm for sqrt/pow/sin
 
 ```
 NLPL Source (extern declaration)
-       ↓
-Parser → ExternFunctionDeclaration AST node
-       ↓
+ 
+Parser ExternFunctionDeclaration AST node
+ 
 LLVMIRGenerator.generate()
-       ↓
-_collect_extern_function()  [First pass]
-       ↓
-_declare_external_functions()  [Skip if in extern_functions]
-       ↓
-Emit FFI declarations  [Lines 180-198]
-       ↓
-_generate_function_call_expression()  [Recognizes extern functions]
-       ↓
+ 
+_collect_extern_function() [First pass]
+ 
+_declare_external_functions() [Skip if in extern_functions]
+ 
+Emit FFI declarations [Lines 180-198]
+ 
+_generate_function_call_expression() [Recognizes extern functions]
+ 
 Generate call instruction with proper variadic syntax
-       ↓
-get_library_link_flags()  [Add -lc, -lm, etc.]
-       ↓
-compile_to_executable()  [Pass flags to clang]
+ 
+get_library_link_flags() [Add -lc, -lm, etc.]
+ 
+compile_to_executable() [Pass flags to clang]
 ```
 
 ### LLVM IR Generation for FFI
@@ -297,7 +297,7 @@ For variadic functions (printf, scanf, etc.):
 ### Library Linking
 
 - C standard library (`-lc`): Automatically linked
-- Math library (`-lm`): Added if FFI uses math functions  
+- Math library (`-lm`): Added if FFI uses math functions 
 - Other libraries: Mapped from `from library "name"` clause
 - Flags passed to clang during final linking stage
 
@@ -305,7 +305,7 @@ For variadic functions (printf, scanf, etc.):
 
 ## Success Metrics
 
-### Phase 1 (COMPLETE) ✅
+### Phase 1 (COMPLETE) 
 - [x] Parser handles extern declarations
 - [x] AST nodes created
 - [x] FFI code generation module implemented
@@ -339,7 +339,7 @@ For variadic functions (printf, scanf, etc.):
 4. `src/nlpl/parser/parser.py` - extern_declaration() method (pre-existing)
 
 ### Test Programs
-1. `test_ffi_simple.nlpl` - Single-argument printf test ✅
+1. `test_ffi_simple.nlpl` - Single-argument printf test 
 2. `test_ffi_2arg.nlpl` - Two-argument test (parser limitation)
 3. `test_ffi_comprehensive.nlpl` - Multi-function test (needs parser fix)
 
@@ -349,31 +349,30 @@ For variadic functions (printf, scanf, etc.):
 
 **Next Action**: Fix parser to handle `call function with arg1 with arg2 with argN` syntax correctly (estimated 2-3 hours).
 
-
-#### 1. Lexer Support ✅
+#### 1. Lexer Support 
 - **File**: `src/nlpl/parser/lexer.py`
 - **Added Tokens**:
-  - `EXTERN` - External declaration keyword
-  - `FOREIGN` - Alternative external keyword  
-  - `LIBRARY` - Library specification
-  - `CDECL` - C calling convention
-  - `STDCALL` - Standard call convention
+ - `EXTERN` - External declaration keyword
+ - `FOREIGN` - Alternative external keyword 
+ - `LIBRARY` - Library specification
+ - `CDECL` - C calling convention
+ - `STDCALL` - Standard call convention
 
 **Keywords mapped**:
 ```nlpl
-extern, external → TokenType.EXTERN
-foreign → TokenType.FOREIGN
-library → TokenType.LIBRARY
-cdecl → TokenType.CDECL
-stdcall → TokenType.STDCALL
+extern, external TokenType.EXTERN
+foreign TokenType.FOREIGN
+library TokenType.LIBRARY
+cdecl TokenType.CDECL
+stdcall TokenType.STDCALL
 ```
 
-#### 2. AST Nodes ✅
+#### 2. AST Nodes 
 - **File**: `src/nlpl/parser/ast.py`
 - **New Nodes**:
-  - `ExternFunctionDeclaration` - External C function declarations
-  - `ExternVariableDeclaration` - External C variable declarations
-  - `ForeignLibraryLoad` - Load foreign libraries
+ - `ExternFunctionDeclaration` - External C function declarations
+ - `ExternVariableDeclaration` - External C variable declarations
+ - `ForeignLibraryLoad` - Load foreign libraries
 
 **AST Node Features**:
 - Function parameters with type annotations
@@ -382,10 +381,10 @@ stdcall → TokenType.STDCALL
 - Calling convention specification (cdecl, stdcall)
 - Line number tracking for error reporting
 
-#### 3. Parser Support ✅
+#### 3. Parser Support 
 - **File**: `src/nlpl/parser/parser.py`
 - **Method**: `extern_declaration()`
-  
+ 
 **Syntax Supported**:
 ```nlpl
 # External function with single parameter
@@ -408,12 +407,12 @@ extern variable errno as Integer from library "c"
 - Calling convention parsing
 - Natural language syntax
 
-#### 4. FFI Code Generation (LLVM) ✅
+#### 4. FFI Code Generation (LLVM) 
 - **File**: `src/nlpl/compiler/ffi.py`
 - **Class**: `FFICodegen`
 
 **Features**:
-- LLVM type mapping (NLPL types → LLVM IR types)
+- LLVM type mapping (NLPL types LLVM IR types)
 - External function declaration generation
 - Library path resolution (uses ctypes.util)
 - Calling convention support
@@ -421,14 +420,14 @@ extern variable errno as Integer from library "c"
 
 **Supported Type Mappings**:
 ```
-Integer, Int, Int64  → i64
-Int8, Int16, Int32   → i8, i16, i32
-UInt8-UInt64         → unsigned variants
-Float, Double        → float, double
-Boolean              → i1
-Char                 → i8
-Pointer, String      → i8*
-Void                 → void
+Integer, Int, Int64 i64
+Int8, Int16, Int32 i8, i16, i32
+UInt8-UInt64 unsigned variants
+Float, Double float, double
+Boolean i1
+Char i8
+Pointer, String i8*
+Void void
 ```
 
 **Pre-declared Common Functions**:
@@ -444,13 +443,13 @@ Void                 → void
 - Finds pthread, dl libraries on Linux/Unix
 - Platform-aware library resolution
 
-#### 5. Runtime FFI Support (Interpreter) ✅
+#### 5. Runtime FFI Support (Interpreter) 
 - **File**: `src/nlpl/stdlib/ffi/__init__.py`
 - **Class**: `FFIManager`
 
 **Runtime Features**:
 - Dynamic library loading via ctypes
-- Type mapping (NLPL → ctypes)
+- Type mapping (NLPL ctypes)
 - Function signature caching
 - C function calling via ctypes.CDLL
 - Helper functions: `c_strlen`, `c_malloc`, `c_free`
@@ -459,19 +458,19 @@ Void                 → void
 
 ## Test Programs Created
 
-### 1. test_printf.nlpl ✅
+### 1. test_printf.nlpl 
 **Purpose**: Basic FFI demonstration with C printf
 ```nlpl
 extern function printf with format as Pointer returns Integer from library "c"
 
 function main
-    set format to "Hello from NLPL using C printf!\n"
-    printf(format)
-    return 0
+ set format to "Hello from NLPL using C printf!\n"
+ printf(format)
+ return 0
 end
 ```
 
-### 2. test_malloc.nlpl ✅
+### 2. test_malloc.nlpl 
 **Purpose**: Manual memory management via C malloc/free
 ```nlpl
 extern function malloc with size as Integer returns Pointer from library "c"
@@ -479,43 +478,43 @@ extern function free with ptr as Pointer from library "c"
 extern function printf with format as Pointer returns Integer from library "c"
 
 function main
-    set size to 100
-    set buffer to malloc(size)
-    
-    if buffer is not null
-        set msg to "Memory allocated successfully!\n"
-        printf(msg)
-        free(buffer)
-    end
-    return 0
+ set size to 100
+ set buffer to malloc(size)
+ 
+ if buffer is not null
+ set msg to "Memory allocated successfully!\n"
+ printf(msg)
+ free(buffer)
+ end
+ return 0
 end
 ```
 
-### 3. test_math.nlpl ✅
+### 3. test_math.nlpl 
 **Purpose**: Math library functions (libm)
 ```nlpl
 extern function sqrt with x as Double returns Double from library "m"
 extern function pow with base as Double with exponent as Double returns Double from library "m"
 
 function main
-    set num to 16.0
-    set result to sqrt(num)
-    # ... test other math functions
-    return 0
+ set num to 16.0
+ set result to sqrt(num)
+ # ... test other math functions
+ return 0
 end
 ```
 
-### 4. test_strings.nlpl ✅
+### 4. test_strings.nlpl 
 **Purpose**: String manipulation via C standard library
 ```nlpl
 extern function strlen with str as Pointer returns Integer from library "c"
 extern function strcmp with str1 as Pointer with str2 as Pointer returns Integer from library "c"
 
 function main
-    set text to "Hello, World!"
-    set len to strlen(text)
-    # ... test string operations
-    return 0
+ set text to "Hello, World!"
+ set len to strlen(text)
+ # ... test string operations
+ return 0
 end
 ```
 
@@ -527,23 +526,23 @@ end
 
 ```
 NLPL Code (extern declaration)
-       ↓
+ 
 Parser (extern_declaration)
-       ↓
+ 
 AST (ExternFunctionDeclaration)
-       ↓
+ 
 Compiler/Interpreter
-       ↓
-       ├→ [LLVM Backend]
-       │  ├→ FFICodegen.declare_extern_function()
-       │  ├→ Generate LLVM IR function declaration
-       │  ├→ Set external linkage
-       │  └→ Generate linker flags (-lc, -lm, etc.)
-       │
-       └→ [Interpreter Backend]
-          ├→ FFIManager.load_library()
-          ├→ ctypes.CDLL(library_path)
-          └→ FFIManager.call_function()
+ 
+ [LLVM Backend]
+ FFICodegen.declare_extern_function()
+ Generate LLVM IR function declaration
+ Set external linkage
+ Generate linker flags (-lc, -lm, etc.)
+ 
+ [Interpreter Backend]
+ FFIManager.load_library()
+ ctypes.CDLL(library_path)
+ FFIManager.call_function()
 ```
 
 ### LLVM Code Generation Example
@@ -562,7 +561,7 @@ attributes #0 = { "linkage"="external" "calling-convention"="ccc" }
 
 **Linker Flags**:
 ```
--lc  # Link against libc
+-lc # Link against libc
 ```
 
 ---
@@ -575,17 +574,17 @@ from nlpl.compiler.ffi import FFICodegen
 
 # In LLVMCodeGenerator.__init__()
 self.ffi_codegen = FFICodegen(self.module, self.builder)
-self.ffi_codegen.declare_common_c_functions()  # Pre-declare common functions
+self.ffi_codegen.declare_common_c_functions() # Pre-declare common functions
 
 # In LLVMCodeGenerator.visit()
 def visit_ExternFunctionDeclaration(self, node):
-    return self.ffi_codegen.generate_extern_declaration(node)
+ return self.ffi_codegen.generate_extern_declaration(node)
 
 # During function call
 def visit_FunctionCall(self, node):
-    if node.name in self.ffi_codegen.extern_functions:
-        return self.ffi_codegen.call_extern_function(node.name, args)
-    # ... normal function call
+ if node.name in self.ffi_codegen.extern_functions:
+ return self.ffi_codegen.call_extern_function(node.name, args)
+ # ... normal function call
 ```
 
 ### 2. Linker Integration
@@ -612,14 +611,14 @@ register_ffi_functions(runtime)
 
 ---
 
-## 📋 Phase 2: Advanced FFI Features (TODO)
+## Phase 2: Advanced FFI Features (TODO)
 
 ### 1. Struct Marshalling
 **Goal**: Pass NLPL structs to C functions
 ```nlpl
 struct Point
-    x as Integer
-    y as Integer
+ x as Integer
+ y as Integer
 end
 
 extern function draw_point with p as Point from library "graphics"
@@ -628,7 +627,7 @@ extern function draw_point with p as Point from library "graphics"
 set pt to new Point
 set pt.x to 10
 set pt.y to 20
-draw_point(pt)  # Convert to C struct layout
+draw_point(pt) # Convert to C struct layout
 ```
 
 **Implementation Needs**:
@@ -640,13 +639,13 @@ draw_point(pt)  # Convert to C struct layout
 **Goal**: Pass NLPL functions as C callbacks
 ```nlpl
 function my_comparator with a as Integer with b as Integer returns Integer
-    if a is less than b
-        return -1
-    else if a is greater than b
-        return 1
-    else
-        return 0
-    end
+ if a is less than b
+ return -1
+ else if a is greater than b
+ return 1
+ else
+ return 0
+ end
 end
 
 extern function qsort with base as Pointer with count as Integer with size as Integer with comparator as Pointer from library "c"
@@ -710,7 +709,7 @@ extern function syscall with number as Integer with arg1 as Integer returns Inte
 
 ---
 
-## 📋 Phase 3: Safety & Validation (TODO)
+## Phase 3: Safety & Validation (TODO)
 
 ### 1. Type Safety Checks
 - Validate NLPL types match C signatures
@@ -735,13 +734,13 @@ extern function syscall with number as Integer with arg1 as Integer returns Inte
 ```python
 # tests/test_ffi.py
 def test_extern_function_declaration():
-    # Test parser handles extern syntax
-    
+ # Test parser handles extern syntax
+ 
 def test_ffi_codegen_printf():
-    # Test LLVM IR generation for printf
-    
+ # Test LLVM IR generation for printf
+ 
 def test_library_resolution():
-    # Test finding libc, libm, etc.
+ # Test finding libc, libm, etc.
 ```
 
 ### Integration Tests
@@ -809,19 +808,19 @@ def test_library_resolution():
 
 ### Immediate (Phase 2)
 1. **Integrate FFI codegen into compiler** (2-3 hours)
-   - Hook `ExternFunctionDeclaration` into visitor pattern
-   - Generate linker flags automatically
-   - Test basic FFI programs
+ - Hook `ExternFunctionDeclaration` into visitor pattern
+ - Generate linker flags automatically
+ - Test basic FFI programs
 
 2. **Struct marshalling** (4-6 hours)
-   - Layout compatibility checking
-   - Automatic conversion code
-   - Alignment handling
+ - Layout compatibility checking
+ - Automatic conversion code
+ - Alignment handling
 
 3. **Callback support** (6-8 hours)
-   - Function pointer generation
-   - Trampolines for NLPL→C calls
-   - Context management
+ - Function pointer generation
+ - Trampolines for NLPLC calls
+ - Context management
 
 ### Medium Term (Phase 3)
 4. **Variadic function support** (4-5 hours)
@@ -837,7 +836,7 @@ def test_library_resolution():
 
 ## Success Metrics
 
-### Phase 1 (COMPLETE) ✅
+### Phase 1 (COMPLETE) 
 - [x] Parser handles extern declarations
 - [x] AST nodes created
 - [x] FFI code generation module implemented

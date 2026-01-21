@@ -80,9 +80,9 @@ NLPL
 >>> :vars
 
 Variables:
-  Scope 1:
-    x = 42
-    name = NLPL
+ Scope 1:
+ x = 42
+ name = NLPL
 ```
 
 ### Example 2: Multi-line Function Definition
@@ -147,8 +147,8 @@ The REPL automatically detects incomplete statements and switches to multi-line 
 >>> :vars
 
 Variables:
-  Scope 1:
-    p = <struct StructureInstance>
+ Scope 1:
+ p = <struct StructureInstance>
 ```
 
 ### Example 6: Error Recovery
@@ -171,10 +171,10 @@ The REPL catches errors and continues execution without restarting.
 
 Press `Tab` to auto-complete:
 
-- **Keywords**: `func<TAB>` → `function`
-- **Variables**: `my_var<TAB>` → `my_variable`
-- **Functions**: `calc<TAB>` → `calculate_average`
-- **Commands**: `:h<TAB>` → `:help`
+- **Keywords**: `func<TAB>` `function`
+- **Variables**: `my_var<TAB>` `my_variable`
+- **Functions**: `calc<TAB>` `calculate_average`
+- **Commands**: `:h<TAB>` `:help`
 
 ### Command History
 
@@ -205,13 +205,13 @@ Debug mode: enabled
 >>> set x to 42
 
 --- Tokens ---
-  Token(TokenType.SET, 'set')
-  Token(TokenType.IDENTIFIER, 'x')
-  Token(TokenType.TO, 'to')
-  Token(TokenType.INTEGER, '42')
+ Token(TokenType.SET, 'set')
+ Token(TokenType.IDENTIFIER, 'x')
+ Token(TokenType.TO, 'to')
+ Token(TokenType.INTEGER, '42')
 
 --- AST ---
-  VariableDeclaration(name='x', value=42)
+ VariableDeclaration(name='x', value=42)
 
 => 42
 ```
@@ -225,7 +225,7 @@ Toggle type checking on/off:
 Type checking: disabled
 >>> set x to "string"
 => string
->>> set y to x plus 42  # No type error
+>>> set y to x plus 42 # No type error
 => string42
 >>> :type-check
 Type checking: enabled
@@ -241,10 +241,10 @@ After running code, use `:vars` to see what variables are defined:
 >>> :vars
 
 Variables:
-  Scope 1:
-    x = 42
-    name = NLPL
-    numbers = [1, 2, 3, 4, 5]
+ Scope 1:
+ x = 42
+ name = NLPL
+ numbers = [1, 2, 3, 4, 5]
 ```
 
 ### 2. Use :funcs to See Available Functions
@@ -253,9 +253,9 @@ Variables:
 >>> :funcs
 
 Functions:
-  greet(name as String) returns String
-  factorial(n as Integer) returns Integer
-  calculate_average(numbers as List) returns Float
+ greet(name as String) returns String
+ factorial(n as Integer) returns Integer
+ calculate_average(numbers as List) returns Float
 ```
 
 ### 3. Reset When Things Get Messy
@@ -288,7 +288,7 @@ Press Up Arrow to recall previous commands instead of retyping:
 ```
 >>> set x to 10
 >>> print text x
-<UP> <UP>  # Recalls "set x to 10"
+<UP> <UP> # Recalls "set x to 10"
 >>> set x to 20
 ```
 
@@ -325,10 +325,10 @@ To view history:
 >>> :history
 
 History:
-    1: set x to 42
-    2: function greet with name as String
-    3: print text "Hello"
-    ...
+ 1: set x to 42
+ 2: function greet with name as String
+ 3: print text "Hello"
+ ...
 ```
 
 ## Integration with File Execution
@@ -356,7 +356,7 @@ If the REPL is stuck in multi-line mode (showing `...` prompt):
 Make sure you have `readline` installed (should be built-in on Linux/macOS):
 
 ```bash
-pip install readline  # If needed on some systems
+pip install readline # If needed on some systems
 ```
 
 On Windows, consider using `pyreadline3`:
@@ -371,7 +371,7 @@ Check permissions on `~/.nlpl_history`:
 
 ```bash
 ls -la ~/.nlpl_history
-chmod 644 ~/.nlpl_history  # If needed
+chmod 644 ~/.nlpl_history # If needed
 ```
 
 ### Errors Not Showing Details
@@ -389,22 +389,22 @@ Debug mode: enabled
 
 | Feature | NLPL REPL | Python REPL |
 |---------|-----------|-------------|
-| Natural syntax | ✓ (English-like) | ✗ (Technical) |
-| Multi-line detection | ✓ Automatic | ✗ Manual `...` |
-| Special commands | ✓ `:help`, `:vars`, etc. | ✗ Limited |
-| Auto-completion | ✓ Context-aware | ✓ Basic |
-| Type checking toggle | ✓ Runtime toggle | ✗ Static only |
-| Reset capability | ✓ `:reset` | ✗ Must restart |
+| Natural syntax | (English-like) | (Technical) |
+| Multi-line detection | Automatic | Manual `...` |
+| Special commands | `:help`, `:vars`, etc. | Limited |
+| Auto-completion | Context-aware | Basic |
+| Type checking toggle | Runtime toggle | Static only |
+| Reset capability | `:reset` | Must restart |
 
 ### Node.js REPL
 
 | Feature | NLPL REPL | Node.js REPL |
 |---------|-----------|-------------|
-| Variable inspection | ✓ `:vars` | ✗ Manual |
-| Function listing | ✓ `:funcs` | ✗ Manual |
-| History persistence | ✓ Automatic | ✓ Automatic |
-| Debug mode | ✓ Token/AST view | ✗ Limited |
-| Error recovery | ✓ Automatic | ✓ Automatic |
+| Variable inspection | `:vars` | Manual |
+| Function listing | `:funcs` | Manual |
+| History persistence | Automatic | Automatic |
+| Debug mode | Token/AST view | Limited |
+| Error recovery | Automatic | Automatic |
 
 ## Best Practices
 
@@ -423,7 +423,7 @@ After defining variables, check `:vars` to confirm:
 
 ```
 >>> set user_name to "Alice"
->>> :vars  # Verify it's set correctly
+>>> :vars # Verify it's set correctly
 ```
 
 ### 3. Test Functions Interactively
@@ -434,7 +434,7 @@ Define functions in the REPL before adding them to files:
 >>> function calculate_tax with amount as Float returns Float
 ... return amount times 0.08
 ... end
->>> calculate_tax with 100.0  # Test it
+>>> calculate_tax with 100.0 # Test it
 => 8.0
 ```
 
@@ -490,6 +490,6 @@ The NLPL REPL is part of the NLPL project and follows the same license.
 
 ---
 
-**Version**: 0.1.0  
-**Last Updated**: 2024  
+**Version**: 0.1.0 
+**Last Updated**: 2024 
 **Maintainer**: NLPL Development Team

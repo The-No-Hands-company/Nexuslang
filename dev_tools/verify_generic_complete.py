@@ -27,7 +27,7 @@ runtime = Runtime()
 interpreter = Interpreter(runtime)
 interpreter.interpret(ast)
 
-print("✅ Generic Class Implementation Verification:\n")
+print(" Generic Class Implementation Verification:\n")
 
 if hasattr(interpreter, 'classes'):
     for name, class_def in interpreter.classes.items():
@@ -48,7 +48,7 @@ if hasattr(interpreter, 'classes'):
                 print(f"    - {prop.name}: {prop.type_annotation}")
         print()
     
-    print("✅ Generic classes fully implemented!")
-    print("✅ Type constraints working correctly!")
+    print(" Generic classes fully implemented!")
+    print(" Type constraints working correctly!")
 else:
-    print("❌ No classes found")
+    print(" No classes found")

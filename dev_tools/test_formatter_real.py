@@ -34,9 +34,9 @@ def main():
     
     # Check if changes were made
     if original == formatted:
-        print("\n✓ File is already properly formatted!")
+        print("\n File is already properly formatted!")
     else:
-        print("\n✓ File was reformatted")
+        print("\n File was reformatted")
         print(f"\nOriginal length: {len(original)} chars")
         print(f"Formatted length: {len(formatted)} chars")
     

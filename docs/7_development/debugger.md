@@ -50,13 +50,13 @@ Paused at test.nlpl:10 (breakpoint)
 ============================================================
 
 Source:
-      7 | function calculate_sum with numbers as List
-      8 |     set total to 0
-      9 |     for each num in numbers
-  →  10 |         set total to total plus num
-     11 |     end
-     12 |     return total
-     13 | end
+ 7 | function calculate_sum with numbers as List
+ 8 | set total to 0
+ 9 | for each num in numbers
+ 10 | set total to total plus num
+ 11 | end
+ 12 | return total
+ 13 | end
 
 Current function: calculate_sum
 
@@ -109,12 +109,12 @@ Current function: calculate_sum
 **Program** (`test_debug.nlpl`):
 ```nlpl
 function factorial with n as Integer returns Integer
-    if n is less than or equal to 1
-        return 1
-    end
-    
-    set result to n times factorial with n minus 1
-    return result
+ if n is less than or equal to 1
+ return 1
+ end
+ 
+ set result to n times factorial with n minus 1
+ return result
 end
 
 set value to factorial with 5
@@ -133,10 +133,10 @@ Paused at test_debug.nlpl:2 (breakpoint)
 ============================================================
 
 Source:
-      1 | function factorial with n as Integer returns Integer
-  →   2 |     if n is less than or equal to 1
-      3 |         return 1
-      4 |     end
+ 1 | function factorial with n as Integer returns Integer
+ 2 | if n is less than or equal to 1
+ 3 | return 1
+ 4 | end
 
 Current function: factorial
 
@@ -145,7 +145,7 @@ n = 5
 
 (nlpl-dbg) stack
 Call Stack:
-  → #0: factorial at test_debug.nlpl:2
+ #0: factorial at test_debug.nlpl:2
 
 (nlpl-dbg) n
 # Steps to next line...
@@ -168,8 +168,8 @@ This breakpoint only triggers when variable `x` is greater than 100.
 ```
 (nlpl-dbg) vars
 Variables:
-  x = 42
-  total = 100
+ x = 42
+ total = 100
 
 (nlpl-dbg) p x
 x = 42
@@ -188,14 +188,14 @@ x = 999
 ```
 (nlpl-dbg) stack
 Call Stack:
-  → #0: helper at program.nlpl:25
-    #1: calculate at program.nlpl:15
-    #2: main at program.nlpl:5
+ #0: helper at program.nlpl:25
+ #1: calculate at program.nlpl:15
+ #2: main at program.nlpl:5
 
 (nlpl-dbg) vars
 Variables (in helper):
-  z = 30
-  result = 150
+ z = 30
+ result = 150
 ```
 
 ## Programmatic API
@@ -236,7 +236,7 @@ bp3 = debugger.add_breakpoint("program.nlpl", 50, temp=True)
 ```python
 # List all breakpoints
 for bp in debugger.list_breakpoints():
-    print(bp)
+ print(bp)
 
 # Remove breakpoint
 debugger.remove_breakpoint("program.nlpl", 10)
@@ -260,7 +260,7 @@ value = debugger.inspect_variable("x")
 # Get all variables
 all_vars = debugger.inspect_all_variables()
 for name, value in all_vars.items():
-    print(f"{name} = {value}")
+ print(f"{name} = {value}")
 
 # Set variable
 debugger.set_variable("x", 999)
@@ -279,7 +279,7 @@ debugger.print_stack_trace()
 
 # Access call stack
 for i, frame in enumerate(debugger.call_stack):
-    print(f"#{i}: {frame.function_name} at {frame.file}:{frame.line}")
+ print(f"#{i}: {frame.function_name} at {frame.file}:{frame.line}")
 ```
 
 ### Callbacks
@@ -287,22 +287,22 @@ for i, frame in enumerate(debugger.call_stack):
 ```python
 # Register callback for breakpoints
 def on_breakpoint(bp, frame):
-    print(f"Hit breakpoint at {bp.file}:{bp.line}")
-    print(f"In function: {frame.function_name}")
+ print(f"Hit breakpoint at {bp.file}:{bp.line}")
+ print(f"In function: {frame.function_name}")
 
 debugger.on_breakpoint = on_breakpoint
 
 # Register callback for steps
 def on_step(file, line):
-    print(f"Stepped to {file}:{line}")
+ print(f"Stepped to {file}:{line}")
 
 debugger.on_step = on_step
 
 # Register callback for exceptions
 def on_exception(exception, frame):
-    print(f"Exception: {exception}")
-    if frame:
-        print(f"In {frame.function_name}")
+ print(f"Exception: {exception}")
+ if frame:
+ print(f"In {frame.function_name}")
 
 debugger.on_exception = on_exception
 ```
@@ -348,28 +348,28 @@ repl.interpreter.debugger = debugger
 The debugger hooks into the interpreter at key points:
 
 1. **`execute()`**: Called for each AST node execution
-   - Checks breakpoints
-   - Handles step modes
-   - Tracks line numbers
+ - Checks breakpoints
+ - Handles step modes
+ - Tracks line numbers
 
 2. **`execute_function_call()`**: Function entry/exit
-   - Pushes call frames
-   - Pops frames on return
-   - Tracks call depth
+ - Pushes call frames
+ - Pops frames on return
+ - Tracks call depth
 
 3. **`interpret()`**: Exception handling
-   - Catches exceptions
-   - Provides inspection
-   - Auto-pause on errors
+ - Catches exceptions
+ - Provides inspection
+ - Auto-pause on errors
 
 ### Hook Methods
 
 ```python
 # Interpreter calls these methods:
-debugger.trace_line(file, line)              # Each line execution
-debugger.trace_call(func, file, line, vars)  # Function entry
-debugger.trace_return(func, result)          # Function exit
-debugger.trace_exception(exception)          # Exception occurred
+debugger.trace_line(file, line) # Each line execution
+debugger.trace_call(func, file, line, vars) # Function entry
+debugger.trace_return(func, result) # Function exit
+debugger.trace_exception(exception) # Exception occurred
 ```
 
 ## Best Practices
@@ -463,24 +463,24 @@ Use `stack` to understand:
 
 | Feature | NLPL Debugger | Python pdb |
 |---------|---------------|------------|
-| Line breakpoints | ✓ | ✓ |
-| Conditional breakpoints | ✓ | ✓ |
-| Step execution | ✓ | ✓ |
-| Variable inspection | ✓ | ✓ |
-| Call stack | ✓ | ✓ |
-| Natural language | ✓ | ✗ |
-| Interactive REPL | ✓ | Limited |
+| Line breakpoints | | |
+| Conditional breakpoints | | |
+| Step execution | | |
+| Variable inspection | | |
+| Call stack | | |
+| Natural language | | |
+| Interactive REPL | | Limited |
 
 ### GDB
 
 | Feature | NLPL Debugger | GDB |
 |---------|---------------|-----|
-| Source-level debugging | ✓ | ✓ |
-| Breakpoints | ✓ | ✓ |
-| Watchpoints | Future | ✓ |
-| Memory inspection | Future | ✓ |
-| Multi-threaded | Future | ✓ |
-| Easy to use | ✓ | ✗ |
+| Source-level debugging | | |
+| Breakpoints | | |
+| Watchpoints | Future | |
+| Memory inspection | Future | |
+| Multi-threaded | Future | |
+| Easy to use | | |
 
 ## Future Enhancements
 
@@ -527,6 +527,6 @@ The NLPL Debugger is part of the NLPL project.
 
 ---
 
-**Version**: 0.1.0  
-**Last Updated**: January 6, 2026  
+**Version**: 0.1.0 
+**Last Updated**: January 6, 2026 
 **Maintainer**: NLPL Development Team

@@ -35,7 +35,7 @@ end
     parser = Parser(tokens)
     ast = parser.parse()
     
-    print(f"\n✓ Successfully parsed {len(ast.statements)} statements")
+    print(f"\n Successfully parsed {len(ast.statements)} statements")
     
     # Generate C
     generator = CCodeGenerator(target="c")
@@ -47,7 +47,7 @@ end
     print("="*70)
     
     # Check for key patterns
-    print("\n✨ KEY FEATURES:")
+    print("\n KEY FEATURES:")
     print("-"*70)
     
     features = [
@@ -59,12 +59,12 @@ end
     
     for feature, pattern, desc in features:
         if pattern in c_code:
-            print(f"  ✓ {feature:20} → {desc}")
+            print(f"   {feature:20} → {desc}")
         else:
-            print(f"  ✗ {feature:20} → Missing!")
+            print(f"   {feature:20} → Missing!")
     
     print("\n" + "="*70)
-    print("🎉 For-each loop feature is functional!")
+    print(" For-each loop feature is functional!")
     print("="*70)
 
 if __name__ == "__main__":

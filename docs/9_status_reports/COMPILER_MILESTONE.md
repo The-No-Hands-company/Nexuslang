@@ -2,7 +2,7 @@
 
 ## What We Built Today
 
-### 🎯 Core Achievement
+### Core Achievement
 **Successfully compiled NLPL to native executable via C backend!**
 
 ```nlpl
@@ -10,9 +10,9 @@ set greeting to "Hello from NLPL!"
 print text greeting
 ```
 
-↓ Compiles to C ↓ Compiles to native binary ↓ **RUNS WITHOUT PYTHON!**
+ Compiles to C Compiles to native binary **RUNS WITHOUT PYTHON!**
 
-### 📊 New Tools Created
+### New Tools Created
 
 #### 1. **Parser Tracer** (`dev_tools/parser_tools/parser_tracer.py`)
 **Problem it solves:** Impossible to see what parser is doing internally
@@ -88,29 +88,29 @@ python dev_tools/explain_compilation.py
 
 ---
 
-### 🔧 Core Fixes
+### Core Fixes
 
 #### 1. **Parser Statement Handler**
 **Before:** Only handled `SET` statements, threw error on everything else
 
 **After:** Handles all statement types:
-- `SET` → variable_declaration()
-- `PRINT` → print_statement()
-- `IF` → if_statement()
-- `WHILE` → while_loop()
-- `FOR` → for_loop()
-- `FUNCTION` → function_definition()
-- `CLASS` → class_definition()
-- `RETURNS` → return_statement()
-- `TRY` → try_statement()
+- `SET` variable_declaration()
+- `PRINT` print_statement()
+- `IF` if_statement()
+- `WHILE` while_loop()
+- `FOR` for_loop()
+- `FUNCTION` function_definition()
+- `CLASS` class_definition()
+- `RETURNS` return_statement()
+- `TRY` try_statement()
 - Expression statements (function calls, etc.)
 
 #### 2. **Print Statement Implementation**
 Added new `print_statement()` method:
 ```python
 def print_statement(self):
-    # Consumes: PRINT [TEXT] expression
-    # Returns: FunctionCall("print", [expression])
+ # Consumes: PRINT [TEXT] expression
+ # Returns: FunctionCall("print", [expression])
 ```
 
 This prevents the infinite loop that occurred when parser encountered `PRINT`.
@@ -124,7 +124,7 @@ This prevents the infinite loop that occurred when parser encountered `PRINT`.
 
 ---
 
-### 🏗️ Compiler Infrastructure
+### Compiler Infrastructure
 
 #### **Created Files:**
 - `src/compiler/__init__.py` - Base classes and orchestration
@@ -135,48 +135,48 @@ This prevents the infinite loop that occurred when parser encountered `PRINT`.
 #### **Compilation Targets Defined:**
 ```python
 class CompilationTarget(Enum):
-    C = "c"
-    CPP = "cpp"
-    ASM_X86_64 = "asm_x86_64"
-    JAVASCRIPT = "js"
-    WASM = "wasm"
-    LLVM_IR = "llvm_ir"
+ C = "c"
+ CPP = "cpp"
+ ASM_X86_64 = "asm_x86_64"
+ JAVASCRIPT = "js"
+ WASM = "wasm"
+ LLVM_IR = "llvm_ir"
 ```
 
 #### **Working Pipeline:**
 ```bash
 python nlpl_compile.py test.nlpl -o test.c --target c
 gcc test.c -o test
-./test  # RUNS!
+./test # RUNS!
 ```
 
 ---
 
-### 📈 Current Implementation Status
+### Current Implementation Status
 
-#### ✅ **Working Now:**
+#### **Working Now:**
 - **Lexer:** Full tokenization
 - **Parser:** 
-  - Variable declarations (`SET name TO value`)
-  - Print statements (`PRINT TEXT expression`)
-  - Literals (strings, integers, floats, booleans)
-  - Basic expressions
+ - Variable declarations (`SET name TO value`)
+ - Print statements (`PRINT TEXT expression`)
+ - Literals (strings, integers, floats, booleans)
+ - Basic expressions
 - **C Code Generator:**
-  - Variable declarations → C variables with type inference
-  - Print statements → `printf("%s\n", ...)`
-  - String literals → `const char*`
-  - Main function scaffolding
-  - Includes (`stdio.h`, `stdlib.h`, etc.)
+ - Variable declarations C variables with type inference
+ - Print statements `printf("%s\n", ...)`
+ - String literals `const char*`
+ - Main function scaffolding
+ - Includes (`stdio.h`, `stdlib.h`, etc.)
 - **Compiler Pipeline:**
-  - AST → C code → GCC → Native executable
-  - Full CLI with --target, --link, --optimize options
+ - AST C code GCC Native executable
+ - Full CLI with --target, --link, --optimize options
 
-#### 🚧 **Partially Complete:**
+#### **Partially Complete:**
 - **C++ Backend:** Skeleton created, needs OOP features
 - **Control Flow:** Parser methods exist but not wired to C generator
 - **Functions:** Parser exists, generator stub only
 
-#### ❌ **Not Started:**
+#### **Not Started:**
 - **JavaScript Backend**
 - **WASM Backend**
 - **LLVM Backend**
@@ -186,7 +186,7 @@ gcc test.c -o test
 
 ---
 
-### 🎓 Lessons Learned
+### Lessons Learned
 
 #### **The Debugging Journey Validated Your Point:**
 
@@ -195,28 +195,28 @@ You said: *"There is room for improvement on our helper tools"*
 You were **100% RIGHT**. Here's what we learned:
 
 1. **Import Checker Would Have Saved Hours**
-   - Spent ages debugging `TokenType.SET == TokenType.SET → False`
-   - Root cause: dual imports creating separate enum instances
-   - Import checker finds this **instantly**
+ - Spent ages debugging `TokenType.SET == TokenType.SET False`
+ - Root cause: dual imports creating separate enum instances
+ - Import checker finds this **instantly**
 
 2. **Parser Tracer Showed Exactly What Happened**
-   - Manual debugging with print statements was painful
-   - Parser tracer shows full execution flow with one command
-   - Would have revealed double-`advance()` bug immediately
+ - Manual debugging with print statements was painful
+ - Parser tracer shows full execution flow with one command
+ - Would have revealed double-`advance()` bug immediately
 
 3. **Compilation Explainer Clarified Architecture**
-   - Confusion about "why C as intermediate?"
-   - Visual explainer shows multi-backend strategy
-   - Makes design decisions transparent
+ - Confusion about "why C as intermediate?"
+ - Visual explainer shows multi-backend strategy
+ - Makes design decisions transparent
 
 #### **The Missing Tools We Identified:**
 
-✅ **BUILT:**
+ **BUILT:**
 - Parser Tracer
-- Import Consistency Checker  
+- Import Consistency Checker 
 - Compilation Strategy Explainer
 
-❌ **STILL NEEDED:**
+ **STILL NEEDED:**
 - Grammar Coverage Analyzer (would show "PRINT recognized but not implemented")
 - Infinite Loop Detector (would flag error_recovery() stuck on token)
 - Statement Handler Validator (ensures all TokenTypes have handlers)
@@ -225,26 +225,26 @@ You were **100% RIGHT**. Here's what we learned:
 
 ---
 
-### 🚀 What's Next
+### What's Next
 
 #### **Immediate Priorities (Next Session):**
 
 1. **Expand C Backend:**
-   - Add if/else statements
-   - Add while/for loops  
-   - Add function definitions
-   - Test with more complex examples
+ - Add if/else statements
+ - Add while/for loops 
+ - Add function definitions
+ - Test with more complex examples
 
 2. **Build More Dev Tools:**
-   - Grammar Coverage Analyzer
-   - Infinite Loop Detector
-   - Test regression suite
+ - Grammar Coverage Analyzer
+ - Infinite Loop Detector
+ - Test regression suite
 
 3. **Complete C++ Backend:**
-   - Class generation
-   - Method generation
-   - Template support
-   - Smart pointer management
+ - Class generation
+ - Method generation
+ - Template support
+ - Smart pointer management
 
 #### **Future Backends (Ordered by Priority):**
 1. **LLVM Backend** - Production-quality optimization
@@ -254,7 +254,7 @@ You were **100% RIGHT**. Here's what we learned:
 
 ---
 
-### 📝 Documentation Created
+### Documentation Created
 
 - `docs/backend_strategy.md` - Comprehensive backend architecture guide
 - `dev_tools/parser_tools/parser_tracer.py` - Full inline documentation
@@ -263,7 +263,7 @@ You were **100% RIGHT**. Here's what we learned:
 
 ---
 
-### 🎯 Key Takeaway
+### Key Takeaway
 
 **NLPL now has a working compiler!**
 
@@ -278,9 +278,9 @@ print text greeting
 **To this:**
 ```c
 int main(int argc, char** argv) {
-    const char* greeting = "Hello from NLPL!";
-    printf("%s\n", greeting);
-    return 0;
+ const char* greeting = "Hello from NLPL!";
+ printf("%s\n", greeting);
+ return 0;
 }
 ```
 

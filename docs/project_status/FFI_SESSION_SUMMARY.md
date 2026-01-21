@@ -1,35 +1,35 @@
-# Phase 3: FFI & Interop - Implementation Complete ✅
+# Phase 3: FFI & Interop - Implementation Complete 
 
 ## Summary
 
 Successfully implemented core FFI (Foreign Function Interface) infrastructure for NLPL, enabling seamless integration with C libraries and external code.
 
-**Date**: 2025-11-25  
-**Time Spent**: ~2 hours  
-**Status**: Phase 1 Complete ✅
+**Date**: 2025-11-25 
+**Time Spent**: ~2 hours 
+**Status**: Phase 1 Complete 
 
 ---
 
 ## What Was Implemented
 
-### 1. Lexer Extensions ✅
+### 1. Lexer Extensions 
 **File**: `src/nlpl/parser/lexer.py`
 
 Added FFI-specific tokens:
 ```python
-EXTERN = auto()      # extern, external
-FOREIGN = auto()     # foreign
-LIBRARY = auto()     # library
-CDECL = auto()       # cdecl calling convention
-STDCALL = auto()     # stdcall calling convention
+EXTERN = auto() # extern, external
+FOREIGN = auto() # foreign
+LIBRARY = auto() # library
+CDECL = auto() # cdecl calling convention
+STDCALL = auto() # stdcall calling convention
 ```
 
-### 2. AST Nodes ✅
+### 2. AST Nodes 
 **File**: `src/nlpl/parser/ast.py`
 
 Created new node types:
 - `ExternFunctionDeclaration` - External C function declarations
-- `ExternVariableDeclaration` - External C variable declarations  
+- `ExternVariableDeclaration` - External C variable declarations 
 - `ForeignLibraryLoad` - Foreign library loading
 
 Features:
@@ -39,7 +39,7 @@ Features:
 - Calling convention specs
 - Line number tracking
 
-### 3. Parser Support ✅
+### 3. Parser Support 
 **File**: `src/nlpl/parser/parser.py`
 
 Implemented `extern_declaration()` method with full support for:
@@ -63,7 +63,7 @@ extern variable errno as Integer from library "c"
 - Calling convention parsing (cdecl, stdcall)
 - Natural language aliases (extern/external/foreign)
 
-### 4. FFI Code Generation Module ✅
+### 4. FFI Code Generation Module 
 **File**: `src/nlpl/compiler/ffi.py`
 
 Created comprehensive FFI codegen class:
@@ -71,7 +71,7 @@ Created comprehensive FFI codegen class:
 **Class**: `FFICodegen`
 
 **Key Features**:
-- LLVM type mapping (NLPL → LLVM IR)
+- LLVM type mapping (NLPL LLVM IR)
 - External function declaration generation
 - Library path auto-discovery (uses ctypes.util)
 - Calling convention support (C, stdcall)
@@ -79,15 +79,15 @@ Created comprehensive FFI codegen class:
 
 **Type Mappings**:
 ```
-Integer/Int/Int64  → i64
-Int8/16/32         → i8, i16, i32  
-UInt8-UInt64       → unsigned variants
-Float/Float32      → float
-Float64/Double     → double
-Boolean            → i1
-Char               → i8
-Pointer/String     → i8*
-Void               → void
+Integer/Int/Int64 i64
+Int8/16/32 i8, i16, i32 
+UInt8-UInt64 unsigned variants
+Float/Float32 float
+Float64/Double double
+Boolean i1
+Char i8
+Pointer/String i8*
+Void void
 ```
 
 **Pre-declared Functions**:
@@ -103,7 +103,7 @@ Void               → void
 - Discovers pthread, dl libraries
 - Platform-aware resolution
 
-### 5. Test Programs Created ✅
+### 5. Test Programs Created 
 **Directory**: `test_programs/ffi/`
 
 Created 4 comprehensive test programs:
@@ -113,7 +113,7 @@ Created 4 comprehensive test programs:
 3. **test_math.nlpl** - Math library functions (sqrt, pow, sin)
 4. **test_strings.nlpl** - String operations (strlen, strcmp)
 
-### 6. Documentation ✅
+### 6. Documentation 
 **File**: `FFI_IMPLEMENTATION_STATUS.md`
 
 Complete implementation status document with:
@@ -132,7 +132,7 @@ Complete implementation status document with:
 extern function printf with format as Pointer returns Integer from library "c"
 
 function main that takes nothing and returns nothing
-    printf("Hello from NLPL!\n")
+ printf("Hello from NLPL!\n")
 end
 ```
 
@@ -143,9 +143,9 @@ declare i32 @printf(i8*) #0
 
 define void @main() {
 entry:
-  %0 = getelementptr [20 x i8], [20 x i8]* @str.0, i32 0, i32 0
-  %1 = call i32 @printf(i8* %0)
-  ret void
+ %0 = getelementptr [20 x i8], [20 x i8]* @str.0, i32 0, i32 0
+ %1 = call i32 @printf(i8* %0)
+ ret void
 }
 
 @str.0 = private unnamed_addr constant [20 x i8] c"Hello from NLPL!\0A\00"
@@ -162,16 +162,16 @@ clang output.o -lc -o program
 
 ## Testing Results
 
-### Parser Test ✅
+### Parser Test 
 ```
-✅ FFI Parser Test PASSED
-   Parsed 1 statements
-   Type: ExternFunctionDeclaration
-   Name: printf
-   Library: c
-   Return type: Integer
-   Parameters: 1
-   Param 0: format as Pointer
+ FFI Parser Test PASSED
+ Parsed 1 statements
+ Type: ExternFunctionDeclaration
+ Name: printf
+ Library: c
+ Return type: Integer
+ Parameters: 1
+ Param 0: format as Pointer
 ```
 
 **Verified**:
@@ -189,27 +189,27 @@ clang output.o -lc -o program
 
 ```
 NLPL Source Code
-      ↓
+ 
 Lexer (tokenize: extern, function, library, etc.)
-      ↓
-Parser (extern_declaration() → AST)
-      ↓
+ 
+Parser (extern_declaration() AST)
+ 
 AST (ExternFunctionDeclaration)
-      ↓
+ 
 Compiler/Interpreter
-      ↓
-      ├→ [LLVM Backend]
-      │  ├→ FFICodegen.declare_extern_function()
-      │  ├→ Generate LLVM IR declaration
-      │  ├→ Set external linkage
-      │  ├→ Generate linker flags (-lc, -lm)
-      │  └→ Link with C libraries
-      │
-      └→ [Interpreter Backend]
-         ├→ FFIManager.load_library()
-         ├→ ctypes.CDLL(library_path)
-         ├→ Type mapping (NLPL → ctypes)
-         └→ FFIManager.call_function()
+ 
+ [LLVM Backend]
+ FFICodegen.declare_extern_function()
+ Generate LLVM IR declaration
+ Set external linkage
+ Generate linker flags (-lc, -lm)
+ Link with C libraries
+ 
+ [Interpreter Backend]
+ FFIManager.load_library()
+ ctypes.CDLL(library_path)
+ Type mapping (NLPL ctypes)
+ FFIManager.call_function()
 ```
 
 ---
@@ -226,14 +226,14 @@ self.ffi_codegen.declare_common_c_functions()
 
 # In visit() method
 if isinstance(node, ExternFunctionDeclaration):
-    return self.ffi_codegen.generate_extern_declaration(node)
+ return self.ffi_codegen.generate_extern_declaration(node)
 ```
 
 ### 2. Function Call Handling
 ```python
 # In visit_FunctionCall()
 if func_name in self.ffi_codegen.extern_functions:
-    return self.ffi_codegen.call_extern_function(func_name, args)
+ return self.ffi_codegen.call_extern_function(func_name, args)
 ```
 
 ### 3. Linker Integration
@@ -250,24 +250,24 @@ subprocess.run(['clang', obj_file, *link_flags, '-o', executable])
 ### Phase 2 Tasks (4-8 hours each)
 
 1. **Struct Marshalling**
-   - Convert NLPL structs to C struct layout
-   - Handle padding and alignment
-   - Bidirectional conversion
+ - Convert NLPL structs to C struct layout
+ - Handle padding and alignment
+ - Bidirectional conversion
 
 2. **Callback Functions**
-   - Generate function pointer wrappers
-   - Calling convention translation
-   - Closure handling
+ - Generate function pointer wrappers
+ - Calling convention translation
+ - Closure handling
 
 3. **Variadic Function Support**
-   - Parse variadic arguments
-   - Generate va_list handling
-   - Type-safe format string validation
+ - Parse variadic arguments
+ - Generate va_list handling
+ - Type-safe format string validation
 
 4. **Dynamic Library Loading**
-   - Runtime dlopen/LoadLibrary support
-   - Symbol resolution
-   - Platform-specific handling
+ - Runtime dlopen/LoadLibrary support
+ - Symbol resolution
+ - Platform-specific handling
 
 ---
 
@@ -291,7 +291,7 @@ subprocess.run(['clang', obj_file, *link_flags, '-o', executable])
 
 ## Success Metrics
 
-### Phase 1 Objectives ✅
+### Phase 1 Objectives 
 - [x] Lexer supports FFI keywords
 - [x] Parser handles extern declarations
 - [x] AST nodes created for FFI constructs
@@ -325,7 +325,7 @@ subprocess.run(['clang', obj_file, *link_flags, '-o', executable])
 ## Platform Support
 
 ### Tested/Supported
-- ✅ Linux x86_64 (development platform)
+- Linux x86_64 (development platform)
 
 ### Planned
 - [ ] Windows x64
@@ -378,7 +378,7 @@ self.declare_extern_function('function_name', ['Type1', 'Type2'], 'ReturnType', 
 ### Type Mapping Extension
 ```python
 # In FFICodegen.__init__(), add to self.type_map:
-self.type_map['CustomType'] = ir.IntType(32)  # or appropriate LLVM type
+self.type_map['CustomType'] = ir.IntType(32) # or appropriate LLVM type
 ```
 
 ### Library Path Resolution
@@ -394,13 +394,13 @@ self.library_paths['mylib'] = ctypes.util.find_library('mylib')
 Phase 1 of FFI implementation is **complete and successful**. The infrastructure is in place for:
 - Natural language extern declarations
 - Type-safe C function calling
-- Library integration  
+- Library integration 
 - Platform-aware library resolution
 
 The next phase will focus on integration with the compiler pipeline and testing with real-world C libraries.
 
 ---
 
-**Total Time**: ~2 hours  
-**Lines of Code**: ~400 (ffi.py), ~150 (parser changes), ~100 (test programs)  
-**Status**: ✅ Ready for integration and testing
+**Total Time**: ~2 hours 
+**Lines of Code**: ~400 (ffi.py), ~150 (parser changes), ~100 (test programs) 
+**Status**: Ready for integration and testing

@@ -1,52 +1,52 @@
 # Using NLPL Extension in This Project
 
-## ✅ Extension is Already Set Up!
+## Extension is Already Set Up!
 
 The NLPL VSCode extension is configured and ready to use in this workspace. No need to start a new project!
 
-## 📁 What's Configured
+## What's Configured
 
 - **Extension location**: `.vscode/extensions/nlpl/`
 - **Settings file**: `.vscode/settings.json` (auto-configured)
 - **LSP server path**: `${workspaceFolder}/src/nlpl_lsp.py`
 
-## 🚀 How to Use
+## How to Use
 
 ### Option 1: Reload VSCode (Easiest)
 
 1. **Reload the window**:
-   - Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on Mac)
-   - Type: `Developer: Reload Window`
-   - Press Enter
+ - Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on Mac)
+ - Type: `Developer: Reload Window`
+ - Press Enter
 
 2. **Open any NLPL file**:
-   ```bash
-   code examples/01_basic_concepts.nlpl
-   ```
-   or
-   ```bash
-   code test_programs/lsp_test.nlpl
-   ```
+ ```bash
+ code examples/01_basic_concepts.nlpl
+ ```
+ or
+ ```bash
+ code test_programs/lsp_test.nlpl
+ ```
 
-3. **The extension should activate automatically!** 🎉
+3. **The extension should activate automatically!** 
 
 You'll see:
-- ✅ Syntax highlighting for `.nlpl` files
-- ✅ Real-time error checking as you type
-- ✅ Auto-completion (press `Ctrl+Space`)
-- ✅ Signature help (parameter hints)
-- ✅ Code actions (quick fixes)
-- ✅ Go-to-definition (`F12` or `Ctrl+Click`)
-- ✅ Hover documentation
+- Syntax highlighting for `.nlpl` files
+- Real-time error checking as you type
+- Auto-completion (press `Ctrl+Space`)
+- Signature help (parameter hints)
+- Code actions (quick fixes)
+- Go-to-definition (`F12` or `Ctrl+Click`)
+- Hover documentation
 
 ### Option 2: Developer Mode (For Testing)
 
 If Option 1 doesn't work, you can run the extension in development mode:
 
 1. **Open the extension folder**:
-   ```bash
-   code .vscode/extensions/nlpl
-   ```
+ ```bash
+ code .vscode/extensions/nlpl
+ ```
 
 2. **Press F5** to launch Extension Development Host
 
@@ -65,7 +65,7 @@ vsce package
 code --install-extension nlpl-language-support-0.1.0.vsix
 ```
 
-## 🧪 Test It's Working
+## Test It's Working
 
 ### 1. Check Language Mode
 
@@ -82,7 +82,7 @@ set x to "unclosed string
 ```
 
 You should see:
-- 🔴 Red squiggly line under the error
+- Red squiggly line under the error
 - Error in the Problems panel (`Ctrl+Shift+M`)
 
 ### 3. Test Completions
@@ -111,59 +111,59 @@ set unused_var to 42
 ```
 
 You should see:
-- ⚠️ Warning about unused variable
-- 💡 Light bulb icon (or press `Ctrl+.`)
+- Warning about unused variable
+- Light bulb icon (or press `Ctrl+.`)
 - Quick fix: "Remove unused variable"
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Extension Not Activating
 
 1. **Check if NLPL file type is recognized**:
-   - Open Command Palette (`Ctrl+Shift+P`)
-   - Type: `Change Language Mode`
-   - Look for "NLPL" in the list
+ - Open Command Palette (`Ctrl+Shift+P`)
+ - Type: `Change Language Mode`
+ - Look for "NLPL" in the list
 
 2. **Check extension logs**:
-   - View → Output
-   - Select "NLPL Language Server" from dropdown
-   - Look for activation messages
+ - View Output
+ - Select "NLPL Language Server" from dropdown
+ - Look for activation messages
 
 3. **Verify Python is available**:
-   ```bash
-   python3 --version
-   which python3
-   ```
+ ```bash
+ python3 --version
+ which python3
+ ```
 
 4. **Test LSP server manually**:
-   ```bash
-   python3 src/nlpl_lsp.py
-   ```
-   (Should wait for input, press `Ctrl+C` to exit)
+ ```bash
+ python3 src/nlpl_lsp.py
+ ```
+ (Should wait for input, press `Ctrl+C` to exit)
 
 ### No Diagnostics Appearing
 
 1. **Enable verbose logging**:
-   - Open Settings (`Ctrl+,`)
-   - Search: `nlpl.trace.server`
-   - Set to: `verbose`
+ - Open Settings (`Ctrl+,`)
+ - Search: `nlpl.trace.server`
+ - Set to: `verbose`
 
 2. **Check server is running**:
-   - View → Output → "NLPL Language Server"
-   - Should see: "NLPL Language Server started"
+ - View Output "NLPL Language Server"
+ - Should see: "NLPL Language Server started"
 
 3. **Verify file has `.nlpl` extension**
 
 ### Syntax Highlighting Not Working
 
 1. **Reload grammar**:
-   - Command Palette → `Developer: Force Retokenize`
+ - Command Palette `Developer: Force Retokenize`
 
 2. **Check file association**:
-   - Settings → `files.associations`
-   - Should have: `"*.nlpl": "nlpl"`
+ - Settings `files.associations`
+ - Should have: `"*.nlpl": "nlpl"`
 
-## 📊 Check Extension Status
+## Check Extension Status
 
 Run this to see if everything is in place:
 
@@ -173,13 +173,13 @@ Run this to see if everything is in place:
 
 Expected output:
 ```
-✓ Node.js found
-✓ npm found
-✓ Python 3 found
+ Node.js found
+ npm found
+ Python 3 found
 Extension configured in: .vscode/settings.json
 ```
 
-## 🎯 Quick Test Suite
+## Quick Test Suite
 
 Test all LSP features:
 
@@ -191,36 +191,36 @@ python dev_tools/test_lsp_diagnostics.py
 python dev_tools/test_lsp_enhanced.py
 ```
 
-## 🔥 Pro Tips
+## Pro Tips
 
 1. **Quick Commands**:
-   - `F12` - Go to definition
-   - `Ctrl+Space` - Trigger completions
-   - `Ctrl+Shift+Space` - Signature help
-   - `Ctrl+.` - Quick fixes
-   - `Shift+F12` - Find all references
+ - `F12` - Go to definition
+ - `Ctrl+Space` - Trigger completions
+ - `Ctrl+Shift+Space` - Signature help
+ - `Ctrl+.` - Quick fixes
+ - `Shift+F12` - Find all references
 
 2. **Customize Settings**:
-   Edit `.vscode/settings.json`:
-   ```json
-   {
-     "nlpl.languageServer.enabled": true,
-     "nlpl.trace.server": "verbose",
-     "editor.quickSuggestions": {
-       "other": true,
-       "strings": false
-     }
-   }
-   ```
+ Edit `.vscode/settings.json`:
+ ```json
+ {
+ "nlpl.languageServer.enabled": true,
+ "nlpl.trace.server": "verbose",
+ "editor.quickSuggestions": {
+ "other": true,
+ "strings": false
+ }
+ }
+ ```
 
 3. **See Diagnostics Panel**:
-   - Press `Ctrl+Shift+M`
-   - Or View → Problems
+ - Press `Ctrl+Shift+M`
+ - Or View Problems
 
-## ✅ You're Ready!
+## You're Ready!
 
 Just **reload VSCode** and open any `.nlpl` file. The extension will activate automatically with full LSP support!
 
 ---
 
-**Need Help?** Check the logs in View → Output → "NLPL Language Server"
+**Need Help?** Check the logs in View Output "NLPL Language Server"

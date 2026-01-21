@@ -2,7 +2,7 @@
 
 > **Comprehensive documentation for the Natural Language Programming Language**
 
-## 📚 Documentation Structure
+## Documentation Structure
 
 This documentation is organized into 10 main categories for easy navigation:
 
@@ -80,22 +80,22 @@ Analysis documents and comparisons.
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 1. **New to NLPL?** Start with [1_introduction/overview.md](./1_introduction/overview.md)
 2. **Want to write code?** Check [2_language_basics/syntax_overview.md](./2_language_basics/syntax_overview.md)
 3. **Setting up development?** See [7_development/DEVELOPMENT_SETUP.md](./7_development/DEVELOPMENT_SETUP.md)
 4. **Interested in architecture?** Read [4_architecture/compiler_architecture.md](./4_architecture/compiler_architecture.md)
 
-## 📊 Current Status
+## Current Status
 
 - **Codebase:** 15,394 lines of Python
 - **Test Suite:** 320 tests (67% passing)
 - **Example Programs:** 30 working examples
 - **Standard Library:** 6 modules (math, string, io, system, collections, network)
-- **Compiler:** C backend generates native executables ✅
+- **Compiler:** C backend generates native executables 
 
-## 🎯 Key Documents
+## Key Documents
 
 ### For Newcomers
 - [Philosophy](./1_introduction/philosophy.md) - Why NLPL exists
@@ -119,11 +119,11 @@ Analysis documents and comparisons.
 
 ---
 
-## 📝 Document Organization Guide
+## Document Organization Guide
 
 See [_ORGANIZATION_GUIDE.md](./_ORGANIZATION_GUIDE.md) for detailed folder structure and file organization principles.
 
 ---
 
-**NLPL - Natural Language Programming Language**  
+**NLPL - Natural Language Programming Language** 
 *"As natural as English, as low-level as Assembly, as comprehensive as C++"*

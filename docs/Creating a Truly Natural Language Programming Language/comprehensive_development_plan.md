@@ -102,66 +102,66 @@ The NLPL syntax is designed to balance natural readability with programming prec
 ### Core Syntax Rules
 
 1. **Statement Structure**: `[Action Verb] [Subject/Object] [Preposition] [Value/Target] [Modifiers].`
-   - Example: `Set x to 10.`
-   - Alternative: `Let x be 10.`
+ - Example: `Set x to 10.`
+ - Alternative: `Let x be 10.`
 
 2. **Program Structure**: Optional explicit program start/end with logical sections
-   ```
-   Start the program.
-       [Main program code]
-   End the program.
-   ```
+ ```
+ Start the program.
+ [Main program code]
+ End the program.
+ ```
 
 3. **Variables and Data Types**: Implicit declaration with optional explicit typing
-   ```
-   Set counter to 0.
-   Create an integer called counter with value 0.
-   ```
+ ```
+ Set counter to 0.
+ Create an integer called counter with value 0.
+ ```
 
 4. **Control Structures**: Natural language conditionals and loops
-   ```
-   If x is greater than 10, then
-       Display "x is large".
-   End if.
-   
-   For each number i from 1 to 10, do
-       Display i.
-   End for.
-   ```
+ ```
+ If x is greater than 10, then
+ Display "x is large".
+ End if.
+ 
+ For each number i from 1 to 10, do
+ Display i.
+ End for.
+ ```
 
 5. **Functions and Procedures**: Clear definition and calling syntax
-   ```
-   Define a function called add that takes a and b.
-       Return a plus b.
-   End function.
-   ```
+ ```
+ Define a function called add that takes a and b.
+ Return a plus b.
+ End function.
+ ```
 
 6. **Object-Oriented Programming**: Class definitions with properties and methods
-   ```
-   Create a class called Person.
-       Add a property called name.
-       
-       Define a method called introduce that takes no parameters.
-           Display "My name is " followed by this person's name.
-       End method.
-   End class.
-   ```
+ ```
+ Create a class called Person.
+ Add a property called name.
+ 
+ Define a method called introduce that takes no parameters.
+ Display "My name is " followed by this person's name.
+ End method.
+ End class.
+ ```
 
 7. **Memory Management**: Both automatic and manual control
-   ```
-   Allocate memory for an integer called ptr.
-   Set the value at ptr to 10.
-   Free the memory used by ptr.
-   ```
+ ```
+ Allocate memory for an integer called ptr.
+ Set the value at ptr to 10.
+ Free the memory used by ptr.
+ ```
 
 8. **Error Handling**: Natural try-catch constructs
-   ```
-   Try to
-       Open the file "data.txt".
-   If something goes wrong, then
-       Display "Error: " followed by the error message.
-   End try.
-   ```
+ ```
+ Try to
+ Open the file "data.txt".
+ If something goes wrong, then
+ Display "Error: " followed by the error message.
+ End try.
+ ```
 
 ### Type System
 
@@ -176,8 +176,8 @@ The language resolves ambiguities through contextual analysis, type-based disamb
 The NLPL compiler follows a multi-stage pipeline architecture with specialized components for handling natural language:
 
 ```
-[Source Code] → [Lexer] → [Parser] → [Semantic Analyzer] → [NLP Resolver] → 
-[Intermediate Code Generator] → [Optimizer] → [Code Generator] → [Machine Code]
+[Source Code] [Lexer] [Parser] [Semantic Analyzer] [NLP Resolver] 
+[Intermediate Code Generator] [Optimizer] [Code Generator] [Machine Code]
 ```
 
 ### Key Components
@@ -256,8 +256,8 @@ The following examples demonstrate how NLPL compares to C++ for various programm
 #include <iostream>
 
 int main() {
-    std::cout << "Hello, World!" << std::endl;
-    return 0;
+ std::cout << "Hello, World!" << std::endl;
+ return 0;
 }
 ```
 
@@ -273,32 +273,32 @@ Display "Hello, World!".
 #include <iostream>
 
 int add(int a, int b) {
-    return a + b;
+ return a + b;
 }
 
 double calculateArea(double length, double width) {
-    return length * width;
+ return length * width;
 }
 
 int main() {
-    int sum = add(5, 10);
-    std::cout << "Sum: " << sum << std::endl;
-    
-    double area = calculateArea(4.5, 2.5);
-    std::cout << "Area: " << area << std::endl;
-    
-    return 0;
+ int sum = add(5, 10);
+ std::cout << "Sum: " << sum << std::endl;
+ 
+ double area = calculateArea(4.5, 2.5);
+ std::cout << "Area: " << area << std::endl;
+ 
+ return 0;
 }
 ```
 
 **NLPL:**
 ```
 Define a function called add that takes a and b.
-    Return a plus b.
+ Return a plus b.
 End function.
 
 Define a function called calculateArea that takes length and width and returns a number.
-    Return length times width.
+ Return length times width.
 End function.
 
 Set sum to add(5, 10).
@@ -317,50 +317,50 @@ Display "Area: " followed by area.
 
 class Person {
 private:
-    std::string name;
-    int age;
-    
+ std::string name;
+ int age;
+ 
 public:
-    Person(std::string n, int a) : name(n), age(a) {}
-    
-    void introduce() {
-        std::cout << "My name is " << name << " and I am " << age << " years old." << std::endl;
-    }
-    
-    void celebrateBirthday() {
-        age++;
-        std::cout << "Happy Birthday! Now I am " << age << " years old." << std::endl;
-    }
+ Person(std::string n, int a) : name(n), age(a) {}
+ 
+ void introduce() {
+ std::cout << "My name is " << name << " and I am " << age << " years old." << std::endl;
+ }
+ 
+ void celebrateBirthday() {
+ age++;
+ std::cout << "Happy Birthday! Now I am " << age << " years old." << std::endl;
+ }
 };
 
 int main() {
-    Person john("John Doe", 30);
-    john.introduce();
-    john.celebrateBirthday();
-    
-    return 0;
+ Person john("John Doe", 30);
+ john.introduce();
+ john.celebrateBirthday();
+ 
+ return 0;
 }
 ```
 
 **NLPL:**
 ```
 Create a class called Person.
-    Add a private property called name.
-    Add a private property called age.
-    
-    Define a constructor that takes n and a.
-        Set this person's name to n.
-        Set this person's age to a.
-    End constructor.
-    
-    Define a method called introduce that takes no parameters.
-        Display "My name is " followed by this person's name followed by " and I am " followed by this person's age followed by " years old.".
-    End method.
-    
-    Define a method called celebrateBirthday that takes no parameters.
-        Increment this person's age by 1.
-        Display "Happy Birthday! Now I am " followed by this person's age followed by " years old.".
-    End method.
+ Add a private property called name.
+ Add a private property called age.
+ 
+ Define a constructor that takes n and a.
+ Set this person's name to n.
+ Set this person's age to a.
+ End constructor.
+ 
+ Define a method called introduce that takes no parameters.
+ Display "My name is " followed by this person's name followed by " and I am " followed by this person's age followed by " years old.".
+ End method.
+ 
+ Define a method called celebrateBirthday that takes no parameters.
+ Increment this person's age by 1.
+ Display "Happy Birthday! Now I am " followed by this person's age followed by " years old.".
+ End method.
 End class.
 
 Create a Person called john with name "John Doe" and age 30.

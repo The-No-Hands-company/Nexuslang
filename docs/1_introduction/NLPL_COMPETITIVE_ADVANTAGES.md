@@ -1,6 +1,6 @@
 # NLPL: Beyond Assembly, C, and C++
 
-**Date:** December 17, 2025  
+**Date:** December 17, 2025 
 **Purpose:** Document how NLPL addresses fundamental flaws in Assembly, C, and C++ while maintaining low-level power
 
 ---
@@ -13,17 +13,17 @@ NLPL is designed to be **what Rust is to C++, but with natural language syntax a
 
 **"Assembly-level power with English-level clarity and Rust-level safety"**
 
-- ✅ **As natural as English** - No cryptic syntax barriers
-- ✅ **As low-level as Assembly** - Direct hardware access when needed
-- ✅ **As safe as Rust** - Memory safety without garbage collection
-- ✅ **As comprehensive as C++** - Full feature set for any domain
-- ✅ **Better than all three** - Fixes their fundamental flaws
+- **As natural as English** - No cryptic syntax barriers
+- **As low-level as Assembly** - Direct hardware access when needed
+- **As safe as Rust** - Memory safety without garbage collection
+- **As comprehensive as C++** - Full feature set for any domain
+- **Better than all three** - Fixes their fundamental flaws
 
 ---
 
 ## Problems NLPL Solves
 
-### 🔴 Assembly Language Problems → NLPL Solutions
+### Assembly Language Problems NLPL Solutions
 
 #### Problem 1: **Debugging Nightmare**
 **Assembly Issue:**
@@ -46,11 +46,11 @@ set result to first_number plus second_number
 ```
 
 **Features:**
-- ✅ **Automatic debug symbol generation** - Full variable names in stack traces
-- ✅ **Type-aware error messages** - Know exactly what went wrong
-- ✅ **Source-level debugging** - Debug in NLPL, not assembly
-- ✅ **Watch expressions in English** - `watch "balance is greater than 0"`
-- ✅ **Readable stack traces** - Function names, not addresses
+- **Automatic debug symbol generation** - Full variable names in stack traces
+- **Type-aware error messages** - Know exactly what went wrong
+- **Source-level debugging** - Debug in NLPL, not assembly
+- **Watch expressions in English** - `watch "balance is greater than 0"`
+- **Readable stack traces** - Function names, not addresses
 
 ---
 
@@ -60,7 +60,7 @@ set result to first_number plus second_number
 ; x86-64 only - ARM/RISC-V requires complete rewrite
 movq %rax, %rbx
 addq $10, %rbx
-syscall  ; Linux x86-64 syscall - won't work on Windows or ARM
+syscall ; Linux x86-64 syscall - won't work on Windows or ARM
 ```
 
 **NLPL Solution:**
@@ -75,11 +75,11 @@ call system_function with "write"
 ```
 
 **Features:**
-- ✅ **Cross-platform by default** - One codebase, all architectures
-- ✅ **Architecture abstractions** - High-level access to low-level features
-- ✅ **Platform-specific optimizations** - Compiler knows best assembly per arch
-- ✅ **Syscall abstraction** - Platform-agnostic system calls
-- ✅ **Inline assembly when needed** - Drop to native ASM for specific optimizations
+- **Cross-platform by default** - One codebase, all architectures
+- **Architecture abstractions** - High-level access to low-level features
+- **Platform-specific optimizations** - Compiler knows best assembly per arch
+- **Syscall abstraction** - Platform-agnostic system calls
+- **Inline assembly when needed** - Drop to native ASM for specific optimizations
 
 ---
 
@@ -87,11 +87,11 @@ call system_function with "write"
 **Assembly Issue:**
 ```asm
 ; Just to add two numbers from a struct:
-mov rdi, [rbp-8]      ; Load struct pointer
-mov rax, [rdi+0]      ; Load first field
-mov rbx, [rdi+8]      ; Load second field
-add rax, rbx          ; Add them
-mov [rbp-16], rax     ; Store result
+mov rdi, [rbp-8] ; Load struct pointer
+mov rax, [rdi+0] ; Load first field
+mov rbx, [rdi+8] ; Load second field
+add rax, rbx ; Add them
+mov [rbp-16], rax ; Store result
 ; 5 lines for x + y
 ```
 
@@ -99,8 +99,8 @@ mov [rbp-16], rax     ; Store result
 ```nlpl
 # Natural abstraction without performance penalty
 struct Point
-    x as Integer
-    y as Integer
+ x as Integer
+ y as Integer
 end
 
 set my_point to Point with x: 10, y: 20
@@ -111,11 +111,11 @@ set sum to my_point.x plus my_point.y
 ```
 
 **Features:**
-- ✅ **Zero-cost abstractions** - High-level syntax → optimal assembly
-- ✅ **Struct/union support** - Natural data organization
-- ✅ **Compiler optimization** - Often beats hand-written assembly
-- ✅ **Type safety** - Catch errors at compile time, not runtime
-- ✅ **Maintainability** - Code you can understand in 6 months
+- **Zero-cost abstractions** - High-level syntax optimal assembly
+- **Struct/union support** - Natural data organization
+- **Compiler optimization** - Often beats hand-written assembly
+- **Type safety** - Catch errors at compile time, not runtime
+- **Maintainability** - Code you can understand in 6 months
 
 ---
 
@@ -124,15 +124,15 @@ set sum to my_point.x plus my_point.y
 ```asm
 ; Want to print a string? Write it yourself:
 section .data
-    msg db 'Hello', 0xA
-    len equ $ - msg
+ msg db 'Hello', 0xA
+ len equ $ - msg
 
 section .text
-    mov rax, 1          ; sys_write
-    mov rdi, 1          ; stdout
-    mov rsi, msg        ; message
-    mov rdx, len        ; length
-    syscall
+ mov rax, 1 ; sys_write
+ mov rdi, 1 ; stdout
+ mov rsi, msg ; message
+ mov rdx, len ; length
+ syscall
 ; And this is JUST for printing!
 ```
 
@@ -153,15 +153,15 @@ import standard library system
 ```
 
 **Features:**
-- ✅ **Rich standard library** - String, I/O, math, collections, networking, system
-- ✅ **Low-level access preserved** - Use stdlib OR direct syscalls
-- ✅ **Optimized implementations** - Stdlib uses optimal assembly internally
-- ✅ **Cross-platform consistency** - Same API on all platforms
-- ✅ **Optional use** - Don't need it? Don't include it (zero overhead)
+- **Rich standard library** - String, I/O, math, collections, networking, system
+- **Low-level access preserved** - Use stdlib OR direct syscalls
+- **Optimized implementations** - Stdlib uses optimal assembly internally
+- **Cross-platform consistency** - Same API on all platforms
+- **Optional use** - Don't need it? Don't include it (zero overhead)
 
 ---
 
-### 🔴 C++ Problems → NLPL Solutions
+### C++ Problems NLPL Solutions
 
 #### Problem 1: **Memory Safety Nightmare**
 **C++ Issue:**
@@ -169,12 +169,12 @@ import standard library system
 // Classic use-after-free (NSA's #1 complaint about C++)
 int* ptr = new int(42);
 delete ptr;
-int value = *ptr;  // UNDEFINED BEHAVIOR - might crash, might not
+int value = *ptr; // UNDEFINED BEHAVIOR - might crash, might not
 // Dangling pointer, no warning, silent corruption
 
 // Buffer overflow
 char buffer[10];
-strcpy(buffer, "This is way too long");  // BUFFER OVERFLOW
+strcpy(buffer, "This is way too long"); // BUFFER OVERFLOW
 // Security vulnerability, might work fine in testing
 ```
 
@@ -186,9 +186,9 @@ set my_value to allocate Integer with 42
 
 # Automatic deallocation when out of scope
 function process_data
-    set local_data to allocate Integer with 100
-    # ... use local_data
-end  # Automatically freed here, no manual delete
+ set local_data to allocate Integer with 100
+ # ... use local_data
+end # Automatically freed here, no manual delete
 
 # Buffer safety built-in
 set buffer to allocate Array of Character with size 10
@@ -199,16 +199,16 @@ set text to "This is way too long"
 # Explicit manual control when needed
 set raw_ptr to address of my_variable
 set value to dereference raw_ptr
-free raw_ptr  # Manual control available, but tracked by compiler
+free raw_ptr # Manual control available, but tracked by compiler
 ```
 
 **Features:**
-- ✅ **Ownership system** - Rust-style borrow checker built into compiler
-- ✅ **Automatic memory management** - No manual new/delete unless explicitly requested
-- ✅ **Bounds checking** - Array access validated at compile time + runtime
-- ✅ **Use-after-free prevention** - Compiler tracks lifetimes
-- ✅ **Optional manual control** - Disable safety for performance-critical sections
-- ✅ **Zero runtime overhead** - All checks compile out in release mode
+- **Ownership system** - Rust-style borrow checker built into compiler
+- **Automatic memory management** - No manual new/delete unless explicitly requested
+- **Bounds checking** - Array access validated at compile time + runtime
+- **Use-after-free prevention** - Compiler tracks lifetimes
+- **Optional manual control** - Disable safety for performance-critical sections
+- **Zero runtime overhead** - All checks compile out in release mode
 
 ---
 
@@ -231,21 +231,21 @@ set my_map to Dictionary of String to Integer
 
 set my_map["hello"] to "world"
 # COMPILE ERROR:
-# ❌ Type mismatch in line 42
-#    Variable 'my_map["hello"]' expects Integer
-#    Got String: "world"
-#    
-#    Did you mean: set my_map["hello"] to 42
-#    Or change to: Dictionary of String to String
+# Type mismatch in line 42
+# Variable 'my_map["hello"]' expects Integer
+# Got String: "world"
+# 
+# Did you mean: set my_map["hello"] to 42
+# Or change to: Dictionary of String to String
 ```
 
 **Features:**
-- ✅ **Human-readable errors** - English, not compiler internals
-- ✅ **Fuzzy matching suggestions** - "Did you mean" for typos
-- ✅ **Contextual help** - Show the exact line with caret pointer
-- ✅ **Type mismatch clarity** - "Expected X, got Y" with examples
-- ✅ **Stack traces with names** - No cryptic template instantiations
-- ✅ **Error recovery** - Suggest fixes, not just report problems
+- **Human-readable errors** - English, not compiler internals
+- **Fuzzy matching suggestions** - "Did you mean" for typos
+- **Contextual help** - Show the exact line with caret pointer
+- **Type mismatch clarity** - "Expected X, got Y" with examples
+- **Stack traces with names** - No cryptic template instantiations
+- **Error recovery** - Suggest fixes, not just report problems
 
 ---
 
@@ -257,34 +257,34 @@ set my_map["hello"] to "world"
 // Unreal Engine: 30+ minutes incremental
 // Reason: Header includes, template instantiation, long chains
 
-#include <iostream>  // Includes 10,000+ lines
-#include <vector>    // Another 8,000+ lines
-#include <map>       // Another 12,000+ lines
+#include <iostream> // Includes 10,000+ lines
+#include <vector> // Another 8,000+ lines
+#include <map> // Another 12,000+ lines
 // Just these 3 includes = 30,000 lines to parse PER FILE
 ```
 
 **NLPL Solution:**
 ```nlpl
 # Module system with pre-compiled interfaces
-import standard library io      # Pre-compiled module, instant load
-import standard library collections  # No header parsing needed
+import standard library io # Pre-compiled module, instant load
+import standard library collections # No header parsing needed
 
 # Incremental compilation by default
 # Only recompile changed modules
 # Parallel compilation across cores
 # Cache template instantiations
 
-# Chrome-sized project: 2-3 hours → 5-10 minutes
+# Chrome-sized project: 2-3 hours 5-10 minutes
 # Incremental: 30 seconds instead of 10 minutes
 ```
 
 **Features:**
-- ✅ **Module system** - No header file parsing overhead
-- ✅ **Incremental compilation** - Only rebuild what changed
-- ✅ **Parallel builds** - Use all CPU cores automatically
-- ✅ **Cached instantiations** - Generics compiled once, reused
-- ✅ **Fast linker** - Modern LLD/Mold integration
-- ✅ **Build system built-in** - No CMake/Make complexity
+- **Module system** - No header file parsing overhead
+- **Incremental compilation** - Only rebuild what changed
+- **Parallel builds** - Use all CPU cores automatically
+- **Cached instantiations** - Generics compiled once, reused
+- **Fast linker** - Modern LLD/Mold integration
+- **Build system built-in** - No CMake/Make complexity
 
 ---
 
@@ -293,13 +293,13 @@ import standard library collections  # No header parsing needed
 ```cpp
 // Undefined behavior examples (all compile without warning):
 int x = INT_MAX;
-x = x + 1;  // UB: signed overflow
+x = x + 1; // UB: signed overflow
 
 int arr[10];
-arr[10] = 5;  // UB: out of bounds
+arr[10] = 5; // UB: out of bounds
 
 int* p = nullptr;
-*p = 42;  // UB: null dereference
+*p = 42; // UB: null dereference
 
 // Compiler can optimize based on UB assumption
 // "Working" code suddenly breaks with -O3
@@ -327,12 +327,12 @@ set value to dereference ptr
 ```
 
 **Features:**
-- ✅ **No undefined behavior** - Every operation has defined semantics
-- ✅ **Overflow detection** - Signed/unsigned overflow caught
-- ✅ **Bounds checking** - Array access validated
-- ✅ **Null safety** - Optional types prevent null derefs
-- ✅ **Configurable safety** - Disable checks for verified hot paths
-- ✅ **Panic on error** - Clear error messages, not silent corruption
+- **No undefined behavior** - Every operation has defined semantics
+- **Overflow detection** - Signed/unsigned overflow caught
+- **Bounds checking** - Array access validated
+- **Null safety** - Optional types prevent null derefs
+- **Configurable safety** - Disable checks for verified hot paths
+- **Panic on error** - Clear error messages, not silent corruption
 
 ---
 
@@ -341,15 +341,15 @@ set value to dereference ptr
 ```cpp
 // C++20 standard: 1,800+ pages
 // Multiple ways to do everything:
-char* str1 = "hello";           // C-style
-std::string str2 = "hello";     // C++ string
+char* str1 = "hello"; // C-style
+std::string str2 = "hello"; // C++ string
 std::string_view str3 = "hello"; // C++17
-auto str4 = "hello"s;           // C++14 literal
+auto str4 = "hello"s; // C++14 literal
 
 // Function pointers vs lambdas vs std::function
-void (*fptr)(int);              // C-style
-auto lambda = [](int x) {};     // Lambda
-std::function<void(int)> fn;    // Wrapper
+void (*fptr)(int); // C-style
+auto lambda = [](int x) {}; // Lambda
+std::function<void(int)> fn; // Wrapper
 
 // Donald Knuth: "C++ is too complex for its own good"
 ```
@@ -357,12 +357,12 @@ std::function<void(int)> fn;    // Wrapper
 **NLPL Solution:**
 ```nlpl
 # One obvious way to do it (Python philosophy)
-set my_string to "hello"  # Just strings, no char*/string/string_view
-set my_text to text "hello"  # Explicit text type when needed
+set my_string to "hello" # Just strings, no char*/string/string_view
+set my_text to text "hello" # Explicit text type when needed
 
 # Functions are first-class, no wrappers needed
 function my_function with x as Integer
-    print text x
+ print text x
 end
 
 set function_variable to my_function
@@ -376,16 +376,16 @@ set result to lambda(5)
 ```
 
 **Features:**
-- ✅ **One way to do it** - Consistency over flexibility
-- ✅ **Minimal core language** - Rich stdlib, small syntax
-- ✅ **No legacy baggage** - No C compatibility cruft
-- ✅ **Orthogonal features** - Everything composes cleanly
-- ✅ **Readable by non-experts** - Natural language syntax
-- ✅ **Gradual complexity** - Simple things simple, hard things possible
+- **One way to do it** - Consistency over flexibility
+- **Minimal core language** - Rich stdlib, small syntax
+- **No legacy baggage** - No C compatibility cruft
+- **Orthogonal features** - Everything composes cleanly
+- **Readable by non-experts** - Natural language syntax
+- **Gradual complexity** - Simple things simple, hard things possible
 
 ---
 
-### 🔴 Problems Both Assembly and C++ Share → NLPL Solutions
+### Problems Both Assembly and C++ Share NLPL Solutions
 
 #### Problem 1: **Poor Tooling and IDE Support**
 **Assembly/C++ Issue:**
@@ -408,13 +408,13 @@ set result to lambda(5)
 ```
 
 **Features:**
-- ✅ **LSP server included** - Works with VS Code, Vim, Emacs, etc.
-- ✅ **Fast type inference** - Instant feedback on types
-- ✅ **Semantic highlighting** - Color-code by meaning, not syntax
-- ✅ **Refactoring tools** - Rename safely across codebase
-- ✅ **Inline documentation** - Hover for docs + examples
-- ✅ **Debug integration** - Source-level debugging always
-- ✅ **Performance profiling** - See NLPL code in profiles
+- **LSP server included** - Works with VS Code, Vim, Emacs, etc.
+- **Fast type inference** - Instant feedback on types
+- **Semantic highlighting** - Color-code by meaning, not syntax
+- **Refactoring tools** - Rename safely across codebase
+- **Inline documentation** - Hover for docs + examples
+- **Debug integration** - Source-level debugging always
+- **Performance profiling** - See NLPL code in profiles
 
 ---
 
@@ -432,19 +432,19 @@ set result to lambda(5)
 
 # Buffer overflow prevention
 set buffer to allocate Array of Byte with size 100
-read_from_network into buffer  # Compiler ensures max 100 bytes
+read_from_network into buffer # Compiler ensures max 100 bytes
 
 # Use-after-free prevention
 set data to allocate MyStruct
 free data
-set value to data.field  # COMPILE ERROR: "Use after free"
+set value to data.field # COMPILE ERROR: "Use after free"
 
 # Integer overflow prevention
 set x to maximum Integer value
-set y to x plus 1  # COMPILE ERROR or wrap (configurable)
+set y to x plus 1 # COMPILE ERROR or wrap (configurable)
 
 # Format string safety
-print text "User input: {user_input}"  # Sanitized automatically
+print text "User input: {user_input}" # Sanitized automatically
 # No printf-style format string vulnerabilities
 
 # Memory safety without GC
@@ -452,13 +452,13 @@ print text "User input: {user_input}"  # Sanitized automatically
 ```
 
 **Features:**
-- ✅ **Memory safety by default** - Ownership + borrow checking
-- ✅ **Bounds checking** - Array access validated
-- ✅ **Integer safety** - Overflow/underflow detected
-- ✅ **Type safety** - Strong typing prevents type confusion
-- ✅ **No format string bugs** - Safe string interpolation
-- ✅ **ASLR/DEP/Stack canaries** - Modern mitigations enabled
-- ✅ **Audit trail** - `unsafe` blocks clearly marked
+- **Memory safety by default** - Ownership + borrow checking
+- **Bounds checking** - Array access validated
+- **Integer safety** - Overflow/underflow detected
+- **Type safety** - Strong typing prevents type confusion
+- **No format string bugs** - Safe string interpolation
+- **ASLR/DEP/Stack canaries** - Modern mitigations enabled
+- **Audit trail** - `unsafe` blocks clearly marked
 
 ---
 
@@ -472,29 +472,29 @@ print text "User input: {user_input}"  # Sanitized automatically
 ```nlpl
 # Anyone who can read English can understand this:
 if balance is greater than or equal to 100
-    print text "You have sufficient funds"
-    set balance to balance minus purchase_amount
+ print text "You have sufficient funds"
+ set balance to balance minus purchase_amount
 else
-    print text "Insufficient funds"
+ print text "Insufficient funds"
 end
 
 # Compare to C++:
 if (balance >= 100) {
-    std::cout << "You have sufficient funds" << std::endl;
-    balance -= purchase_amount;
+ std::cout << "You have sufficient funds" << std::endl;
+ balance -= purchase_amount;
 } else {
-    std::cout << "Insufficient funds" << std::endl;
+ std::cout << "Insufficient funds" << std::endl;
 }
 
 # Which is easier for a non-programmer to understand?
 ```
 
 **Benefits:**
-- ✅ **Lower barrier to entry** - English speakers can read code day 1
-- ✅ **Self-documenting** - Code reads like documentation
-- ✅ **Cross-team collaboration** - Non-programmers can review logic
-- ✅ **Reduced training time** - Faster onboarding
-- ✅ **Better code reviews** - Intent is obvious
+- **Lower barrier to entry** - English speakers can read code day 1
+- **Self-documenting** - Code reads like documentation
+- **Cross-team collaboration** - Non-programmers can review logic
+- **Reduced training time** - Faster onboarding
+- **Better code reviews** - Intent is obvious
 
 ---
 
@@ -509,44 +509,44 @@ module kernel
 
 # Direct hardware access
 function write_to_port with port as Integer, value as Byte
-    inline assembly
-        mov dx, {port}
-        mov al, {value}
-        out dx, al
-    end
+ inline assembly
+ mov dx, {port}
+ mov al, {value}
+ out dx, al
+ end
 end
 
 # Interrupt handlers with safety
 interrupt handler keyboard_handler
-    set scancode to read_port(0x60)
-    handle_keypress with scancode
-    send_eoi to pic  # End of interrupt
+ set scancode to read_port(0x60)
+ handle_keypress with scancode
+ send_eoi to pic # End of interrupt
 end
 
 # Memory management with type safety
 function allocate_page returns PhysicalAddress
-    set frame to find_free_frame()
-    mark_frame_used with frame
-    return frame.address
+ set frame to find_free_frame()
+ mark_frame_used with frame
+ return frame.address
 end
 
 # Bootloader generation built-in
 bootloader
-    enable_a20_line
-    load_gdt
-    switch_to_protected_mode
-    jump_to_kernel
+ enable_a20_line
+ load_gdt
+ switch_to_protected_mode
+ jump_to_kernel
 end
 ```
 
 **Features:**
-- ✅ **Inline assembly** - Drop to ASM when needed
-- ✅ **Interrupt handling** - First-class language feature
-- ✅ **Memory mapping** - Direct page table manipulation
-- ✅ **I/O port access** - Built-in primitives
-- ✅ **Bootloader generation** - Compiler creates bootable images
-- ✅ **Type safety for drivers** - Catch hardware bugs at compile time
-- ✅ **Cross-architecture** - One kernel, multiple architectures
+- **Inline assembly** - Drop to ASM when needed
+- **Interrupt handling** - First-class language feature
+- **Memory mapping** - Direct page table manipulation
+- **I/O port access** - Built-in primitives
+- **Bootloader generation** - Compiler creates bootable images
+- **Type safety for drivers** - Catch hardware bugs at compile time
+- **Cross-architecture** - One kernel, multiple architectures
 
 ---
 
@@ -565,37 +565,37 @@ module my_app
 # - JavaScript/TypeScript (Node.js)
 
 function process_data with items as List of Integer returns Integer
-    set total to 0
-    for each item in items
-        set total to total plus item
-    end
-    return total
+ set total to 0
+ for each item in items
+ set total to total plus item
+ end
+ return total
 end
 
 # Web-specific features
 web module frontend
-    function handle_button_click
-        set result to process_data with [1, 2, 3, 4, 5]
-        update_dom with "result", result
-    end
+ function handle_button_click
+ set result to process_data with [1, 2, 3, 4, 5]
+ update_dom with "result", result
+ end
 end
 
 # Backend in same language
 server module backend
-    function handle_request with request as HttpRequest returns HttpResponse
-        set data to process_data with request.body.items
-        return json_response with data
-    end
+ function handle_request with request as HttpRequest returns HttpResponse
+ set data to process_data with request.body.items
+ return json_response with data
+ end
 end
 ```
 
 **Features:**
-- ✅ **Multi-target compilation** - Native, WASM, JS/TS from one source
-- ✅ **Zero-cost web** - WASM performance near-native
-- ✅ **Shared code** - Logic works everywhere
-- ✅ **Web APIs** - DOM/fetch/etc. as NLPL modules
-- ✅ **Server + client** - One language for full stack
-- ✅ **No build tool hell** - Compiler handles everything
+- **Multi-target compilation** - Native, WASM, JS/TS from one source
+- **Zero-cost web** - WASM performance near-native
+- **Shared code** - Logic works everywhere
+- **Web APIs** - DOM/fetch/etc. as NLPL modules
+- **Server + client** - One language for full stack
+- **No build tool hell** - Compiler handles everything
 
 ---
 
@@ -609,19 +609,19 @@ end
 set shared_data to SharedMutex with 0
 
 concurrent do
-    # Compiler ensures exclusive access
-    lock shared_data as data
-        set data to data plus 1
-    end  # Automatic unlock
-    
-    # Thread-safe message passing
-    send value 42 to channel
-    
-    # Async/await without data races
-    async function fetch_data returns Integer
-        set result to await http_get("https://api.example.com")
-        return parse_integer with result
-    end
+ # Compiler ensures exclusive access
+ lock shared_data as data
+ set data to data plus 1
+ end # Automatic unlock
+ 
+ # Thread-safe message passing
+ send value 42 to channel
+ 
+ # Async/await without data races
+ async function fetch_data returns Integer
+ set result to await http_get("https://api.example.com")
+ return parse_integer with result
+ end
 end
 
 # Compile error if:
@@ -631,13 +631,13 @@ end
 ```
 
 **Features:**
-- ✅ **Compile-time race detection** - No data races possible
-- ✅ **Deadlock prevention** - Lock order analysis
-- ✅ **Send/Sync traits** - Type system enforces thread safety
-- ✅ **Async/await** - Structured concurrency
-- ✅ **Actor model** - Message passing primitives
-- ✅ **Work stealing** - Optimal thread pool
-- ✅ **No GC pauses** - Deterministic performance
+- **Compile-time race detection** - No data races possible
+- **Deadlock prevention** - Lock order analysis
+- **Send/Sync traits** - Type system enforces thread safety
+- **Async/await** - Structured concurrency
+- **Actor model** - Message passing primitives
+- **Work stealing** - Optimal thread pool
+- **No GC pauses** - Deterministic performance
 
 ---
 
@@ -649,66 +649,66 @@ end
 ```nlpl
 # Clear, type-safe generics
 function find_max with items as List of T returns T
-    where T implements Comparable
-    
-    if items is empty
-        raise error "Cannot find max of empty list"
-    end
-    
-    set max_item to items[0]
-    for each item in items
-        if item is greater than max_item
-            set max_item to item
-        end
-    end
-    return max_item
+ where T implements Comparable
+ 
+ if items is empty
+ raise error "Cannot find max of empty list"
+ end
+ 
+ set max_item to items[0]
+ for each item in items
+ if item is greater than max_item
+ set max_item to item
+ end
+ end
+ return max_item
 end
 
 # Usage (type inference)
 set numbers to [1, 5, 3, 9, 2]
-set max_num to find_max with numbers  # T = Integer
+set max_num to find_max with numbers # T = Integer
 
 set names to ["Alice", "Charlie", "Bob"]
-set max_name to find_max with names  # T = String
+set max_name to find_max with names # T = String
 
 # Clear error if type doesn't implement Comparable
 set objects to [Object(), Object()]
 set max_obj to find_max with objects
 # ERROR: "Type 'Object' does not implement 'Comparable' trait"
-#        Required by function 'find_max' at line 42
+# Required by function 'find_max' at line 42
 ```
 
 **Features:**
-- ✅ **Monomorphization** - Zero runtime overhead
-- ✅ **Trait bounds** - Clear requirements
-- ✅ **Type inference** - No manual instantiation
-- ✅ **Clear errors** - "Type X doesn't implement Y"
-- ✅ **Separate compilation** - Cached instantiations
-- ✅ **No SFINAE** - Readable constraints
+- **Monomorphization** - Zero runtime overhead
+- **Trait bounds** - Clear requirements
+- **Type inference** - No manual instantiation
+- **Clear errors** - "Type X doesn't implement Y"
+- **Separate compilation** - Cached instantiations
+- **No SFINAE** - Readable constraints
 
 ---
 
 ## Comparison Summary Table
 
-| Feature                          | Assembly | C++      | NLPL     | Winner |
+| Feature | Assembly | C++ | NLPL | Winner |
 |----------------------------------|----------|----------|----------|--------|
-| **Readability**                  | ❌ 1/10  | ⚠️ 4/10  | ✅ 10/10 | NLPL   |
-| **Memory Safety**                | ❌ 0/10  | ❌ 2/10  | ✅ 9/10  | NLPL   |
-| **Debugging Experience**         | ❌ 1/10  | ⚠️ 5/10  | ✅ 9/10  | NLPL   |
-| **Compilation Speed**            | ✅ 10/10 | ❌ 3/10  | ✅ 8/10  | ASM    |
-| **Runtime Performance**          | ✅ 10/10 | ✅ 9/10  | ✅ 9/10  | ASM    |
-| **Portability**                  | ❌ 0/10  | ✅ 8/10  | ✅ 10/10 | NLPL   |
-| **Standard Library**             | ❌ 0/10  | ✅ 7/10  | ✅ 9/10  | NLPL   |
-| **Error Messages**               | ❌ 1/10  | ❌ 3/10  | ✅ 10/10 | NLPL   |
-| **Learning Curve**               | ❌ 1/10  | ❌ 3/10  | ✅ 9/10  | NLPL   |
-| **Concurrency Safety**           | ❌ 0/10  | ❌ 4/10  | ✅ 9/10  | NLPL   |
-| **Security by Default**          | ❌ 0/10  | ❌ 2/10  | ✅ 9/10  | NLPL   |
-| **OS Development**               | ✅ 10/10 | ✅ 8/10  | ✅ 9/10  | ASM    |
-| **Web Compilation (WASM)**       | ❌ 3/10  | ⚠️ 6/10  | ✅ 9/10  | NLPL   |
-| **IDE/Tooling Support**          | ❌ 2/10  | ⚠️ 6/10  | ✅ 9/10  | NLPL   |
-| **Generic Programming**          | ❌ 0/10  | ⚠️ 6/10  | ✅ 9/10  | NLPL   |
-| **Zero-Cost Abstractions**       | N/A      | ✅ 9/10  | ✅ 9/10  | Tie    |
-| **Community/Ecosystem**          | ⚠️ 5/10  | ✅ 10/10 | ⚠️ 2/10  | C++    |
+| **Readability** | 1/10 | 4/10 | 10/10 | NLPL |
+| **Memory Safety** | 0/10 | 2/10 | 9/10 | NLPL |
+| **Debugging Experience** | 1/10 | 5/10 | 9/10 | NLPL |
+| **Compilation Speed** | 10/10 | 3/10 | 8/10 | ASM |
+| **Runtime Performance** | 10/10 | 9/10 | 9/10 | ASM |
+| **Portability** | 0/10 | 8/10 | 10/10 | NLPL |
+| **Standard Library** | 0/10 | 7/10 | 9/10 | NLPL |
+| **Error Messages** | 1/10 | 3/10 | 10/10 | NLPL |
+| **Learning Curve** | 1/10 | 3/10 | 9/10 | NLPL |
+| **Concurrency Safety** | 0/10 | 4/10 | 9/10 | NLPL |
+| **Security by Default** | 0/10 | 2/10 | 9/10 | NLPL |
+| **OS Development** | 10/10 | 8/10 | 9/10 | ASM |
+| **Web Compilation (WASM)** | 3/10 | 6/10 | 9/10 | NLPL |
+| **IDE/Tooling Support** | 2/10 | 6/10 | 9/10 | NLPL |
+| **Generic Programming** | 0/10 | 6/10 | 9/10 | NLPL |
+| **Zero-Cost Abstractions** | N/A | 9/10 | 9/10 | Tie |
+| **Community/Ecosystem** | 5/10 | 10/10 | 2/10 | C++ |
 
 **Overall Average:**
 - Assembly: **3.4/10** (Best at: raw performance, OS dev)
@@ -725,18 +725,18 @@ set max_obj to find_max with objects
 ```asm
 ; Nightmare to maintain, debug, or port
 kernel_main:
-    mov ax, 0x10
-    mov ds, ax
-    mov es, ax
-    ; ... 10,000 lines of this
+ mov ax, 0x10
+ mov ds, ax
+ mov es, ax
+ ; ... 10,000 lines of this
 ```
 
 **C++:**
 ```cpp
 // Better but still unsafe
 extern "C" void kernel_main() {
-    uint8_t* vga = (uint8_t*)0xB8000;  // Raw pointer, no safety
-    vga[0] = 'H';  // Hope this doesn't crash!
+ uint8_t* vga = (uint8_t*)0xB8000; // Raw pointer, no safety
+ vga[0] = 'H'; // Hope this doesn't crash!
 }
 ```
 
@@ -744,9 +744,9 @@ extern "C" void kernel_main() {
 ```nlpl
 # Safe, readable, portable
 kernel function main
-    set vga_buffer to map_memory at 0xB8000 as VGABuffer
-    write_character to vga_buffer at 0, 0 with 'H' color White on Black
-    # Type-safe, bounds-checked, clear intent
+ set vga_buffer to map_memory at 0xB8000 as VGABuffer
+ write_character to vga_buffer at 0, 0 with 'H' color White on Black
+ # Type-safe, bounds-checked, clear intent
 end
 ```
 
@@ -760,10 +760,10 @@ end
 ```asm
 ; Fast but unmaintainable
 vector_add:
-    vmovdqa ymm0, [rsi]
-    vpaddd ymm0, ymm0, [rdx]
-    vmovdqa [rdi], ymm0
-    ret
+ vmovdqa ymm0, [rsi]
+ vpaddd ymm0, ymm0, [rdx]
+ vmovdqa [rdi], ymm0
+ ret
 ```
 
 **C++:**
@@ -771,11 +771,11 @@ vector_add:
 // Template hell, slow compilation
 template<typename T, size_t N>
 void vector_add(std::array<T, N>& result, 
-                const std::array<T, N>& a,
-                const std::array<T, N>& b) {
-    for (size_t i = 0; i < N; ++i) {
-        result[i] = a[i] + b[i];  // Hope compiler vectorizes!
-    }
+ const std::array<T, N>& a,
+ const std::array<T, N>& b) {
+ for (size_t i = 0; i < N; ++i) {
+ result[i] = a[i] + b[i]; // Hope compiler vectorizes!
+ }
 }
 ```
 
@@ -783,9 +783,9 @@ void vector_add(std::array<T, N>& result,
 ```nlpl
 # Clear + auto-vectorized
 function vector_add with a as Array of Float, b as Array of Float returns Array of Float
-    return [a[i] plus b[i] for each i in range(length of a)]
-    # Compiler auto-vectorizes to SIMD
-    # Same performance as hand-written assembly
+ return [a[i] plus b[i] for each i in range(length of a)]
+ # Compiler auto-vectorizes to SIMD
+ # Same performance as hand-written assembly
 end
 ```
 
@@ -795,7 +795,7 @@ end
 
 ### Use Case 3: Web Server Backend
 
-**Assembly:** ❌ Not practical
+**Assembly:** Not practical
 
 **C++:**
 ```cpp
@@ -805,9 +805,9 @@ end
 // ... 50 includes, 30-minute compile time
 
 void handle_request(tcp::socket& socket) {
-    char buffer[1024];  // Buffer overflow waiting to happen
-    socket.read_some(buffer, 1024);
-    // ... manual parsing, memory management, error handling
+ char buffer[1024]; // Buffer overflow waiting to happen
+ socket.read_some(buffer, 1024);
+ // ... manual parsing, memory management, error handling
 }
 ```
 
@@ -815,15 +815,15 @@ void handle_request(tcp::socket& socket) {
 ```nlpl
 # Built-in web server support
 server module api
-    route "/users" method GET
-        async function get_users returns JsonResponse
-            set users to await database.query("SELECT * FROM users")
-            return json_response with users
-        end
-    end
-    
-    # Type-safe, async, simple
-    # Compiles to native + WASM for edge deployment
+ route "/users" method GET
+ async function get_users returns JsonResponse
+ set users to await database.query("SELECT * FROM users")
+ return json_response with users
+ end
+ end
+ 
+ # Type-safe, async, simple
+ # Compiles to native + WASM for edge deployment
 end
 ```
 
@@ -844,23 +844,23 @@ set result to legacy_cpp_function with 42
 
 # Export NLPL functions to C++ (for gradual migration)
 export function nlpl_new_feature with data as Array of Byte returns Integer
-    # New code in NLPL, old code calls it via C ABI
+ # New code in NLPL, old code calls it via C ABI
 end
 
 # Inline assembly for critical sections
 function optimized_function
-    inline assembly
-        ; Existing assembly code here
-        ; Gradual conversion to NLPL over time
-    end
+ inline assembly
+ ; Existing assembly code here
+ ; Gradual conversion to NLPL over time
+ end
 end
 ```
 
 **Migration Steps:**
-1. ✅ **Step 1:** Write new modules in NLPL, call from C++
-2. ✅ **Step 2:** Wrap C++ in NLPL interfaces
-3. ✅ **Step 3:** Incrementally convert C++ modules to NLPL
-4. ✅ **Step 4:** Remove C++ entirely when ready
+1. **Step 1:** Write new modules in NLPL, call from C++
+2. **Step 2:** Wrap C++ in NLPL interfaces
+3. **Step 3:** Incrementally convert C++ modules to NLPL
+4. **Step 4:** Remove C++ entirely when ready
 
 ---
 

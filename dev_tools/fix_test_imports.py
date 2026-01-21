@@ -74,7 +74,7 @@ for filename in test_files:
     if content != original_content:
         with open(filepath, 'w') as f:
             f.write(content)
-        print(f"  ✓ Updated {filename}")
+        print(f"   Updated {filename}")
     else:
         print(f"  - No changes needed for {filename}")
 

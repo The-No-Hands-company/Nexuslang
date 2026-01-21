@@ -201,7 +201,7 @@ def main():
         ll_file = os.path.join(source_dir, f"{module_name}.ll")
         with open(ll_file, 'w') as f:
             f.write(llvm_ir)
-        print(f"✓ Module IR file: {ll_file}")
+        print(f" Module IR file: {ll_file}")
         return
     
     # Compile to object file
@@ -210,7 +210,7 @@ def main():
         ll_file = args.obj.replace('.o', '.ll')
         with open(ll_file, 'w') as f:
             f.write(llvm_ir)
-        print(f"✓ LLVM IR file: {ll_file}")
+        print(f" LLVM IR file: {ll_file}")
         print(f"Compile with: llc -filetype=obj {ll_file} -o {args.obj}")
         return
     
@@ -240,11 +240,11 @@ def main():
         success = llvm_gen.compile_to_executable(output_file, opt_level=args.optimize)
     
     if success:
-        print(f"\n✓ Compilation successful!")
-        print(f"✓ Executable: {output_file}")
+        print(f"\n Compilation successful!")
+        print(f" Executable: {output_file}")
         print(f"\nRun with: ./{output_file}")
     else:
-        print("\n✗ Compilation failed")
+        print("\n Compilation failed")
         sys.exit(1)
 
 

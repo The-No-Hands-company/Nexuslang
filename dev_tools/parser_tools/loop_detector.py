@@ -164,7 +164,7 @@ class LoopDetector:
     def _report_stuck_position(self, position, token):
         """Report stuck on same position."""
         print(f"\n{Fore.RED}{'='*80}")
-        print(f"🛑 INFINITE LOOP DETECTED: STUCK ON SAME TOKEN")
+        print(f" INFINITE LOOP DETECTED: STUCK ON SAME TOKEN")
         print(f"{'='*80}\n")
         
         print(f"{Fore.YELLOW}Position: {position}")
@@ -187,7 +187,7 @@ class LoopDetector:
     def _report_error_recovery_loop(self, position, token):
         """Report error_recovery loop."""
         print(f"\n{Fore.RED}{'='*80}")
-        print(f"🛑 INFINITE LOOP DETECTED: ERROR_RECOVERY LOOP")
+        print(f" INFINITE LOOP DETECTED: ERROR_RECOVERY LOOP")
         print(f"{'='*80}\n")
         
         print(f"{Fore.YELLOW}Position: {position}")
@@ -207,7 +207,7 @@ class LoopDetector:
     def _report_max_iterations(self):
         """Report max iterations exceeded."""
         print(f"\n{Fore.RED}{'='*80}")
-        print(f"🛑 INFINITE LOOP DETECTED: MAX ITERATIONS EXCEEDED")
+        print(f" INFINITE LOOP DETECTED: MAX ITERATIONS EXCEEDED")
         print(f"{'='*80}\n")
         
         print(f"{Fore.YELLOW}Maximum iterations: {self.max_iterations}")
@@ -260,9 +260,9 @@ def main():
     try:
         lexer = Lexer(source)
         tokens = lexer.tokenize()
-        print(f"{Fore.GREEN}✓ Lexer: {len(tokens)} tokens\n")
+        print(f"{Fore.GREEN} Lexer: {len(tokens)} tokens\n")
     except Exception as e:
-        print(f"{Fore.RED}✗ Lexer error: {e}")
+        print(f"{Fore.RED} Lexer error: {e}")
         return 1
     
     # Parse with loop detection
@@ -281,7 +281,7 @@ def main():
         ast = parser.parse()
         
         print(f"\n{Fore.GREEN}{'='*80}")
-        print(f"✓ PARSING COMPLETED SUCCESSFULLY")
+        print(f" PARSING COMPLETED SUCCESSFULLY")
         print(f"{'='*80}\n")
         
         print(f"  Statements parsed: {len(ast.statements)}")
@@ -290,10 +290,10 @@ def main():
         print(f"  Error recoveries: {len(detector.error_recovery_calls)}\n")
         
         if detector.error_recovery_calls:
-            print(f"{Fore.YELLOW}⚠ Warning: Error recovery was called {len(detector.error_recovery_calls)} times")
+            print(f"{Fore.YELLOW} Warning: Error recovery was called {len(detector.error_recovery_calls)} times")
             print(f"{Fore.YELLOW}  This may indicate syntax errors or incomplete handlers\n")
         
-        print(f"{Fore.GREEN}✓ No infinite loops detected!\n")
+        print(f"{Fore.GREEN} No infinite loops detected!\n")
         return 0
         
     except RuntimeError as e:
@@ -305,7 +305,7 @@ def main():
         raise
     
     except Exception as e:
-        print(f"\n{Fore.RED}✗ Parser error: {e}")
+        print(f"\n{Fore.RED} Parser error: {e}")
         import traceback
         traceback.print_exc()
         return 1

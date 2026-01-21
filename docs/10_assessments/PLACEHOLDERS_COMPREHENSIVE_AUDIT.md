@@ -1,10 +1,10 @@
 # Comprehensive Placeholders & Stubs Audit
 
-**Date:** December 18, 2025  
-**Last Updated:** December 19, 2025  
-**Status:** Major Progress - Critical Blockers Reduced  
-**Total Issues Found:** 120+ instances across codebase  
-**Completed Fixes:** 6 (List Comprehensions, Union Tag Size, For Loop Negative Steps, Empty Classes, Lambda Closures, Exception Handling)  
+**Date:** December 18, 2025 
+**Last Updated:** December 19, 2025 
+**Status:** Major Progress - Critical Blockers Reduced 
+**Total Issues Found:** 120+ instances across codebase 
+**Completed Fixes:** 6 (List Comprehensions, Union Tag Size, For Loop Negative Steps, Empty Classes, Lambda Closures, Exception Handling) 
 **Remaining:** 114+ instances
 
 ## Executive Summary
@@ -17,14 +17,14 @@ This document catalogs **ALL TODO/FIXME/placeholder/simplified/stub implementati
 4. Priority order for fixes
 
 **Progress Update (Dec 19, 2025):**
-- ✅ List Comprehensions: 50% → 100% (4 hours)
-- ✅ Union Tag Size: 95% → 100% (1 hour)
-- ✅ For Loop Negative Steps: Complete (2.5 hours)
-- ✅ Empty Classes: Complete (1 hour)
-- ✅ Type Assumptions (Partial): Address-of array indexing (0.5 hours)
-- ✅ Sizeof Array Literals: Complete (1 hour)
-- ✅ **Lambda Closures: COMPLETE** (~8-10 hours) - Full closure support with environment capture
-- ✅ **Exception Handling: COMPLETE** (~15-20 hours) - Full C++ exception ABI integration
+- List Comprehensions: 50% 100% (4 hours)
+- Union Tag Size: 95% 100% (1 hour)
+- For Loop Negative Steps: Complete (2.5 hours)
+- Empty Classes: Complete (1 hour)
+- Type Assumptions (Partial): Address-of array indexing (0.5 hours)
+- Sizeof Array Literals: Complete (1 hour)
+- **Lambda Closures: COMPLETE** (~8-10 hours) - Full closure support with environment capture
+- **Exception Handling: COMPLETE** (~15-20 hours) - Full C++ exception ABI integration
 - **Total time invested:** ~35 hours
 - **Remaining critical blockers:** 1 (Async/Await 80-120h)
 - **Current focus:** Async/Await - LLVM Coroutines
@@ -33,9 +33,9 @@ This document catalogs **ALL TODO/FIXME/placeholder/simplified/stub implementati
 
 ## CRITICAL - FEATURE-BREAKING (Priority 1)
 
-### 1. **Async/Await - Synchronous Execution** ⚠️ CRITICAL
-**Files:** `llvm_ir_generator.py`  
-**Lines:** 1209-1247, 3685-3711  
+### 1. **Async/Await - Synchronous Execution** CRITICAL
+**Files:** `llvm_ir_generator.py` 
+**Lines:** 1209-1247, 3685-3711 
 **Count:** 7 instances
 
 **Current State:**
@@ -57,49 +57,49 @@ This document catalogs **ALL TODO/FIXME/placeholder/simplified/stub implementati
 - Frame allocation/deallocation
 - Proper async semantics
 
-**Impact:** CRITICAL - Feature claimed as complete but is 0% functional  
-**Effort:** 80-120 hours  
+**Impact:** CRITICAL - Feature claimed as complete but is 0% functional 
+**Effort:** 80-120 hours 
 **Priority:** P1 - Block production release
 
 ---
 
-### 2. **Exception Handling - COMPLETE** ✅
-**Files:** `llvm_ir_generator.py`  
+### 2. **Exception Handling - COMPLETE** 
+**Files:** `llvm_ir_generator.py` 
 **Status:** FULLY IMPLEMENTED AND TESTED
 
 **Implementation Summary:**
-- ✅ C++ exception ABI integration (`__cxa_throw`, `__cxa_begin_catch`, etc.)
-- ✅ Personality function on all functions (`@__gxx_personality_v0`)
-- ✅ Exception type info (RTTI) generation
-- ✅ `__nlpl_throw` helper function (invokable wrapper)
-- ✅ `invoke` instructions for function calls in try blocks
-- ✅ `landingpad` with catch-all (`catch i8* null`)
-- ✅ Nested try-catch with context save/restore
-- ✅ Re-raise via new exception
-- ✅ Top-level exception handler in main
+- C++ exception ABI integration (`__cxa_throw`, `__cxa_begin_catch`, etc.)
+- Personality function on all functions (`@__gxx_personality_v0`)
+- Exception type info (RTTI) generation
+- `__nlpl_throw` helper function (invokable wrapper)
+- `invoke` instructions for function calls in try blocks
+- `landingpad` with catch-all (`catch i8* null`)
+- Nested try-catch with context save/restore
+- Re-raise via new exception
+- Top-level exception handler in main
 
 **Test Results:** All 6 test files pass:
-- test_exception_minimal.nlpl ✅
-- test_exception_nested.nlpl ✅
-- test_exception_throw.nlpl ✅
-- test_exception_filtering.nlpl ✅
-- test_exception_propagation_pure.nlpl ✅
-- test_exception_direct.nlpl ✅
+- test_exception_minimal.nlpl 
+- test_exception_nested.nlpl 
+- test_exception_throw.nlpl 
+- test_exception_filtering.nlpl 
+- test_exception_propagation_pure.nlpl 
+- test_exception_direct.nlpl 
 
 **Effort:** ~15-20 hours actual (estimated 60-80h)
 **Priority:** ~~P1~~ RESOLVED
 
 ---
 
-### 3. **Lambda Closures - COMPLETE** ✅
-**Files:** `llvm_ir_generator.py`  
+### 3. **Lambda Closures - COMPLETE** 
+**Files:** `llvm_ir_generator.py` 
 **Status:** FULLY IMPLEMENTED AND TESTED
 
 **Implementation Summary:**
-- ✅ Closure struct generation with captured variables
-- ✅ Environment capture at lambda definition
-- ✅ Closure pointer passed to lambda functions
-- ✅ Nested closures supported
+- Closure struct generation with captured variables
+- Environment capture at lambda definition
+- Closure pointer passed to lambda functions
+- Nested closures supported
 
 **Test Results:** test_lambda_closure.nlpl passes all tests
 
@@ -108,23 +108,23 @@ This document catalogs **ALL TODO/FIXME/placeholder/simplified/stub implementati
 
 ---
 
-### 4. **Async/Await - Synchronous Execution** ⚠️ CRITICAL  
-**Effort:** 40-60 hours  
+### 4. **Async/Await - Synchronous Execution** CRITICAL 
+**Effort:** 40-60 hours 
 **Priority:** P1 - Major usability issue
 
 ---
 
 ## HIGH - CORRECTNESS ISSUES (Priority 2)
 
-### 4. ~~**Union Tag Size - Hardcoded i64**~~ ✅ **FIXED**
-**Files:** `llvm_ir_generator.py`  
-**Lines:** 206  
-**Status:** ✅ COMPLETE
+### 4. ~~**Union Tag Size - Hardcoded i64**~~ **FIXED**
+**Files:** `llvm_ir_generator.py` 
+**Lines:** 206 
+**Status:** COMPLETE
 
 **Was:**
 ```python
 # Line 206: "Find largest type (simplified - just use i64 for now)"
-max_size_type = 'i64'  # All unions default to 64-bit storage
+max_size_type = 'i64' # All unions default to 64-bit storage
 ```
 
 **Now:**
@@ -134,14 +134,14 @@ max_size_type = 'i64'  # All unions default to 64-bit storage
 # Test verified: SmallUnion=i8, MediumUnion=i64, etc.
 ```
 
-**Fixed in:** Session 2025-12-18  
+**Fixed in:** Session 2025-12-18 
 **Time:** ~1 hour (vs 2-3h estimated)
 
 ---
 
-### 5. **Pattern Matching - Type Placeholders** ⚠️ HIGH
-**Files:** `llvm_ir_generator.py`  
-**Lines:** 2861, 2938, 2940, 2943, 2951-2952  
+### 5. **Pattern Matching - Type Placeholders** HIGH
+**Files:** `llvm_ir_generator.py` 
+**Lines:** 2861, 2938, 2940, 2943, 2951-2952 
 **Count:** 6 instances
 
 **Current State:**
@@ -154,15 +154,15 @@ max_size_type = 'i64'  # All unions default to 64-bit storage
 # Line 2952: "self.local_vars[var_name] = ('i64', var_addr) # Placeholder type"
 ```
 
-**Impact:** HIGH - Type mismatches, incorrect code generation  
-**Effort:** 30-40 hours  
+**Impact:** HIGH - Type mismatches, incorrect code generation 
+**Effort:** 30-40 hours 
 **Priority:** P2
 
 ---
 
-### 6. **Rest Pattern - Placeholder** ⚠️ HIGH
-**Files:** `llvm_ir_generator.py`  
-**Lines:** 3044-3045  
+### 6. **Rest Pattern - Placeholder** HIGH
+**Files:** `llvm_ir_generator.py` 
+**Lines:** 3044-3045 
 **Count:** 2 instances
 
 **Current State:**
@@ -171,15 +171,15 @@ max_size_type = 'i64'  # All unions default to 64-bit storage
 # Line 3045: "TODO: Implement proper rest list creation"
 ```
 
-**Impact:** HIGH - Rest patterns don't work correctly  
-**Effort:** 4-6 hours  
+**Impact:** HIGH - Rest patterns don't work correctly 
+**Effort:** 4-6 hours 
 **Priority:** P2
 
 ---
 
-### 7. **Tuple Types - Homogeneous Assumption** ⚠️ HIGH
-**Files:** `llvm_ir_generator.py`  
-**Lines:** 3090-3091  
+### 7. **Tuple Types - Homogeneous Assumption** HIGH
+**Files:** `llvm_ir_generator.py` 
+**Lines:** 3090-3091 
 **Count:** 2 instances
 
 **Current State:**
@@ -188,24 +188,24 @@ max_size_type = 'i64'  # All unions default to 64-bit storage
 # Line 3091: "TODO: Support heterogeneous tuples with type inference"
 ```
 
-**Impact:** HIGH - Tuples cannot mix types  
-**Effort:** 6-8 hours  
+**Impact:** HIGH - Tuples cannot mix types 
+**Effort:** 6-8 hours 
 **Priority:** P2
 
 ---
 
-### 8. **For Loop - Positive Step Assumption** ⚠️ HIGH
-**Files:** `llvm_ir_generator.py`  
-**Lines:** 2327-2328  
+### 8. **For Loop - Positive Step Assumption** HIGH
+**Files:** `llvm_ir_generator.py` 
+**Lines:** 2327-2328 
 **Count:** 2 instances
 
 **Current State:**
 ```python
 # Line 2327: "For simplicity, assume positive step for now"
-### 8. ~~**For Loop - Negative Steps**~~ ✅ **FIXED**
-**Files:** `llvm_ir_generator.py`  
-**Lines:** 2255-2373  
-**Status:** ✅ COMPLETE
+### 8. ~~**For Loop - Negative Steps**~~ **FIXED**
+**Files:** `llvm_ir_generator.py` 
+**Lines:** 2255-2373 
+**Status:** COMPLETE
 
 **Was:**
 ```python
@@ -219,24 +219,24 @@ max_size_type = 'i64'  # All unions default to 64-bit storage
 - Proper sequential temp register allocation
 
 **Test Results:**
-- ✅ Positive/negative literal steps work correctly
-- ✅ Runtime variable steps (positive/negative) work correctly
-- ✅ All 6 test scenarios passing
+- Positive/negative literal steps work correctly
+- Runtime variable steps (positive/negative) work correctly
+- All 6 test scenarios passing
 
 **Completed:** December 18, 2025 (2.5 hours)
 ```
 
-**Impact:** HIGH - Negative steps produce incorrect results  
-**Effort:** 2-3 hours  
+**Impact:** HIGH - Negative steps produce incorrect results 
+**Effort:** 2-3 hours 
 **Priority:** P2
 
 ---
 
 ## MEDIUM - TYPE SAFETY (Priority 3)
 
-### 9. ~~**Type Assumptions - i64 Hardcoding**~~ 🟡 **PARTIALLY FIXED**
-**Files:** `llvm_ir_generator.py`  
-**Lines:** 3714 (fixed), 4707, 4718, 4899, 5288  
+### 9. ~~**Type Assumptions - i64 Hardcoding**~~ **PARTIALLY FIXED**
+**Files:** `llvm_ir_generator.py` 
+**Lines:** 3714 (fixed), 4707, 4718, 4899, 5288 
 **Status:** 1/5 complete
 
 **Fixed:**
@@ -244,7 +244,7 @@ max_size_type = 'i64'  # All unions default to 64-bit storage
 # Line 3714: Address-of array indexing now uses proper element type inference
 array_type = self._infer_expression_type(array_expr)
 if array_type.endswith('*'):
-    elem_type = array_type[:-1]  # i64* -> i64, i8* -> i8, etc.
+ elem_type = array_type[:-1] # i64* -> i64, i8* -> i8, etc.
 ```
 
 **Remaining Issues:**
@@ -252,15 +252,15 @@ if array_type.endswith('*'):
 - Line 4899: Indirect calls assume i64 return
 - Line 5288: Array allocation assumes 8-byte elements
 
-**Effort Remaining:** ~6 hours  
+**Effort Remaining:** ~6 hours 
 **Completed:** December 18, 2025 (0.5 hours for address-of fix)
 
 ---
 
-### 10. ~~**Empty Classes - Placeholder Byte**~~ ✅ **FIXED**
-**Files:** `llvm_ir_generator.py`  
-**Lines:** 248, 4234-4250  
-**Status:** ✅ COMPLETE
+### 10. ~~**Empty Classes - Placeholder Byte**~~ **FIXED**
+**Files:** `llvm_ir_generator.py` 
+**Lines:** 248, 4234-4250 
+**Status:** COMPLETE
 
 **Was:**
 ```python
@@ -274,24 +274,24 @@ if array_type.endswith('*'):
 - Fixed sizeof type name resolution to use `%TypeName` instead of `%struct.TypeName`
 
 **Test Results:**
-- ✅ `sizeof(EmptyMarker)` = 0 bytes
-- ✅ `sizeof(EmptyContainer)` = 0 bytes
-- ✅ `sizeof(WithField)` = 8 bytes (struct with i64)
+- `sizeof(EmptyMarker)` = 0 bytes
+- `sizeof(EmptyContainer)` = 0 bytes
+- `sizeof(WithField)` = 8 bytes (struct with i64)
 
 **Completed:** December 18, 2025 (1 hour)
 
 ---
 
-### 11. ~~**Sizeof - Array Literal TODO**~~ ✅ **FIXED**
-**Files:** `llvm_ir_generator.py`  
-**Lines:** 4236-4260  
-**Status:** ✅ COMPLETE
+### 11. ~~**Sizeof - Array Literal TODO**~~ **FIXED**
+**Files:** `llvm_ir_generator.py` 
+**Lines:** 4236-4260 
+**Status:** COMPLETE
 
 **Was:**
 ```python
 # Line 4312: "Array literal - TODO: implement"
 elif isinstance(value, list):
-    return '0'  # Placeholder
+ return '0' # Placeholder
 ```
 
 **Fixed Implementation:**
@@ -301,10 +301,10 @@ elif isinstance(value, list):
 - Handles empty arrays (returns 0)
 
 **Test Results:**
-- ✅ `sizeof [1, 2, 3]` = 24 bytes (3 × i64)
-- ✅ `sizeof [1, 2, 3, 4, 5]` = 40 bytes (5 × i64)
-- ✅ `sizeof []` = 0 bytes
-- ✅ `sizeof [10]` = 8 bytes (1 × i64)
+- `sizeof [1, 2, 3]` = 24 bytes (3 × i64)
+- `sizeof [1, 2, 3, 4, 5]` = 40 bytes (5 × i64)
+- `sizeof []` = 0 bytes
+- `sizeof [10]` = 8 bytes (1 × i64)
 
 **Completed:** December 18, 2025 (1 hour)
 
@@ -312,9 +312,9 @@ elif isinstance(value, list):
 
 ## LOW - CONVENIENCE FEATURES (Priority 4)
 
-### 12. **String Functions - Placeholders** ⚠️ LOW
-**Files:** `llvm_ir_generator.py`  
-**Lines:** 710, 713, 720  
+### 12. **String Functions - Placeholders** LOW
+**Files:** `llvm_ir_generator.py` 
+**Lines:** 710, 713, 720 
 **Count:** 5 instances
 
 **Current State:**
@@ -324,15 +324,15 @@ elif isinstance(value, list):
 # Line 720: "Placeholder: returns empty string for now"
 ```
 
-**Impact:** LOW - String utilities incomplete  
-**Effort:** 15-20 hours for full implementation  
+**Impact:** LOW - String utilities incomplete 
+**Effort:** 15-20 hours for full implementation 
 **Priority:** P4
 
 ---
 
-### 13. **F-String Alignment - Simplified** ⚠️ LOW
-**Files:** `llvm_ir_generator.py`  
-**Lines:** 4166  
+### 13. **F-String Alignment - Simplified** LOW
+**Files:** `llvm_ir_generator.py` 
+**Lines:** 4166 
 **Count:** 1 instance
 
 **Current State:**
@@ -340,15 +340,15 @@ elif isinstance(value, list):
 # Line 4166: "String alignment: >N, <N, ^N - simplified to %Ns"
 ```
 
-**Impact:** LOW - Alignment formatting incomplete  
-**Effort:** 4-6 hours  
+**Impact:** LOW - Alignment formatting incomplete 
+**Effort:** 4-6 hours 
 **Priority:** P4
 
 ---
 
-### 14. **For-Each - Variable-Only Iteration** ⚠️ LOW
-**Files:** `llvm_ir_generator.py`  
-**Lines:** 2392-2396  
+### 14. **For-Each - Variable-Only Iteration** LOW
+**Files:** `llvm_ir_generator.py` 
+**Lines:** 2392-2396 
 **Count:** 3 instances
 
 **Current State:**
@@ -358,17 +358,17 @@ elif isinstance(value, list):
 # Line 2396: "Skip for now"
 ```
 
-**Impact:** LOW - Cannot iterate over expressions directly  
-**Effort:** 6-8 hours  
+**Impact:** LOW - Cannot iterate over expressions directly 
+**Effort:** 6-8 hours 
 **Priority:** P4
 
 ---
 
 ## INFRASTRUCTURE - TOOLING (Priority 5)
 
-### 15. **Builder - Multi-File Modules** ⚠️ LOW
-**Files:** `tooling/builder.py`  
-**Lines:** 24, 57-58, 103  
+### 15. **Builder - Multi-File Modules** LOW
+**Files:** `tooling/builder.py` 
+**Lines:** 24, 57-58, 103 
 **Count:** 3 instances
 
 **Current State:**
@@ -379,15 +379,15 @@ elif isinstance(value, list):
 # Line 103: "TODO: Better main entry point detection"
 ```
 
-**Impact:** LOW - Build system simplifications  
-**Effort:** 10-15 hours  
+**Impact:** LOW - Build system simplifications 
+**Effort:** 10-15 hours 
 **Priority:** P5
 
 ---
 
-### 16. **Optimizer - Function Inlining** ⚠️ LOW
-**Files:** `optimizer/function_inlining.py`  
-**Lines:** 197-198  
+### 16. **Optimizer - Function Inlining** LOW
+**Files:** `optimizer/function_inlining.py` 
+**Lines:** 197-198 
 **Count:** 2 instances
 
 **Current State:**
@@ -396,15 +396,15 @@ elif isinstance(value, list):
 # Line 198: "This is a simplified version - full implementation would:"
 ```
 
-**Impact:** LOW - Optimization incomplete  
-**Effort:** 8-12 hours  
+**Impact:** LOW - Optimization incomplete 
+**Effort:** 8-12 hours 
 **Priority:** P5
 
 ---
 
-### 17. **Dead Code Elimination - Simplified** ⚠️ LOW
-**Files:** `optimizer/dead_code_elimination.py`  
-**Lines:** 97  
+### 17. **Dead Code Elimination - Simplified** LOW
+**Files:** `optimizer/dead_code_elimination.py` 
+**Lines:** 97 
 **Count:** 1 instance
 
 **Current State:**
@@ -412,15 +412,15 @@ elif isinstance(value, list):
 # Line 97: "For now, just mark as complete"
 ```
 
-**Impact:** LOW - Optimization incomplete  
-**Effort:** 6-10 hours  
+**Impact:** LOW - Optimization incomplete 
+**Effort:** 6-10 hours 
 **Priority:** P5
 
 ---
 
-### 18. **Parser - Match Expression Support** ⚠️ LOW
-**Files:** `parser/parser.py`  
-**Lines:** 2233-2234, 5117-5119  
+### 18. **Parser - Match Expression Support** LOW
+**Files:** `parser/parser.py` 
+**Lines:** 2233-2234, 5117-5119 
 **Count:** 3 instances
 
 **Current State:**
@@ -430,15 +430,15 @@ elif isinstance(value, list):
 # Line 5119: "value = Identifier(name='placeholder', line_number=...)"
 ```
 
-**Impact:** LOW - Match limited to identifiers  
-**Effort:** 10-12 hours  
+**Impact:** LOW - Match limited to identifiers 
+**Effort:** 10-12 hours 
 **Priority:** P5
 
 ---
 
-### 19. **FFI - Type Conversion TODO** ⚠️ LOW
-**Files:** `compiler/ffi.py`  
-**Lines:** 435, 451, 685, 692  
+### 19. **FFI - Type Conversion TODO** LOW
+**Files:** `compiler/ffi.py` 
+**Lines:** 435, 451, 685, 692 
 **Count:** 4 instances
 
 **Current State:**
@@ -446,52 +446,52 @@ elif isinstance(value, list):
 # Line 435: "For now, assume direct compatibility"
 # Line 451: "For now, assume direct compatibility"
 # Line 685: "TODO: Add conversions for complex types like strings, structs"
-# Line 692: "c_result = result  # Direct pass-through for now"
+# Line 692: "c_result = result # Direct pass-through for now"
 ```
 
-**Impact:** LOW - Limited FFI type support  
-**Effort:** 15-20 hours  
+**Impact:** LOW - Limited FFI type support 
+**Effort:** 15-20 hours 
 **Priority:** P5
 
 ---
 
-### 20. **Debug Info - Simplified Size** ⚠️ LOW
-**Files:** `debugger/debug_info.py`  
-**Lines:** 165  
+### 20. **Debug Info - Simplified Size** LOW
+**Files:** `debugger/debug_info.py` 
+**Lines:** 165 
 **Count:** 1 instance
 
 **Current State:**
 ```python
-# Line 165: "f'size: {len(fields) * 64}, '  # Simplified size calculation"
+# Line 165: "f'size: {len(fields) * 64}, ' # Simplified size calculation"
 ```
 
-**Impact:** LOW - Debug info inaccurate  
-**Effort:** 2-3 hours  
+**Impact:** LOW - Debug info inaccurate 
+**Effort:** 2-3 hours 
 **Priority:** P5
 
 ---
 
-### 21. **LSP - Diagnostics Simplified** ⚠️ LOW
-**Files:** `lsp/diagnostics.py`  
-**Lines:** 97, 116-117  
+### 21. **LSP - Diagnostics Simplified** LOW
+**Files:** `lsp/diagnostics.py` 
+**Lines:** 97, 116-117 
 **Count:** 3 instances
 
 **Current State:**
 ```python
 # Line 97: "This is simplified - real implementation would track scope"
 # Line 116: "(This is a simplified check - real implementation would be smarter)"
-# Line 117: "pass  # Too many false positives for now"
+# Line 117: "pass # Too many false positives for now"
 ```
 
-**Impact:** LOW - LSP features incomplete  
-**Effort:** 8-12 hours  
+**Impact:** LOW - LSP features incomplete 
+**Effort:** 8-12 hours 
 **Priority:** P5
 
 ---
 
-### 22. **LSP - Formatter TODO** ⚠️ LOW
-**Files:** `lsp/server.py`  
-**Lines:** 336  
+### 22. **LSP - Formatter TODO** LOW
+**Files:** `lsp/server.py` 
+**Lines:** 336 
 **Count:** 1 instance
 
 **Current State:**
@@ -499,8 +499,8 @@ elif isinstance(value, list):
 # Line 336: "TODO: Implement formatter"
 ```
 
-**Impact:** LOW - Auto-formatting missing  
-**Effort:** 20-30 hours  
+**Impact:** LOW - Auto-formatting missing 
+**Effort:** 20-30 hours 
 **Priority:** P5
 
 ---
@@ -510,8 +510,8 @@ elif isinstance(value, list):
 These are in the interpreter (not compiler), which is expected to have some simplifications:
 
 ### 23. **Interpreter - NotImplementedError** (Expected)
-**Files:** `interpreter/interpreter.py`  
-**Lines:** 141, 672, 692, 972, 1002, 1007-1008, 1112, 1279  
+**Files:** `interpreter/interpreter.py` 
+**Lines:** 141, 672, 692, 972, 1002, 1007-1008, 1112, 1279 
 **Count:** 8 instances
 
 **Note:** Interpreter is allowed simplified implementations as it's not the production execution path. Compiler must be complete.
@@ -521,15 +521,15 @@ These are in the interpreter (not compiler), which is expected to have some simp
 ## STDLIB - LEGITIMATE (Informational)
 
 ### 24. **WebSocket - Stub Functions** (Legitimate)
-**Files:** `stdlib/websocket_utils/__init__.py`  
-**Lines:** 291  
+**Files:** `stdlib/websocket_utils/__init__.py` 
+**Lines:** 291 
 **Count:** 1 instance
 
 **Note:** WebSocket support is optional stdlib, stubs with helpful errors are acceptable.
 
 ### 25. **ASM - Simplified** (Legitimate)
-**Files:** `stdlib/asm/__init__.py`  
-**Lines:** 39, 44  
+**Files:** `stdlib/asm/__init__.py` 
+**Lines:** 39, 44 
 **Count:** 2 instances
 
 **Note:** Inline ASM is advanced feature, simplified implementation acceptable for initial release.
@@ -538,14 +538,14 @@ These are in the interpreter (not compiler), which is expected to have some simp
 
 ## LEGITIMATE USES (No Action Needed)
 
-### 26. **Safety Module - `todo()` Function** ✅ LEGITIMATE
-**Files:** `safety/panic.py`  
-**Lines:** 124, 129, 131, 165  
+### 26. **Safety Module - `todo()` Function** LEGITIMATE
+**Files:** `safety/panic.py` 
+**Lines:** 124, 129, 131, 165 
 
 **Note:** This is the NLPL `todo()` panic function for user code - not a placeholder.
 
-### 27. **Documentation Comments** ✅ LEGITIMATE
-**Files:** Various  
+### 27. **Documentation Comments** LEGITIMATE
+**Files:** Various 
 **Note:** Comments saying "NO shortcuts, NO placeholders" are policy statements, not violations.
 
 ---
@@ -562,7 +562,7 @@ These are in the interpreter (not compiler), which is expected to have some simp
 | **Interpreter** | 8 instances | N/A (expected) | N/A |
 | **Legitimate** | 22 instances | N/A | N/A |
 
-**Total Actionable Issues:** 70 placeholders/stubs  
+**Total Actionable Issues:** 70 placeholders/stubs 
 **Total Remediation Effort:** 444-650 hours (~3-4 months full-time)
 
 ---
@@ -570,8 +570,8 @@ These are in the interpreter (not compiler), which is expected to have some simp
 ## Remediation Roadmap
 
 ### Phase 1: CRITICAL FIXES (P1) - 180-260 hours
-1. ✅ **List Comprehensions** - COMPLETE (4 hours)
-2. ✅ **Union Tag Size** - COMPLETE (1 hour)
+1. **List Comprehensions** - COMPLETE (4 hours)
+2. **Union Tag Size** - COMPLETE (1 hour)
 3. **Exception Handling** - Full LLVM implementation (60-80h)
 4. **Async/Await** - Full LLVM coroutines (80-120h)
 5. **Lambda Closures** - Environment capture (40-60h)
@@ -609,9 +609,9 @@ These are in the interpreter (not compiler), which is expected to have some simp
 - [ ] Security audit passed
 - [ ] Documentation complete
 
-**Current Status:** 🔴 **NOT PRODUCTION READY**  
-**Blockers:** 11 CRITICAL placeholders, 12 HIGH severity issues  
-**Target:** 🟢 Production Ready after Phase 1-3 completion
+**Current Status:** **NOT PRODUCTION READY** 
+**Blockers:** 11 CRITICAL placeholders, 12 HIGH severity issues 
+**Target:** Production Ready after Phase 1-3 completion
 
 ---
 
@@ -632,5 +632,5 @@ grep -rn "TODO\|FIXME\|XXX\|HACK\|simplified\|placeholder\|stub\|for now" src/nl
 
 ---
 
-**Last Updated:** December 18, 2025  
+**Last Updated:** December 18, 2025 
 **Next Review:** After Phase 1 completion

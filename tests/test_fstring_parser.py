@@ -30,7 +30,7 @@ def test_fstring_parser():
     assert isinstance(ast.parts[1][1], Identifier)  # expression
     assert ast.parts[1][1].name == 'name'
     assert ast.parts[2] == (True, '!')
-    print("   ✓ Simple f-string parsed correctly")
+    print("    Simple f-string parsed correctly")
     
     # Test 2: Expression in f-string
     print("\n2. Testing expression parsing:")
@@ -43,9 +43,9 @@ def test_fstring_parser():
     assert isinstance(ast2, FStringExpression)
     assert len(ast2.parts) == 2
     print(f"   Parts: {ast2.parts}")
-    print("   ✓ Expression f-string parsed")
+    print("    Expression f-string parsed")
     
-    print("\n✅ All f-string parser tests passed!")
+    print("\n All f-string parser tests passed!")
 
 if __name__ == "__main__":
     test_fstring_parser()
