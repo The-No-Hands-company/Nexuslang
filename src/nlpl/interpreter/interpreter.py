@@ -64,6 +64,7 @@ class Interpreter:
         self.current_scope = [self.global_scope]
         self.functions = {}
         self.classes = {}
+        self.macros = {}  # Registry for macro definitions
         self.last_exception = None  # To support re-raising
         self.module_loader = None  # Will be initialized lazily
         
@@ -395,9 +396,42 @@ class Interpreter:
         # Create a callable wrapper and store it as a variable too
         # This enables first-class function support
         function_value = self.create_function_wrapper(node)
+        
+        # Apply decorators if any
+        if hasattr(node, 'decorators') and node.decorators:
+            for decorator in reversed(node.decorators):  # Apply decorators bottom-up
+                function_value = self.apply_decorator(decorator, function_value, node)
+        
         self.set_variable(node.name, function_value)
         
         return node.name
+    
+    def apply_decorator(self, decorator_node, function_value, function_def):
+        """Apply a decorator to a function."""
+        from nlpl.decorators import get_decorator
+        
+        # Evaluate decorator arguments
+        args = {}
+        for arg_name, arg_expr in decorator_node.arguments.items():
+            args[arg_name] = self.execute(arg_expr)
+        
+        # Get the decorator implementation
+        decorator_func = get_decorator(decorator_node.name)
+        if decorator_func is None:
+            raise NLPLRuntimeError(
+                f"Unknown decorator: @{decorator_node.name}",
+                line=decorator_node.line
+            )
+        
+        # Apply decorator based on type
+        # Decorators that take arguments need to be called first to get the actual decorator
+        if args and decorator_node.name in ("deprecated", "retry", "validate_args"):
+            # Call with arguments to get the actual decorator
+            actual_decorator = decorator_func(**args)
+            return actual_decorator(function_value)
+        else:
+            # Decorator without arguments or simple decorator
+            return decorator_func(function_value)
     
     def execute_async_function_definition(self, node):
         """Execute an async function definition."""
@@ -1557,6 +1591,55 @@ class Interpreter:
             result[key] = value
         return result
     
+    def execute_list_comprehension(self, node):
+        """Execute a list comprehension."""
+        # Syntax: [expr for var in iterable if condition]
+        result = []
+        iterable = self.execute(node.iterable)
+        
+        # Save current scope
+        old_scope = self.current_scope.copy()
+        
+        for item in iterable:
+            # Set loop variable
+            self.set_variable(node.target.name, item)
+            
+            # Check condition if present
+            if node.condition is None or self.execute(node.condition):
+                # Evaluate expression and add to result
+                value = self.execute(node.expression)
+                result.append(value)
+        
+        # Restore scope (remove loop variable)
+        self.current_scope = old_scope
+        
+        return result
+    
+    def execute_dict_comprehension(self, node):
+        """Execute a dictionary comprehension."""
+        # Syntax: {key: value for var in iterable if condition}
+        result = {}
+        iterable = self.execute(node.iterable)
+        
+        # Save current scope
+        old_scope = self.current_scope.copy()
+        
+        for item in iterable:
+            # Set loop variable
+            self.set_variable(node.target.name, item)
+            
+            # Check condition if present
+            if node.condition is None or self.execute(node.condition):
+                # Evaluate key and value expressions
+                key = self.execute(node.key)
+                value = self.execute(node.value)
+                result[key] = value
+        
+        # Restore scope (remove loop variable)
+        self.current_scope = old_scope
+        
+        return result
+    
     def execute_index_expression(self, node):
         """Execute an index expression (array access)."""
         # Evaluate the array and index
@@ -2304,4 +2387,48 @@ class Interpreter:
         else:
             self.return_value = result
             return None
+    
+    def execute_macro_definition(self, node):
+        """Execute a macro definition - store it in registry."""
+        self.macros[node.name] = node
+        return None
+    
+    def execute_macro_expansion(self, node):
+        """Execute a macro expansion - substitute parameters and execute body."""
+        # Get macro definition
+        if node.name not in self.macros:
+            raise NLPLRuntimeError(
+                f"Undefined macro: {node.name}",
+                line=node.line
+            )
+        
+        macro_def = self.macros[node.name]
+        
+        # Evaluate all argument expressions
+        evaluated_args = {}
+        for arg_name, arg_expr in node.arguments.items():
+            evaluated_args[arg_name] = self.execute(arg_expr)
+        
+        # Create a new scope for macro expansion
+        old_scope = self.current_scope.copy()
+        
+        # Bind macro parameters to argument values
+        for i, param_name in enumerate(macro_def.parameters):
+            if param_name in evaluated_args:
+                self.set_variable(param_name, evaluated_args[param_name])
+            else:
+                raise NLPLRuntimeError(
+                    f"Macro {node.name} missing argument: {param_name}",
+                    line=node.line
+                )
+        
+        # Execute macro body
+        result = None
+        for stmt in macro_def.body:
+            result = self.execute(stmt)
+        
+        # Restore scope
+        self.current_scope = old_scope
+        
+        return result
 

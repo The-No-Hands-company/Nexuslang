@@ -68,7 +68,7 @@ class Literal:
 
 class FunctionDefinition(ASTNode):
     """Represents a function definition."""
-    def __init__(self, name, parameters, body=None, return_type=None, type_parameters=None, type_constraints=None, variadic=False, is_exported=False, line_number=None):
+    def __init__(self, name, parameters, body=None, return_type=None, type_parameters=None, type_constraints=None, variadic=False, is_exported=False, decorators=None, line_number=None):
         super().__init__("function_definition", line_number)
         self.name = name
         self.parameters = parameters or []
@@ -78,6 +78,29 @@ class FunctionDefinition(ASTNode):
         self.type_constraints = type_constraints or []  # Constraints like "where T is Comparable"
         self.variadic = variadic  # True if function accepts variable arguments (...)
         self.is_exported = is_exported
+        self.decorators = decorators or []  # List of decorators applied to this function
+
+class Decorator(ASTNode):
+    """Represents a decorator (@decorator_name or @decorator_name with args)."""
+    def __init__(self, name, arguments=None, line_number=None):
+        super().__init__("decorator", line_number)
+        self.name = name  # Decorator name (e.g., "memoize", "trace")
+        self.arguments = arguments or {}  # Dict of argument name -> value
+
+class MacroDefinition(ASTNode):
+    """Represents a macro definition."""
+    def __init__(self, name, parameters, body, line_number=None):
+        super().__init__("macro_definition", line_number)
+        self.name = name
+        self.parameters = parameters or []  # List of parameter names
+        self.body = body or []  # List of statements in macro body
+
+class MacroExpansion(ASTNode):
+    """Represents a macro expansion/invocation."""
+    def __init__(self, name, arguments, line_number=None):
+        super().__init__("macro_expansion", line_number)
+        self.name = name
+        self.arguments = arguments or {}  # Dict of parameter name -> value expression
 
 class TypeAlias(ASTNode):
     """A type alias definition node."""

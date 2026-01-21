@@ -68,6 +68,10 @@ class TokenType(Enum):
     CALLBACK = auto()
     LAMBDA = auto()
     
+    # Macros
+    MACRO = auto()
+    EXPAND = auto()
+    
     # Struct/Union types (low-level data structures)
     STRUCT = auto()
     UNION = auto()
@@ -216,6 +220,9 @@ class TokenType(Enum):
     # Error propagation
     QUESTION = auto()  # ? operator for Result unwrapping
     
+    # Decorators
+    AT = auto()  # @ symbol for decorators
+    
     # Literals
     IDENTIFIER = auto()
     INTEGER_LITERAL = auto()
@@ -357,6 +364,10 @@ class Lexer:
             "stdcall": TokenType.STDCALL,
             "callback": TokenType.CALLBACK,
             "lambda": TokenType.LAMBDA,
+            
+            # Macros
+            "macro": TokenType.MACRO,
+            "expand": TokenType.EXPAND,
             
             # Struct/Union/Enum keywords
             "struct": TokenType.STRUCT,
@@ -685,6 +696,8 @@ class Lexer:
                 self.add_token(TokenType.NOT_EQUAL_TO)  # !=
             else:
                 self.add_token(TokenType.NOT)  # !
+        elif c == '@':
+            self.add_token(TokenType.AT)  # @ for decorators
         else:
             self.error(f"Unexpected character '{c}'")
     

@@ -27,6 +27,8 @@ from nlpl.parser.ast import (
     AddressOfExpression, DereferenceExpression, SizeofExpression, PointerType,
     # Struct and union types
     StructDefinition, StructField, UnionDefinition, EnumDefinition, EnumMember, OffsetofExpression, TypeCastExpression,
+    # Decorators and Macros
+    Decorator, MacroDefinition, MacroExpansion,
     # Pattern matching
     MatchExpression, MatchCase, Pattern, LiteralPattern, IdentifierPattern, 
     WildcardPattern, VariantPattern, TuplePattern, ListPattern,
@@ -340,6 +342,26 @@ class Parser:
             
             elif token.type == TokenType.EXPORT:
                 return self.export_statement()
+            
+            elif token.type == TokenType.MACRO:
+                return self.macro_definition()
+            
+            elif token.type == TokenType.EXPAND:
+                return self.macro_expansion()
+            
+            elif token.type == TokenType.AT:
+                # Decorator - collect decorators and apply to next function
+                decorators = []
+                while self.current_token.type == TokenType.AT:
+                    decorators.append(self.parse_decorator())
+                
+                # Next statement should be a function definition
+                if self.current_token.type == TokenType.FUNCTION:
+                    func_def = self.function_definition_short()
+                    func_def.decorators = decorators
+                    return func_def
+                else:
+                    self.error("Decorators can only be applied to functions")
                 
             else:
                 # Try to parse as expression statement (function call, etc.)
@@ -6431,11 +6453,12 @@ class Parser:
             # It's a list comprehension: [expr for var in iterable if condition]
             self.eat(TokenType.FOR)
             
-            # Target should be an identifier
-            if self.current_token.type != TokenType.IDENTIFIER:
+            # Target should be an identifier (or contextual keyword)
+            if self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
+                target = Identifier(self.current_token.lexeme, self.current_token.line)
+                self.advance()
+            else:
                 self.error("Expected variable name after 'for' in list comprehension")
-            target = Identifier(self.current_token.lexeme, self.current_token.line)
-            self.advance()
             
             self.eat(TokenType.IN)
             iterable = self.expression()
@@ -6458,25 +6481,55 @@ class Parser:
             return ListExpression(elements, line_number)
 
     def parse_dict_expression(self):
-        """Parse a dictionary expression."""
+        """Parse a dictionary expression or dict comprehension."""
         # Syntax: {key1: value1, key2: value2, ...}
+        # or: {key: value for var in iterable if condition}
         line_number = self.current_token.line
         
         self.eat(TokenType.LEFT_BRACE)
-        entries = []
         
-        if self.current_token.type != TokenType.RIGHT_BRACE:
+        # Check for empty dict
+        if self.current_token.type == TokenType.RIGHT_BRACE:
+            self.eat(TokenType.RIGHT_BRACE)
+            return DictExpression([], line_number)
+        
+        # Parse first key
+        key = self.expression()
+        self.eat(TokenType.COLON)
+        value = self.expression()
+        
+        # Check if this is a dict comprehension
+        if self.current_token.type == TokenType.FOR:
+            # It's a dict comprehension: {key: value for var in iterable}
+            self.eat(TokenType.FOR)
+            
+            # Target should be an identifier (or contextual keyword)
+            if self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
+                target = Identifier(self.current_token.lexeme, self.current_token.line)
+                self.advance()
+            else:
+                self.error("Expected variable name after 'for' in dict comprehension")
+            
+            self.eat(TokenType.IN)
+            iterable = self.expression()
+            
+            condition = None
+            if self.current_token.type == TokenType.IF:
+                self.advance()
+                condition = self.expression()
+            
+            self.eat(TokenType.RIGHT_BRACE)
+            return DictComprehension(key, value, target, iterable, condition, line_number)
+        
+        # Regular dict expression
+        entries = [(key, value)]
+        
+        while self.current_token.type == TokenType.COMMA:
+            self.advance()
             key = self.expression()
             self.eat(TokenType.COLON)
             value = self.expression()
             entries.append((key, value))
-            
-            while self.current_token.type == TokenType.COMMA:
-                self.advance()
-                key = self.expression()
-                self.eat(TokenType.COLON)
-                value = self.expression()
-                entries.append((key, value))
         
         self.eat(TokenType.RIGHT_BRACE)
         return DictExpression(entries, line_number)
@@ -6953,5 +7006,122 @@ class Parser:
         
         else:
             self.error("Expected 'function' or 'variable' after 'extern'/'foreign'")
+    
+    def parse_decorator(self):
+        """Parse a decorator: @name or @name with arg1 value1, arg2 value2"""
+        self.eat(TokenType.AT)
+        
+        # Get decorator name
+        if self.current_token.type != TokenType.IDENTIFIER:
+            self.error("Expected decorator name after '@'")
+        
+        decorator_name = self.current_token.lexeme
+        line_number = self.current_token.line
+        self.advance()
+        
+        # Check for decorator arguments
+        arguments = {}
+        if self.current_token and self.current_token.type == TokenType.WITH:
+            self.advance()  # consume 'with'
+            
+            # Parse arguments: arg1 value1, arg2 value2, ...
+            while True:
+                # Get argument name
+                if self.current_token.type != TokenType.IDENTIFIER and not self._can_be_identifier(self.current_token):
+                    break
+                
+                arg_name = self.current_token.lexeme
+                self.advance()
+                
+                # Get argument value (expression)
+                arg_value = self.expression()
+                arguments[arg_name] = arg_value
+                
+                # Check for comma (more arguments)
+                if self.current_token and self.current_token.type == TokenType.COMMA:
+                    self.advance()
+                else:
+                    break
+        
+        return Decorator(decorator_name, arguments, line_number)
+    
+    def macro_definition(self):
+        """Parse a macro definition: macro NAME [with params] ... end"""
+        line_number = self.current_token.line
+        self.eat(TokenType.MACRO)
+        
+        # Get macro name
+        if self.current_token.type != TokenType.IDENTIFIER:
+            self.error("Expected macro name after 'macro'")
+        
+        macro_name = self.current_token.lexeme
+        self.advance()
+        
+        # Parse optional parameters
+        parameters = []
+        if self.current_token and self.current_token.type == TokenType.WITH:
+            self.advance()  # consume 'with'
+            
+            # Parse parameter list: param1, param2, ...
+            while True:
+                if self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
+                    parameters.append(self.current_token.lexeme)
+                    self.advance()
+                    
+                    if self.current_token and self.current_token.type == TokenType.COMMA:
+                        self.advance()
+                    else:
+                        break
+                else:
+                    break
+        
+        # Parse macro body (statements until 'end')
+        body = []
+        while self.current_token and self.current_token.type != TokenType.END:
+            stmt = self.statement()
+            if stmt:
+                body.append(stmt)
+        
+        self.eat(TokenType.END)
+        
+        return MacroDefinition(macro_name, parameters, body, line_number)
+    
+    def macro_expansion(self):
+        """Parse a macro expansion: expand NAME [with arg1 value1, arg2 value2]"""
+        line_number = self.current_token.line
+        self.eat(TokenType.EXPAND)
+        
+        # Get macro name
+        if self.current_token.type != TokenType.IDENTIFIER:
+            self.error("Expected macro name after 'expand'")
+        
+        macro_name = self.current_token.lexeme
+        self.advance()
+        
+        # Parse optional arguments
+        arguments = {}
+        if self.current_token and self.current_token.type == TokenType.WITH:
+            self.advance()  # consume 'with'
+            
+            # Parse arguments: arg1 value1, arg2 value2, ...
+            while True:
+                # Get argument name
+                if self.current_token.type != TokenType.IDENTIFIER and not self._can_be_identifier(self.current_token):
+                    break
+                
+                arg_name = self.current_token.lexeme
+                self.advance()
+                
+                # Get argument value (expression)
+                arg_value = self.expression()
+                arguments[arg_name] = arg_value
+                
+                # Check for comma (more arguments)
+                if self.current_token and self.current_token.type == TokenType.COMMA:
+                    self.advance()
+                else:
+                    break
+        
+        return MacroExpansion(macro_name, arguments, line_number)
 
     # ... rest of the parser implementation ...
