@@ -448,6 +448,8 @@ class LLVMIRGenerator(CodeGenerator):
         # Only declare if not already declared via extern
         if 'printf' not in self.extern_functions:
             self.emit('declare i32 @printf(i8* noalias nocapture, ...) #0')
+        if 'sprintf' not in self.extern_functions:
+            self.emit('declare i32 @sprintf(i8*, i8*, ...) #0')
         if 'snprintf' not in self.extern_functions:
             self.emit('declare i32 @snprintf(i8*, i64, i8*, ...) #0')
         if 'malloc' not in self.extern_functions:
@@ -4925,9 +4927,8 @@ class LLVMIRGenerator(CodeGenerator):
             # Allocate buffer (32 bytes enough for numbers)
             self.emit(f'{indent}{buffer_reg} = alloca i8, i32 32')
             
-            # declare i32 @sprintf(i8*, i8*, ...)
+            # Mark sprintf as needed (declared in header)
             if 'sprintf' not in self.extern_functions:
-                self.emit('declare i32 @sprintf(i8*, i8*, ...)')
                 self.extern_functions['sprintf'] = ('i32', ['i8*', 'i8*'], None)
                 
             if source_type in ('i64', 'i32'):
@@ -4935,13 +4936,15 @@ class LLVMIRGenerator(CodeGenerator):
                 fmt_name, fmt_len = self._get_or_create_string_constant(format_str)
                 fmt_reg = self._new_temp()
                 self.emit(f'{indent}{fmt_reg} = getelementptr inbounds [{fmt_len} x i8], [{fmt_len} x i8]* {fmt_name}, i64 0, i64 0')
-                self.emit(f'{indent}call i32 (i8*, i8*, ...) @sprintf(i8* {buffer_reg}, i8* {fmt_reg}, i64 {expr_reg})')
+                sprintf_result = self._new_temp()
+                self.emit(f'{indent}{sprintf_result} = call i32 (i8*, i8*, ...) @sprintf(i8* {buffer_reg}, i8* {fmt_reg}, i64 {expr_reg})')
             elif source_type in ('float', 'double'):
                 format_str = "%f\\00"
                 fmt_name, fmt_len = self._get_or_create_string_constant(format_str)
                 fmt_reg = self._new_temp()
                 self.emit(f'{indent}{fmt_reg} = getelementptr inbounds [{fmt_len} x i8], [{fmt_len} x i8]* {fmt_name}, i64 0, i64 0')
-                self.emit(f'{indent}call i32 (i8*, i8*, ...) @sprintf(i8* {buffer_reg}, i8* {fmt_reg}, double {expr_reg})')
+                sprintf_result = self._new_temp()
+                self.emit(f'{indent}{sprintf_result} = call i32 (i8*, i8*, ...) @sprintf(i8* {buffer_reg}, i8* {fmt_reg}, double {expr_reg})')
             
             return buffer_reg
 
@@ -8645,8 +8648,13 @@ class LLVMIRGenerator(CodeGenerator):
                 # Logical operators return i1 (boolean)
                 if op in ('and', '&&', 'or', '||'):
                     return 'i1'
+            
+            # For arithmetic operations, promote types to match _generate_binary_operation behavior
             left_type = self._infer_expression_type(expr.left)
-            return left_type
+            right_type = self._infer_expression_type(expr.right)
+            
+            # Apply same type promotion logic as code generation
+            return self._promote_types(left_type, right_type)
         elif expr_type == 'UnaryOperation':
             if hasattr(expr, 'operator'):
                 op = expr.operator
@@ -8826,6 +8834,19 @@ class LLVMIRGenerator(CodeGenerator):
         elif expr_type == 'FStringExpression':
             # F-strings always return string pointers
             return 'i8*'
+        elif expr_type == 'TypeCastExpression':
+            # Type cast - infer based on target type
+            if hasattr(expr, 'target_type'):
+                target_type = expr.target_type.lower()
+                if target_type == 'string':
+                    return 'i8*'
+                elif target_type in ('integer', 'int'):
+                    return 'i64'
+                elif target_type in ('float', 'double'):
+                    return 'double'
+                elif target_type == 'boolean':
+                    return 'i1'
+            return 'i64'  # Default if no target_type
         
         return 'i64'  # Default
     
