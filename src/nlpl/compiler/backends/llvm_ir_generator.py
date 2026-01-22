@@ -913,8 +913,8 @@ class LLVMIRGenerator(CodeGenerator):
         self.emit('  %new_total = add i64 %curr_total, %elem_len')
         self.emit('  ; Add separator length (if not first element)')
         self.emit('  %is_first = icmp eq i64 %idx, 0')
-        self.emit('  %add_sep = select i1 %is_first, i64 0, i64 %sep_len')
-        self.emit('  %final_total = add i64 %new_total, %add_sep')
+        self.emit('  %sep_to_add = select i1 %is_first, i64 0, i64 %sep_len')
+        self.emit('  %final_total = add i64 %new_total, %sep_to_add')
         self.emit('  store i64 %final_total, i64* %total_len')
         self.emit('  %next_idx = add i64 %idx, 1')
         self.emit('  store i64 %next_idx, i64* %count')
@@ -943,9 +943,9 @@ class LLVMIRGenerator(CodeGenerator):
         self.emit('build_add:')
         self.emit('  ; Add separator if not first')
         self.emit('  %bis_first = icmp eq i64 %bidx, 0')
-        self.emit('  br i1 %bis_first, label %skip_sep, label %add_sep')
+        self.emit('  br i1 %bis_first, label %skip_sep, label %bb_add_sep')
         self.emit('')
-        self.emit('add_sep:')
+        self.emit('bb_add_sep:')
         self.emit('  %wpos = load i8*, i8** %write_pos')
         self.emit('  call void @llvm.memcpy.p0i8.p0i8.i64(i8* %wpos, i8* %sep, i64 %sep_len, i1 false)')
         self.emit('  %new_wpos = getelementptr i8, i8* %wpos, i64 %sep_len')
@@ -1667,7 +1667,14 @@ class LLVMIRGenerator(CodeGenerator):
             # Return zero/null as default
             if ret_type.endswith('*'):
                 self.emit(f'  ret {ret_type} null')
+            elif ret_type == 'double':
+                # Use proper float format for double
+                self.emit(f'  ret double 0x0000000000000000')
+            elif ret_type == 'float':
+                # Use proper float format for float
+                self.emit(f'  ret float 0x0000000000000000')
             else:
+                # Integer types can use 0 directly
                 self.emit(f'  ret {ret_type} 0')
         
         self.emit('}')
@@ -3540,7 +3547,25 @@ class LLVMIRGenerator(CodeGenerator):
                 
                 # Type conversion if needed
                 if value_type != self.current_return_type:
-                    value_reg = self._convert_type(value_reg, value_type, self.current_return_type, indent)
+                    # Special handling for constant literals
+                    if value_reg.lstrip('-').isdigit():  # Check if it's a numeric constant
+                        # It's a constant - convert directly to target type format
+                        if self.current_return_type == 'double':
+                            # Convert integer constant to double format
+                            int_val = int(value_reg)
+                            float_val = float(int_val)
+                            hex_val = struct.pack('>d', float_val)
+                            value_reg = f'0x{hex_val.hex()}'
+                        elif self.current_return_type == 'float':
+                            # Convert integer constant to float format
+                            int_val = int(value_reg)
+                            float_val = float(int_val)
+                            hex_val = struct.pack('>f', float_val)
+                            value_reg = f'0x{hex_val.hex()}'
+                        # Otherwise keep the integer constant as-is
+                    else:
+                        # It's a register - use normal type conversion
+                        value_reg = self._convert_type(value_reg, value_type, self.current_return_type, indent)
                 
                 self.emit(f'{indent}ret {self.current_return_type} {value_reg}')
             else:
