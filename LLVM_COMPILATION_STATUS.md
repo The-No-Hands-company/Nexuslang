@@ -1,7 +1,7 @@
 # LLVM Native Compilation Status
 
 ## Summary
-Successfully fixed critical bugs in LLVM backend. **6 out of 7** test examples now compile to native executables (86% success rate).
+**ALL test examples compile successfully!** The LLVM backend now achieves **100% success rate** (7 out of 7 examples).
 
 ## Fixed Bugs
 
@@ -123,9 +123,41 @@ if print_hint == "text":
 ```
 **File**: `src/nlpl/compiler/backends/llvm_ir_generator.py` lines 2544-2591
 
+### Session 4 (Jan 24, 2026)
+
+### Bug 8: For-Each Loop Dispatcher Logic ✅
+**Problem**: For-each loops incorrectly dispatched to range-based loop handler
+```nlpl
+set fruits to ["apple", "banana", "orange"]
+for each fruit in fruits  # Should call _generate_foreach_loop
+    print text fruit
+# ERROR: Iterator typed as i64 instead of i8*
+```
+**Root Cause**: Dispatcher checked `hasattr(node, 'start')` which returns True even when `node.start = None`
+- Parser sets `start=None` and `end=None` for for-each loops
+- `hasattr()` returns True for attributes set to None
+- Code took range-based path instead of for-each path
+**Solution**: Changed condition to `node.start is not None and node.end is not None`
+**File**: `src/nlpl/compiler/backends/llvm_ir_generator.py` line 3100
+
+### Cosmetic Fix: Visible Null Terminators ✅
+**Problem**: Output showed literal `\00` after numbers
+```
+Quantity: 10\00
+Unit Price: $19.990000\00
+```
+**Root Cause**: sprintf format strings had explicit `\00` added, then `_get_or_create_string_constant` added another
+- Format strings: `"%lld\\00"` → stored as `"%lld\00\00"`
+- sprintf wrote first `\00` into buffer
+- printf printed it as visible characters
+**Solution**: Removed explicit `\00` from format strings - function adds it automatically
+**Files**: 
+- `src/nlpl/compiler/backends/llvm_ir_generator.py` lines 2556, 2569, 2582 (print statement)
+- `src/nlpl/compiler/backends/llvm_ir_generator.py` lines 4989, 4997 (type cast)
+
 ## Compilation Status
 
-### ✅ Working Examples (6/7)
+### ✅ Working Examples (7/7 - 100%)
 | Example | Description | Status |
 |---------|-------------|--------|
 | 01_basic_concepts.nlpl | Variables, functions, control flow | ✅ Compiles & runs |
@@ -133,59 +165,36 @@ if print_hint == "text":
 | 08_advanced_type_features_index.nlpl | Type aliases, guards | ✅ Compiles & runs |
 | 11_traits.nlpl | Trait system | ✅ Compiles & runs |
 | 25_ffi_c_interop.nlpl | C library bindings | ✅ Compiles & runs |
-| 26_ffi_struct_marshalling.nlpl | FFI struct passing | ✅ Compiles & runs (NEW) |
-
-### ❌ Failing Examples (1/7)
-| Example | Error | Root Cause |
-|---------|-------|------------|
-| 32_feature_showcase.nlpl | store i64 %67 where %67 is ptr | For-each loop iterator type wrong (i64 instead of i8*) |
+| 26_ffi_struct_marshalling.nlpl | FFI struct passing | ✅ Compiles & runs |
+| 32_feature_showcase.nlpl | Comprehensive feature test | ✅ Compiles & runs (NEW) |
 
 ## Known Issues
 
-### 1. For-Each Loop Iterator Type (Priority: HIGH)
-**Symptom**: For-each over arrays creates iterator with wrong type
-```nlpl
-set fruits to ["apple", "banana", "orange"]  # Array of strings (i8**)
-for each fruit in fruits
-    print text fruit  # ERROR: fruit typed as i64 instead of i8*
-```
-**Error**: `'%67' defined with type 'ptr' but expected 'i64'` - trying to store i8* as i64
-**Root Cause**: Unknown - attempted fix code present but not executing
-**Severity**: High (blocks example 32, likely affects other for-each loops)
-**Investigation Needed**: 
-- Debug with pdb instead of print statements
-- Trace actual execution path through statement dispatcher
-- Check if separate for-each implementation exists
-- Verify module reloading in nlplc tool
+**All critical issues resolved!** ✅
 
-### 2. String Formatting - NULL Terminator Display (Priority: LOW)
-**Symptom**: Output shows "\00" characters
-```
-Unit Price: $19.990000\00
-```
-**Cause**: String constants include explicit null terminator in format
-**Severity**: Low (cosmetic)
-**Fix**: Remove "\00" suffix from generated strings
+### Historical Issues (Now Fixed)
 
-### 3. Print Integer Without Conversion (FIXED in Session 3) ✅
-**Symptom**: `print text <integer>` fails with type error
-```nlpl
-set x to 42
-print text x  # Previously ERROR: i64 passed as i8* to printf
-```
-**Cause**: print text expected string, no auto-conversion
+#### 1. For-Each Loop Iterator Type (FIXED in Session 4) ✅
+**Status**: FIXED - Bug 8 corrected dispatcher logic
+
+#### 2. String Formatting NULL Terminators (FIXED in Session 4) ✅
+**Status**: FIXED - Removed duplicate `\00` from sprintf format strings
+
+#### 3. Print Integer Without Conversion (FIXED in Session 3) ✅
 **Status**: FIXED - Bug 7 added implicit sprintf conversion
-**Severity**: Was Medium (usability), now resolved
 
 ## Next Steps
 
 1. ~~Fix example 26 type error (double vs i64 mismatch)~~ ✅ DONE (Bug 5)
 2. ~~Fix example 32 integer printing issue~~ ✅ DONE (Bug 7)
 3. ~~Add implicit int-to-string conversion for print statements~~ ✅ DONE (Bug 7)
-4. **Fix for-each loop iterator type inference** (blocking example 32)
-5. Fix string formatting to remove visible null terminators (cosmetic)
-6. Performance benchmarks (native vs interpreted)
-7. Test with optimization levels (--optimize 0-3)
+4. ~~Fix for-each loop iterator type inference~~ ✅ DONE (Bug 8)
+5. ~~Fix string formatting to remove visible null terminators~~ ✅ DONE (Session 4)
+6. ~~Performance benchmarks~~ ✅ DONE (benchmark_simple.py created)
+7. ~~Test with optimization levels~~ ✅ DONE (O0/O2/O3 tested)
+8. **Test additional complex programs beyond the 7 examples**
+9. **Implement more advanced features** (generics, async, etc.)
+10. **Optimization passes** (dead code elimination, inlining, etc.)
 
 ## Compiler Usage
 
@@ -256,20 +265,34 @@ print text x  # Previously ERROR: i64 passed as i8* to printf
 - **Achievement**: 6/7 examples compiling natively (86%)
 - Remaining: For-each loop iterator type issue (under investigation)
 
+**Jan 24, 2026**:
+- Fixed for-each loop dispatcher logic (Bug 8)
+- Fixed visible null terminators in output (cosmetic)
+- Created performance benchmark suite (benchmark_simple.py)
+- **Achievement**: 7/7 examples compiling natively (100%)! 🎉
+- Fibonacci benchmark shows O3 optimization provides 1.11x speedup over O0
+
 ## Success Metrics
 
-- **Examples compiling**: 6/7 (86%)
-- **Bugs fixed**: 7 total (4 in Session 2, 3 in Session 3)
-- **Lines changed**: ~100 lines total (~30 Session 2, ~70 Session 3)
-- **Native execution**: All 6 compiled examples run successfully
-- **Performance**: Native code vs interpreted (benchmarks pending)
+- **Examples compiling**: 7/7 (100%) ✅
+- **Bugs fixed**: 8 total (4 in Session 2, 3 in Session 3, 1 in Session 4)
+- **Lines changed**: ~115 lines total (~30 Session 2, ~70 Session 3, ~15 Session 4)
+- **Native execution**: All 7 compiled examples run successfully
+- **Performance**: O3 optimization provides 1.11x speedup over O0
+- **Code quality**: Clean output, no visible artifacts
 
-## Session 3 Details
+## Session Details
 
-See `LLVM_COMPILATION_SESSION3_SUMMARY.md` for comprehensive analysis of:
+**Session 3**: See `LLVM_COMPILATION_SESSION3_SUMMARY.md` for:
 - Detailed bug investigations and fixes
 - For-each loop issue deep dive
 - Debugging attempts and hypotheses
 - Technical insights on struct vs class type handling
 - UTF-8 encoding considerations
+
+**Session 4**: Debugging breakthrough
+- Discovered hasattr() issue with None values
+- Created debug tracing script (debug_foreach.py)
+- Performance benchmarking implemented
+- All cosmetic issues resolved
 
