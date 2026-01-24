@@ -2542,15 +2542,55 @@ class LLVMIRGenerator(CodeGenerator):
         # Override inferred type if print_type hint is present
         print_hint = getattr(node, 'print_type', None)
         if print_hint == "text":
-            value_type = 'i8*'
-            # If actual type is not i8*, we might need a conversion
-            # For now, we assume _generate_expression might return the right thing 
-            # or handle it in the format string
             inferred_type = self._infer_expression_type(value_expr)
             if inferred_type != 'i8*':
-                # In a real compiler we'd insert a conversion call here 
-                # (e.g. call to-string)
-                pass
+                # Need to convert to string - use sprintf for numbers
+                if inferred_type in ('i64', 'i32'):
+                    # Convert integer to string
+                    buffer_reg = self._new_temp()
+                    self.emit(f'{indent}{buffer_reg} = alloca i8, i32 32')
+                    
+                    if 'sprintf' not in self.extern_functions:
+                        self.extern_functions['sprintf'] = ('i32', ['i8*', 'i8*'], None)
+                    
+                    fmt_str = "%lld\\00"
+                    fmt_name, fmt_len = self._get_or_create_string_constant(fmt_str)
+                    fmt_reg = self._new_temp()
+                    self.emit(f'{indent}{fmt_reg} = getelementptr inbounds [{fmt_len} x i8], [{fmt_len} x i8]* {fmt_name}, i64 0, i64 0')
+                    sprintf_result = self._new_temp()
+                    self.emit(f'{indent}{sprintf_result} = call i32 (i8*, i8*, ...) @sprintf(i8* {buffer_reg}, i8* {fmt_reg}, i64 {value_reg})')
+                    value_reg = buffer_reg
+                elif inferred_type in ('double', 'float'):
+                    # Convert float to string
+                    buffer_reg = self._new_temp()
+                    self.emit(f'{indent}{buffer_reg} = alloca i8, i32 32')
+                    
+                    if 'sprintf' not in self.extern_functions:
+                        self.extern_functions['sprintf'] = ('i32', ['i8*', 'i8*'], None)
+                    
+                    fmt_str = "%f\\00"
+                    fmt_name, fmt_len = self._get_or_create_string_constant(fmt_str)
+                    fmt_reg = self._new_temp()
+                    self.emit(f'{indent}{fmt_reg} = getelementptr inbounds [{fmt_len} x i8], [{fmt_len} x i8]* {fmt_name}, i64 0, i64 0')
+                    sprintf_result = self._new_temp()
+                    self.emit(f'{indent}{sprintf_result} = call i32 (i8*, i8*, ...) @sprintf(i8* {buffer_reg}, i8* {fmt_reg}, double {value_reg})')
+                    value_reg = buffer_reg
+                elif inferred_type == 'i1':
+                    # Convert boolean to string "true" or "false"
+                    true_str = "true\\00"
+                    false_str = "false\\00"
+                    true_name, true_len = self._get_or_create_string_constant(true_str)
+                    false_name, false_len = self._get_or_create_string_constant(false_str)
+                    
+                    true_ptr = self._new_temp()
+                    self.emit(f'{indent}{true_ptr} = getelementptr inbounds [{true_len} x i8], [{true_len} x i8]* {true_name}, i64 0, i64 0')
+                    false_ptr = self._new_temp()
+                    self.emit(f'{indent}{false_ptr} = getelementptr inbounds [{false_len} x i8], [{false_len} x i8]* {false_name}, i64 0, i64 0')
+                    
+                    result_ptr = self._new_temp()
+                    self.emit(f'{indent}{result_ptr} = select i1 {value_reg}, i8* {true_ptr}, i8* {false_ptr}')
+                    value_reg = result_ptr
+            value_type = 'i8*'
         elif print_hint == "number":
             # Default to float/double for 'number' hint if not already numeric
             inferred_type = self._infer_expression_type(value_expr)
@@ -3260,6 +3300,8 @@ class LLVMIRGenerator(CodeGenerator):
         if not hasattr(node, 'iterator') or not hasattr(node, 'iterable'):
             return
         
+        # Get iterator variable name
+        iterator_name = node.iterator
         
         # Evaluate the iterable expression
         array_var_name = None
@@ -3320,10 +3362,19 @@ class LLVMIRGenerator(CodeGenerator):
         self.emit(f'{indent}{index_alloca} = alloca i64, align 8')
         self.emit(f'{indent}store i64 0, i64* {index_alloca}, align 8')
         
+        # Determine element type from array type
+        # array_type should be something like "i64*" or "i8**" for string arrays
+        if array_type and array_type.endswith('*'):
+            elem_type = array_type[:-1]  # Remove the final *
+            # For i8*, elements are pointers (strings)
+            # For i64*, elements are integers
+        else:
+            elem_type = 'i64'  # Default fallback
+        
         # Create iterator variable (holds current element)
         iter_alloca = self._new_temp()
-        self.emit(f'{indent}{iter_alloca} = alloca i64, align 8')
-        self.local_vars[iterator_name] = ('i64', iter_alloca)
+        self.emit(f'{indent}{iter_alloca} = alloca {elem_type}, align 8')
+        self.local_vars[iterator_name] = (elem_type, iter_alloca)
         
         # Labels
         cond_label = self._new_label('for.cond')
@@ -3400,14 +3451,14 @@ class LLVMIRGenerator(CodeGenerator):
         index_reg2 = self._new_temp()
         self.emit(f'{indent}{index_reg2} = load i64, i64* {index_alloca}, align 8')
         
-        # Get element pointer
+        # Get element pointer - use elem_type determined earlier
         elem_ptr = self._new_temp()
-        self.emit(f'{indent}{elem_ptr} = getelementptr inbounds i64, i64* {array_ptr}, i64 {index_reg2}')
+        self.emit(f'{indent}{elem_ptr} = getelementptr inbounds {elem_type}, {array_type} {array_ptr}, i64 {index_reg2}')
         
         # Load element value into iterator variable
         elem_val = self._new_temp()
-        self.emit(f'{indent}{elem_val} = load i64, i64* {elem_ptr}, align 8')
-        self.emit(f'{indent}store i64 {elem_val}, i64* {iter_alloca}, align 8')
+        self.emit(f'{indent}{elem_val} = load {elem_type}, {elem_type}* {elem_ptr}, align 8')
+        self.emit(f'{indent}store {elem_type} {elem_val}, {elem_type}* {iter_alloca}, align 8')
         
         # Execute loop body
         if hasattr(node, 'body') and node.body:
@@ -8757,6 +8808,14 @@ class LLVMIRGenerator(CodeGenerator):
                             for prop in self._get_all_class_properties(class_name):
                                 if prop['name'] == member_name:
                                     return self._map_nlpl_type_to_llvm(prop.get('type', 'Integer'))
+                        
+                        # Look up in struct_types
+                        elif class_name in self.struct_types:
+                            # struct_types stores fields as list of (name, llvm_type) tuples
+                            fields = self.struct_types[class_name]
+                            for field_name, field_type in fields:
+                                if field_name == member_name:
+                                    return field_type  # Already in LLVM type format
             
             # Fallback
             return 'i64'
@@ -9020,7 +9079,8 @@ class LLVMIRGenerator(CodeGenerator):
             return self.global_strings[value]
         
         str_name = f'@.str.{self.string_counter}'
-        str_len = len(value) + 1  # +1 for null terminator
+        # Use UTF-8 byte length, not character count, for multi-byte characters like •
+        str_len = len(value.encode('utf-8')) + 1  # +1 for null terminator
         self.string_counter += 1
         
         self.global_strings[value] = (str_name, str_len)
