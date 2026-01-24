@@ -2553,7 +2553,7 @@ class LLVMIRGenerator(CodeGenerator):
                     if 'sprintf' not in self.extern_functions:
                         self.extern_functions['sprintf'] = ('i32', ['i8*', 'i8*'], None)
                     
-                    fmt_str = "%lld\\00"
+                    fmt_str = "%lld"  # _get_or_create_string_constant adds null terminator
                     fmt_name, fmt_len = self._get_or_create_string_constant(fmt_str)
                     fmt_reg = self._new_temp()
                     self.emit(f'{indent}{fmt_reg} = getelementptr inbounds [{fmt_len} x i8], [{fmt_len} x i8]* {fmt_name}, i64 0, i64 0')
@@ -2568,7 +2568,7 @@ class LLVMIRGenerator(CodeGenerator):
                     if 'sprintf' not in self.extern_functions:
                         self.extern_functions['sprintf'] = ('i32', ['i8*', 'i8*'], None)
                     
-                    fmt_str = "%f\\00"
+                    fmt_str = "%f"  # _get_or_create_string_constant adds null terminator
                     fmt_name, fmt_len = self._get_or_create_string_constant(fmt_str)
                     fmt_reg = self._new_temp()
                     self.emit(f'{indent}{fmt_reg} = getelementptr inbounds [{fmt_len} x i8], [{fmt_len} x i8]* {fmt_name}, i64 0, i64 0')
@@ -2577,8 +2577,8 @@ class LLVMIRGenerator(CodeGenerator):
                     value_reg = buffer_reg
                 elif inferred_type == 'i1':
                     # Convert boolean to string "true" or "false"
-                    true_str = "true\\00"
-                    false_str = "false\\00"
+                    true_str = "true"  # _get_or_create_string_constant adds null terminator
+                    false_str = "false"  # _get_or_create_string_constant adds null terminator
                     true_name, true_len = self._get_or_create_string_constant(true_str)
                     false_name, false_len = self._get_or_create_string_constant(false_str)
                     
@@ -3096,8 +3096,8 @@ class LLVMIRGenerator(CodeGenerator):
     
     def _generate_for_loop(self, node, indent=''):
         """Generate for loop (range-based or for-each)."""
-        # Check if it's a range-based loop (has start and end)
-        if hasattr(node, 'start') and hasattr(node, 'end'):
+        # Check if it's a range-based loop (has start and end with actual values)
+        if hasattr(node, 'start') and node.start is not None and hasattr(node, 'end') and node.end is not None:
             self._generate_range_for_loop(node, indent)
         # Check if it's a for-each loop (has iterator and iterable)
         elif hasattr(node, 'iterator') and hasattr(node, 'iterable'):
@@ -4983,14 +4983,14 @@ class LLVMIRGenerator(CodeGenerator):
                 self.extern_functions['sprintf'] = ('i32', ['i8*', 'i8*'], None)
                 
             if source_type in ('i64', 'i32'):
-                format_str = "%lld\\00"
+                format_str = "%lld"  # _get_or_create_string_constant adds null terminator
                 fmt_name, fmt_len = self._get_or_create_string_constant(format_str)
                 fmt_reg = self._new_temp()
                 self.emit(f'{indent}{fmt_reg} = getelementptr inbounds [{fmt_len} x i8], [{fmt_len} x i8]* {fmt_name}, i64 0, i64 0')
                 sprintf_result = self._new_temp()
                 self.emit(f'{indent}{sprintf_result} = call i32 (i8*, i8*, ...) @sprintf(i8* {buffer_reg}, i8* {fmt_reg}, i64 {expr_reg})')
             elif source_type in ('float', 'double'):
-                format_str = "%f\\00"
+                format_str = "%f"  # _get_or_create_string_constant adds null terminator
                 fmt_name, fmt_len = self._get_or_create_string_constant(format_str)
                 fmt_reg = self._new_temp()
                 self.emit(f'{indent}{fmt_reg} = getelementptr inbounds [{fmt_len} x i8], [{fmt_len} x i8]* {fmt_name}, i64 0, i64 0')
