@@ -31,6 +31,7 @@ from ..stdlib.random_utils import register_random_functions
 from ..stdlib.compression import register_compression_functions
 from ..stdlib.env import register_env_functions
 from ..stdlib.subprocess_utils import register_subprocess_functions
+from ..stdlib.math3d import register_math3d_functions
 from ..stdlib.logging_utils import register_logging_functions
 from ..stdlib.csv_utils import register_csv_functions
 from ..stdlib.path_utils import register_path_functions
@@ -111,11 +112,14 @@ def register_stdlib(runtime: Runtime) -> None:
     # Register testing framework
     register_testing_functions(runtime)
     
-    # Register enhanced module system
+    # Register module system
     register_module_functions(runtime)
     
     # Register file system operations
     register_filesystem_functions(runtime)
+    
+    # Register 3D math library (Vector3, Matrix4, Quaternion)
+    register_math3d_functions(runtime)
     
     # Register JSON utilities
     register_json_functions(runtime)
