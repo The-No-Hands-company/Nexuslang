@@ -11,7 +11,7 @@ from nlpl.parser.ast import (
     ClassDefinition, PropertyDeclaration, MethodDefinition,
     ObjectInstantiation, MemberAccess,
     ConcurrentExecution, TryCatch, RaiseStatement, BinaryOperation,
-    UnaryOperation, Literal, Identifier, FunctionCall, PrintStatement, RepeatNTimesLoop,
+    UnaryOperation, Literal, Identifier, FunctionCall, PrintStatement, RepeatNTimesLoop, RepeatWhileLoop,
     TypeCastExpression,
     ReturnStatement, BreakStatement, ContinueStatement, Block, ConcurrentBlock, TryCatchBlock, PanicStatement,
     # Module-related AST nodes
@@ -27,6 +27,8 @@ from nlpl.parser.ast import (
     AddressOfExpression, DereferenceExpression, SizeofExpression, PointerType,
     # Struct and union types
     StructDefinition, StructField, UnionDefinition, EnumDefinition, EnumMember, OffsetofExpression, TypeCastExpression,
+    # Inline assembly
+    InlineAssembly,
     # Decorators and Macros
     Decorator, MacroDefinition, MacroExpansion,
     # Pattern matching
@@ -316,6 +318,9 @@ class Parser:
             
             elif token.type == TokenType.FREE:
                 return self.memory_deallocation()
+            
+            elif token.type == TokenType.ASM:
+                return self.parse_inline_assembly()
             
             elif token.type == TokenType.INTERFACE:
                 return self.interface_definition()
@@ -614,6 +619,7 @@ class Parser:
         Grammar:
             PRINT TEXT expression
             PRINT NUMBER expression
+            PRINT VALUE expression
             PRINT expression
         """
         # Consume PRINT token
@@ -622,7 +628,7 @@ class Parser:
             self.error(f"Expected PRINT, got {self.current_token.type}")
         self.advance()  # consume PRINT
         
-        # Optional TEXT or NUMBER keyword
+        # Optional TEXT, NUMBER, or VALUE keyword
         print_type = None
         if self.current_token and self.current_token.type == TokenType.TEXT:
             print_type = "text"
@@ -630,6 +636,9 @@ class Parser:
         elif self.current_token and self.current_token.type == TokenType.NUMBER:
             print_type = "number"
             self.advance()  # consume NUMBER
+        elif self.current_token and self.current_token.type == TokenType.VALUE:
+            print_type = "value"
+            self.advance()  # consume VALUE
         
         # Parse the expression to print
         value = self.expression()
@@ -2508,16 +2517,20 @@ class Parser:
             body = []
             while (self.current_token and self.current_token.type != TokenType.EOF and
                    self.current_token.type != TokenType.END and
+                   self.current_token.type != TokenType.END_WHILE and
                    not (self.current_token.type == TokenType.IDENTIFIER and 
                         self.current_token.lexeme.lower() == 'end')):
                 statement = self.statement()
                 if statement:
                     body.append(statement)
                 
-        # Eat 'end' - check for both TokenType.END and IDENTIFIER
-        if self.current_token and (self.current_token.type == TokenType.END or
-                                   (self.current_token.type == TokenType.IDENTIFIER and 
-                                    self.current_token.lexeme.lower() == 'end')):
+        # Eat 'end while' (single token) or 'end' + 'while' (two tokens)
+        if self.current_token and self.current_token.type == TokenType.END_WHILE:
+            # Single END_WHILE token
+            self.advance()
+        elif self.current_token and (self.current_token.type == TokenType.END or
+                                     (self.current_token.type == TokenType.IDENTIFIER and 
+                                      self.current_token.lexeme.lower() == 'end')):
             self.advance()
             
             # Support for explicit "End while" syntax
@@ -2581,7 +2594,23 @@ class Parser:
         
         # Check if we start with 'repeat', 'for each' (single token), or 'for'
         if self.current_token.type == TokenType.REPEAT:
-            # Syntax: Repeat for each ...
+            # Could be: "repeat N times", "repeat while", or "repeat for each"
+            next_index = self.current_token_index + 1
+            
+            # Check if next token is 'while' (repeat while loop)
+            if (next_index < len(self.tokens) and 
+                self.tokens[next_index].type == TokenType.WHILE):
+                # This is "repeat while" - delegate to repeat_while_loop
+                return self.repeat_while_loop()
+            
+            # Check if next token is a number (repeat N times)
+            if (next_index < len(self.tokens) and 
+                self.tokens[next_index].type in (TokenType.INTEGER_LITERAL, TokenType.FLOAT_LITERAL, TokenType.IDENTIFIER)):
+                # This is "repeat N times" - delegate to repeat_n_times_loop
+                # (IDENTIFIER allows variables: repeat n times)
+                return self.repeat_n_times_loop()
+            
+            # Otherwise it's "repeat for each"
             self.advance()  # consume 'repeat'
             
             # Could be "for each" as single token or "for" + "each"
@@ -2595,7 +2624,7 @@ class Parser:
                 else:
                     self.eat(TokenType.EACH)  # consume 'each'
             else:
-                self.error("Expected 'for each' or 'for' after 'repeat'")
+                self.error("Expected 'for each', 'for', or number after 'repeat'")
             
         elif self.current_token.type == TokenType.FOR_EACH:
             # Syntax: for each ... (as single token)
@@ -2793,7 +2822,7 @@ class Parser:
         
         # Parse expression to match against
         # Save current position to handle lookahead
-        saved_pos = self.position
+        saved_index = self.current_token_index
         saved_token = self.current_token
         
         # Try to parse as full expression
@@ -2814,7 +2843,7 @@ class Parser:
                 expression = Identifier(var_name)
             else:
                 # Complex expression - backtrack and parse full expression
-                self.position = saved_pos
+                self.current_token_index = saved_index
                 self.current_token = saved_token
                 
                 # Parse expression but stop at 'with'
@@ -3284,6 +3313,144 @@ class Parser:
             self.error("Expected an identifier")
             
         return MemoryDeallocation(identifier, line_number)
+    
+    def parse_inline_assembly(self):
+        """Parse inline assembly block.
+        
+        Syntax:
+            asm
+                code
+                    "assembly instruction"
+                    "another instruction"
+                [inputs "constraint": expression, ...]
+                [outputs "constraint": variable, ...]
+                [clobbers "register", ...]
+            end
+        """
+        line_number = self.current_token.line
+        
+        # Eat 'asm'
+        self.eat(TokenType.ASM)
+        
+        # Expect INDENT
+        if self.current_token and self.current_token.type == TokenType.INDENT:
+            self.advance()
+        
+        asm_code = []
+        inputs = {}
+        outputs = {}
+        clobbers = []
+        
+        # Parse asm block sections until we hit DEDENT or END
+        while self.current_token and self.current_token.type not in (TokenType.DEDENT, TokenType.END, TokenType.EOF):
+            if self.current_token.type == TokenType.IDENTIFIER:
+                keyword = self.current_token.lexeme.lower()
+                
+                if keyword == "code":
+                    # Parse code section
+                    self.advance()  # consume 'code'
+                    
+                    # Expect INDENT
+                    if self.current_token and self.current_token.type == TokenType.INDENT:
+                        self.advance()
+                    
+                    # Collect assembly code strings until DEDENT
+                    while (self.current_token and 
+                           self.current_token.type not in (TokenType.DEDENT, TokenType.EOF)):
+                        if self.current_token.type == TokenType.STRING_LITERAL:
+                            asm_code.append(self.current_token.lexeme)
+                            self.advance()
+                        elif self.current_token.type == TokenType.NEWLINE:
+                            self.advance()  # Skip newlines
+                        else:
+                            break  # Stop on other tokens
+                    
+                    # Consume DEDENT after code block
+                    if self.current_token and self.current_token.type == TokenType.DEDENT:
+                        self.advance()
+                
+                elif keyword == "inputs":
+                    # Parse inputs: "constraint": expression, ...
+                    self.advance()  # consume 'inputs'
+                    inputs = self._parse_asm_operands()
+                
+                elif keyword == "outputs":
+                    # Parse outputs: "constraint": variable, ...
+                    self.advance()  # consume 'outputs'
+                    outputs = self._parse_asm_operands()
+                
+                elif keyword == "clobbers":
+                    # Parse clobbers: "register", "register", ...
+                    self.advance()  # consume 'clobbers'
+                    clobbers = self._parse_asm_clobbers()
+                
+                else:
+                    self.advance()  # Skip unknown keywords
+            elif self.current_token.type == TokenType.NEWLINE:
+                self.advance()  # Skip newlines
+            else:
+                break  # Unknown token, stop parsing
+        
+        # Consume DEDENT if present
+        if self.current_token and self.current_token.type == TokenType.DEDENT:
+            self.advance()
+        
+        # Consume END if present (for non-indented style)
+        if self.current_token and self.current_token.type == TokenType.END:
+            self.advance()
+        
+        return InlineAssembly(asm_code, inputs, outputs, clobbers, line_number)
+    
+    def _parse_asm_operands(self):
+        """Parse assembly operands: "constraint": expression, ..."""
+        operands = {}
+        
+        while self.current_token:
+            # Check for string constraint
+            if self.current_token.type == TokenType.STRING_LITERAL:
+                constraint = self.current_token.lexeme
+                self.advance()
+                
+                # Expect colon
+                if self.current_token and self.current_token.type == TokenType.COLON:
+                    self.advance()
+                else:
+                    break
+                
+                # Parse expression or identifier
+                if self.current_token.type == TokenType.IDENTIFIER:
+                    operand = Identifier(self.current_token.lexeme)
+                    self.advance()
+                else:
+                    operand = self.expression()
+                
+                operands[constraint] = operand
+                
+                # Check for comma (more operands)
+                if self.current_token and self.current_token.type == TokenType.COMMA:
+                    self.advance()
+                else:
+                    break
+            else:
+                break
+        
+        return operands
+    
+    def _parse_asm_clobbers(self):
+        """Parse assembly clobber list: "register", "register", ..."""
+        clobbers = []
+        
+        while self.current_token and self.current_token.type == TokenType.STRING_LITERAL:
+            clobbers.append(self.current_token.lexeme)
+            self.advance()
+            
+            # Check for comma
+            if self.current_token and self.current_token.type == TokenType.COMMA:
+                self.advance()
+            else:
+                break
+        
+        return clobbers
         
     def concurrent_execution(self):
         """Parse a concurrent execution."""
@@ -4469,20 +4636,21 @@ class Parser:
         return FunctionCall(function_name, arguments, line_number)
         
     def repeat_n_times_loop(self):
-        """Parse a repeat-n-times loop."""
-        # Syntax: Repeat <number> times <statement_block>
+        """Parse a repeat-n-times loop.
+        
+        Supports both indentation-based and end-keyword syntax:
+            repeat N times ... DEDENT (indentation-based)
+            repeat N times ... end (keyword-based)
+            repeat N times ... end repeat (explicit)
+        """
         line_number = self.current_token.line
         
         # Eat 'repeat'
         self.eat(TokenType.REPEAT)
         
-        # Get the count
-        if self.current_token.type == TokenType.NUMBER:
-            count = self.current_token.value
-            self.advance()
-        else:
-            self.error("Expected a number for repeat count")
-            
+        # Get the count - can be a number literal or variable (primary expression only)
+        count = self.primary()  # Use primary() to avoid consuming 'times' as an operator
+        
         # Eat 'times'
         self.eat(TokenType.TIMES)
         
@@ -4490,29 +4658,112 @@ class Parser:
         if self.current_token and self.current_token.type == TokenType.COMMA:
             self.advance()
         
-        # Parse body
-        body = []
-        while (self.current_token and self.current_token.type != TokenType.EOF and
-               not (self.current_token.type == TokenType.IDENTIFIER and 
-                    self.current_token.lexeme.lower() == 'end')):
-            statement = self.statement()
-            if statement:
-                body.append(statement)
-                
-        # Eat 'end'
-        if self.current_token and self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() == 'end':
-            self.advance()
+        # Check for INDENT (indentation-based syntax)
+        if self.current_token and self.current_token.type == TokenType.INDENT:
+            self.advance()  # Consume INDENT
             
-            # Support for explicit "End loop" syntax
-            if (self.current_token and self.current_token.type == TokenType.IDENTIFIER and 
-                self.current_token.lexeme.lower() == 'loop'):
+            # Parse body until DEDENT
+            body = []
+            while (self.current_token and 
+                   self.current_token.type != TokenType.EOF and
+                   self.current_token.type != TokenType.DEDENT):
+                statement = self.statement()
+                if statement:
+                    body.append(statement)
+            
+            # Consume DEDENT
+            if self.current_token and self.current_token.type == TokenType.DEDENT:
+                self.advance()
+        else:
+            # Fallback: Parse body with 'end' keyword (old style)
+            body = []
+            while (self.current_token and self.current_token.type != TokenType.EOF and
+                   self.current_token.type != TokenType.END):
+                statement = self.statement()
+                if statement:
+                    body.append(statement)
+                    
+            # Eat 'end'
+            if self.current_token and self.current_token.type == TokenType.END:
                 self.advance()
                 
-            # Optional period after end
-            if (self.current_token and self.current_token.type == TokenType.DOT):
-                self.advance()
+                # Support for explicit "End repeat" or "End loop" syntax
+                if self.current_token and self.current_token.type == TokenType.REPEAT:
+                    self.advance()
+                elif (self.current_token and self.current_token.type == TokenType.IDENTIFIER and 
+                      self.current_token.lexeme.lower() == 'loop'):
+                    self.advance()
+                    
+                # Optional period after end
+                if (self.current_token and self.current_token.type == TokenType.DOT):
+                    self.advance()
             
         return RepeatNTimesLoop(count, body, line_number)
+    
+    def repeat_while_loop(self):
+        """Parse a repeat-while loop.
+        
+        Natural language while loop syntax:
+            repeat while <condition> ... DEDENT (indentation-based)
+            repeat while <condition> ... end (keyword-based)
+            repeat while <condition> ... end repeat (explicit)
+        """
+        line_number = self.current_token.line
+        
+        # Eat 'repeat'
+        self.eat(TokenType.REPEAT)
+        
+        # Eat 'while'
+        self.eat(TokenType.WHILE)
+        
+        # Parse condition
+        condition = self.expression()
+        
+        # Optional comma after condition
+        if self.current_token and self.current_token.type == TokenType.COMMA:
+            self.advance()
+        
+        # Check for INDENT (indentation-based syntax)
+        if self.current_token and self.current_token.type == TokenType.INDENT:
+            self.advance()  # Consume INDENT
+            
+            # Parse body until DEDENT
+            body = []
+            while (self.current_token and 
+                   self.current_token.type != TokenType.EOF and
+                   self.current_token.type != TokenType.DEDENT):
+                statement = self.statement()
+                if statement:
+                    body.append(statement)
+            
+            # Consume DEDENT
+            if self.current_token and self.current_token.type == TokenType.DEDENT:
+                self.advance()
+        else:
+            # Fallback: Parse body with 'end' keyword (old style)
+            body = []
+            while (self.current_token and self.current_token.type != TokenType.EOF and
+                   self.current_token.type != TokenType.END):
+                statement = self.statement()
+                if statement:
+                    body.append(statement)
+                    
+            # Eat 'end'
+            if self.current_token and self.current_token.type == TokenType.END:
+                self.advance()
+                
+                # Support for explicit "End repeat" syntax
+                if self.current_token and self.current_token.type == TokenType.REPEAT:
+                    self.advance()
+                elif (self.current_token and self.current_token.type == TokenType.IDENTIFIER and 
+                      self.current_token.lexeme.lower() == 'loop'):
+                    self.advance()
+                    
+                # Optional period after end
+                if (self.current_token and self.current_token.type == TokenType.DOT):
+                    self.advance()
+        
+        return RepeatWhileLoop(condition, body, line_number)
     
     def _parse_generic_type_argument(self):
         """

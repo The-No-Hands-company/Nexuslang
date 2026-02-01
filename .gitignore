@@ -119,6 +119,40 @@ test_ffi
 test_export
 -o
 
+# Compiled executables in root (should be in build/)
+/animation_*
+/clean_*
+/shadow_*
+/skybox*
+/texture_*
+/test_direct_*
+/test_else_*
+/test_func_*
+/test_list_*
+/test_repeat_*
+/test_async_*
+/test_await_*
+/test_bitwise*
+/test_bounds_*
+/test_class*
+/test_closure_*
+/test_collection_*
+/test_comprehension_*
+/test_constant_*
+/test_cpp_*
+/test_dead_*
+/test_empty_*
+/test_enum_*
+/test_exception*
+/test_explicit_*
+/test_file_*
+/test_alloc_*
+/test_array_*
+
+# Keep build/artifacts directory structure
+build/artifacts/*
+!build/artifacts/.gitkeep
+
 # IDE specific
 vscode-nlpl/
 .vscode/

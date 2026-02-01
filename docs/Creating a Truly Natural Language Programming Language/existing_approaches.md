@@ -3,16 +3,19 @@
 ## Traditional Natural Language Programming Languages
 
 ### Inform 7
+
 - **Developer**: Graham Nelson
 - **Year**: 2006
 - **Paradigm**: Natural language, declarative, procedural
 - **Description**: Inform 7 is a design system and programming language for interactive fiction that uses natural English-like syntax. It was designed to be accessible to writers and non-programmers.
 - **Example Syntax**:
+
   ```
   The Kitchen is a room. "A gleaming white room with spotless surfaces."
   The oven is in the Kitchen. The oven is a container.
   The cake is in the oven. The cake is edible.
   ```
+
 - **Strengths**:
   - Highly readable code that resembles natural English prose
   - Designed for a specific domain (interactive fiction) which constrains the ambiguity
@@ -23,16 +26,19 @@
   - Requires specific syntax patterns despite natural language appearance
 
 ### AppleScript
+
 - **Developer**: Apple Inc.
 - **Year**: 1993
 - **Paradigm**: Natural language programming, scripting
 - **Description**: AppleScript was designed to automate tasks on macOS by controlling applications using English-like commands.
 - **Example Syntax**:
+
   ```
   tell application "Finder"
     make new folder at desktop with properties {name:"My Folder"}
   end tell
   ```
+
 - **Strengths**:
   - Integrates well with macOS applications
   - Relatively easy to read and understand for non-programmers
@@ -43,16 +49,19 @@
   - Not designed for intensive processing or complex algorithms
 
 ### COBOL
+
 - **Developer**: CODASYL, Grace Hopper, Jean E. Sammet
 - **Year**: 1959
 - **Paradigm**: Procedural, imperative, later object-oriented
 - **Description**: COBOL (Common Business-Oriented Language) was designed for business data processing with English-like syntax to be self-documenting and readable by management.
 - **Example Syntax**:
+
   ```
   ADD 5 TO MY-NUMBER
   MULTIPLY MY-NUMBER BY 2 GIVING RESULT
   DISPLAY "The result is " RESULT
   ```
+
 - **Strengths**:
   - Verbose syntax designed to be self-documenting
   - Strong data processing capabilities for business applications
@@ -63,17 +72,20 @@
   - Limited support for modern programming paradigms (until later versions)
 
 ### HyperTalk
+
 - **Developer**: Dan Winkler, Apple Computer
 - **Year**: 1987
 - **Paradigm**: Procedural, event-driven
 - **Description**: HyperTalk was the scripting language for HyperCard, using English-like syntax to control the HyperCard environment.
 - **Example Syntax**:
+
   ```
   put 5 * 4 into theResult
   if theResult > 15 then
     answer "The result is greater than 15"
   end if
   ```
+
 - **Strengths**:
   - Natural language ordering of predicates (e.g., "put 5 into x" instead of "x = 5")
   - Forgiving semantics with automatic type conversion
@@ -86,6 +98,7 @@
 ## Modern AI-Based Approaches
 
 ### OpenAI Codex / GPT-3 Codex
+
 - **Developer**: OpenAI
 - **Year**: 2021
 - **Description**: Codex is an AI system based on GPT-3 that translates natural language to programming code. It was trained on both natural language and billions of lines of source code.
@@ -108,6 +121,7 @@
   - Limited context window for understanding larger projects
 
 ### CodexDB
+
 - **Developer**: Immanuel Trummer
 - **Year**: 2022
 - **Description**: An SQL processing engine whose internals can be customized via natural language instructions, based on OpenAI's GPT-3 Codex.
@@ -123,24 +137,28 @@
 ## Comparison and Analysis
 
 ### Common Patterns in Natural Language Programming
+
 1. **English-like syntax**: All approaches attempt to make code resemble written English to varying degrees
 2. **Domain constraints**: Most successful implementations are constrained to specific domains
 3. **Structured freedom**: Even natural language approaches require some structure to resolve ambiguities
 4. **Readability focus**: Prioritizing human readability over machine efficiency
 
 ### Evolution of Approaches
+
 1. **Early approaches** (COBOL, FLOW-MATIC): Focused on English-like keywords and structure
 2. **Middle generation** (HyperTalk, AppleScript): Added more natural sentence structures and object references
 3. **Modern domain-specific** (Inform 7): Highly natural language within constrained domains
 4. **AI-based approaches** (Codex): Using machine learning to understand intent rather than fixed syntax
 
 ### Trade-offs
+
 1. **Flexibility vs. Precision**: More natural language often means more ambiguity
 2. **Readability vs. Expressiveness**: English-like syntax can be verbose for complex operations
 3. **Ease of learning vs. Power**: Simpler syntax often means limited capabilities
 4. **General purpose vs. Domain-specific**: Most successful natural language programming is domain-constrained
 
 ## Lessons for New NLPL Development
+
 1. **Balance structure and flexibility**: Some structure is necessary to resolve ambiguities
 2. **Consider domain constraints**: Limiting the domain can make natural language more feasible
 3. **Leverage modern NLP techniques**: Machine learning can help resolve ambiguities

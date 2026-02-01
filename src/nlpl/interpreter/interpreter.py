@@ -522,6 +522,68 @@ class Interpreter:
             pass
             
         return result
+    
+    def execute_repeat_n_times_loop(self, node):
+        """Execute a repeat-n-times loop."""
+        result = None
+        
+        # Evaluate the count expression to get number of iterations
+        count = self.execute(node.count)
+        
+        # Ensure count is an integer
+        if not isinstance(count, (int, float)):
+            raise TypeError(f"Repeat count must be a number, got {type(count).__name__}")
+        
+        count = int(count)
+        
+        # Validate count is non-negative
+        if count < 0:
+            raise ValueError(f"Repeat count must be non-negative, got {count}")
+        
+        # Execute the loop body 'count' times
+        # DO NOT create a new scope - loops should access outer scope variables
+        try:
+            for iteration in range(count):
+                try:
+                    for statement in node.body:
+                        result = self.execute(statement)
+                except ContinueException:
+                    # Continue to next iteration
+                    continue
+        except BreakException:
+            # Break out of loop
+            pass
+        
+        return result
+    
+    def execute_repeat_while_loop(self, node):
+        """Execute a repeat-while loop (natural language while loop)."""
+        result = None
+        loop_completed = False
+        
+        # Execute the loop while condition is true
+        # DO NOT create a new scope - loops should access outer scope variables
+        try:
+            while self.execute(node.condition):
+                try:
+                    for statement in node.body:
+                        result = self.execute(statement)
+                except ContinueException:
+                    # Continue to next iteration
+                    continue
+        except BreakException:
+            # Break was called, loop did not complete normally
+            pass
+        else:
+            # Loop completed without break
+            loop_completed = True
+        
+        # Execute else block if loop completed without break
+        if loop_completed and node.else_body:
+            for statement in node.else_body:
+                result = self.execute(statement)
+        
+        return result
         
     def execute_switch_statement(self, node):
         """Execute a switch statement for multi-way branching.
@@ -572,6 +634,17 @@ class Interpreter:
         """Execute memory deallocation."""
         pointer = self.get_variable(node.identifier)
         self.runtime.free_memory(pointer)
+        return None
+    
+    def execute_inline_assembly(self, node):
+        """Execute inline assembly block.
+        
+        Note: Inline assembly is only fully supported in compiled mode.
+        In interpreter mode, we skip execution with a warning.
+        """
+        # Inline assembly cannot be executed in interpreted mode
+        # It requires compilation to native code
+        # For now, just skip it silently (compilation will handle it)
         return None
         
     def execute_class_definition(self, node):
@@ -1378,21 +1451,6 @@ class Interpreter:
         self.runtime.print(value)
         return value
 
-    def execute_repeat_n_times_loop(self, node):
-        """Execute a repeat-n-times loop."""
-        result = None
-        count = int(self.execute(node.count))
-        
-        for _ in range(count):
-            self.enter_scope()
-            
-            for statement in node.body:
-                result = self.execute(statement)
-                
-            self.exit_scope()
-            
-        return result
-            
     # Expression execution methods
     
     def execute_type_cast_expression(self, node):
@@ -1607,7 +1665,7 @@ class Interpreter:
             # Check condition if present
             if node.condition is None or self.execute(node.condition):
                 # Evaluate expression and add to result
-                value = self.execute(node.expression)
+                value = self.execute(node.expr)
                 result.append(value)
         
         # Restore scope (remove loop variable)

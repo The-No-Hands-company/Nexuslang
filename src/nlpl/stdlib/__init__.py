@@ -32,6 +32,10 @@ from ..stdlib.compression import register_compression_functions
 from ..stdlib.env import register_env_functions
 from ..stdlib.subprocess_utils import register_subprocess_functions
 from ..stdlib.math3d import register_math3d_functions
+from ..stdlib.camera import register_camera_functions
+from ..stdlib.shaders import register_shader_functions
+from ..stdlib.mesh_loader import register_mesh_functions
+from ..stdlib.scene import register_scene_functions
 from ..stdlib.logging_utils import register_logging_functions
 from ..stdlib.csv_utils import register_csv_functions
 from ..stdlib.path_utils import register_path_functions
@@ -151,6 +155,21 @@ def register_stdlib(runtime: Runtime) -> None:
     # Register subprocess utilities
     register_subprocess_functions(runtime)
     
+    # Register 3D math library
+    register_math3d_functions(runtime)
+    
+    # Register camera system
+    register_camera_functions(runtime)
+    
+    # Register shader presets
+    register_shader_functions(runtime)
+    
+    # Register mesh loading
+    register_mesh_functions(runtime)
+    
+    # Register scene graph
+    register_scene_functions(runtime)
+    
     # Register logging utilities
     register_logging_functions(runtime)
     
@@ -259,6 +278,11 @@ def register_stdlib(runtime: Runtime) -> None:
     runtime.register_module("compression")
     runtime.register_module("env")
     runtime.register_module("subprocess")
+    runtime.register_module("math3d")
+    runtime.register_module("camera")
+    runtime.register_module("shaders")
+    runtime.register_module("mesh")
+    runtime.register_module("scene")
     runtime.register_module("logging")
     runtime.register_module("csv")
     runtime.register_module("path")

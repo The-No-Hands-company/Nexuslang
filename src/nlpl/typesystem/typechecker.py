@@ -9,7 +9,7 @@ from ..parser.ast import (
     IfStatement, WhileLoop, ForLoop, MemoryAllocation, MemoryDeallocation,
     ClassDefinition, PropertyDeclaration, MethodDefinition,
     ConcurrentExecution, TryCatch, BinaryOperation, UnaryOperation,
-    Literal, Identifier, FunctionCall, RepeatNTimesLoop,
+    Literal, Identifier, FunctionCall, RepeatNTimesLoop, RepeatWhileLoop,
     ReturnStatement, Block, ConcurrentBlock, TryCatchBlock,
     InterfaceDefinition, AbstractClassDefinition, TraitDefinition,
     TypeAliasDefinition, AbstractMethodDefinition,
@@ -165,8 +165,16 @@ class TypeChecker:
             return self.check_for_loop(statement, env)
         elif isinstance(statement, RepeatNTimesLoop):
             return self.check_repeat_n_times_loop(statement, env)
+        elif isinstance(statement, RepeatWhileLoop):
+            return self.check_repeat_while_loop(statement, env)
         elif isinstance(statement, ReturnStatement):
             return self.check_return_statement(statement, env)
+        elif statement.__class__.__name__ == 'BreakStatement':
+            # Break statements are valid in loop contexts
+            return ANY_TYPE
+        elif statement.__class__.__name__ == 'ContinueStatement':
+            # Continue statements are valid in loop contexts
+            return ANY_TYPE
         elif isinstance(statement, Block):
             return self.check_block(statement, env)
         elif isinstance(statement, ConcurrentBlock):
@@ -454,6 +462,27 @@ class TypeChecker:
         
         return result_type
     
+    def check_repeat_while_loop(self, loop: RepeatWhileLoop, env: TypeEnvironment) -> Type:
+        """Check a repeat-while loop (natural language while loop)."""
+        # Check the condition
+        condition_type = self.check_statement(loop.condition, env)
+        
+        # Condition should be boolean-compatible (any type can be truthy/falsy)
+        # No strict type checking needed for conditions in NLPL
+        
+        # Check the body
+        loop_env = TypeEnvironment(env)
+        result_type = NULL_TYPE
+        for stmt in loop.body:
+            result_type = self.check_statement(stmt, loop_env)
+        
+        # Check else body if present
+        if loop.else_body:
+            for stmt in loop.else_body:
+                result_type = self.check_statement(stmt, loop_env)
+        
+        return result_type
+    
     def check_return_statement(self, statement: ReturnStatement, env: TypeEnvironment) -> Type:
         """Check a return statement."""
         if statement.value:
@@ -587,13 +616,16 @@ class TypeChecker:
             return INTEGER_TYPE
         
         # Comparison operators (both symbolic and natural language)
-        comparison_ops = ['==', '!=', '<', '>', '<=', '>=', 'equals', 'is equal to', 'not equal to', 
-                         'is not equal to', 'greater than', 'is greater than', 'less than', 'is less than',
+        comparison_ops = ['==', '!=', '<', '>', '<=', '>=', 
+                         'equals', 'equal to', 'is equal to', 
+                         'not equal to', 'is not equal to', 
+                         'greater than', 'is greater than', 
+                         'less than', 'is less than',
                          'greater than or equal to', 'is greater than or equal to', 
                          'less than or equal to', 'is less than or equal to']
         if op in comparison_ops:
             # For equality operators, any types can be compared
-            if op in ['==', '!=', 'equals', 'is equal to', 'not equal to', 'is not equal to']:
+            if op in ['==', '!=', 'equals', 'equal to', 'is equal to', 'not equal to', 'is not equal to']:
                 return BOOLEAN_TYPE
             
             # For other comparison operators, operands must be comparable

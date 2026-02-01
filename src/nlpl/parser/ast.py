@@ -551,6 +551,15 @@ class RepeatNTimesLoop(ASTNode):
         self.count = count
         self.body = body or []
 
+class RepeatWhileLoop(ASTNode):
+    """Represents a repeat-while loop (natural language while loop)."""
+    def __init__(self, condition, body, line_number=None, else_body=None, label=None):
+        super().__init__("repeat_while_loop", line_number)
+        self.condition = condition
+        self.body = body
+        self.else_body = else_body  # Optional else block (executed if loop completes without break)
+        self.label = label  # Optional label for labeled break/continue
+
 class Block(ASTNode):
     """Represents a block of statements."""
     def __init__(self, statements=None, line_number=None):

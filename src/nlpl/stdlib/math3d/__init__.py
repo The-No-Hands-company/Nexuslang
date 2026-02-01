@@ -624,6 +624,7 @@ def register_math3d_functions(runtime: Runtime) -> None:
     runtime.register_function("mat4_transform_point", lambda m, v: m.transform_point(v))
     runtime.register_function("mat4_transform_direction", lambda m, v: m.transform_direction(v))
     runtime.register_function("mat4_transpose", lambda m: m.transpose())
+    runtime.register_function("mat4_to_list", lambda m: m.to_list())
     
     # Quaternion constructors and operations
     runtime.register_function("Quaternion", lambda w=1.0, x=0.0, y=0.0, z=0.0: Quaternion(w, x, y, z))

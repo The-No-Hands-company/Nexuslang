@@ -2281,6 +2281,8 @@ class LLVMIRGenerator(CodeGenerator):
             self._generate_while_loop(stmt, indent)
         elif stmt_type == 'ForLoop':
             self._generate_for_loop(stmt, indent)
+        elif stmt_type == 'RepeatNTimesLoop':
+            self._generate_repeat_n_times_loop(stmt, indent)
         elif stmt_type == 'ReturnStatement':
             self._generate_return_statement(stmt, indent)
         elif stmt_type == 'IndexAssignment':
@@ -3287,6 +3289,85 @@ class LLVMIRGenerator(CodeGenerator):
         if loop_bounds_registered:
             loop_var, _, _ = self.loop_context_stack.pop()
             self.bounds_optimizer.clear_loop_bounds(loop_var)
+    
+    def _generate_repeat_n_times_loop(self, node, indent=''):
+        """Generate repeat-n-times loop.
+        
+        Repeat N times loop structure:
+            repeat 10 times
+                body
+        
+        Compiles to:
+            i = 0
+            while i < N:
+                body
+                i++
+        """
+        # Generate the count expression
+        count_reg = self._generate_expression(node.count, indent)
+        count_type = self._infer_expression_type(node.count)
+        
+        # Convert to i64 if needed
+        if count_type != 'i64':
+            count_i64 = self._new_temp()
+            if count_type == 'i32':
+                self.emit(f'{indent}{count_i64} = sext i32 {count_reg} to i64')
+            elif count_type == 'i1':
+                self.emit(f'{indent}{count_i64} = zext i1 {count_reg} to i64')
+            elif count_type == 'double':
+                # Convert float to int
+                self.emit(f'{indent}{count_i64} = fptosi double {count_reg} to i64')
+            else:
+                count_i64 = count_reg
+            count_reg = count_i64
+        
+        # Allocate counter variable (hidden from user)
+        counter_name = f'_repeat_counter_{self._new_temp()}'
+        counter_alloca = self._new_temp()
+        self.emit(f'{indent}{counter_alloca} = alloca i64, align 8')
+        self.emit(f'{indent}store i64 0, i64* {counter_alloca}, align 8')
+        
+        # Labels
+        cond_label = self._new_label('repeat.cond')
+        body_label = self._new_label('repeat.body')
+        end_label = self._new_label('repeat.end')
+        
+        # Push loop context for break/continue
+        self.loop_stack.append((cond_label, end_label))
+        
+        # Jump to condition
+        self.emit(f'{indent}br label %{cond_label}')
+        
+        # Condition: counter < count
+        self.emit(f'{cond_label}:')
+        counter_val = self._new_temp()
+        self.emit(f'{indent}{counter_val} = load i64, i64* {counter_alloca}, align 8')
+        
+        cond_result = self._new_temp()
+        self.emit(f'{indent}{cond_result} = icmp slt i64 {counter_val}, {count_reg}')
+        self.emit(f'{indent}br i1 {cond_result}, label %{body_label}, label %{end_label}')
+        
+        # Body
+        self.emit(f'{body_label}:')
+        if hasattr(node, 'body') and node.body:
+            for stmt in node.body:
+                self._generate_statement(stmt, indent)
+        
+        # Increment counter
+        counter_val2 = self._new_temp()
+        self.emit(f'{indent}{counter_val2} = load i64, i64* {counter_alloca}, align 8')
+        new_counter = self._new_temp()
+        self.emit(f'{indent}{new_counter} = add nsw i64 {counter_val2}, 1')
+        self.emit(f'{indent}store i64 {new_counter}, i64* {counter_alloca}, align 8')
+        
+        # Jump back to condition
+        self.emit(f'{indent}br label %{cond_label}')
+        
+        # End
+        self.emit(f'{end_label}:')
+        
+        # Pop loop context
+        self.loop_stack.pop()
     
     def _generate_foreach_loop(self, node, indent=''):
         """
@@ -6613,7 +6694,17 @@ class LLVMIRGenerator(CodeGenerator):
         if base_type.endswith('*'):
             elem_type = base_type[:-1]  # i64** -> i64*, i64* -> i64
         else:
-            elem_type = 'i64'  # Fallback
+            # base_type is i64 (a value, not a pointer)
+            # This happens when a function returns a list stored as i64
+            # We need to convert i64 to i64* (pointer) first
+            elem_type = 'i64'
+            base_ptr_type = 'i64*'
+            
+            # Convert i64 value to pointer
+            base_ptr_reg = self._new_temp()
+            self.emit(f'{indent}{base_ptr_reg} = inttoptr i64 {base_reg} to i64*')
+            base_reg = base_ptr_reg
+            base_type = base_ptr_type
         
         # Compute address: base_ptr + index
         elem_ptr = self._new_temp()
