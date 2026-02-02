@@ -669,6 +669,21 @@ class TypeChecker:
             
             return BOOLEAN_TYPE
         
+        # Bitwise operators (require integers)
+        bitwise_ops = ['bitwise and', 'bitwise or', 'bitwise xor', '&', '|', '^', '<<', '>>', 'shift left', 'shift right']
+        if op in bitwise_ops:
+            if not left_type.is_compatible_with(INTEGER_TYPE):
+                self.errors.append(
+                    f"Type error: Left operand of '{op}' must be an integer, got '{self._type_name(left_type)}'"
+                )
+            
+            if not right_type.is_compatible_with(INTEGER_TYPE):
+                self.errors.append(
+                    f"Type error: Right operand of '{op}' must be an integer, got '{self._type_name(right_type)}'"
+                )
+            
+            return INTEGER_TYPE
+        
         else:
             self.errors.append(f"Unsupported binary operator: {op}")
             return ANY_TYPE
@@ -699,6 +714,14 @@ class TypeChecker:
                 )
             
             return BOOLEAN_TYPE
+        
+        elif op in ['~', 'bitwise not']:
+            if not operand_type.is_compatible_with(INTEGER_TYPE):
+                self.errors.append(
+                    f"Type error: Operand of '{op}' must be an integer, got '{self._type_name(operand_type)}'"
+                )
+            
+            return INTEGER_TYPE
         
         else:
             self.errors.append(f"Unsupported unary operator: {op}")
