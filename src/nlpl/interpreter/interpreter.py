@@ -19,12 +19,20 @@ from nlpl.parser.ast import (
     # Module-related AST nodes
     ImportStatement, SelectiveImport, ModuleAccess, PrivateDeclaration,
     # FFI-related AST nodes
-    ExternFunctionDeclaration, ExternVariableDeclaration, ExternTypeDeclaration
+    ExternFunctionDeclaration, ExternVariableDeclaration, ExternTypeDeclaration,
+    # Struct/Union AST nodes
+    StructDefinition as ASTStructDefinition, 
+    UnionDefinition as ASTUnionDefinition,
+    StructField
 )
 from nlpl.runtime import Runtime
 # Don't import ModuleLoader here to avoid circular imports
 # from nlpl.modules.module_loader import ModuleLoader
-from nlpl.runtime.structures import StructDefinition, UnionDefinition, StructureInstance
+from nlpl.runtime.structures import (
+    StructDefinition as RuntimeStructDefinition,
+    UnionDefinition as RuntimeUnionDefinition,
+    StructureInstance
+)
 from nlpl.typesystem.generics_system import TypeParameterInfo, TypeConstraint, GenericTypeInference
 
 
@@ -741,8 +749,8 @@ class Interpreter:
             
             fields.append((field.name, type_name))
             
-        # Create definition with packed and alignment support
-        definition = StructDefinition(
+        # Create runtime definition with packed and alignment support
+        definition = RuntimeStructDefinition(
             node.name, 
             fields, 
             packed=node.packed if hasattr(node, 'packed') else False,
@@ -815,9 +823,9 @@ class Interpreter:
                 type_name = "Pointer"  # Default to pointer size if unknown
             fields.append((field.name, type_name))
             
-        # Create definition and store in classes map
+        # Create runtime definition and store in classes map
         # Unions don't support packed/alignment (they're already minimal)
-        definition = UnionDefinition(node.name, fields)
+        definition = RuntimeUnionDefinition(node.name, fields)
         self.classes[node.name] = definition
         return node.name
     
@@ -1097,10 +1105,9 @@ class Interpreter:
         Handles nested structs, arrays, and proper field types.
         """
         import ctypes
-        from nlpl.runtime.structures import StructDefinition
         
-        if not isinstance(struct_def, StructDefinition):
-            raise TypeError(f"Expected StructDefinition, got {type(struct_def)}")
+        if not isinstance(struct_def, RuntimeStructDefinition):
+            raise TypeError(f"Expected RuntimeStructDefinition, got {type(struct_def)}")
         
         # Create fields list for ctypes.Structure
         # Format: [(field_name, ctype), ...]
@@ -1128,7 +1135,7 @@ class Interpreter:
                 ctype = code_to_type.get(field_obj.type_code, ctypes.c_void_p)
             else:
                 # Check if this is a nested struct
-                if type_name in self.classes and isinstance(self.classes[type_name], StructDefinition):
+                if type_name in self.classes and isinstance(self.classes[type_name], RuntimeStructDefinition):
                     # Recursive: convert nested struct
                     ctype = self._struct_to_ctype(self.classes[type_name])
                 else:
@@ -2138,9 +2145,19 @@ class Interpreter:
                 type_args_map[param_name] = arg_name
 
         # Handle Structs and Unions
-        from ..runtime.structures import StructDefinition, UnionDefinition, StructureInstance
-        if isinstance(class_def, (StructDefinition, UnionDefinition)):
+        if isinstance(class_def, (RuntimeStructDefinition, RuntimeUnionDefinition)):
             instance = StructureInstance(class_def)
+            
+            # Auto-initialize nested struct fields
+            if isinstance(class_def, RuntimeStructDefinition) and hasattr(class_def, '_original_fields'):
+                for field_name, type_name in class_def._original_fields:
+                    # Check if this field type is another struct
+                    if type_name in self.classes and isinstance(self.classes[type_name], RuntimeStructDefinition):
+                        # Create nested struct instance
+                        nested_instance = StructureInstance(self.classes[type_name])
+                        # Set it as the field value
+                        instance.set_field(field_name, nested_instance)
+            
             return instance
 
         # Regular Class Instantiation
