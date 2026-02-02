@@ -199,6 +199,15 @@ class TypeChecker:
             return self.check_type_alias_definition(statement)
         elif isinstance(statement, PrintStatement):
             return self.check_print_statement(statement, env)
+        elif statement.__class__.__name__ == 'ImportStatement':
+            # Import statements are valid - they bring modules into scope
+            return ANY_TYPE
+        elif statement.__class__.__name__ == 'SelectiveImport':
+            # Selective imports are valid - they bring specific names into scope
+            return ANY_TYPE
+        elif statement.__class__.__name__ == 'ModuleAccess':
+            # Module access expressions (module.member) are valid
+            return ANY_TYPE
         elif isinstance(statement, StructDefinition):
             return ANY_TYPE  # Struct definitions are valid, return ANY for now
         elif isinstance(statement, UnionDefinition):

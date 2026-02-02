@@ -207,30 +207,33 @@ class ModuleLoader:
         Returns:
             The path to the module file, or None if not found
         """
+        # Convert dotted module names to path separators (test.module -> test/module)
+        module_path = module_name.replace('.', os.sep)
+        
         # Check if it's a standard library module
-        stdlib_path = self._find_stdlib_module(module_name)
+        stdlib_path = self._find_stdlib_module(module_path)
         if stdlib_path:
             return stdlib_path
         
         # Check if it's an absolute path
-        if os.path.isabs(module_name):
-            if os.path.isfile(module_name):
-                return module_name
-            if os.path.isfile(f"{module_name}.nlpl"):
-                return f"{module_name}.nlpl"
+        if os.path.isabs(module_path):
+            if os.path.isfile(module_path):
+                return module_path
+            if os.path.isfile(f"{module_path}.nlpl"):
+                return f"{module_path}.nlpl"
             return None
         
         # Search in the search paths
         for path in self.search_paths:
             # Try with .nlpl extension
-            module_path = os.path.join(path, f"{module_name}.nlpl")
-            if os.path.isfile(module_path):
-                return module_path
+            full_path = os.path.join(path, f"{module_path}.nlpl")
+            if os.path.isfile(full_path):
+                return full_path
             
             # Try without extension
-            module_path = os.path.join(path, module_name)
-            if os.path.isfile(module_path):
-                return module_path
+            full_path = os.path.join(path, module_path)
+            if os.path.isfile(full_path):
+                return full_path
         
         return None
     
@@ -278,7 +281,7 @@ class ModuleLoader:
             file_path: The path to the module file
             
         Returns:
-            The loaded module
+            The loaded module (a Module object with attributes)
             
         Raises:
             ImportError: If the module cannot be loaded
@@ -295,7 +298,7 @@ class ModuleLoader:
             ast = parser.parse()
             
             # Create a new runtime for the module
-            module_runtime = Runtime(parent=self.runtime)
+            module_runtime = Runtime()
             
             # Store the module's file path in the runtime for relative imports
             module_runtime.module_path = file_path
@@ -303,14 +306,33 @@ class ModuleLoader:
             # Import Interpreter here to avoid circular imports
             from ..interpreter.interpreter import Interpreter
             
-            # Create a new interpreter for the module
-            interpreter = Interpreter(module_runtime)
+            # Create a new interpreter for the module with its own runtime
+            interpreter = Interpreter(module_runtime, enable_type_checking=False)
             
             # Execute the module
             interpreter.interpret(ast)
             
-            # Return the module's runtime (which contains all the definitions)
-            return module_runtime
+            # Create a Module object that contains all the module's definitions
+            class Module:
+                """A loaded NLPL module."""
+                pass
+            
+            module = Module()
+            
+            # Copy all variables and functions from the interpreter's scope to the module
+            # Get the global scope (first scope in the stack)
+            if interpreter.current_scope:
+                global_scope = interpreter.current_scope[0]
+                for name, value in global_scope.items():
+                    setattr(module, name, value)
+            
+            # Also copy functions from the runtime
+            for name, func in module_runtime.functions.items():
+                if not hasattr(module, name):
+                    setattr(module, name, func)
+            
+            # Return the module object
+            return module
         except Exception as e:
             raise ImportError(f"Error loading module '{file_path}': {str(e)}") from e
     

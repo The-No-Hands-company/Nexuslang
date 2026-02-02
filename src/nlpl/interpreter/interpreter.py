@@ -26,6 +26,8 @@ from nlpl.parser.ast import (
     StructField
 )
 from nlpl.runtime import Runtime
+# Import CircularImportError for module loading
+from nlpl.modules.module_loader import CircularImportError
 # Don't import ModuleLoader here to avoid circular imports
 # from nlpl.modules.module_loader import ModuleLoader
 from nlpl.runtime.structures import (
@@ -294,9 +296,9 @@ class Interpreter:
             if '\\' in module_name:
                 module_name = module_name.split('\\')[-1]
                 
-            # If the module name has an extension, remove it
+            # If the module name has dots (package.module), use the last part
             if '.' in module_name:
-                module_name = module_name.split('.')[0]
+                module_name = module_name.split('.')[-1]
                 
             # Add the module to the current scope
             self.set_variable(module_name, module)
