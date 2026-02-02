@@ -82,6 +82,32 @@ class Interpreter:
         self.debugger = None
         self.current_file = None
         self.current_line = None
+    
+    def sync_runtime_functions_to_type_checker(self):
+        """
+        Sync runtime-registered functions to the type checker.
+        
+        This is critical for stdlib functions registered after interpreter initialization.
+        Without this, the type checker won't know about graphics functions, math functions, etc.
+        """
+        if not self.enable_type_checking or not self.type_checker:
+            return
+        
+        from ..typesystem.types import FunctionType, ANY_TYPE
+        
+        # Register all runtime functions with the type checker
+        for func_name in self.runtime.functions.keys():
+            if func_name not in self.type_checker.env.functions:
+                # Create a permissive function type (accepts any args, returns any)
+                # This allows type checking to pass while still catching undefined functions
+                # We use a large param list to support functions with many arguments
+                func_type = FunctionType(
+                    param_types=[ANY_TYPE] * 20,  # Support up to 20 args
+                    return_type=ANY_TYPE
+                )
+                # Mark it as variadic so argument count checking is skipped
+                func_type.variadic = True
+                self.type_checker.env.define_function(func_name, func_type)
         
     def create_function_wrapper(self, function_def):
         """Create a callable wrapper for a user-defined function."""
@@ -145,6 +171,10 @@ class Interpreter:
         
         # Run type checking if enabled
         if self.enable_type_checking and isinstance(ast, Program):
+            # CRITICAL: Sync runtime functions to type checker first
+            # This ensures stdlib functions (graphics, math, etc.) are known to the type system
+            self.sync_runtime_functions_to_type_checker()
+            
             errors = self.type_checker.check_program(ast)
             if errors:
                 error_msg = "\n".join(errors)

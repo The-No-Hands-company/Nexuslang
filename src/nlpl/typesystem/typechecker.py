@@ -556,30 +556,33 @@ class TypeChecker:
             # Get the function type
             function_type = env.get_function_type(call.name)
             
-            # Check argument count
-            if len(call.arguments) != len(function_type.param_types):
-                self.errors.append(
-                    f"Type error: Function '{call.name}' expects {len(function_type.param_types)} arguments, got {len(call.arguments)}"
-                )
-                return function_type.return_type
+            # Check argument count (skip for variadic functions)
+            if not getattr(function_type, 'variadic', False):
+                if len(call.arguments) != len(function_type.param_types):
+                    self.errors.append(
+                        f"Type error: Function '{call.name}' expects {len(function_type.param_types)} arguments, got {len(call.arguments)}"
+                    )
+                    return function_type.return_type
             
             # Use bidirectional inference: infer argument types with expected parameter types
             arg_types = self.type_inference.infer_argument_types_from_function(
                 function_type, call.arguments, env.variables
             )
             
-            # Check argument types against parameter types
+            # Check argument types against parameter types (skip for ANY_TYPE params)
             for i, (arg_type, param_type) in enumerate(zip(arg_types, function_type.param_types)):
-                if not arg_type.is_compatible_with(param_type):
+                if param_type != ANY_TYPE and not arg_type.is_compatible_with(param_type):
                     self.errors.append(
                         f"Type error: Function '{call.name}' argument {i+1} expects type '{self._type_name(param_type)}', got '{self._type_name(arg_type)}'"
                     )
             
             return function_type.return_type
         except TypeCheckError:
-            # If the function is not defined, check arguments without expected types
+            # If the function is not defined, assume it's a runtime-registered function (stdlib)
+            # Check arguments without expected types to ensure they're valid expressions
             arg_types = [self.check_statement(arg, env) for arg in call.arguments]
-            # Assume it's a built-in function
+            # Return ANY_TYPE to allow runtime resolution
+            # NOTE: The function MUST exist at runtime or it will fail there
             return ANY_TYPE
     
     def _type_name(self, type_: Type) -> str:
