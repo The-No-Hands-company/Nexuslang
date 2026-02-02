@@ -169,6 +169,12 @@ class Parser:
         if peek_index < len(self.tokens):
             return self.tokens[peek_index]
         return None
+    
+    def _skip_whitespace_tokens(self):
+        """Skip NEWLINE, INDENT, and DEDENT tokens for multi-line structures."""
+        while (self.current_token and 
+               self.current_token.type in (TokenType.NEWLINE, TokenType.INDENT, TokenType.DEDENT)):
+            self.advance()
         
     def parse(self):
         """Parse the token stream and return the AST."""
@@ -6691,6 +6697,9 @@ class Parser:
         
         self.eat(TokenType.LEFT_BRACKET)
         
+        # Skip any newlines and indentation after opening bracket
+        self._skip_whitespace_tokens()
+        
         # Empty list
         if self.current_token.type == TokenType.RIGHT_BRACKET:
             self.eat(TokenType.RIGHT_BRACKET)
@@ -6698,6 +6707,9 @@ class Parser:
         
         # Parse first expression
         first_expr = self.expression()
+        
+        # Skip whitespace after first expression
+        self._skip_whitespace_tokens()
         
         # Check if it's a list comprehension (look for 'for' keyword)
         if self.current_token.type == TokenType.FOR:
@@ -6719,6 +6731,8 @@ class Parser:
                 self.advance()
                 condition = self.expression()
             
+            # Skip whitespace before closing bracket
+            self._skip_whitespace_tokens()
             self.eat(TokenType.RIGHT_BRACKET)
             return ListComprehension(first_expr, target, iterable, condition, line_number)
         else:
@@ -6726,7 +6740,16 @@ class Parser:
             elements = [first_expr]
             while self.current_token.type == TokenType.COMMA:
                 self.advance()
+                # Skip newlines and indentation after comma
+                self._skip_whitespace_tokens()
+                
+                # Check for trailing comma before closing bracket
+                if self.current_token.type == TokenType.RIGHT_BRACKET:
+                    break
+                    
                 elements.append(self.expression())
+                # Skip whitespace after element
+                self._skip_whitespace_tokens()
             
             self.eat(TokenType.RIGHT_BRACKET)
             return ListExpression(elements, line_number)
@@ -6739,6 +6762,9 @@ class Parser:
         
         self.eat(TokenType.LEFT_BRACE)
         
+        # Skip any newlines and indentation after opening brace
+        self._skip_whitespace_tokens()
+        
         # Check for empty dict
         if self.current_token.type == TokenType.RIGHT_BRACE:
             self.eat(TokenType.RIGHT_BRACE)
@@ -6746,8 +6772,11 @@ class Parser:
         
         # Parse first key
         key = self.expression()
+        self._skip_whitespace_tokens()
         self.eat(TokenType.COLON)
+        self._skip_whitespace_tokens()
         value = self.expression()
+        self._skip_whitespace_tokens()
         
         # Check if this is a dict comprehension
         if self.current_token.type == TokenType.FOR:
@@ -6769,6 +6798,8 @@ class Parser:
                 self.advance()
                 condition = self.expression()
             
+            # Skip whitespace before closing brace
+            self._skip_whitespace_tokens()
             self.eat(TokenType.RIGHT_BRACE)
             return DictComprehension(key, value, target, iterable, condition, line_number)
         
@@ -6777,9 +6808,19 @@ class Parser:
         
         while self.current_token.type == TokenType.COMMA:
             self.advance()
+            # Skip newlines and indentation after comma
+            self._skip_whitespace_tokens()
+            
+            # Check for trailing comma before closing brace
+            if self.current_token.type == TokenType.RIGHT_BRACE:
+                break
+                
             key = self.expression()
+            self._skip_whitespace_tokens()
             self.eat(TokenType.COLON)
+            self._skip_whitespace_tokens()
             value = self.expression()
+            self._skip_whitespace_tokens()
             entries.append((key, value))
         
         self.eat(TokenType.RIGHT_BRACE)

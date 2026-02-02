@@ -218,6 +218,18 @@ class TypeChecker:
         elif statement.__class__.__name__ == 'LambdaExpression':
             # Handle lambda expressions
             return self.check_lambda_expression(statement, env)
+        elif statement.__class__.__name__ == 'ListExpression':
+            # Handle list literals: [1, 2, 3]
+            return self.check_list_expression(statement, env)
+        elif statement.__class__.__name__ == 'DictExpression':
+            # Handle dict literals: {"key": "value"}
+            return self.check_dict_expression(statement, env)
+        elif statement.__class__.__name__ == 'ListComprehension':
+            # Handle list comprehensions: [x for x in range(10)]
+            return self.check_list_comprehension(statement, env)
+        elif statement.__class__.__name__ == 'DictComprehension':
+            # Handle dict comprehensions: {k: v for k, v in items}
+            return self.check_dict_comprehension(statement, env)
         elif statement.__class__.__name__ == 'MemberAccess':
             # Handle member access: object.property or object.method()
             return self.check_member_access(statement, env)
@@ -705,6 +717,104 @@ class TypeChecker:
             except TypeCheckError as e:
                 self.errors.append(str(e))
                 return ANY_TYPE
+    
+    def check_list_expression(self, list_expr, env: TypeEnvironment) -> Type:
+        """Check a list literal: [1, 2, 3]."""
+        from ..typesystem.types import ListType
+        
+        if not list_expr.elements:
+            # Empty list - return generic List type
+            return ListType(ANY_TYPE)
+        
+        # Check all elements and infer common type
+        element_types = [self.check_statement(elem, env) for elem in list_expr.elements]
+        
+        # Find common type (simplified - use first element's type)
+        common_type = element_types[0]
+        for elem_type in element_types[1:]:
+            if not elem_type.is_compatible_with(common_type):
+                # Types don't match - use ANY_TYPE
+                common_type = ANY_TYPE
+                break
+        
+        return ListType(common_type)
+    
+    def check_dict_expression(self, dict_expr, env: TypeEnvironment) -> Type:
+        """Check a dictionary literal: {"key": "value"}."""
+        from ..typesystem.types import DictionaryType
+        
+        if not dict_expr.entries:
+            # Empty dict - return generic Dict type
+            return DictionaryType(ANY_TYPE, ANY_TYPE)
+        
+        # Check all key-value pairs
+        key_types = []
+        value_types = []
+        for key_expr, value_expr in dict_expr.entries:
+            key_types.append(self.check_statement(key_expr, env))
+            value_types.append(self.check_statement(value_expr, env))
+        
+        # Find common key and value types
+        common_key_type = key_types[0]
+        common_value_type = value_types[0]
+        
+        for key_type in key_types[1:]:
+            if not key_type.is_compatible_with(common_key_type):
+                common_key_type = ANY_TYPE
+                break
+        
+        for value_type in value_types[1:]:
+            if not value_type.is_compatible_with(common_value_type):
+                common_value_type = ANY_TYPE
+                break
+        
+        return DictionaryType(common_key_type, common_value_type)
+    
+    def check_list_comprehension(self, comp_expr, env: TypeEnvironment) -> Type:
+        """Check a list comprehension: [x for x in range(10)]."""
+        from ..typesystem.types import ListType
+        
+        # Create new scope for comprehension variable
+        comp_env = TypeEnvironment(env)
+        
+        # Check iterable type
+        iterable_type = self.check_statement(comp_expr.iterable, env)
+        
+        # Define loop variable in comprehension scope
+        # For now, use ANY_TYPE for the loop variable
+        comp_env.define_variable(comp_expr.target.name, ANY_TYPE)
+        
+        # Check condition if present
+        if comp_expr.condition:
+            self.check_statement(comp_expr.condition, comp_env)
+        
+        # Check element expression
+        element_type = self.check_statement(comp_expr.element, comp_env)
+        
+        return ListType(element_type)
+    
+    def check_dict_comprehension(self, comp_expr, env: TypeEnvironment) -> Type:
+        """Check a dict comprehension: {k: v for k, v in items}."""
+        from ..typesystem.types import DictionaryType
+        
+        # Create new scope for comprehension variable
+        comp_env = TypeEnvironment(env)
+        
+        # Check iterable type
+        iterable_type = self.check_statement(comp_expr.iterable, env)
+        
+        # Define loop variable in comprehension scope
+        comp_env.define_variable(comp_expr.target.name, ANY_TYPE)
+        
+        # Check condition if present
+        if comp_expr.condition:
+            self.check_statement(comp_expr.condition, comp_env)
+        
+        # Check key and value expressions
+        key_type = self.check_statement(comp_expr.key, comp_env)
+        value_type = self.check_statement(comp_expr.value, comp_env)
+        
+        return DictionaryType(key_type, value_type)
 
     def check_class_definition(self, definition: ClassDefinition, env: TypeEnvironment) -> Type:
         """Check the type of a class definition."""
