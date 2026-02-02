@@ -108,13 +108,17 @@ def create_optimization_pipeline(level: OptimizationLevel, verbose: bool = False
     
     O0: No optimizations
     O1: Basic DCE, constant folding
-    O2: O1 + inlining, more aggressive DCE
-    O3: O2 + aggressive inlining, all optimizations
+    O2: O1 + inlining, strength reduction, loop unrolling
+    O3: O2 + aggressive inlining, CSE, tail call optimization
     Os: Optimize for code size
     """
     from ..optimizer.dead_code_elimination import DeadCodeEliminationPass
     from ..optimizer.constant_folding import ConstantFoldingPass
     from ..optimizer.function_inlining import FunctionInliningPass
+    from ..optimizer.strength_reduction import StrengthReductionPass
+    from ..optimizer.loop_unrolling import LoopUnrollingPass
+    from ..optimizer.common_subexpression_elimination import CommonSubexpressionEliminationPass
+    from ..optimizer.tail_call_optimization import TailCallOptimizationPass
     
     pipeline = OptimizationPipeline(level)
     pipeline.verbose = verbose
@@ -130,15 +134,20 @@ def create_optimization_pipeline(level: OptimizationLevel, verbose: bool = False
     
     # O2 and above: more optimizations
     if level.value >= OptimizationLevel.O2.value:
+        pipeline.add_pass(StrengthReductionPass())
+        pipeline.add_pass(LoopUnrollingPass(max_unroll_count=8))
         pipeline.add_pass(FunctionInliningPass(max_size=50))
         pipeline.add_pass(DeadCodeEliminationPass(aggressive=True))
-        # Run constant folding again after inlining
+        # Run constant folding again after transformations
         pipeline.add_pass(ConstantFoldingPass())
     
     # O3: aggressive optimizations
     if level == OptimizationLevel.O3:
+        pipeline.add_pass(CommonSubexpressionEliminationPass())
+        pipeline.add_pass(TailCallOptimizationPass())
         pipeline.add_pass(FunctionInliningPass(max_size=100, aggressive=True))
         # Multiple passes for maximum optimization
+        pipeline.add_pass(StrengthReductionPass())
         pipeline.add_pass(DeadCodeEliminationPass(aggressive=True))
         pipeline.add_pass(ConstantFoldingPass())
     

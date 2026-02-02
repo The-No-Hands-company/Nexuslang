@@ -13,8 +13,9 @@ from .parser.parser import Parser
 from .interpreter.interpreter import Interpreter
 from .runtime.runtime import Runtime
 from .stdlib import register_stdlib
+from .tools import get_profiler, enable_profiling, disable_profiling
 
-def run_program(source_code, debug=False, type_check=True):
+def run_program(source_code, debug=False, type_check=True, profiler=None):
     """
     Run an NLPL program from source code.
     
@@ -22,6 +23,7 @@ def run_program(source_code, debug=False, type_check=True):
         source_code (str): The source code of the NLPL program
         debug (bool): Whether to enable debug mode
         type_check (bool): Whether to enable type checking
+        profiler: Optional profiler instance for performance tracking
     
     Returns:
         The result of the program execution
@@ -49,6 +51,10 @@ def run_program(source_code, debug=False, type_check=True):
         print_ast(ast)
     
     interpreter = Interpreter(runtime, enable_type_checking=type_check)
+    
+    # Attach profiler if provided
+    if profiler:
+        interpreter.profiler = profiler
     
     try:
         result = interpreter.interpret(ast)
@@ -87,8 +93,17 @@ def main():
     parser.add_argument('--debugger', action='store_true', help='Enable interactive debugger')
     parser.add_argument('--break', '-b', dest='breakpoints', action='append',
                        help='Set breakpoint at line (can be used multiple times)')
+    parser.add_argument('--profile', action='store_true', help='Enable runtime profiling')
+    parser.add_argument('--profile-output', help='Save profile results to JSON file')
+    parser.add_argument('--profile-flamegraph', help='Export flamegraph format to file')
     
     args = parser.parse_args()
+    
+    # Initialize profiler if requested
+    profiler = None
+    if args.profile:
+        profiler = enable_profiling()
+        profiler.start()
     
     # Start REPL if no file specified or --repl flag
     if args.file is None or (args.repl and not args.file):
@@ -180,9 +195,23 @@ def main():
     
     # Run normally without debugger
     try:
-        result = run_program(source_code, args.debug, not args.no_type_check)
+        result = run_program(source_code, args.debug, not args.no_type_check, profiler)
         if result is not None:
             print(f"Program result: {result}")
+        
+        # Print and export profiling results if enabled
+        if profiler:
+            profiler.stop()
+            print("\n" + "="*70)
+            profiler.print_report()
+            
+            if args.profile_output:
+                profiler.export_json(args.profile_output)
+                print(f"\nProfile results saved to: {args.profile_output}")
+            
+            if args.profile_flamegraph:
+                profiler.export_flamegraph(args.profile_flamegraph)
+                print(f"Flamegraph data saved to: {args.profile_flamegraph}")
     except Exception as e:
         print(f"Error: {e}")
         if args.debug:
