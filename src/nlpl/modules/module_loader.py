@@ -297,8 +297,9 @@ class ModuleLoader:
             parser = Parser(tokens)
             ast = parser.parse()
             
-            # Create a new runtime for the module
-            module_runtime = Runtime()
+            # Use the parent runtime for the module instead of creating a new one
+            # This ensures modules have access to stdlib and other registered functions
+            module_runtime = self.runtime
             
             # Store the module's file path in the runtime for relative imports
             module_runtime.module_path = file_path
@@ -306,7 +307,7 @@ class ModuleLoader:
             # Import Interpreter here to avoid circular imports
             from ..interpreter.interpreter import Interpreter
             
-            # Create a new interpreter for the module with its own runtime
+            # Create a new interpreter for the module using the shared runtime
             interpreter = Interpreter(module_runtime, enable_type_checking=False)
             
             # Execute the module

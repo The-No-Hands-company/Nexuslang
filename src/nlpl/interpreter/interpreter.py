@@ -20,6 +20,8 @@ from nlpl.parser.ast import (
     ImportStatement, SelectiveImport, ModuleAccess, PrivateDeclaration,
     # FFI-related AST nodes
     ExternFunctionDeclaration, ExternVariableDeclaration, ExternTypeDeclaration,
+    # Inline assembly AST node
+    InlineAssembly,
     # Struct/Union AST nodes
     StructDefinition as ASTStructDefinition, 
     UnionDefinition as ASTUnionDefinition,
@@ -1318,21 +1320,41 @@ class Interpreter:
         try:
             # Load the library based on platform
             system = platform.system()
+            
+            # First try to find the library using ctypes.util
+            full_library_path = ctypes.util.find_library(library_name)
+            
+            # Special handling for common library names
+            if not full_library_path:
+                if system == 'Windows':
+                    if library_name == 'c':
+                        full_library_path = 'msvcrt.dll'
+                    elif library_name == 'm':
+                        full_library_path = 'msvcrt.dll'  # Math functions in msvcrt on Windows
+                    else:
+                        full_library_path = library_name
+                elif system == 'Darwin':  # macOS
+                    if library_name == 'c':
+                        full_library_path = 'libc.dylib'
+                    elif library_name == 'm':
+                        full_library_path = 'libm.dylib'
+                    else:
+                        full_library_path = library_name
+                else:  # Linux and other Unix-like
+                    if library_name == 'c':
+                        full_library_path = 'libc.so.6'
+                    elif library_name == 'm':
+                        full_library_path = 'libm.so.6'
+                    else:
+                        full_library_path = library_name
+            
             if system == 'Windows':
                 if calling_convention == 'stdcall':
-                    library = ctypes.WinDLL(library_name)
+                    library = ctypes.WinDLL(full_library_path)
                 else:
-                    library = ctypes.CDLL(library_name)
+                    library = ctypes.CDLL(full_library_path)
             else:
-                # Unix-like systems (Linux, macOS)
-                if library_name == 'c':
-                    # Standard C library
-                    if system == 'Darwin':  # macOS
-                        library_name = 'libc.dylib'
-                    else:  # Linux
-                        library_name = 'libc.so.6'
-                
-                library = ctypes.CDLL(library_name)
+                library = ctypes.CDLL(full_library_path)
             
             # Get the C function
             c_func = getattr(library, func_name)
@@ -1349,7 +1371,12 @@ class Interpreter:
                 param_names.append(param.name)
                 param_types.append(self._nlpl_type_to_ctype(param.type_annotation))
             
-            if param_types:
+            # For non-variadic functions, set argtypes
+            # For variadic functions, only set argtypes for fixed parameters
+            if param_types and not variadic:
+                c_func.argtypes = param_types
+            elif param_types and variadic:
+                # Set argtypes only for fixed params, variadic params handled differently
                 c_func.argtypes = param_types
             
             # Create wrapper that handles type conversion
@@ -1361,10 +1388,33 @@ class Interpreter:
                 temp_refs = []
                 
                 for i, arg in enumerate(args):
-                    ctype = param_types[i] if i < len(param_types) else ctypes.c_void_p
+                    if i < len(param_types):
+                        # Fixed parameter - use declared type
+                        ctype = param_types[i]
+                    else:
+                        # Variadic parameter - infer type from Python value
+                        if isinstance(arg, bool):
+                            ctype = ctypes.c_int  # C promotes bool to int
+                        elif isinstance(arg, int):
+                            ctype = ctypes.c_long
+                        elif isinstance(arg, float):
+                            ctype = ctypes.c_double
+                        elif isinstance(arg, str):
+                            ctype = ctypes.c_char_p
+                        elif isinstance(arg, bytes):
+                            ctype = ctypes.c_char_p
+                        else:
+                            ctype = ctypes.c_void_p
                     
-                    # Special handling for strings passed to void pointers
-                    if ctype == ctypes.c_void_p and isinstance(arg, str):
+                    # Special handling for strings passed to variadic functions
+                    if ctype == ctypes.c_char_p and isinstance(arg, str):
+                        # Convert string to bytes and create c_char_p
+                        encoded = arg.encode('utf-8')
+                        char_ptr = ctypes.c_char_p(encoded)
+                        temp_refs.append(char_ptr)  # Keep alive
+                        c_args.append(char_ptr)
+                    # Special handling for void pointers (format strings in printf)
+                    elif ctype == ctypes.c_void_p and isinstance(arg, str):
                         # Convert string to bytes and create c_char_p
                         encoded = arg.encode('utf-8')
                         char_ptr = ctypes.c_char_p(encoded)
@@ -1372,6 +1422,12 @@ class Interpreter:
                         c_args.append(char_ptr)
                     else:
                         converted = self._python_to_ctype_value(arg, ctype)
+                        # For variadic args, explicitly cast to the expected type
+                        if i >= len(param_types) and variadic:
+                            if ctype == ctypes.c_double and isinstance(converted, (int, float)):
+                                converted = ctypes.c_double(float(converted))
+                            elif ctype == ctypes.c_long and isinstance(converted, int):
+                                converted = ctypes.c_long(converted)
                         c_args.append(converted)
                 
                 # Call C function
@@ -1464,6 +1520,80 @@ class Interpreter:
         except OSError as e:
             raise NLPLRuntimeError(
                 f"Failed to load library '{library_name}' for extern variable '{var_name}': {str(e)}",
+                line=getattr(node, 'line_number', None)
+            )
+    
+    def execute_inline_assembly(self, node):
+        """Execute inline assembly code.
+        
+        Handles assembly blocks with:
+        - Assembly code strings
+        - Input operands (read-only variables/expressions)
+        - Output operands (writable variables)
+        - Clobbered registers
+        
+        Example:
+            asm
+                code
+                    "mov rax, 0"
+                    "ret"
+                inputs "r": my_input
+                outputs "=r": my_output
+                clobbers "rax", "rbx"
+            end
+        """
+        # Get the ASM executor from runtime (registered by stdlib)
+        if not hasattr(self.runtime, 'asm_executor'):
+            raise NLPLRuntimeError(
+                "Inline assembly support not available - ASM stdlib not loaded",
+                line=getattr(node, 'line_number', None)
+            )
+        
+        executor = self.runtime.asm_executor
+        
+        # Join all assembly code lines
+        asm_code = '\n'.join(node.asm_code)
+        
+        # Process input operands (evaluate expressions)
+        input_values = {}
+        for constraint, expr in node.inputs.items():
+            value = self.execute(expr)
+            input_values[constraint] = value
+        
+        # For simple cases without complex operand handling,
+        # we just assemble and execute the code
+        # More complex implementations would handle register allocation,
+        # input/output substitution, etc.
+        
+        try:
+            # Assemble the code
+            machine_code = executor.assemble_code(asm_code)
+            
+            # Execute and get result
+            result = executor.execute_assembly(machine_code)
+            
+            # Process output operands (assign results to variables)
+            # In a full implementation, outputs would be extracted from registers
+            # For now, we just use the return value for the first output
+            if node.outputs:
+                first_output = list(node.outputs.values())[0]
+                if hasattr(first_output, 'name'):
+                    # It's an Identifier
+                    self.set_variable(first_output.name, result)
+                elif isinstance(first_output, str):
+                    # Direct variable name
+                    self.set_variable(first_output, result)
+            
+            return result
+            
+        except ValueError as e:
+            raise NLPLRuntimeError(
+                f"Assembly error: {str(e)}",
+                line=getattr(node, 'line_number', None)
+            )
+        except RuntimeError as e:
+            raise NLPLRuntimeError(
+                f"Assembly execution error: {str(e)}",
                 line=getattr(node, 'line_number', None)
             )
             
@@ -1800,6 +1930,7 @@ class Interpreter:
         
         Supports both:
         - Direct function calls: add with 5 and 10
+        - Module function calls: module.function with args
         - Callable values: (function stored in variable or passed as argument)
         """
         function_name = node.name
@@ -1818,6 +1949,25 @@ class Interpreter:
                 return func_value(*args)
             else:
                 raise TypeError(f"Cannot call non-function value: {type(func_value).__name__}")
+        
+        # Handle module.function calls (function_name contains a dot)
+        if '.' in function_name:
+            parts = function_name.split('.')
+            if len(parts) == 2:
+                module_name, member_name = parts
+                try:
+                    module = self.get_variable(module_name)
+                    if hasattr(module, member_name):
+                        func = getattr(module, member_name)
+                        if callable(func):
+                            return func(*args)
+                        else:
+                            raise TypeError(f"{module_name}.{member_name} is not callable")
+                    else:
+                        raise AttributeError(f"Module '{module_name}' has no attribute '{member_name}'")
+                except NameError:
+                    # Module not found, continue to other lookups
+                    pass
         
         # Check for built-in functions in the runtime
         if function_name in self.runtime.functions:

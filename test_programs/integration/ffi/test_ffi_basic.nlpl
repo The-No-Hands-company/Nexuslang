@@ -10,7 +10,7 @@
 # Expected Output:
 #   Hello from NLPL calling C printf!
 
-extern function printf with format as Pointer returns Integer from library "c"
+extern function printf with format as Pointer, ... returns Integer from library "c"
 
 set greeting to "Hello from NLPL calling C printf!\n"
 call printf with greeting

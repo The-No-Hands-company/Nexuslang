@@ -307,6 +307,9 @@ class Parser:
             elif token.type == TokenType.IMPORT:
                 return self.import_statement()
             
+            elif token.type == TokenType.FROM:
+                return self.selective_import_statement()
+            
             elif token.type == TokenType.TRY:
                 return self.try_statement()
             
@@ -3364,7 +3367,8 @@ class Parser:
                     while (self.current_token and 
                            self.current_token.type not in (TokenType.DEDENT, TokenType.EOF)):
                         if self.current_token.type == TokenType.STRING_LITERAL:
-                            asm_code.append(self.current_token.lexeme)
+                            # Use literal (processed value) instead of lexeme (raw text with quotes)
+                            asm_code.append(self.current_token.literal)
                             self.advance()
                         elif self.current_token.type == TokenType.NEWLINE:
                             self.advance()  # Skip newlines
@@ -4119,17 +4123,10 @@ class Parser:
             if not self.current_token or not self.current_token.lexeme:
                 self.error("Expected class name after 'new'")
             
-            # Special handling for Array type: "new Array of 10 Point"
-            if self.current_token.type == TokenType.ARRAY:
-                class_name = self.parse_type()
-            # Handle List/Dictionary/Map which might be "List of T" or "Map of K to V"
-            elif self.current_token.type in (TokenType.LIST, TokenType.DICTIONARY):
-                 class_name = self.parse_type()
-            elif self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme in ("Map", "List", "Dictionary"):
-                 class_name = self.parse_type()
-            else:
-                class_name = self.current_token.lexeme
-                self.advance()
+            # Get the base class name without generic parameters
+            # Generic parameters will be parsed separately below
+            class_name = self.current_token.lexeme
+            self.advance()
             
             # Check for generic type arguments: new Container<Integer>
             # (Note: parse_type might have already handled 'of' generics)
@@ -4546,11 +4543,18 @@ class Parser:
                     self.advance()  # consume 'with'
                     arguments = []
                     
-                    # Parse comma-separated arguments
-                    arguments.append(self.expression())
-                    while self.current_token and self.current_token.type == TokenType.COMMA:
-                        self.advance()  # consume comma
-                        arguments.append(self.expression())
+                    # Parse first argument - use comparison() to stop before 'and'
+                    arg = self.comparison()
+                    if arg:
+                        arguments.append(arg)
+                    
+                    # Parse additional arguments (separated by comma or "and")
+                    while self.current_token and (self.current_token.type == TokenType.COMMA or
+                                                   self.current_token.type == TokenType.AND):
+                        self.advance()  # consume comma or "and"
+                        arg = self.comparison()
+                        if arg:
+                            arguments.append(arg)
                     
                     base_expr = MemberAccess(base_expr, member_name, is_method_call=True, arguments=arguments, line_number=line_num)
                 else:
@@ -4594,12 +4598,12 @@ class Parser:
         if self.current_token and self.current_token.type == TokenType.DOT:
             self.advance()  # Eat dot
             
-            if self.current_token.type == TokenType.IDENTIFIER:
+            if self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
                 member_name = self.current_token.lexeme
                 self.advance()
                 
-                # Function call (e.g., module.function(args))
-                if self.current_token and self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() == 'with':
+                # Function call (e.g., module.function with args)
+                if self.current_token and self.current_token.type == TokenType.WITH:
                     return self.function_call(f"{identifier}.{member_name}", self.current_token.line)
                 
                 # Simple module access
@@ -5144,6 +5148,53 @@ class Parser:
                 self.error("Expected an alias name after 'as'")
                 
         return ImportStatement(module_name, alias, line_number)
+    
+    def selective_import_statement(self):
+        """Parse a selective import statement."""
+        # Syntax: from <module_name> import <name1>, <name2>, ...
+        line_number = self.current_token.line
+        
+        # Eat 'from'
+        self.eat(TokenType.FROM)
+        
+        # Get module name
+        if self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
+            module_name = self.current_token.lexeme
+            self.advance()
+            
+            # Support dotted module names (e.g. test_modules.math_utils)
+            while self.current_token and self.current_token.type == TokenType.DOT:
+                self.advance()  # Eat '.'
+                module_name += "."
+                if self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
+                    module_name += self.current_token.lexeme
+                    self.advance()
+                else:
+                    self.error("Expected module name after '.'")
+        else:
+            self.error("Expected a module name after 'from'")
+        
+        # Eat 'import'
+        self.eat(TokenType.IMPORT)
+        
+        # Parse imported names
+        imported_names = []
+        if self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
+            imported_names.append(self.current_token.lexeme)
+            self.advance()
+            
+            # Parse additional names separated by commas
+            while self.current_token and self.current_token.type == TokenType.COMMA:
+                self.advance()  # Eat ','
+                if self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
+                    imported_names.append(self.current_token.lexeme)
+                    self.advance()
+                else:
+                    self.error("Expected name after ','")
+        else:
+            self.error("Expected at least one name to import")
+        
+        return SelectiveImport(module_name, imported_names, line_number)
 
     def private_declaration(self):
         """Parse a private declaration."""

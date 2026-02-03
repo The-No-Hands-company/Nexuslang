@@ -200,10 +200,25 @@ class TypeChecker:
         elif isinstance(statement, PrintStatement):
             return self.check_print_statement(statement, env)
         elif statement.__class__.__name__ == 'ImportStatement':
-            # Import statements are valid - they bring modules into scope
+            # Import statements bring modules into scope
+            # Register the module name (or alias if provided) as a variable
+            if hasattr(statement, 'module_name'):
+                # Use alias if provided, otherwise extract last part of module name
+                if hasattr(statement, 'alias') and statement.alias:
+                    module_name = statement.alias
+                else:
+                    # Extract the last part of dotted names (e.g., "test_modules.math_utils" -> "math_utils")
+                    module_name = statement.module_name
+                    if '.' in module_name:
+                        module_name = module_name.split('.')[-1]
+                env.define_variable(module_name, ANY_TYPE)
             return ANY_TYPE
         elif statement.__class__.__name__ == 'SelectiveImport':
-            # Selective imports are valid - they bring specific names into scope
+            # Selective imports bring specific names into scope
+            # Register each imported name as a variable
+            if hasattr(statement, 'imported_names'):
+                for name in statement.imported_names:
+                    env.define_variable(name, ANY_TYPE)
             return ANY_TYPE
         elif statement.__class__.__name__ == 'ModuleAccess':
             # Module access expressions (module.member) are valid
@@ -216,6 +231,15 @@ class TypeChecker:
             return ANY_TYPE  # Object instantiation valid, return ANY for now
         elif isinstance(statement, MemberAssignment):
             return ANY_TYPE  # Member assignment valid, return ANY for now
+        elif statement.__class__.__name__ == 'IndexAssignment':
+            # Handle index assignment: set array[index] to value
+            # Check that the target (IndexExpression) is valid
+            if hasattr(statement, 'target'):
+                self.check_expression(statement.target, env)
+            # Check that the value is valid
+            if hasattr(statement, 'value'):
+                return self.check_expression(statement.value, env)
+            return ANY_TYPE
         elif isinstance(statement, SizeofExpression):
             return INTEGER_TYPE  # sizeof returns integer
         elif isinstance(statement, AddressOfExpression):
@@ -248,6 +272,53 @@ class TypeChecker:
         elif statement.__class__.__name__ == 'GenericTypeInstantiation':
             # Handle generic type instantiation: create list, create list of Integer
             return self.check_generic_type_instantiation(statement, env)
+        elif statement.__class__.__name__ == 'ExternFunctionDeclaration':
+            # Handle extern function declarations (FFI)
+            # Register the extern function so it can be type-checked when called
+            if hasattr(statement, 'name'):
+                # Create a function type for the extern function
+                param_types = []
+                if hasattr(statement, 'parameters'):
+                    for param in statement.parameters:
+                        param_type = get_type_by_name(param.type_annotation) if hasattr(param, 'type_annotation') else ANY_TYPE
+                        param_types.append(param_type)
+                
+                return_type = get_type_by_name(statement.return_type) if hasattr(statement, 'return_type') else ANY_TYPE
+                func_type = FunctionType(param_types, return_type)
+                
+                # Mark as variadic if specified (allows variable number of arguments)
+                if hasattr(statement, 'variadic') and statement.variadic:
+                    func_type.variadic = True
+                
+                env.define_function(statement.name, func_type)
+            return ANY_TYPE
+        elif statement.__class__.__name__ == 'ExternVariableDeclaration':
+            # Handle extern variable declarations (FFI)
+            if hasattr(statement, 'name') and hasattr(statement, 'type_annotation'):
+                var_type = get_type_by_name(statement.type_annotation)
+                env.define_variable(statement.name, var_type)
+            return ANY_TYPE
+        elif statement.__class__.__name__ == 'ExternTypeDeclaration':
+            # Handle extern type declarations (FFI)
+            # These define type aliases for FFI types, just accept them
+            return ANY_TYPE
+        elif statement.__class__.__name__ == 'InlineAssembly':
+            # Handle inline assembly blocks
+            # Assembly can read/write variables, but we can't statically type check it
+            # Just verify that input/output operands exist in scope
+            if hasattr(statement, 'inputs'):
+                for constraint, expr in statement.inputs.items():
+                    # Check that input expressions are valid
+                    self.check_expression(expr, env)
+            
+            if hasattr(statement, 'outputs'):
+                for constraint, var in statement.outputs.items():
+                    # Outputs should be identifiers (variables)
+                    # They can be assigned to, so we don't need to check if they exist yet
+                    pass
+            
+            # Assembly return type is typically Integer (return value in register)
+            return INTEGER_TYPE
         else:
             raise TypeCheckError(f"Unsupported statement type: {statement.__class__.__name__}")
             return ANY_TYPE
@@ -561,6 +632,13 @@ class TypeChecker:
     
     def check_function_call(self, call: FunctionCall, env: TypeEnvironment) -> Type:
         """Check a function call with bidirectional type inference."""
+        # Handle module.function calls (function name contains a dot)
+        if isinstance(call.name, str) and '.' in call.name:
+            # Module member access - type check arguments but return ANY_TYPE
+            # since we don't track module member types yet
+            arg_types = [self.check_statement(arg, env) for arg in call.arguments]
+            return ANY_TYPE
+        
         try:
             # Get the function type
             function_type = env.get_function_type(call.name)

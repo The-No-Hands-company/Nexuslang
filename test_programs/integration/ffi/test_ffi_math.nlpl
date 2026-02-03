@@ -12,7 +12,7 @@
 extern function sqrt with x as Float returns Float from library "m"
 extern function pow with x as Float, y as Float returns Float from library "m"
 extern function sin with x as Float returns Float from library "m"
-extern function printf with format as Pointer returns Integer from library "c"
+extern function printf with format as Pointer, ... returns Integer from library "c"
 
 # Test sqrt
 set value to 16.0

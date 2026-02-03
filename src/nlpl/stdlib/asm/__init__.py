@@ -69,15 +69,24 @@ class AssemblyExecutor:
         
         # Parse and assemble line by line
         machine_code = bytearray()
+        has_ret = False
+        
         for line in asm_code.strip().split('\n'):
             line = line.strip().lower()
             if not line or line.startswith(';') or line.startswith('#'):
                 continue  # Skip empty lines and comments
             
+            if line == 'ret':
+                has_ret = True
+            
             if arch in instructions and line in instructions[arch]:
                 machine_code.extend(instructions[arch][line])
             else:
                 raise ValueError(f"Unsupported instruction '{line}' for architecture {arch}")
+        
+        # Safety: Always append RET if not present to prevent runaway execution
+        if not has_ret and arch in instructions:
+            machine_code.extend(instructions[arch]['ret'])
         
         return bytes(machine_code)
     
