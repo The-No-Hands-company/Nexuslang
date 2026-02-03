@@ -25,7 +25,11 @@ from nlpl.parser.ast import (
     # Struct/Union AST nodes
     StructDefinition as ASTStructDefinition, 
     UnionDefinition as ASTUnionDefinition,
-    StructField
+    StructField,
+    # Pattern matching AST nodes
+    MatchExpression, MatchCase,
+    LiteralPattern, IdentifierPattern, WildcardPattern,
+    OptionPattern, ResultPattern, VariantPattern
 )
 from nlpl.runtime import Runtime
 # Import CircularImportError for module loading
@@ -659,6 +663,200 @@ class Interpreter:
         
         # No match and no default - return None
         return None
+    
+    def execute_match_expression(self, node):
+        """Execute a pattern matching expression.
+        
+        Evaluates the match expression and tries to match against each case pattern.
+        When a pattern matches, binds any variables and executes the case body.
+        Supports:
+        - Literal patterns: case 42, case "hello"
+        - Identifier patterns: case x (binds x to the value)
+        - Wildcard pattern: case _ (matches anything)
+        - Option patterns: case Some with value, case None
+        - Result patterns: case Ok with value, case Err with error
+        - Variant patterns: case Ok value, case Some x
+        
+        Returns the result of the matching case body, or None if no match.
+        """
+        # Evaluate the expression to match against
+        match_value = self.execute(node.expression)
+        
+        # Try each case in order (first match wins)
+        for case in node.cases:
+            # Check if pattern matches and get any bindings
+            matched, bindings = self._match_pattern(case.pattern, match_value)
+            
+            if matched:
+                # Check guard condition if present
+                if case.guard:
+                    # Enter scope for bindings during guard evaluation
+                    self.enter_scope()
+                    try:
+                        # Bind variables for guard evaluation
+                        for var_name, var_value in bindings.items():
+                            self.set_variable(var_name, var_value)
+                        
+                        # Evaluate guard condition
+                        guard_result = self.execute(case.guard)
+                        
+                        # Guard must be truthy to proceed
+                        if not guard_result:
+                            continue
+                    finally:
+                        self.exit_scope()
+                
+                # Pattern matched (and guard passed if present)
+                # Enter new scope and bind pattern variables
+                self.enter_scope()
+                try:
+                    # Bind all pattern variables
+                    for var_name, var_value in bindings.items():
+                        self.set_variable(var_name, var_value)
+                    
+                    # Execute the case body
+                    result = None
+                    for statement in case.body:
+                        result = self.execute(statement)
+                    
+                    return result
+                finally:
+                    self.exit_scope()
+        
+        # No pattern matched
+        raise NLPLRuntimeError(
+            f"Non-exhaustive pattern match: no pattern matched the value {match_value!r}",
+            line=node.line_number
+        )
+    
+    def _match_pattern(self, pattern, value):
+        """Check if a pattern matches a value.
+        
+        Args:
+            pattern: Pattern AST node
+            value: Runtime value to match against
+            
+        Returns:
+            Tuple of (matched: bool, bindings: dict)
+            - matched: True if pattern matches value
+            - bindings: Dict of variable names to values for identifier patterns
+        """
+        # Literal pattern: case 42, case "hello", case true
+        if isinstance(pattern, LiteralPattern):
+            # pattern.value is a Literal AST node - need to extract the actual value
+            if hasattr(pattern.value, 'value'):
+                pattern_value = pattern.value.value
+            else:
+                pattern_value = pattern.value
+            
+            # For string literals, strip surrounding quotes if present
+            if isinstance(pattern_value, str) and len(pattern_value) >= 2:
+                if (pattern_value[0] == '"' and pattern_value[-1] == '"') or \
+                   (pattern_value[0] == "'" and pattern_value[-1] == "'"):
+                    pattern_value = pattern_value[1:-1]
+            
+            matched = (pattern_value == value)
+            return (matched, {})
+        
+        # Identifier pattern: case x (binds x to the value)
+        elif isinstance(pattern, IdentifierPattern):
+            # Always matches, binds the identifier to the value
+            return (True, {pattern.name: value})
+        
+        # Wildcard pattern: case _ (matches anything, no binding)
+        elif isinstance(pattern, WildcardPattern):
+            return (True, {})
+        
+        # Option pattern: case Some with value, case None
+        elif isinstance(pattern, OptionPattern):
+            # Import Option class for type checking
+            from nlpl.stdlib.option_result import Option
+            
+            if not isinstance(value, Option):
+                return (False, {})
+            
+            # Check variant type
+            if pattern.variant == "Some":
+                if value.is_some():
+                    # Bind the contained value if binding specified
+                    if pattern.binding:
+                        return (True, {pattern.binding: value.unwrap()})
+                    return (True, {})
+                return (False, {})
+            
+            elif pattern.variant == "None":
+                if value.is_none():
+                    return (True, {})
+                return (False, {})
+        
+        # Result pattern: case Ok with value, case Err with error
+        elif isinstance(pattern, ResultPattern):
+            # Import Result class for type checking
+            from nlpl.stdlib.option_result import Result
+            
+            if not isinstance(value, Result):
+                return (False, {})
+            
+            # Check variant type
+            if pattern.variant == "Ok":
+                if value.is_ok():
+                    # Bind the success value if binding specified
+                    if pattern.binding:
+                        return (True, {pattern.binding: value.unwrap()})
+                    return (True, {})
+                return (False, {})
+            
+            elif pattern.variant == "Err":
+                if value.is_err():
+                    # Bind the error value if binding specified
+                    if pattern.binding:
+                        return (True, {pattern.binding: value.unwrap_err()})
+                    return (True, {})
+                return (False, {})
+        
+        # Variant pattern: case Ok value, case Some x (generic variant matching)
+        elif isinstance(pattern, VariantPattern):
+            # Try to match against Option/Result types first
+            from nlpl.stdlib.option_result import Option, Result
+            
+            if isinstance(value, Option):
+                # Match Option variants
+                if pattern.variant_name == "Some" and value.is_some():
+                    bindings = {}
+                    if pattern.bindings:
+                        # Bind the contained value to the first binding name
+                        bindings[pattern.bindings[0]] = value.unwrap()
+                    return (True, bindings)
+                elif pattern.variant_name == "None" and value.is_none():
+                    return (True, {})
+                return (False, {})
+            
+            elif isinstance(value, Result):
+                # Match Result variants
+                if pattern.variant_name == "Ok" and value.is_ok():
+                    bindings = {}
+                    if pattern.bindings:
+                        # Bind the success value to the first binding name
+                        bindings[pattern.bindings[0]] = value.unwrap()
+                    return (True, bindings)
+                elif pattern.variant_name == "Err" and value.is_err():
+                    bindings = {}
+                    if pattern.bindings:
+                        # Bind the error value to the first binding name
+                        bindings[pattern.bindings[0]] = value.unwrap_err()
+                    return (True, bindings)
+                return (False, {})
+            
+            # Future: Support for custom variant types (enums, structs)
+            # For now, just fail to match
+            return (False, {})
+        
+        # Unknown pattern type
+        else:
+            raise NLPLRuntimeError(
+                f"Unknown pattern type: {type(pattern).__name__}",
+                line=getattr(pattern, 'line_number', None)
+            )
     
     def execute_memory_allocation(self, node):
         """Execute memory allocation."""

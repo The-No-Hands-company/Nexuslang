@@ -319,6 +319,52 @@ class TypeChecker:
             
             # Assembly return type is typically Integer (return value in register)
             return INTEGER_TYPE
+        elif statement.__class__.__name__ == 'MatchExpression':
+            # Handle pattern matching expressions
+            # Check the match expression type
+            match_expr_type = self.check_expression(statement.expression, env)
+            
+            # Check each case
+            result_types = []
+            for case in statement.cases:
+                # Create a new scope for pattern bindings
+                case_env = TypeEnvironment(parent=env)
+                
+                # Add pattern bindings to scope
+                # For now, we'll assume pattern bindings have type ANY_TYPE
+                # Future: infer types from pattern and match expression
+                pattern = case.pattern
+                if hasattr(pattern, 'name'):  # IdentifierPattern
+                    case_env.define_variable(pattern.name, match_expr_type)
+                elif hasattr(pattern, 'binding'):  # OptionPattern, ResultPattern
+                    if pattern.binding:
+                        # For Option/Result, the binding gets the inner type
+                        # For now, use ANY_TYPE (future: unwrap type from Option<T>/Result<T,E>)
+                        case_env.define_variable(pattern.binding, ANY_TYPE)
+                elif hasattr(pattern, 'bindings'):  # VariantPattern
+                    for binding in pattern.bindings:
+                        case_env.define_variable(binding, ANY_TYPE)
+                
+                # Check guard if present
+                if case.guard:
+                    guard_type = self.check_expression(case.guard, case_env)
+                    if guard_type != BOOLEAN_TYPE and guard_type != ANY_TYPE:
+                        self.errors.append(
+                            f"Line {getattr(case, 'line_number', '?')}: Guard condition must be boolean, "
+                            f"got {guard_type}"
+                        )
+                
+                # Check case body and collect return type
+                body_type = ANY_TYPE
+                for stmt in case.body:
+                    body_type = self.check_statement(stmt, case_env)
+                result_types.append(body_type)
+            
+            # Match expression type is the union of all case body types
+            # For now, if all types are the same, use that; otherwise ANY_TYPE
+            if result_types and all(t == result_types[0] for t in result_types):
+                return result_types[0]
+            return ANY_TYPE
         else:
             raise TypeCheckError(f"Unsupported statement type: {statement.__class__.__name__}")
             return ANY_TYPE
