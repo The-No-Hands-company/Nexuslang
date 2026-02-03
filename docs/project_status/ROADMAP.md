@@ -29,6 +29,7 @@
 - [x] Memory operations (allocate, free, address-of, dereference, sizeof)
 - [x] **Index Assignment** ✨ NEW (Feb 2, 2026) - `set array[0] to value`, `set dict["key"] to value`
 - [x] **Pattern Matching** ✨ COMPLETE (Feb 3, 2026) - Full match/case expressions with guards
+- [x] **Struct/Union types** ✨ COMPLETE - C-style structs and unions with memory layout control
 - [x] Lambda expressions
 - [x] Operator overloading
 - [x] Properties (getters/setters)
@@ -214,24 +215,17 @@
 
 - [x] Update docs/project_status/ROADMAP.md (DONE - Feb 3, 2026)
 - [x] Pattern matching interpreter (DONE - Feb 3, 2026)
+- [x] Struct/Union verification (DONE - already working!)
 - [ ] Create docs/STATUS.md - Single source of truth for implementation status
-- [ ] Update docs/2_language_basics/syntax.md - Add inline assembly, pattern matching
+- [ ] Update docs/2_language_basics/syntax.md - Add inline assembly, pattern matching, struct/union
 - [ ] Create docs/4_advanced_features/inline_assembly.md (NEW)
 - [ ] Create docs/4_advanced_features/pattern_matching.md (NEW)
+- [ ] Create docs/4_advanced_features/struct_union.md (NEW)
 - [ ] Update docs/4_advanced_features/ffi.md - Document variadic functions
 - [ ] Update docs/5_type_system/*.md - Mark generics/inference as complete
 - [ ] Create stdlib API reference (all 62 modules!)
 
-### 2. **Complete Struct/Union Interpreter**
-
-**Status:** Tokens, AST, and parser exist. Interpreter execution missing.
-
-**Files to modify:**
-- `src/nlpl/interpreter/interpreter.py` - Add `execute_struct_definition()`, `execute_union_definition()`
-- Implement struct instantiation and member access
-- Validate with test files in `test_programs/`
-
-### 4. **Test & Document LSP Integration**
+### 2. **Test & Document LSP Integration**
 
 **Status:** 12 LSP files exist, but capabilities unclear
 
@@ -241,7 +235,7 @@
 - Create setup guide for users
 - Fix any integration issues found
 
-### 5. **Consolidate Documentation**
+### 3. **Consolidate Documentation**
 
 **Issues:**
 - 182 documentation files (many outdated)
@@ -300,16 +294,15 @@
 - [x] Inline assembly support
 - [x] FFI for C library integration
 - [x] **Pattern matching complete** ✅ (Feb 3, 2026)
-- [ ] Struct/Union interpreter complete
+- [x] **Struct/Union complete** ✅ (Previously implemented, verified Feb 3, 2026)
 - [ ] All documentation updated and accurate
 - [ ] Package manager basics
 - [ ] Production-ready error messages
 - [ ] Comprehensive test suite (>95% coverage)
 
 **Blockers:**
-1. **Struct/Union interpreter** (parser done, interpreter missing)
-2. Documentation update (in progress)
-3. LSP testing and validation
+1. Documentation updates (syntax.md, create pattern_matching.md, inline_assembly.md, struct_union.md)
+2. LSP testing and validation
 
 **v1.0 Features List:**
 - Natural language syntax ("set", "to", "called", etc.)
