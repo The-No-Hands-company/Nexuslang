@@ -1459,6 +1459,11 @@ class Parser:
                     methods = []
                     
                     while self.current_token and self.current_token.type != TokenType.DEDENT:
+                        # Skip NEWLINE tokens between class members
+                        if self.current_token.type == TokenType.NEWLINE:
+                            self.advance()
+                            continue
+                        
                         # Check for access modifiers (private/public/protected)
                         access_modifier = 'public'  # default
                         if self.current_token.type in (TokenType.PRIVATE, TokenType.PUBLIC, TokenType.PROTECTED):

@@ -393,6 +393,7 @@ class Lexer:
             "concatenate": TokenType.CONCATENATE,
             "add": TokenType.ADD,
             "is": TokenType.IS,
+            "equals": TokenType.EQUAL_TO,  # Single-word comparison
             "greater than": TokenType.GREATER_THAN,
             "less than": TokenType.LESS_THAN,
             "equal to": TokenType.EQUAL_TO,
