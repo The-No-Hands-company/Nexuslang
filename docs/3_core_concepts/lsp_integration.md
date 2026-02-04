@@ -16,6 +16,8 @@ The NLPL Language Server Protocol (LSP) integration provides modern IDE features
 - **Go-to-definition** - Jump to function/class/variable declarations
 - **Hover documentation** - See function signatures and docs on hover
 - **Signature help** - Parameter hints while typing function calls
+- **Rename refactoring** - Rename symbols across workspace (NEW in v1.0+)
+- **Find references** - Locate all usages of symbols
 - **Multi-file support** - Workspace-wide analysis and diagnostics
 
 **All features verified working as of February 3, 2026** ✅
@@ -399,7 +401,211 @@ Manual trigger: `Ctrl+Shift+Space`
 
 ---
 
-### 7. Workspace-Wide Analysis
+### 7. Rename Refactoring
+
+**What it does**: Renames symbols across the entire workspace with one action
+
+**Usage**: Press `F2` on a symbol, or right-click and select "Rename Symbol"
+
+#### Example: Rename Function
+
+**Before**:
+```nlpl
+function calculate with x as Integer, y as Integer returns Integer
+  return x plus y
+end
+
+set result to calculate with 10, 20
+set another to calculate with 5, 15
+print text result to_string
+```
+
+**Action**: Place cursor on `calculate`, press `F2`, type `compute`
+
+**After**:
+```nlpl
+function compute with x as Integer, y as Integer returns Integer
+  return x plus y
+end
+
+set result to compute with 10, 20
+set another to compute with 5, 15
+print text result to_string
+```
+
+**Result**: All 3 occurrences renamed automatically (definition + 2 calls)
+
+#### Example: Rename Variable
+
+**Before**:
+```nlpl
+set counter to 0
+set total to 100
+
+while counter is less than 10
+  set counter to counter plus 1
+  set total to total minus counter
+end
+
+print text counter to_string
+```
+
+**Action**: Place cursor on `counter` (any occurrence), press `F2`, type `index`
+
+**After**:
+```nlpl
+set index to 0
+set total to 100
+
+while index is less than 10
+  set index to index plus 1
+  set total to total minus index
+end
+
+print text index to_string
+```
+
+**Result**: All 6 occurrences renamed (declaration + 5 references)
+
+#### Example: Rename Class
+
+**Before**:
+```nlpl
+class Person
+  name as String
+  age as Integer
+end
+
+set alice to new Person
+set bob to new Person
+```
+
+**Action**: Place cursor on `Person`, press `F2`, type `Human`
+
+**After**:
+```nlpl
+class Human
+  name as String
+  age as Integer
+end
+
+set alice to new Human
+set bob to new Human
+```
+
+**Result**: Class definition and all instantiations renamed
+
+#### Example: Rename Method
+
+**Before**:
+```nlpl
+class Calculator
+  function calculate with x as Integer, y as Integer returns Integer
+    return x plus y
+  end
+end
+
+set calc to new Calculator
+set result to calc dot calculate with 5, 10
+```
+
+**Action**: Place cursor on `calculate` method, press `F2`, type `compute`
+
+**After**:
+```nlpl
+class Calculator
+  function compute with x as Integer, y as Integer returns Integer
+    return x plus y
+  end
+end
+
+set calc to new Calculator
+set result to calc dot compute with 5, 10
+```
+
+**Result**: Method definition and all calls renamed
+
+#### Rename Validation
+
+The rename feature protects against invalid renames:
+
+**Blocked Renames**:
+- Keywords (e.g., can't rename to `function`, `if`, `class`)
+- Invalid identifiers (e.g., `123abc`, `my-func`, `my func`)
+- Symbols that don't exist
+
+**Example - Attempting Invalid Rename**:
+```nlpl
+set message to "Hello"
+```
+
+Try to rename `message` to `function`:
+
+**Result**: Error message:
+```
+Cannot rename to 'function': Reserved keyword
+```
+
+Try to rename to `my-var`:
+
+**Result**: Error message:
+```
+Cannot rename to 'my-var': Invalid identifier (use underscores, not hyphens)
+```
+
+#### Prepare Rename (Pre-check)
+
+Before performing a rename, the LSP checks if the symbol is renameable:
+
+1. User presses `F2` on a symbol
+2. Server checks:
+   - Is this a valid symbol? ✓
+   - Is it renameable (not a keyword)? ✓
+   - Is it defined in user code (not stdlib)? ✓
+3. If all checks pass, editor highlights the symbol for renaming
+4. User types new name and presses Enter
+5. Rename executes across workspace
+
+**If pre-check fails**, you'll see an error message immediately (before typing new name).
+
+#### Rename Scope
+
+The rename operation searches:
+- All open files in workspace
+- All `.nlpl` files in project directory
+- Respects scope boundaries (doesn't rename unrelated symbols with same name)
+
+**Multi-file example**:
+
+`utils.nlpl`:
+```nlpl
+function calculate with x as Integer, y as Integer returns Integer
+  return x plus y
+end
+```
+
+`main.nlpl`:
+```nlpl
+import utils from "utils.nlpl"
+
+set result to calculate with 10, 20  # References utils.calculate
+```
+
+**Action**: Rename `calculate` in `utils.nlpl`
+
+**Result**: Both files updated:
+- `utils.nlpl`: Function definition renamed
+- `main.nlpl`: Function call renamed
+
+#### Keyboard Shortcuts
+
+- **VS Code**: `F2`
+- **Neovim**: `<leader>rn` (configurable)
+- **Alternative**: Right-click → "Rename Symbol"
+
+---
+
+### 8. Workspace-Wide Analysis
 
 **What it does**: Analyzes all `.nlpl` files in your workspace
 

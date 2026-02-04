@@ -26,34 +26,50 @@ The NLPL LSP server provides IDE integration for NLPL, enabling modern developme
    - Variable and function name completion
    - Code snippets (function templates, class templates, etc.)
 
-3. **Code Actions (Quick Fixes)**  NEW
+3. **Code Actions (Quick Fixes)**
    - Fix unclosed strings (add missing quote)
    - Remove unused variables
    - Add missing type annotations
    - Extract function refactoring
    - Convert to list comprehension
 
-4. **Signature Help**  NEW
+4. **Signature Help**
    - Parameter hints during function calls
    - Shows parameter types and documentation
    - Works with stdlib and user-defined functions
    - Active parameter highlighting
 
-5. **Go-to-Definition**
+5. **Rename Refactoring** NEW
+   - Rename functions across workspace
+   - Rename classes and all instantiations
+   - Rename variables and all references
+   - Rename methods and calls
+   - Pre-validation (prepare rename) to prevent invalid renames
+   - Keyword protection (can't rename to reserved words)
+   - Identifier validation
+
+6. **Find References**
+   - Locate all usages of functions
+   - Find all usages of classes
+   - Find all usages of variables
+   - Find all usages of methods
+   - Workspace-wide search
+
+7. **Go-to-Definition**
    - Jump to function definitions
    - Jump to class definitions
    - Jump to variable declarations
 
-6. **Hover Information**
+8. **Hover Information**
    - Function signatures
    - Type information
    - Documentation for keywords and stdlib functions
 
-7. **Code Formatting**
+9. **Code Formatting**
    - Basic NLPL code formatting
 
-8. **Workspace Symbols**
-   - Search for symbols across files
+10. **Workspace Symbols**
+    - Search for symbols across files
 
 ## Architecture
 

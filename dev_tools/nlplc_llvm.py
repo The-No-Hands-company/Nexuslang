@@ -38,14 +38,28 @@ def load_module_py314(filepath, module_name):
 # Detect Python 3.14 and use workaround
 if sys.version_info >= (3, 14):
     print("Note: Python 3.14 detected - using compatibility mode", file=sys.stderr)
+    print("Warning: Some features may not work correctly with Python 3.14", file=sys.stderr)
+    print("Recommended: Use Python 3.11, 3.12, or 3.13 for best compatibility", file=sys.stderr)
+    
+    # For Python 3.14, we'll use a simplified approach that avoids nlpl.__init__.py
+    # by directly importing only what we need
     src_dir = os.path.join(project_root, 'src')
     
-    # Load modules directly
-    lexer_mod = load_module_py314(
-        os.path.join(src_dir, 'nlpl', 'parser', 'lexer.py'),
-        'nlpl.parser.lexer'
+    # Temporarily disable the nlpl package init to avoid circular imports
+    import importlib.machinery
+    
+    # Create a minimal stub for nlpl package that doesn't trigger __init__.py
+    if 'nlpl' not in sys.modules:
+        nlpl_pkg = importlib.machinery.ModuleSpec('nlpl', None, is_package=True)
+        nlpl_module = importlib.util.module_from_spec(nlpl_pkg)
+        nlpl_module.__path__ = [os.path.join(src_dir, 'nlpl')]
+        sys.modules['nlpl'] = nlpl_module
+    
+    # Load errors module first (needed by parser)
+    errors_mod = load_module_py314(
+        os.path.join(src_dir, 'nlpl', 'errors.py'),
+        'nlpl.errors'
     )
-    Lexer = lexer_mod.Lexer
     
     # Load AST module (needed by parser)
     ast_mod = load_module_py314(
@@ -53,6 +67,14 @@ if sys.version_info >= (3, 14):
         'nlpl.parser.ast'
     )
     
+    # Load lexer
+    lexer_mod = load_module_py314(
+        os.path.join(src_dir, 'nlpl', 'parser', 'lexer.py'),
+        'nlpl.parser.lexer'
+    )
+    Lexer = lexer_mod.Lexer
+    
+    # Load parser
     parser_mod = load_module_py314(
         os.path.join(src_dir, 'nlpl', 'parser', 'parser.py'),
         'nlpl.parser.parser'
@@ -123,13 +145,31 @@ def main():
     ast = parser_obj.parse()
     
     # Pattern matching analysis (warnings for non-exhaustive or unreachable cases)
-    from nlpl.compiler.pattern_analysis import analyze_pattern_match
-    from nlpl.parser.ast import MatchExpression
+    try:
+        if sys.version_info >= (3, 14):
+            # Load pattern analysis for Python 3.14
+            pattern_mod = load_module_py314(
+                os.path.join(project_root, 'src', 'nlpl', 'compiler', 'pattern_analysis.py'),
+                'nlpl.compiler.pattern_analysis'
+            )
+            analyze_pattern_match = pattern_mod.analyze_pattern_match
+        else:
+            from nlpl.compiler.pattern_analysis import analyze_pattern_match
+        
+        from nlpl.parser.ast import MatchExpression
+    except (ImportError, FileNotFoundError):
+        # Pattern analysis not available
+        analyze_pattern_match = None
+        MatchExpression = None
     
     visited = set()
     
     def analyze_patterns(node, depth=0):
         """Recursively analyze pattern matching in AST."""
+        # Skip if pattern analysis not available
+        if analyze_pattern_match is None or MatchExpression is None:
+            return
+        
         # Prevent infinite recursion
         if depth > 100:
             return

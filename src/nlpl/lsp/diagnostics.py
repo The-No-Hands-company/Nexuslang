@@ -73,25 +73,19 @@ class DiagnosticsProvider:
         """
         Check syntax using NLPL parser with enhanced error positioning.
         
+        Uses AST cache for performance.
+        
         Returns:
             List of diagnostics with accurate line/column info
         """
         diagnostics = []
         
         try:
-            from nlpl.parser.lexer import Lexer
-            from nlpl.parser.parser import Parser
+            from nlpl.parser.cached_parser import parse_with_cache
             
-            # Try to parse
-            lexer = Lexer(text)
-            tokens = lexer.tokenize()
-            parser = Parser(tokens)
-            ast = parser.parse()
-            
-            # Store AST for later use (type checking, etc.)
-            if not hasattr(self, 'ast_cache'):
-                self.ast_cache = {}
-            self.ast_cache[uri] = ast
+            # Use cached parser for performance
+            # Will automatically handle cache hits/misses based on content hash
+            ast = parse_with_cache(uri, text, debug=False)
             
             # If we got here without exception, no syntax errors
             return []

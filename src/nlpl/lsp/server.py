@@ -91,6 +91,7 @@ class NLPLLanguageServer:
         from ..lsp.code_actions import CodeActionsProvider
         from ..lsp.signature_help import SignatureHelpProvider
         from ..lsp.references import ReferencesProvider
+        from ..lsp.rename import RenameProvider
         
         self.completion_provider = CompletionProvider(self)
         self.definition_provider = DefinitionProvider(self)
@@ -101,6 +102,7 @@ class NLPLLanguageServer:
         self.code_actions_provider = CodeActionsProvider(self)
         self.references_provider = ReferencesProvider(self)
         self.signature_help_provider = SignatureHelpProvider(self)
+        self.rename_provider = RenameProvider(self)
         
         logger.info("NLPL Language Server initialized")
     
@@ -203,6 +205,12 @@ class NLPLLanguageServer:
         elif method == 'textDocument/references':
             return self._handle_references(msg_id, params)
         
+        elif method == 'textDocument/prepareRename':
+            return self._handle_prepare_rename(msg_id, params)
+        
+        elif method == 'textDocument/rename':
+            return self._handle_rename(msg_id, params)
+        
         elif method == 'textDocument/codeAction':
             return self._handle_code_action(msg_id, params)
         
@@ -258,7 +266,9 @@ class NLPLLanguageServer:
             "referencesProvider": True,
             "documentFormattingProvider": True,
             "workspaceSymbolProvider": True,
-            "renameProvider": True
+            "renameProvider": {
+                "prepareProvider": True
+            }
         }
         
         return {
@@ -380,6 +390,41 @@ class NLPLLanguageServer:
             "jsonrpc": "2.0",
             "id": msg_id,
             "result": references
+        }
+    
+    def _handle_prepare_rename(self, msg_id: int, params: Dict) -> Dict:
+        """Handle textDocument/prepareRename request."""
+        uri = params['textDocument']['uri']
+        position = Position(
+            params['position']['line'],
+            params['position']['character']
+        )
+        
+        text = self.documents.get(uri, '')
+        prepare_result = self.rename_provider.prepare_rename(text, position, uri)
+        
+        return {
+            "jsonrpc": "2.0",
+            "id": msg_id,
+            "result": prepare_result
+        }
+    
+    def _handle_rename(self, msg_id: int, params: Dict) -> Dict:
+        """Handle textDocument/rename request."""
+        uri = params['textDocument']['uri']
+        position = Position(
+            params['position']['line'],
+            params['position']['character']
+        )
+        new_name = params['newName']
+        
+        text = self.documents.get(uri, '')
+        workspace_edit = self.rename_provider.rename(text, position, uri, new_name)
+        
+        return {
+            "jsonrpc": "2.0",
+            "id": msg_id,
+            "result": workspace_edit
         }
     
     def _handle_code_action(self, msg_id: int, params: Dict) -> Dict:

@@ -346,6 +346,308 @@ set result to calculate with 10, """
         print(f"✗ Error: {e}")
 
 
+def test_rename(server):
+    """Test rename refactoring"""
+    print("\n" + "=" * 60)
+    print("Test 8: Rename Refactoring")
+    print("=" * 60)
+    
+    test_code = """function calculate with x as Integer, y as Integer returns Integer
+  return x plus y
+end
+
+set result to calculate with 10, 20
+set another to calculate with 5, 15
+print text result to_string"""
+    
+    # Test 8.1: Prepare rename
+    print("\nTest 8.1: Prepare rename")
+    print(f"  Code: {repr(test_code[:60])}...")
+    print(f"  Position: On 'calculate' function name")
+    
+    try:
+        uri = "file:///test_rename.nlpl"
+        server.documents[uri] = test_code
+        
+        prepare_result = server.rename_provider.prepare_rename(
+            test_code,
+            Position(line=0, character=11),  # On 'calculate' in function definition
+            uri
+        )
+        
+        if prepare_result:
+            print(f"  ✓ Prepare rename succeeded")
+            print(f"  Range: Line {prepare_result['range']['start']['line']}, "
+                  f"Char {prepare_result['range']['start']['character']}-"
+                  f"{prepare_result['range']['end']['character']}")
+            print(f"  Placeholder: '{prepare_result['placeholder']}'")
+        else:
+            print(f"  ⚠ Prepare rename failed")
+            
+    except Exception as e:
+        print(f"  ✗ Error: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    # Test 8.2: Perform rename
+    print("\nTest 8.2: Perform rename operation")
+    print(f"  Rename 'calculate' to 'compute'")
+    
+    try:
+        workspace_edit = server.rename_provider.rename(
+            test_code,
+            Position(line=0, character=11),  # On 'calculate'
+            uri,
+            "compute"  # New name
+        )
+        
+        if workspace_edit and 'changes' in workspace_edit:
+            changes = workspace_edit['changes']
+            print(f"  ✓ Rename workspace edit created")
+            print(f"  Files affected: {len(changes)}")
+            
+            for file_uri, edits in changes.items():
+                print(f"  File: {file_uri}")
+                print(f"    Edits: {len(edits)}")
+                for i, edit in enumerate(edits[:5], 1):  # Show first 5 edits
+                    line = edit['range']['start']['line']
+                    char = edit['range']['start']['character']
+                    new_text = edit['newText']
+                    print(f"      {i}. Line {line}, Char {char}: Replace with '{new_text}'")
+                if len(edits) > 5:
+                    print(f"      ... and {len(edits) - 5} more edits")
+        else:
+            print(f"  ⚠ Rename failed to generate workspace edit")
+            
+    except Exception as e:
+        print(f"  ✗ Error: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    # Test 8.3: Rename variable
+    print("\nTest 8.3: Rename variable")
+    
+    var_code = """set counter to 0
+set total to 100
+
+while counter is less than 10
+  set counter to counter plus 1
+  set total to total minus counter
+end
+
+print text counter to_string
+print text total to_string"""
+    
+    print(f"  Rename 'counter' to 'index'")
+    
+    try:
+        uri2 = "file:///test_rename_var.nlpl"
+        server.documents[uri2] = var_code
+        
+        workspace_edit = server.rename_provider.rename(
+            var_code,
+            Position(line=0, character=4),  # On 'counter' in first line
+            uri2,
+            "index"
+        )
+        
+        if workspace_edit and 'changes' in workspace_edit:
+            changes = workspace_edit['changes']
+            edits = changes.get(uri2, [])
+            print(f"  ✓ Variable rename succeeded")
+            print(f"  Total occurrences renamed: {len(edits)}")
+            
+            # Count by line
+            lines_affected = set(edit['range']['start']['line'] for edit in edits)
+            print(f"  Lines affected: {sorted(lines_affected)}")
+        else:
+            print(f"  ⚠ Variable rename failed")
+            
+    except Exception as e:
+        print(f"  ✗ Error: {e}")
+
+
+def test_find_references(server):
+    """Test find references feature"""
+    print("=" * 60)
+    print("Test 9: Find References")
+    print("=" * 60)
+    
+    # Test 9.1: Find function references
+    print("\nTest 9.1: Find references to function")
+    source = """
+function calculate with x as Integer, y as Integer returns Integer
+    return x plus y
+end
+
+set a to 5
+set b to 10
+set result to calculate with a, b
+print text "Result: ", result
+set another to calculate with 3, 7
+"""
+    
+    uri = "file:///test_refs_function.nlpl"
+    server.documents[uri] = source
+    
+    # Position on function name in definition (line 1, char 9)
+    position = Position(line=1, character=9)
+    
+    try:
+        refs = server.references_provider.find_references(
+            source, position, uri, include_declaration=True
+        )
+        
+        print(f"  Found {len(refs)} references to 'calculate'")
+        
+        # Should find: 1 definition + 2 calls
+        if len(refs) >= 3:
+            print("  ✓ Found definition and calls")
+            for i, ref in enumerate(refs[:5]):  # Show first 5
+                line = ref["range"]["start"]["line"]
+                char = ref["range"]["start"]["character"]
+                print(f"    Ref {i+1}: Line {line}, Char {char}")
+        else:
+            print(f"  ⚠ Expected at least 3 references, found {len(refs)}")
+    except Exception as e:
+        print(f"  ✗ Find function references failed: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    # Test 9.2: Find variable references
+    print("\nTest 9.2: Find references to variable")
+    source2 = """
+set counter to 0
+while counter is less than 5
+    print text counter
+    set counter to counter plus 1
+end
+print text "Final: ", counter
+"""
+    
+    uri2 = "file:///test_refs_variable.nlpl"
+    server.documents[uri2] = source2
+    
+    # Position on 'counter' in first assignment (line 1, char 4)
+    position2 = Position(line=1, character=4)
+    
+    try:
+        refs = server.references_provider.find_references(
+            source2, position2, uri2, include_declaration=True
+        )
+        
+        print(f"  Found {len(refs)} references to 'counter'")
+        
+        # Should find multiple: assignment + uses in loop + final use
+        if len(refs) >= 5:
+            print("  ✓ Found assignment and multiple uses")
+            for i, ref in enumerate(refs[:7]):
+                line = ref["range"]["start"]["line"]
+                char = ref["range"]["start"]["character"]
+                source_lines = source2.split('\n')
+                context = source_lines[line][:50] if line < len(source_lines) else ""
+                print(f"    Ref {i+1}: Line {line}, Char {char} - {context.strip()}")
+        else:
+            print(f"  ⚠ Expected at least 5 references, found {len(refs)}")
+    except Exception as e:
+        print(f"  ✗ Find variable references failed: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    # Test 9.3: Find class references
+    print("\nTest 9.3: Find references to class")
+    source3 = """
+class Person
+    property name as String
+    property age as Integer
+    
+    method greet
+        print text "Hello, I am ", this.name
+    end
+end
+
+set person1 to new Person()
+set person1.name to "Alice"
+set person2 to new Person()
+set person2.name to "Bob"
+"""
+    
+    uri3 = "file:///test_refs_class.nlpl"
+    server.documents[uri3] = source3
+    
+    # Position on 'Person' in class definition (line 1, char 6)
+    position3 = Position(line=1, character=6)
+    
+    try:
+        refs = server.references_provider.find_references(
+            source3, position3, uri3, include_declaration=True
+        )
+        
+        print(f"  Found {len(refs)} references to 'Person'")
+        
+        # Should find: 1 definition + 2 instantiations
+        if len(refs) >= 3:
+            print("  ✓ Found class definition and instantiations")
+            for i, ref in enumerate(refs):
+                line = ref["range"]["start"]["line"]
+                char = ref["range"]["start"]["character"]
+                source_lines = source3.split('\n')
+                context = source_lines[line][:60] if line < len(source_lines) else ""
+                print(f"    Ref {i+1}: Line {line}, Char {char} - {context.strip()}")
+        else:
+            print(f"  ⚠ Expected at least 3 references, found {len(refs)}")
+    except Exception as e:
+        print(f"  ✗ Find class references failed: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    # Test 9.4: Find references across multiple files
+    print("\nTest 9.4: Find references across multiple files")
+    
+    file1 = """
+function add with a as Integer, b as Integer returns Integer
+    return a plus b
+end
+"""
+    
+    file2 = """
+set x to add with 5, 10
+set y to add with 20, 30
+"""
+    
+    uri_file1 = "file:///module_math.nlpl"
+    uri_file2 = "file:///main.nlpl"
+    server.documents[uri_file1] = file1
+    server.documents[uri_file2] = file2
+    
+    # Find references to 'add' from file1
+    position4 = Position(line=1, character=9)
+    
+    try:
+        refs = server.references_provider.find_references(
+            file1, position4, uri_file1, include_declaration=True
+        )
+        
+        print(f"  Found {len(refs)} references to 'add' across workspace")
+        
+        # Should find: 1 definition in file1 + 2 calls in file2
+        if len(refs) >= 3:
+            print("  ✓ Found references across multiple files")
+            for i, ref in enumerate(refs):
+                line = ref["range"]["start"]["line"]
+                char = ref["range"]["start"]["character"]
+                file = ref["uri"].split('/')[-1]
+                print(f"    Ref {i+1}: {file}:L{line}:C{char}")
+        else:
+            print(f"  ⚠ Expected at least 3 references, found {len(refs)}")
+    except Exception as e:
+        print(f"  ✗ Find cross-file references failed: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    print()
+
+
 def run_all_tests():
     """Run all LSP tests"""
     print("\n" + "=" * 70)
@@ -365,6 +667,8 @@ def run_all_tests():
     test_diagnostics_detailed(server)
     test_code_actions(server)
     test_signature_help(server)
+    test_rename(server)
+    test_find_references(server)
     
     print("\n" + "=" * 70)
     print(" Test Suite Complete")
