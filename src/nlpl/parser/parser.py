@@ -2112,9 +2112,13 @@ class Parser:
             if self.current_token and self.current_token.type == TokenType.END_METHOD:
                 self.advance()  # consume combined 'end method' token
             elif self.current_token and self.current_token.type == TokenType.END:
+                end_line = self.current_token.line
                 self.advance()  # consume 'end'
-                # consume 'method' if present
-                if self.current_token and self.current_token.type == TokenType.METHOD:
+                # Only consume 'method' if it's on the same line (for "end method" syntax)
+                # Don't consume if separated by newline/indent (next method definition)
+                if (self.current_token and 
+                    self.current_token.type == TokenType.METHOD and
+                    self.current_token.line == end_line):
                     self.advance()
         else:
             body = []
