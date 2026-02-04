@@ -1,0 +1,116 @@
+{
+  "name": "nlpl-language-support",
+  "displayName": "NLPL Language Support",
+  "description": "Language support for NLPL (Natural Language Programming Language) with LSP features",
+  "version": "0.1.0",
+  "publisher": "nlpl",
+  "license": "MIT",
+  "icon": "images/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Zajfan/NLPL"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Formatters"
+  ],
+  "keywords": [
+    "nlpl",
+    "natural language",
+    "programming",
+    "lsp",
+    "language server"
+  ],
+  "activationEvents": [
+    "onLanguage:nlpl"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "nlpl",
+        "aliases": [
+          "NLPL",
+          "nlpl"
+        ],
+        "extensions": [
+          ".nlpl"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "nlpl",
+        "scopeName": "source.nlpl",
+        "path": "./syntaxes/nlpl.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "NLPL",
+      "properties": {
+        "nlpl.languageServer.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable NLPL language server"
+        },
+        "nlpl.languageServer.path": {
+          "type": "string",
+          "default": "",
+          "description": "Path to NLPL language server executable. Leave empty to use bundled server."
+        },
+        "nlpl.languageServer.arguments": {
+          "type": "array",
+          "default": [
+            "--stdio"
+          ],
+          "description": "Arguments to pass to the language server"
+        },
+        "nlpl.languageServer.debug": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable debug mode for language server"
+        },
+        "nlpl.languageServer.logFile": {
+          "type": "string",
+          "default": "",
+          "description": "Path to log file for language server output"
+        },
+        "nlpl.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Traces the communication between VS Code and the language server"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.75.0",
+    "@vscode/test-electron": "^2.3.0",
+    "typescript": "^5.0.0",
+    "vsce": "^2.15.0"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^8.1.0"
+  }
+}
