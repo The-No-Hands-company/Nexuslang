@@ -2,16 +2,19 @@
 References Provider
 ===================
 
-Finds all references to a symbol across the workspace.
+Finds all references to a symbol across the workspace using AST-based analysis.
 """
 
 from typing import List, Dict, Optional, Tuple
 import re
+from ..parser.lexer import Lexer
+from ..parser.parser import Parser
+from ..analysis import ASTSymbolExtractor, SymbolTable
 
 
 class ReferencesProvider:
     """
-    Provides find-all-references functionality.
+    Provides find-all-references functionality using AST-based symbol resolution.
     
     Finds all usages of:
     - Functions (definitions and calls)
@@ -22,6 +25,24 @@ class ReferencesProvider:
     
     def __init__(self, server):
         self.server = server
+        # Cache symbol tables per document
+        self.symbol_tables: Dict[str, SymbolTable] = {}
+    
+    def _get_or_build_symbol_table(self, text: str, uri: str) -> Optional[SymbolTable]:
+        """Build symbol table from document text."""
+        try:
+            lexer = Lexer(text)
+            tokens = lexer.tokenize()
+            parser = Parser(tokens)
+            ast = parser.parse()
+            
+            extractor = ASTSymbolExtractor(uri)
+            symbol_table = extractor.extract(ast)
+            
+            self.symbol_tables[uri] = symbol_table
+            return symbol_table
+        except Exception:
+            return self.symbol_tables.get(uri, None)
     
     def find_references(
         self, 
@@ -31,7 +52,7 @@ class ReferencesProvider:
         include_declaration: bool = True
     ) -> List[Dict]:
         """
-        Find all references to symbol at position.
+        Find all references to symbol at position using AST-based resolution.
         
         Args:
             text: Document text
@@ -42,6 +63,49 @@ class ReferencesProvider:
         Returns:
             List of locations where symbol is referenced
         """
+        # Build symbol table
+        symbol_table = self._get_or_build_symbol_table(text, uri)
+        if not symbol_table:
+            return self._fallback_find_references(text, position, uri, include_declaration)
+        
+        # Get symbol at position
+        symbol = symbol_table.get_symbol_at_position(uri, position.line, position.character)
+        if not symbol:
+            return self._fallback_find_references(text, position, uri, include_declaration)
+        
+        # Collect references from symbol table
+        references = []
+        
+        # Add declaration if requested
+        if include_declaration and symbol.location:
+            references.append({
+                "uri": symbol.location.uri,
+                "range": {
+                    "start": {"line": symbol.location.line, "character": symbol.location.column},
+                    "end": {"line": symbol.location.line, "character": symbol.location.column + len(symbol.name)}
+                }
+            })
+        
+        # Add all references
+        for ref in symbol.references:
+            references.append({
+                "uri": ref.uri,
+                "range": {
+                    "start": {"line": ref.line, "character": ref.column},
+                    "end": {"line": ref.line, "character": ref.column + len(symbol.name)}
+                }
+            })
+        
+        return references
+    
+    def _fallback_find_references(
+        self, 
+        text: str, 
+        position: 'Position', 
+        uri: str,
+        include_declaration: bool = True
+    ) -> List[Dict]:
+        """Fallback to regex-based reference search."""
         # Get symbol at position
         symbol = self._get_symbol_at_position(text, position)
         if not symbol:

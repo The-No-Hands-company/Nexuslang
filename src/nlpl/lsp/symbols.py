@@ -2,35 +2,83 @@
 Symbol Provider
 ===============
 
-Provides symbol search functionality.
+Provides symbol search functionality using AST-based analysis.
 """
 
-from typing import List, Dict
+from typing import List, Dict, Optional
 import re
+from ..parser.lexer import Lexer
+from ..parser.parser import Parser
+from ..analysis import ASTSymbolExtractor, SymbolTable, SymbolKind
 
 
 class SymbolProvider:
     """
-    Provides workspace symbol search.
+    Provides workspace symbol search using AST-based symbol resolution.
     
     Symbol types:
     - Functions
     - Classes
     - Variables
     - Imports
+    - Methods
+    - Structs
+    - Enums
     
     Features:
     - Fuzzy matching
     - Symbol type filtering
     - Workspace-wide indexing
+    - AST-based accuracy
     """
     
     def __init__(self, server):
         self.server = server
+        # Cache symbol tables per document
+        self.symbol_tables: Dict[str, SymbolTable] = {}
+    
+    def _get_or_build_symbol_table(self, text: str, uri: str) -> Optional[SymbolTable]:
+        """Build symbol table from document text."""
+        try:
+            lexer = Lexer(text)
+            tokens = lexer.tokenize()
+            parser = Parser(tokens)
+            ast = parser.parse()
+            
+            extractor = ASTSymbolExtractor(uri)
+            symbol_table = extractor.extract(ast)
+            
+            self.symbol_tables[uri] = symbol_table
+            return symbol_table
+        except Exception:
+            return self.symbol_tables.get(uri, None)
+    
+    def _symbol_kind_to_lsp(self, kind: SymbolKind) -> int:
+        """Convert SymbolKind to LSP symbol kind integer."""
+        # LSP SymbolKind values
+        mapping = {
+            SymbolKind.FILE: 1,
+            SymbolKind.MODULE: 2,
+            SymbolKind.NAMESPACE: 3,
+            SymbolKind.PACKAGE: 4,
+            SymbolKind.CLASS: 5,
+            SymbolKind.METHOD: 6,
+            SymbolKind.PROPERTY: 7,
+            SymbolKind.FIELD: 8,
+            SymbolKind.CONSTRUCTOR: 9,
+            SymbolKind.ENUM: 10,
+            SymbolKind.INTERFACE: 11,
+            SymbolKind.FUNCTION: 12,
+            SymbolKind.VARIABLE: 13,
+            SymbolKind.CONSTANT: 14,
+            SymbolKind.STRUCT: 23,
+            SymbolKind.ENUM_MEMBER: 22,
+        }
+        return mapping.get(kind, 13)  # Default to Variable
     
     def find_symbols(self, query: str, documents: Dict[str, str]) -> List[Dict]:
         """
-        Find symbols matching query across workspace.
+        Find symbols matching query across workspace using AST-based resolution.
         
         Args:
             query: Search query (supports fuzzy matching)
@@ -42,20 +90,50 @@ class SymbolProvider:
         symbols = []
         
         for uri, text in documents.items():
-            # Find functions
-            symbols.extend(self._find_functions(text, uri, query))
+            # Build symbol table
+            symbol_table = self._get_or_build_symbol_table(text, uri)
+            if not symbol_table:
+                # Fallback to regex
+                symbols.extend(self._fallback_find_symbols(text, uri, query))
+                continue
             
-            # Find classes
-            symbols.extend(self._find_classes(text, uri, query))
+            # Find matching symbols using fuzzy match
+            matching_symbols = symbol_table.find_symbols_by_name(query, fuzzy=True)
             
-            # Find variables
-            symbols.extend(self._find_variables(text, uri, query))
-            
-            # Find methods
-            symbols.extend(self._find_methods(text, uri, query))
+            for symbol in matching_symbols:
+                symbols.append({
+                    "name": symbol.name,
+                    "kind": self._symbol_kind_to_lsp(symbol.kind),
+                    "location": {
+                        "uri": symbol.location.uri,
+                        "range": {
+                            "start": {"line": symbol.location.line, "character": symbol.location.column},
+                            "end": {"line": symbol.location.line, "character": symbol.location.column + len(symbol.name)}
+                        }
+                    },
+                    "containerName": symbol.parent.name if symbol.parent else None
+                })
         
         # Sort by relevance (fuzzy match score)
         symbols.sort(key=lambda s: self._fuzzy_match_score(query, s["name"]), reverse=True)
+        
+        return symbols
+    
+    def _fallback_find_symbols(self, text: str, uri: str, query: str) -> List[Dict]:
+        """Fallback to regex-based symbol finding."""
+        symbols = []
+        
+        # Find functions
+        symbols.extend(self._find_functions(text, uri, query))
+        
+        # Find classes
+        symbols.extend(self._find_classes(text, uri, query))
+        
+        # Find variables
+        symbols.extend(self._find_variables(text, uri, query))
+        
+        # Find methods
+        symbols.extend(self._find_methods(text, uri, query))
         
         return symbols
     

@@ -2,15 +2,18 @@
 Code Actions Provider
 =====================
 
-Provides quick fixes and refactoring actions for NLPL code.
+Provides quick fixes and refactoring actions using AST-based analysis.
 """
 
 from typing import List, Dict, Optional
+from ..parser.lexer import Lexer
+from ..parser.parser import Parser
+from ..analysis import ASTSymbolExtractor, SymbolTable, SymbolKind
 
 
 class CodeActionsProvider:
     """
-    Provides code actions (quick fixes).
+    Provides code actions and refactorings using AST-based analysis.
     
     Actions:
     - Fix unclosed strings
@@ -19,14 +22,40 @@ class CodeActionsProvider:
     - Convert types
     - Extract function
     - Add type annotations
+    - Organize imports
+    - Rename symbol
     """
+    
+    # Action kinds (LSP standard)
+    KIND_QUICKFIX = "quickfix"
+    KIND_REFACTOR = "refactor"
+    KIND_REFACTOR_EXTRACT = "refactor.extract"
+    KIND_SOURCE_ORGANIZE_IMPORTS = "source.organizeImports"
     
     def __init__(self, server):
         self.server = server
+        # Cache symbol tables per document
+        self.symbol_tables: Dict[str, SymbolTable] = {}
+    
+    def _get_or_build_symbol_table(self, text: str, uri: str) -> Optional[SymbolTable]:
+        """Build symbol table from document text."""
+        try:
+            lexer = Lexer(text)
+            tokens = lexer.tokenize()
+            parser = Parser(tokens)
+            ast = parser.parse()
+            
+            extractor = ASTSymbolExtractor(uri)
+            symbol_table = extractor.extract(ast)
+            
+            self.symbol_tables[uri] = symbol_table
+            return symbol_table
+        except Exception:
+            return self.symbol_tables.get(uri, None)
     
     def get_code_actions(self, uri: str, text: str, range_params: Dict, diagnostics: List[Dict]) -> List[Dict]:
         """
-        Get code actions for a range.
+        Get code actions for a range using AST-based analysis.
         
         Args:
             uri: Document URI
@@ -39,6 +68,60 @@ class CodeActionsProvider:
         """
         actions = []
         
+        # Build symbol table
+        symbol_table = self._get_or_build_symbol_table(text, uri)
+        
+        # Add organize imports action
+        actions.append({
+            "title": "Organize imports",
+            "kind": self.KIND_SOURCE_ORGANIZE_IMPORTS,
+            "command": {
+                "title": "Organize imports",
+                "command": "nlpl.organizeImports",
+                "arguments": [uri]
+            }
+        })
+        
+        # Check if we have a selection for extract actions
+        if self._has_selection(range_params):
+            actions.append({
+                "title": "Extract function",
+                "kind": self.KIND_REFACTOR_EXTRACT,
+                "command": {
+                    "title": "Extract function",
+                    "command": "nlpl.extractFunction",
+                    "arguments": [uri, range_params]
+                }
+            })
+        
+        # Get symbol at cursor for targeted actions
+        if symbol_table:
+            start = range_params["start"]
+            symbol = symbol_table.get_symbol_at_position(uri, start["line"], start["character"])
+            
+            if symbol and not symbol.type_annotation:
+                actions.append({
+                    "title": f"Add type annotation to '{symbol.name}'",
+                    "kind": self.KIND_QUICKFIX,
+                    "edit": {
+                        "changes": {
+                            uri: [{
+                                "range": {
+                                    "start": {
+                                        "line": symbol.location.line,
+                                        "character": symbol.location.column + len(symbol.name)
+                                    },
+                                    "end": {
+                                        "line": symbol.location.line,
+                                        "character": symbol.location.column + len(symbol.name)
+                                    }
+                                },
+                                "newText": " as Any"
+                            }]
+                        }
+                    }
+                })
+        
         # Actions for specific diagnostics
         for diagnostic in diagnostics:
             message = diagnostic.get('message', '')
@@ -48,6 +131,37 @@ class CodeActionsProvider:
             # Fix unclosed string
             if 'Unclosed string' in message or 'Unterminated string' in message:
                 actions.append(self._fix_unclosed_string(uri, text, diag_range))
+            
+            # Fix undefined variable
+            if 'undefined' in message.lower():
+                import re
+                match = re.search(r"'(\w+)'", message)
+                if match:
+                    var_name = match.group(1)
+                    actions.append({
+                        "title": f"Declare '{var_name}'",
+                        "kind": self.KIND_QUICKFIX,
+                        "edit": {
+                            "changes": {
+                                uri: [{
+                                    "range": {
+                                        "start": {"line": diag_range["start"]["line"], "character": 0},
+                                        "end": {"line": diag_range["start"]["line"], "character": 0}
+                                    },
+                                    "newText": f"set {var_name} to Nothing\n"
+                                }]
+                            }
+                        },
+                        "diagnostics": [diagnostic]
+                    })
+        
+        return actions
+    
+    def _has_selection(self, range_params: Dict) -> bool:
+        """Check if range represents a non-empty selection."""
+        start = range_params["start"]
+        end = range_params["end"]
+        return start["line"] != end["line"] or start["character"] != end["character"]
             
             # Remove unused variable
             if 'Unused variable' in message:
