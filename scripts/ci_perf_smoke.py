@@ -13,6 +13,7 @@ from nlpl.parser.cached_parser import parse_with_cache
 
 def measure_parse_ms(file_path: Path) -> float:
     """Measure cold parse time for a file in milliseconds."""
+    file_path = file_path.resolve()
     text = file_path.read_text(encoding="utf-8")
     cache = get_global_cache()
     cache.clear()

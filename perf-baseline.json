@@ -1,0 +1,9 @@
+{
+  "threshold_ms": 2000.0,
+  "tolerance": 0.15,
+  "baseline": {},
+  "results": {
+    "/run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NLPL/test_programs/unit/basic/test_hello.nlpl": 18.57,
+    "/run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NLPL/test_programs/unit/basic/test_simple.nlpl": 2.24
+  }
+}

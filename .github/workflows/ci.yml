@@ -142,8 +142,8 @@ jobs:
       - name: Run perf smoke
         run: |
           python scripts/ci_perf_smoke.py \
-            --sample examples/01_basic_concepts.nlpl \
-            --sample examples/24_struct_and_union.nlpl \
+            --sample test_programs/unit/basic/test_hello.nlpl \
+            --sample test_programs/unit/basic/test_simple.nlpl \
             --threshold-ms 1500 \
             --output perf-smoke.json
 
