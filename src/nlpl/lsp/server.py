@@ -92,6 +92,7 @@ class NLPLLanguageServer:
         from ..lsp.signature_help import SignatureHelpProvider
         from ..lsp.references import ReferencesProvider
         from ..lsp.rename import RenameProvider
+        from ..lsp.semantic_tokens import SemanticTokensProvider
         
         self.completion_provider = CompletionProvider(self)
         self.definition_provider = DefinitionProvider(self)
@@ -103,6 +104,7 @@ class NLPLLanguageServer:
         self.references_provider = ReferencesProvider(self)
         self.signature_help_provider = SignatureHelpProvider(self)
         self.rename_provider = RenameProvider(self)
+        self.semantic_tokens_provider = SemanticTokensProvider(self)
         
         logger.info("NLPL Language Server initialized")
     
@@ -223,6 +225,9 @@ class NLPLLanguageServer:
         elif method == 'workspace/symbol':
             return self._handle_workspace_symbol(msg_id, params)
         
+        elif method == 'textDocument/semanticTokens/full':
+            return self._handle_semantic_tokens_full(msg_id, params)
+        
         elif method == 'shutdown':
             logger.info("Shutdown requested")
             return {"jsonrpc": "2.0", "id": msg_id, "result": None}
@@ -268,6 +273,10 @@ class NLPLLanguageServer:
             "workspaceSymbolProvider": True,
             "renameProvider": {
                 "prepareProvider": True
+            },
+            "semanticTokensProvider": {
+                "legend": self.semantic_tokens_provider.get_semantic_tokens_legend(),
+                "full": True
             }
         }
         
@@ -483,6 +492,22 @@ class NLPLLanguageServer:
             "jsonrpc": "2.0",
             "id": msg_id,
             "result": symbols
+        }
+    
+    def _handle_semantic_tokens_full(self, msg_id: int, params: Dict) -> Dict:
+        """Handle textDocument/semanticTokens/full request."""
+        uri = params['textDocument']['uri']
+        text = self.documents.get(uri, '')
+        
+        # Get semantic tokens
+        tokens = self.semantic_tokens_provider.get_semantic_tokens(text, uri)
+        
+        return {
+            "jsonrpc": "2.0",
+            "id": msg_id,
+            "result": {
+                "data": tokens
+            }
         }
     
     def _publish_diagnostics(self, uri: str, diagnostics: List[Dict]):
