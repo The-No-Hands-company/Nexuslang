@@ -96,23 +96,43 @@ if sys.version_info >= (3, 14):
     )
     OptimizationLevel = opt_mod.OptimizationLevel
     create_optimization_pipeline = opt_mod.create_optimization_pipeline
+    
+    # Load LLVM optimizer
+    llvm_opt_mod = load_module_py314(
+        os.path.join(src_dir, 'nlpl', 'compiler', 'llvm_optimizer.py'),
+        'nlpl.compiler.llvm_optimizer'
+    )
+    LLVMOptimizer = llvm_opt_mod.LLVMOptimizer
+    LLVMOptLevel = llvm_opt_mod.OptimizationLevel
 else:
     # Normal imports for Python < 3.14
     from nlpl.parser.lexer import Lexer
     from nlpl.parser.parser import Parser
     from nlpl.compiler.backends.llvm_ir_generator import LLVMIRGenerator, LLVM_AVAILABLE
     from nlpl.optimizer import OptimizationLevel, create_optimization_pipeline
+    from nlpl.compiler.llvm_optimizer import LLVMOptimizer, OptimizationLevel as LLVMOptLevel
 
 
 def main():
     parser = argparse.ArgumentParser(description='NLPL LLVM Compiler')
     parser.add_argument('input', help='Input NLPL source file')
     parser.add_argument('-o', '--output', help='Output executable file')
-    parser.add_argument('--ir', action='store_true', help='Show LLVM IR only')
+    parser.add_argument('--ir', action='store_true', help='Show LLVM IR only (unoptimized)')
+    parser.add_argument('--ir-opt', action='store_true', help='Show optimized LLVM IR')
     parser.add_argument('--obj', help='Output object file (.o)')
-    parser.add_argument('--optimize', '-O', type=int, default=0, choices=[0, 1, 2, 3],
-                       help='Optimization level (0-3)')
-    parser.add_argument('--module', action='store_true', 
+    parser.add_argument('-O0', dest='opt_level', action='store_const', const='O0',
+                       help='No optimization (debug-friendly)')
+    parser.add_argument('-O1', dest='opt_level', action='store_const', const='O1',
+                       help='Basic optimization')
+    parser.add_argument('-O2', dest='opt_level', action='store_const', const='O2',
+                       help='Standard optimization (default)')
+    parser.add_argument('-O3', dest='opt_level', action='store_const', const='O3',
+                       help='Aggressive optimization')
+    parser.add_argument('-Os', dest='opt_level', action='store_const', const='Os',
+                       help='Optimize for size')
+    parser.add_argument('--optimize', '-O', type=int, choices=[0, 1, 2, 3],
+                       help='Legacy: Optimization level (use -O0, -O2, -O3 instead)')
+    parser.add_argument('--module', action='store_const', 
                        help='Compile as module (generate .ll file only)')
     parser.add_argument('-g', '--debug', action='store_true',
                        help='Include debug information (DWARF)')
@@ -201,9 +221,9 @@ def main():
     
     analyze_patterns(ast)
     
-    # Apply optimizations if requested
-    if args.optimize > 0:
-        print(f"Applying optimization level O{args.optimize}...")
+    # Apply AST-level optimizations if requested (for legacy --optimize flag)
+    if args.optimize and args.optimize > 0:
+        print(f"Applying AST-level optimization O{args.optimize}...")
         opt_level = OptimizationLevel(args.optimize)
         pipeline = create_optimization_pipeline(opt_level, verbose=False)
         ast = pipeline.run(ast)
@@ -220,6 +240,51 @@ def main():
     llvm_gen = LLVMIRGenerator()
     llvm_ir = llvm_gen.generate(ast, source_file=source_file, debug_info=args.debug)
     
+    # Apply LLVM-level optimization
+    # Determine optimization level
+    if hasattr(args, 'opt_level') and args.opt_level:
+        opt_level_str = args.opt_level
+    elif args.optimize is not None:
+        opt_level_str = f'O{args.optimize}'
+    else:
+        opt_level_str = 'O2'  # Default to O2
+    
+    # Map to LLVMOptLevel enum
+    llvm_opt_level_map = {
+        'O0': LLVMOptLevel.O0,
+        'O1': LLVMOptLevel.O1,
+        'O2': LLVMOptLevel.O2,
+        'O3': LLVMOptLevel.O3,
+        'Os': LLVMOptLevel.Os,
+    }
+    llvm_opt_level = llvm_opt_level_map.get(opt_level_str, LLVMOptLevel.O2)
+    
+    # Show unoptimized IR if requested
+    if args.ir:
+        print("\n=== LLVM IR (Unoptimized) ===")
+        print(llvm_ir)
+        if not args.ir_opt:  # Don't return if also showing optimized
+            return
+    
+    # Optimize IR at LLVM level
+    if llvm_opt_level != LLVMOptLevel.O0:
+        try:
+            print(f"Optimizing IR at level {opt_level_str}...")
+            llvm_optimizer = LLVMOptimizer(llvm_opt_level)
+            llvm_ir = llvm_optimizer.optimize_module(llvm_ir)
+            
+            if args.optimize and args.optimize >= 2:
+                llvm_optimizer.print_stats()
+        except Exception as e:
+            print(f"Warning: LLVM optimization failed: {e}")
+            print("Continuing with unoptimized IR...")
+    
+    # Show optimized IR if requested
+    if args.ir_opt:
+        print(f"\n=== LLVM IR (Optimized {opt_level_str}) ===")
+        print(llvm_ir)
+        return
+    
     # Generate C header if requested
     if args.header:
         header_path = args.header
@@ -228,12 +293,6 @@ def main():
             
         print(f"Generating C header: {header_path}")
         llvm_gen.generate_c_header(header_path)
-    
-    # Show IR if requested
-    if args.ir:
-        print("\n=== LLVM IR ===")
-        print(llvm_ir)
-        return
     
     # Compile as module (just generate .ll file)
     if args.module:
@@ -269,15 +328,21 @@ def main():
             main_ll = f.name
             f.write(llvm_ir)
         
+        # Convert opt_level_str to int for backwards compatibility
+        opt_level_int = int(opt_level_str[1]) if opt_level_str[0] == 'O' and opt_level_str[1:].isdigit() else 2
+        
         # Link all modules with optimization level
-        success = llvm_gen.link_modules(main_ll, output_file, opt_level=args.optimize)
+        success = llvm_gen.link_modules(main_ll, output_file, opt_level=opt_level_int)
         
         # Clean up
         if os.path.exists(main_ll):
             os.remove(main_ll)
     else:
+        # Convert opt_level_str to int for backwards compatibility
+        opt_level_int = int(opt_level_str[1]) if opt_level_str[0] == 'O' and opt_level_str[1:].isdigit() else 2
+        
         # No imports, compile normally with optimization level
-        success = llvm_gen.compile_to_executable(output_file, opt_level=args.optimize)
+        success = llvm_gen.compile_to_executable(output_file, opt_level=opt_level_int)
     
     if success:
         print(f"\n Compilation successful!")

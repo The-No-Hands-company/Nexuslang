@@ -149,6 +149,16 @@ test_export
 /test_alloc_*
 /test_array_*
 
+# Tool executables in root (should be in dev_tools/)
+/nlpl-analyze
+/nlpl-format
+/nlplc
+
+# Example program compiled outputs in root (should be in build/)
+/01_basic_concepts
+/02_object_oriented
+/??_*
+
 # Keep build/artifacts directory structure
 build/artifacts/*
 !build/artifacts/.gitkeep

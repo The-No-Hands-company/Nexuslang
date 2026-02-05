@@ -66,8 +66,9 @@ class LLVMOptimizer:
         try:
             from llvmlite import binding as llvm
             
-            # Initialize LLVM
-            llvm.initialize()
+            # Note: llvm.initialize() is deprecated in newer versions
+            # LLVM initialization is now automatic
+            # Only initialize targets
             llvm.initialize_native_target()
             llvm.initialize_native_asmprinter()
             
@@ -80,47 +81,19 @@ class LLVMOptimizer:
             )
     
     def _configure_passes(self):
-        """Configure optimization passes based on level."""
-        from llvmlite import binding as llvm
+        """
+        Configure optimization passes based on level.
         
-        # Create pass manager builder
-        self.pass_manager_builder = llvm.PassManagerBuilder()
-        
-        # Configure based on optimization level
-        if self.optimization_level == OptimizationLevel.O0:
-            # O0: No optimizations
-            self.pass_manager_builder.opt_level = 0
-            self.pass_manager_builder.size_level = 0
-            
-        elif self.optimization_level == OptimizationLevel.O1:
-            # O1: Basic optimizations
-            self.pass_manager_builder.opt_level = 1
-            self.pass_manager_builder.size_level = 0
-            
-        elif self.optimization_level == OptimizationLevel.O2:
-            # O2: Standard optimizations (default)
-            self.pass_manager_builder.opt_level = 2
-            self.pass_manager_builder.size_level = 0
-            self.pass_manager_builder.inlining_threshold = 225
-            
-        elif self.optimization_level == OptimizationLevel.O3:
-            # O3: Aggressive optimizations
-            self.pass_manager_builder.opt_level = 3
-            self.pass_manager_builder.size_level = 0
-            self.pass_manager_builder.inlining_threshold = 275
-            # Enable loop unrolling
-            self.pass_manager_builder.loop_vectorize = True
-            self.pass_manager_builder.slp_vectorize = True
-            
-        elif self.optimization_level == OptimizationLevel.Os:
-            # Os: Size optimizations
-            self.pass_manager_builder.opt_level = 2
-            self.pass_manager_builder.size_level = 2
-            self.pass_manager_builder.inlining_threshold = 75
+        Note: Modern llvmlite (0.40+) uses different pass management.
+        We use opt tool for optimization instead of PassManagerBuilder.
+        """
+        # The modern llvmlite API requires using external tools (opt)
+        # This method is kept for compatibility but does nothing
+        pass
     
     def optimize_module(self, llvm_ir: str) -> str:
         """
-        Optimize LLVM IR module.
+        Optimize LLVM IR module using LLVM's opt tool.
         
         Args:
             llvm_ir: LLVM IR as string
@@ -128,57 +101,66 @@ class LLVMOptimizer:
         Returns:
             Optimized LLVM IR as string
         """
-        # Initialize LLVM if needed
-        self._initialize_llvm()
+        import subprocess
+        import tempfile
+        import os
         
         # If O0, skip optimization
         if self.optimization_level == OptimizationLevel.O0:
             return llvm_ir
         
         try:
-            # Parse IR to LLVM module
-            llvm_module = self._llvm.parse_assembly(llvm_ir)
+            # Write IR to temporary file
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.ll', delete=False) as f:
+                temp_input = f.name
+                f.write(llvm_ir)
             
-            # Verify module
-            llvm_module.verify()
+            # Create output file
+            temp_output = temp_input.replace('.ll', '_opt.ll')
             
-            # Configure passes
-            self._configure_passes()
+            # Build opt command based on optimization level
+            opt_flags = []
             
-            # Create pass managers
-            module_pm = self._llvm.ModulePassManager()
-            function_pm = self._llvm.FunctionPassManager(llvm_module)
+            if self.optimization_level == OptimizationLevel.O1:
+                opt_flags = ['-O1']
+            elif self.optimization_level == OptimizationLevel.O2:
+                opt_flags = ['-O2']
+            elif self.optimization_level == OptimizationLevel.O3:
+                opt_flags = ['-O3']
+            elif self.optimization_level == OptimizationLevel.Os:
+                opt_flags = ['-Os']
             
-            # Populate pass managers
-            self.pass_manager_builder.populate(module_pm)
-            self.pass_manager_builder.populate(function_pm)
+            # Run opt
+            cmd = ['opt'] + opt_flags + ['-S', temp_input, '-o', temp_output]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
             
-            # Initialize function pass manager
-            function_pm.initialize()
+            if result.returncode != 0:
+                raise RuntimeError(f"opt failed: {result.stderr}")
             
-            # Run function passes on each function
-            for func in llvm_module.functions:
-                if not func.is_declaration:
-                    function_pm.run(func)
-                    self.stats['functions_optimized'] += 1
+            # Read optimized IR
+            with open(temp_output, 'r') as f:
+                optimized_ir = f.read()
             
-            # Finalize function passes
-            function_pm.finalize()
-            
-            # Run module passes
-            module_pm.run(llvm_module)
+            # Clean up
+            os.remove(temp_input)
+            os.remove(temp_output)
             
             # Update stats
             self.stats['passes_run'] += 1
             self._estimate_speedup()
             
-            # Return optimized IR
-            return str(llvm_module)
+            return optimized_ir
             
+        except FileNotFoundError:
+            print("Warning: LLVM 'opt' tool not found in PATH")
+            print("Install LLVM tools or LLVM optimization will be skipped")
+            return llvm_ir
+        except subprocess.TimeoutExpired:
+            print("Warning: LLVM optimization timed out (>30s)")
+            return llvm_ir
         except Exception as e:
             # If optimization fails, return original IR
             print(f"Warning: LLVM optimization failed: {e}")
-            print("Falling back to unoptimized IR")
             return llvm_ir
     
     def optimize_file(self, input_path: str, output_path: str) -> bool:
@@ -219,7 +201,7 @@ class LLVMOptimizer:
             return ['none']
         
         # Basic passes (O1+)
-        if self.optimization_level.value >= 1:
+        if self.optimization_level in [OptimizationLevel.O1, OptimizationLevel.O2, OptimizationLevel.O3, OptimizationLevel.Os]:
             passes.extend([
                 'mem2reg',           # Memory to register promotion
                 'simplifycfg',       # Control flow simplification
@@ -228,7 +210,7 @@ class LLVMOptimizer:
             ])
         
         # Standard passes (O2+)
-        if self.optimization_level.value >= 2:
+        if self.optimization_level in [OptimizationLevel.O2, OptimizationLevel.O3, OptimizationLevel.Os]:
             passes.extend([
                 'inline',            # Function inlining
                 'gvn',               # Global value numbering (CSE)
