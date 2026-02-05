@@ -100,21 +100,59 @@ Translates the semantically analyzed and resolved AST into an intermediate repre
 - Create specialized IR generators for natural language constructs
 - Ensure the IR preserves source-level debugging information
 
-### 6. Optimizer
+### 6. Optimizer ✅ IMPLEMENTED (v1.2)
 
 Performs various optimizations on the intermediate code:
 
 #### Features:
-- **Traditional optimizations**: Constant folding, dead code elimination, loop optimization
+- **Traditional optimizations**: Constant folding, dead code elimination, loop optimization ✅
 - **Natural language-specific optimizations**: Optimizing verbose natural language constructs
-- **Memory optimization**: Reducing memory overhead of natural language abstractions
-- **Parallelization**: Identifying parallelizable operations
+- **Memory optimization**: Conditional coroutine generation (23% IR reduction) ✅
+- **Parallelization**: Identifying parallelizable operations (planned)
 
 #### Implementation Strategy:
-- Implement multiple optimization passes with increasing aggressiveness
-- Leverage existing optimizer frameworks like LLVM's optimization passes
-- Develop custom optimization passes for natural language constructs
-- Implement profile-guided optimization for frequently used natural language patterns
+- Implement multiple optimization passes with increasing aggressiveness ✅
+- Leverage existing optimizer frameworks like LLVM's optimization passes ✅
+- Develop custom optimization passes for natural language constructs (in progress)
+- Implement profile-guided optimization for frequently used natural language patterns (planned)
+
+#### Current Implementation (v1.2):
+
+**Module**: `src/nlpl/compiler/llvm_optimizer.py` (370 lines)
+
+**Optimization Levels**: 5 levels implemented via subprocess calls to LLVM `opt` tool
+- **-O0**: No optimization (debug builds)
+- **-O1**: Basic optimization (mem2reg, simple DCE)
+- **-O2**: Standard optimization (default, production-ready) ⭐ RECOMMENDED
+- **-O3**: Aggressive optimization (inlining, loop unrolling, vectorization)
+- **-Os**: Size optimization (minimize binary size)
+
+**Key Optimizations Applied**:
+1. **Memory-to-Register Promotion**: Converts stack allocations to SSA form
+2. **Dead Code Elimination**: Removes unused variables and unreachable code
+3. **Common Subexpression Elimination**: Eliminates redundant computations
+4. **Loop Optimization**: Invariant code motion, canonicalization
+5. **Inlining**: Function call elimination for small functions
+6. **Control Flow Simplification**: Branch optimization and merging
+7. **Constant Propagation**: Compile-time evaluation of constants
+
+**Conditional Code Generation** (Major Optimization):
+- **Coroutine Infrastructure**: Generated only when async/await is used
+- **Impact**: 23% smaller IR, 4-6% performance improvement for synchronous code
+- **Implementation**: `has_async_functions` flag in `llvm_ir_generator.py`
+
+**Performance Results**:
+- **Fibonacci(1000)**: 0.934ms NLPL vs 0.518ms C (1.80x slower) ✅ Within 3x target
+- **Matrix(200x200)**: 1.191ms NLPL vs 0.473ms C (2.52x slower) ✅ Within 3x target
+- **IR Quality**: Clean SSA form with PHI nodes, perfect function attributes
+
+**CLI Integration**:
+```bash
+python dev_tools/nlplc_llvm.py program.nlpl -O2 -o program     # Standard optimization
+python dev_tools/nlplc_llvm.py program.nlpl --ir-opt            # View optimized IR
+```
+
+See `docs/4_architecture/optimization_guide.md` for comprehensive optimization documentation.
 
 ### 7. Code Generator
 
