@@ -84,6 +84,11 @@ class TokenType(Enum):
     # Generic types and type construction
     OF = auto()  # Used in "create list of Integer", "array of 10 bytes"
     
+    # Smart pointers and memory management
+    RC = auto()  # Reference counted smart pointer (Rc<T>)
+    WEAK = auto()  # Weak reference (Weak<T>)
+    ARC = auto()  # Atomic reference counted (Arc<T>) - for threading
+    
     # Natural language operators
     PLUS = auto()
     MINUS = auto()
@@ -381,6 +386,11 @@ class Lexer:
             "offsetof": TokenType.OFFSETOF,
             "offset of": TokenType.OFFSETOF,
             "opaque": TokenType.OPAQUE,
+            
+            # Smart pointers
+            "rc": TokenType.RC,
+            "weak": TokenType.WEAK,
+            "arc": TokenType.ARC,
             
             # Natural language operators
             "plus": TokenType.PLUS,

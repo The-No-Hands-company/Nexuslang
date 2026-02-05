@@ -114,6 +114,47 @@ class TypeAlias(ASTNode):
     def __str__(self):
         return f"TypeAlias {self.name}"
 
+class RcType(ASTNode):
+    """Reference counted smart pointer type.
+    
+    Example:
+        Rc of Integer
+        Rc of List of String
+        Rc of MyStruct
+    """
+    def __init__(self, inner_type, line_number=None):
+        super().__init__("rc_type", line_number)
+        self.inner_type = inner_type  # The type being wrapped in Rc
+    
+    def __str__(self):
+        return f"Rc<{self.inner_type}>"
+
+class WeakType(ASTNode):
+    """Weak reference type for breaking reference cycles.
+    
+    Example:
+        Weak of Node
+    """
+    def __init__(self, inner_type, line_number=None):
+        super().__init__("weak_type", line_number)
+        self.inner_type = inner_type
+    
+    def __str__(self):
+        return f"Weak<{self.inner_type}>"
+
+class ArcType(ASTNode):
+    """Atomic reference counted pointer (thread-safe).
+    
+    Example:
+        Arc of Integer
+    """
+    def __init__(self, inner_type, line_number=None):
+        super().__init__("arc_type", line_number)
+        self.inner_type = inner_type
+    
+    def __str__(self):
+        return f"Arc<{self.inner_type}>"
+
 class AsyncFunctionDefinition(ASTNode):
     """Represents an async function definition.
     
