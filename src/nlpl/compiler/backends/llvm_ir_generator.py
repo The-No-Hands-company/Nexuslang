@@ -143,6 +143,15 @@ class LLVMIRGenerator(CodeGenerator):
         # Promise struct types generated: type_name -> struct_definition
         self.promise_types: Dict[str, str] = {}
         
+        # Reference counting infrastructure (Rc<T>, Weak<T>, Arc<T>)
+        # Track if ANY Rc types are used in the program
+        self.has_rc_types = False
+        # Track variables with Rc types: var_name -> (inner_type, rc_kind)
+        # rc_kind: 'rc', 'weak', or 'arc'
+        self.rc_variables: Dict[str, Tuple[str, str]] = {}
+        # Track scope exit cleanup for Rc variables
+        self.rc_cleanup_stack: List[List[str]] = []  # Stack of lists of var names to release
+        
         # Type mapping cache
         self.type_cache: Dict[str, str] = {}
         
@@ -448,6 +457,28 @@ class LLVMIRGenerator(CodeGenerator):
             self.emit('declare i8* @llvm.coro.promise(i8*, i32, i1)')
             self.emit('')
         
+        # Rc<T> Runtime Library Functions - only if needed
+        if self.has_rc_types:
+            self.emit('; NLPL Reference Counting Runtime')
+            self.emit('declare i8* @rc_new(i64) #12')
+            self.emit('declare i8* @rc_retain(i8*) #2')
+            self.emit('declare void @rc_release(i8*) #2')
+            self.emit('declare i64 @rc_strong_count(i8*) #4')
+            self.emit('declare i8* @rc_get_data(i8*) #4')
+            self.emit('declare i8* @rc_downgrade(i8*) #2')
+            self.emit('declare i8* @rc_upgrade(i8*) #2')
+            self.emit('declare void @weak_release(i8*) #2')
+            self.emit('declare i8* @arc_new(i64) #12')
+            self.emit('declare i8* @arc_retain(i8*) #2')
+            self.emit('declare void @arc_release(i8*) #2')
+            self.emit('declare i64 @arc_strong_count(i8*) #4')
+            self.emit('declare i8* @arc_downgrade(i8*) #2')
+            self.emit('declare i8* @arc_upgrade(i8*) #2')
+            self.emit('declare void @arc_weak_release(i8*) #2')
+            self.emit('declare void @rc_debug(i8*, i8*) #0')
+            self.emit('declare void @arc_debug(i8*, i8*) #0')
+            self.emit('')
+        
         # Only declare if not already declared via extern
         if 'printf' not in self.extern_functions:
             self.emit('declare i32 @printf(i8* noalias nocapture, ...) #0')
@@ -516,6 +547,9 @@ class LLVMIRGenerator(CodeGenerator):
         self.emit('attributes #7 = { noreturn nounwind }')
         self.emit('attributes #8 = { nounwind readnone speculatable willreturn }')
         self.emit('attributes #9 = { nounwind allocsize(1) }')
+        self.emit('attributes #10 = { argmemonly nounwind willreturn }')
+        self.emit('attributes #11 = { nofree nounwind readonly willreturn }')
+        self.emit('attributes #12 = { nounwind allocsize(0) }')
         self.emit('')
         
         # Only generate helper functions for main programs, not modules
@@ -8686,6 +8720,24 @@ class LLVMIRGenerator(CodeGenerator):
             return self._map_nlpl_type_to_llvm(self.current_type_substitutions[nlpl_type])
         
         nlpl_lower = nlpl_type.lower()
+        
+        # Check for Rc<T>, Weak<T>, Arc<T> types
+        if nlpl_type.startswith('Rc of ') or nlpl_type.startswith('rc of '):
+            self.has_rc_types = True
+            # Rc types are represented as i8* (opaque pointer to metadata+data)
+            llvm_type = 'i8*'
+            self.type_cache[nlpl_type] = llvm_type
+            return llvm_type
+        elif nlpl_type.startswith('Weak of ') or nlpl_type.startswith('weak of '):
+            self.has_rc_types = True
+            llvm_type = 'i8*'
+            self.type_cache[nlpl_type] = llvm_type
+            return llvm_type
+        elif nlpl_type.startswith('Arc of ') or nlpl_type.startswith('arc of '):
+            self.has_rc_types = True
+            llvm_type = 'i8*'
+            self.type_cache[nlpl_type] = llvm_type
+            return llvm_type
         
         # Check if it's a class type (case-sensitive match)
         if nlpl_type in self.class_types:
