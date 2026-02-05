@@ -57,7 +57,16 @@ def main():
             'c_o0': './benchmarks/bench_fib_c_o0',
             'c_o2': './benchmarks/bench_fib_c_o2',
             'c_o3': './benchmarks/bench_fib_c_o3',
-        }
+        },
+        {
+            'name': 'Matrix Sum (200x200)',
+            'nlpl_o0': './build/bench_matrix_o0',
+            'nlpl_o2': './build/bench_matrix_o2',
+            'nlpl_o3': './build/bench_matrix_o3',
+            'c_o0': './benchmarks/bench_matrix_c_o0',
+            'c_o2': './benchmarks/bench_matrix_c_o2',
+            'c_o3': './benchmarks/bench_matrix_c_o3',
+        },
     ]
     
     for bench in benchmarks:
