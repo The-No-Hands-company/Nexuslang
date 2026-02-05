@@ -37,7 +37,9 @@ from nlpl.parser.ast import (
     # Switch statement
     SwitchStatement, SwitchCase,
     # String operations
-    StringLiteral, FStringExpression
+    StringLiteral, FStringExpression,
+    # Smart pointers and memory management
+    RcType, WeakType, ArcType
 )
 
 class Parser:
@@ -4939,8 +4941,67 @@ class Parser:
         
         return GenericTypeInstantiation(generic_name, type_args, initial_value, line_num)
     
+    def parse_rc_type(self):
+        """Parse reference counted smart pointer type: Rc of Type"""
+        line_number = self.current_token.line
+        self.eat(TokenType.RC)  # Consume 'rc'
+        
+        # Expect 'of' keyword
+        if self.current_token.type == TokenType.OF:
+            self.advance()
+        else:
+            self.error("Expected 'of' after 'rc'")
+        
+        # Parse the inner type (will return a string like "Integer" or "List of Integer")
+        inner_type = self.parse_type()
+        
+        # Return formatted string like "Rc of Integer"
+        return f"Rc of {inner_type}"
+    
+    def parse_weak_type(self):
+        """Parse weak reference type: Weak of Type"""
+        line_number = self.current_token.line
+        self.eat(TokenType.WEAK)  # Consume 'weak'
+        
+        # Expect 'of' keyword
+        if self.current_token.type == TokenType.OF:
+            self.advance()
+        else:
+            self.error("Expected 'of' after 'weak'")
+        
+        # Parse the inner type
+        inner_type = self.parse_type()
+        
+        # Return formatted string like "Weak of Integer"
+        return f"Weak of {inner_type}"
+    
+    def parse_arc_type(self):
+        """Parse atomic reference counted type: Arc of Type"""
+        line_number = self.current_token.line
+        self.eat(TokenType.ARC)  # Consume 'arc'
+        
+        # Expect 'of' keyword
+        if self.current_token.type == TokenType.OF:
+            self.advance()
+        else:
+            self.error("Expected 'of' after 'arc'")
+        
+        # Parse the inner type
+        inner_type = self.parse_type()
+        
+        # Return formatted string like "Arc of Integer"
+        return f"Arc of {inner_type}"
+    
     def parse_type(self):
         """Parse a type annotation."""
+        # Check for smart pointer types first: Rc, Weak, Arc
+        if self.current_token.type == TokenType.RC:
+            return self.parse_rc_type()
+        elif self.current_token.type == TokenType.WEAK:
+            return self.parse_weak_type()
+        elif self.current_token.type == TokenType.ARC:
+            return self.parse_arc_type()
+        
         # Accept both IDENTIFIER and built-in type keywords
         if self.current_token.type == TokenType.IDENTIFIER or self.current_token.type == TokenType.FUNCTION or self._can_be_identifier(self.current_token):
             if self.current_token.type == TokenType.FUNCTION:
