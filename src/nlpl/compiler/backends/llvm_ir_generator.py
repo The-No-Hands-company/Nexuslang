@@ -128,6 +128,8 @@ class LLVMIRGenerator(CodeGenerator):
         # Async/Await infrastructure (LLVM Coroutines)
         # Track if we're inside an async function
         self.in_async_function = False
+        # Track if ANY async functions are present in the program
+        self.has_async_functions = False
         # Current coroutine ID token (from llvm.coro.id)
         self.current_coro_id: Optional[str] = None
         # Current coroutine handle (from llvm.coro.begin)
@@ -428,22 +430,23 @@ class LLVMIRGenerator(CodeGenerator):
         self.emit('declare i32 @__cxa_can_catch(i8*, i8*, i8**)')
         self.emit('')
         
-        # LLVM Coroutine Intrinsics (for async/await)
-        self.emit('; LLVM Coroutine intrinsics for async/await')
-        self.emit('declare token @llvm.coro.id(i32, i8*, i8*, i8*)')
-        self.emit('declare i64 @llvm.coro.size.i64()')
-        self.emit('declare i64 @llvm.coro.align.i64()')
-        self.emit('declare i8* @llvm.coro.begin(token, i8*)')
-        self.emit('declare i1 @llvm.coro.alloc(token)')
-        self.emit('declare token @llvm.coro.save(i8*)')
-        self.emit('declare i8 @llvm.coro.suspend(token, i1)')
-        self.emit('declare i8* @llvm.coro.free(token, i8*)')
-        self.emit('declare i1 @llvm.coro.end(i8*, i1)')
-        self.emit('declare void @llvm.coro.resume(i8*)')
-        self.emit('declare void @llvm.coro.destroy(i8*)')
-        self.emit('declare i1 @llvm.coro.done(i8*)')
-        self.emit('declare i8* @llvm.coro.promise(i8*, i32, i1)')
-        self.emit('')
+        # LLVM Coroutine Intrinsics (for async/await) - only if needed
+        if self.has_async_functions:
+            self.emit('; LLVM Coroutine intrinsics for async/await')
+            self.emit('declare token @llvm.coro.id(i32, i8*, i8*, i8*)')
+            self.emit('declare i64 @llvm.coro.size.i64()')
+            self.emit('declare i64 @llvm.coro.align.i64()')
+            self.emit('declare i8* @llvm.coro.begin(token, i8*)')
+            self.emit('declare i1 @llvm.coro.alloc(token)')
+            self.emit('declare token @llvm.coro.save(i8*)')
+            self.emit('declare i8 @llvm.coro.suspend(token, i1)')
+            self.emit('declare i8* @llvm.coro.free(token, i8*)')
+            self.emit('declare i1 @llvm.coro.end(i8*, i1)')
+            self.emit('declare void @llvm.coro.resume(i8*)')
+            self.emit('declare void @llvm.coro.destroy(i8*)')
+            self.emit('declare i1 @llvm.coro.done(i8*)')
+            self.emit('declare i8* @llvm.coro.promise(i8*, i32, i1)')
+            self.emit('')
         
         # Only declare if not already declared via extern
         if 'printf' not in self.extern_functions:
@@ -619,8 +622,9 @@ class LLVMIRGenerator(CodeGenerator):
             # Add array helper functions
             self._define_array_helper_functions()
             
-            # Add coroutine runtime functions (for async/await)
-            self._define_coroutine_runtime_functions()
+            # Add coroutine runtime functions (for async/await) - only if needed
+            if self.has_async_functions:
+                self._define_coroutine_runtime_functions()
     
     def _define_additional_string_helper_functions(self):
         """Define additional NLPL string helper functions."""
@@ -1727,6 +1731,9 @@ class LLVMIRGenerator(CodeGenerator):
         
         # Track as async function
         self.async_functions[func_name] = (inner_ret_type, param_types)
+        
+        # Mark that program uses async functions
+        self.has_async_functions = True
         
         # Set context
         self.current_function_name = func_name
@@ -9278,6 +9285,9 @@ class LLVMIRGenerator(CodeGenerator):
         - Task queue structures for scheduler
         - Coroutine state enum
         """
+        if not self.has_async_functions:
+            return  # Skip coroutine types if no async functions
+            
         self.emit('; Coroutine infrastructure for async/await')
         
         # Promise<T> structure - holds async computation result
