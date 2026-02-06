@@ -2563,6 +2563,43 @@ class LLVMIRGenerator(CodeGenerator):
                         self.rc_cleanup_stack[self.current_function_name] = []
                     self.rc_cleanup_stack[self.current_function_name].append(var_name)
             
+            # Automatic retain on Rc-to-Rc assignment (cloning)
+            elif type(node.value).__name__ == 'Identifier':
+                source_var = node.value.name
+                # Check if source is an Rc variable
+                if source_var in self.rc_variables:
+                    rc_info = self.rc_variables[source_var]
+                    rc_kind = rc_info['kind']
+                    inner_type = rc_info['inner_type']
+                    
+                    # Call rc_retain/arc_retain to increment reference count
+                    # Note: Weak references use rc_downgrade, not weak_retain
+                    retained_ptr = self._new_temp()
+                    if rc_kind == 'rc':
+                        self.emit(f'{indent}{retained_ptr} = call i8* @rc_retain(i8* {value_reg})')
+                    elif rc_kind == 'arc':
+                        self.emit(f'{indent}{retained_ptr} = call i8* @arc_retain(i8* {value_reg})')
+                    elif rc_kind == 'weak':
+                        # Weak-to-weak copy: increment weak count via rc_downgrade
+                        # This is a copy of an existing weak reference
+                        self.emit(f'{indent}{retained_ptr} = call i8* @rc_downgrade(i8* {value_reg})')
+                    
+                    # Use retained pointer instead of original
+                    value_reg = retained_ptr
+                    
+                    # Track this new variable as an Rc variable too
+                    self.rc_variables[var_name] = {
+                        'kind': rc_kind,
+                        'inner_type': inner_type,
+                        'ptr': value_reg
+                    }
+                    
+                    # Add to cleanup stack for current scope
+                    if self.current_function_name:
+                        if self.current_function_name not in self.rc_cleanup_stack:
+                            self.rc_cleanup_stack[self.current_function_name] = []
+                        self.rc_cleanup_stack[self.current_function_name].append(var_name)
+            
             # Track if this is a closure assignment (lambda expression)
             if type(node.value).__name__ == 'LambdaExpression':
                 # Mark this variable as containing a closure for call site handling
