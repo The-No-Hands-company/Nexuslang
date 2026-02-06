@@ -39,7 +39,7 @@ from nlpl.parser.ast import (
     # String operations
     StringLiteral, FStringExpression,
     # Smart pointers and memory management
-    RcType, WeakType, ArcType
+    RcType, WeakType, ArcType, RcCreation
 )
 
 class Parser:
@@ -4124,6 +4124,10 @@ class Parser:
         if token.type == TokenType.CREATE:
             return self.parse_generic_type_instantiation()
         
+        # Handle 'Rc of Type with value' for smart pointer creation
+        if token.type in (TokenType.RC, TokenType.WEAK, TokenType.ARC):
+            return self.parse_rc_creation()
+        
         # Handle 'new ClassName' for object instantiation
         if token.type == TokenType.NEW:
             line_num = token.line if hasattr(token, 'line') else 0
@@ -4991,6 +4995,40 @@ class Parser:
         
         # Return formatted string like "Arc of Integer"
         return f"Arc of {inner_type}"
+    
+    def parse_rc_creation(self):
+        """Parse Rc/Weak/Arc creation: 'Rc of Integer with 42'"""
+        # Save which kind of smart pointer (RC, WEAK, or ARC)
+        token = self.current_token
+        if token.type == TokenType.RC:
+            rc_kind = "rc"
+        elif token.type == TokenType.WEAK:
+            rc_kind = "weak"
+        elif token.type == TokenType.ARC:
+            rc_kind = "arc"
+        else:
+            self.error(f"Expected Rc, Weak, or Arc, got {token.type}")
+        
+        line_number = token.line
+        self.advance()  # Move past RC/WEAK/ARC
+        
+        # Expect 'of'
+        if self.current_token.type != TokenType.OF:
+            self.error("Expected 'of' after Rc/Weak/Arc")
+        self.advance()  # Move past 'of'
+        
+        # Parse the inner type
+        inner_type = self.parse_type()
+        
+        # Expect 'with'
+        if self.current_token.type != TokenType.WITH:
+            self.error("Expected 'with' after type in Rc creation")
+        self.advance()  # Move past 'with'
+        
+        # Parse the initial value expression
+        value = self.expression()
+        
+        return RcCreation(rc_kind, inner_type, value, line_number)
     
     def parse_type(self):
         """Parse a type annotation."""

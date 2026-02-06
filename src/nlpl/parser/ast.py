@@ -155,6 +155,22 @@ class ArcType(ASTNode):
     def __str__(self):
         return f"Arc<{self.inner_type}>"
 
+class RcCreation(ASTNode):
+    """Node for creating Rc<T>, Weak<T>, or Arc<T> values.
+    
+    Syntax: Rc of Integer with 42
+            Weak of String with "hello"
+            Arc of Float with 3.14
+    """
+    def __init__(self, rc_kind, inner_type, value, line_number=None):
+        super().__init__("rc_creation", line_number)
+        self.rc_kind = rc_kind  # 'rc', 'weak', or 'arc'
+        self.inner_type = inner_type  # Inner type as string
+        self.value = value  # Initial value expression
+    
+    def __str__(self):
+        return f"{self.rc_kind.capitalize()} of {self.inner_type} with {self.value}"
+
 class AsyncFunctionDefinition(ASTNode):
     """Represents an async function definition.
     

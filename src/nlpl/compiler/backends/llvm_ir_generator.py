@@ -149,8 +149,8 @@ class LLVMIRGenerator(CodeGenerator):
         # Track variables with Rc types: var_name -> (inner_type, rc_kind)
         # rc_kind: 'rc', 'weak', or 'arc'
         self.rc_variables: Dict[str, Tuple[str, str]] = {}
-        # Track scope exit cleanup for Rc variables
-        self.rc_cleanup_stack: List[List[str]] = []  # Stack of lists of var names to release
+        # Track scope exit cleanup for Rc variables per function
+        self.rc_cleanup_stack: Dict[str, List[str]] = {}  # function_name -> list of var names to release
         
         # Type mapping cache
         self.type_cache: Dict[str, str] = {}
@@ -238,6 +238,9 @@ class LLVMIRGenerator(CodeGenerator):
                 self._collect_function_signature(stmt)
             elif stmt_type == 'ExportStatement':
                 self._collect_export_statement(stmt)
+        
+        # Pre-scan for Rc<T> usage to enable runtime declarations
+        self._detect_rc_usage(ast)
         
         # Declare external C library functions (after collecting FFI declarations)
         self._declare_external_functions()
@@ -423,6 +426,49 @@ class LLVMIRGenerator(CodeGenerator):
             self.emit(debug_metadata)
         
         return '\n'.join(self.ir_lines)
+    
+    def _detect_rc_usage(self, ast):
+        """
+        Pre-scan AST to detect Rc<T> usage.
+        Sets has_rc_types flag if any RcCreation nodes are found.
+        """
+        def scan_node(node):
+            if node is None:
+                return False
+            
+            node_type = type(node).__name__
+            
+            if node_type == 'RcCreation':
+                self.has_rc_types = True
+                return True
+            
+            # Recursively scan child nodes
+            if hasattr(node, 'body') and isinstance(node.body, list):
+                for stmt in node.body:
+                    if scan_node(stmt):
+                        return True
+            
+            if hasattr(node, 'statements') and isinstance(node.statements, list):
+                for stmt in node.statements:
+                    if scan_node(stmt):
+                        return True
+            
+            if hasattr(node, 'value') and node.value:
+                if scan_node(node.value):
+                    return True
+            
+            if hasattr(node, 'methods') and isinstance(node.methods, list):
+                for method in node.methods:
+                    if scan_node(method):
+                        return True
+            
+            return False
+        
+        # Scan all statements
+        if hasattr(ast, 'statements'):
+            for stmt in ast.statements:
+                if scan_node(stmt):
+                    break
     
     def _declare_external_functions(self):
         """Declare external C standard library functions (if not overridden by FFI)."""
@@ -1700,7 +1746,8 @@ class LLVMIRGenerator(CodeGenerator):
             for stmt in node.body:
                 self._generate_statement(stmt, indent='  ')
         
-        # Ensure function has a return
+        # Ensure function has a return (only if no explicit return was generated)
+        # Note: Rc cleanup is handled in _generate_return_statement
         if ret_type == 'void':
             self.emit('  ret void')
         else:
@@ -2499,6 +2546,22 @@ class LLVMIRGenerator(CodeGenerator):
         if hasattr(node, 'value') and node.value:
             value_reg = self._generate_expression(node.value, indent)
             value_type = self._infer_expression_type(node.value)
+            
+            # Track Rc/Weak/Arc variables for automatic cleanup
+            if type(node.value).__name__ == 'RcCreation':
+                rc_kind = node.value.rc_kind
+                inner_type = node.value.inner_type
+                # Store in rc_variables for scope-based cleanup
+                self.rc_variables[var_name] = {
+                    'kind': rc_kind,
+                    'inner_type': inner_type,
+                    'ptr': value_reg
+                }
+                # Add to cleanup stack for current scope
+                if self.current_function_name:
+                    if self.current_function_name not in self.rc_cleanup_stack:
+                        self.rc_cleanup_stack[self.current_function_name] = []
+                    self.rc_cleanup_stack[self.current_function_name].append(var_name)
             
             # Track if this is a closure assignment (lambda expression)
             if type(node.value).__name__ == 'LambdaExpression':
@@ -3671,6 +3734,9 @@ class LLVMIRGenerator(CodeGenerator):
         and we branch to the coroutine finalization block instead of
         using a ret instruction.
         """
+        # Generate Rc cleanup before return
+        self._generate_rc_cleanup(indent)
+        
         if self.in_async_function:
             # Async function: store result in promise and branch to coro.final
             if hasattr(node, 'value') and node.value:
@@ -5247,9 +5313,128 @@ class LLVMIRGenerator(CodeGenerator):
             return self._generate_lambda_expression(expr, indent)
         elif expr_type == 'ListComprehension':
             return self._generate_list_comprehension_expression(expr, indent)
+        elif expr_type == 'RcCreation':
+            return self._generate_rc_creation(expr, indent)
         else:
             # Unknown expression - return zero
             return '0'
+    
+    def _generate_rc_creation(self, expr, indent='') -> str:
+        """
+        Generate Rc<T>/Weak<T>/Arc<T> creation.
+        
+        Creates reference-counted smart pointer with initial value.
+        Syntax: Rc of Integer with 42
+        
+        Steps:
+        1. Map inner type to LLVM type and calculate size
+        2. Call rc_new/weak_new/arc_new(size) to allocate metadata+data
+        3. Get data pointer offset (past metadata)
+        4. Cast to inner type pointer
+        5. Store initial value
+        6. Track variable for scope-based cleanup
+        7. Return opaque i8* pointer
+        """
+        if not hasattr(expr, 'rc_kind') or not hasattr(expr, 'inner_type') or not hasattr(expr, 'value'):
+            return 'null'
+        
+        rc_kind = expr.rc_kind  # 'rc', 'weak', or 'arc'
+        inner_type_str = expr.inner_type  # NLPL type string
+        initial_value_expr = expr.value
+        
+        # Mark that we're using Rc types
+        self.has_rc_types = True
+        
+        # Map NLPL inner type to LLVM type
+        inner_llvm_type = self._map_nlpl_type_to_llvm(inner_type_str)
+        
+        # Calculate size of inner type in bytes
+        size_bits = self._get_type_size_bits(inner_llvm_type)
+        size_bytes = size_bits // 8
+        
+        # Call appropriate allocation function
+        if rc_kind == 'rc':
+            alloc_func = '@rc_new'
+        elif rc_kind == 'weak':
+            # Weak references don't allocate - they reference existing Rc
+            # For now, treat as rc_new (proper weak creation needs existing Rc)
+            alloc_func = '@rc_new'
+        elif rc_kind == 'arc':
+            alloc_func = '@arc_new'
+        else:
+            raise ValueError(f"Unknown rc_kind: {rc_kind}")
+        
+        # Allocate: i8* rc_new(i64 size)
+        rc_ptr = self._new_temp()
+        self.emit(f'{indent}{rc_ptr} = call i8* {alloc_func}(i64 {size_bytes})')
+        
+        # Get data pointer (rc_get_data returns pointer to data after metadata)
+        data_ptr_i8 = self._new_temp()
+        self.emit(f'{indent}{data_ptr_i8} = call i8* @rc_get_data(i8* {rc_ptr})')
+        
+        # Cast to inner type pointer
+        data_ptr_typed = self._new_temp()
+        self.emit(f'{indent}{data_ptr_typed} = bitcast i8* {data_ptr_i8} to {inner_llvm_type}*')
+        
+        # Generate initial value
+        value_reg = self._generate_expression(initial_value_expr, indent)
+        
+        # Store initial value into allocated data
+        self.emit(f'{indent}store {inner_llvm_type} {value_reg}, {inner_llvm_type}* {data_ptr_typed}, align 8')
+        
+        # Track this Rc variable for automatic cleanup at scope exit
+        # Store in rc_variables dict with type info
+        # Note: Caller will associate this with variable name
+        
+        # Return the opaque Rc pointer (i8*)
+        return rc_ptr
+    
+    def _generate_rc_cleanup(self, indent=''):
+        """
+        Generate cleanup code for all Rc variables in current function scope.
+        
+        Called before:
+        - Return statements
+        - Function end (implicit return)
+        
+        Emits rc_release/arc_release calls for all tracked Rc/Arc variables.
+        Weak references use weak_release/arc_weak_release.
+        """
+        if not self.current_function_name:
+            return
+        
+        # Get cleanup list for current function
+        cleanup_list = self.rc_cleanup_stack.get(self.current_function_name, [])
+        
+        if not cleanup_list:
+            return
+        
+        self.emit(f'{indent}; Rc cleanup: release {len(cleanup_list)} smart pointer(s)')
+        
+        # Release in reverse order of creation (LIFO)
+        for var_name in reversed(cleanup_list):
+            if var_name not in self.rc_variables:
+                continue
+            
+            rc_info = self.rc_variables[var_name]
+            rc_kind = rc_info['kind']
+            rc_ptr = rc_info['ptr']
+            
+            # Load pointer from alloca if needed
+            if var_name in self.local_vars:
+                llvm_type, alloca_ptr = self.local_vars[var_name]
+                ptr_reg = self._new_temp()
+                self.emit(f'{indent}{ptr_reg} = load {llvm_type}, {llvm_type}* {alloca_ptr}, align 8')
+            else:
+                ptr_reg = rc_ptr
+            
+            # Call appropriate release function
+            if rc_kind == 'rc':
+                self.emit(f'{indent}call void @rc_release(i8* {ptr_reg})')
+            elif rc_kind == 'weak':
+                self.emit(f'{indent}call void @weak_release(i8* {ptr_reg})')
+            elif rc_kind == 'arc':
+                self.emit(f'{indent}call void @arc_release(i8* {ptr_reg})')
     
     def _generate_dereference_expression(self, expr, indent='') -> str:
         """
@@ -9056,6 +9241,9 @@ class LLVMIRGenerator(CodeGenerator):
                 elif target_type == 'boolean':
                     return 'i1'
             return 'i64'  # Default if no target_type
+        elif expr_type == 'RcCreation':
+            # Rc<T>/Weak<T>/Arc<T> creation - all return i8* (opaque pointer)
+            return 'i8*'
         
         return 'i64'  # Default
     
