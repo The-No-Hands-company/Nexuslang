@@ -940,6 +940,18 @@ class SizeofExpression(Expression):
         super().__init__("sizeof_expression", line_number)
         self.target = target  # Type name or variable to get size of
 
+class DowngradeExpression(Expression):
+    """Represents downgrading Rc to Weak: downgrade rc_value (break reference cycles)."""
+    def __init__(self, rc_expr, line_number=None):
+        super().__init__("downgrade_expression", line_number)
+        self.rc_expr = rc_expr  # Rc expression to downgrade to Weak
+
+class UpgradeExpression(Expression):
+    """Represents upgrading Weak to Rc: upgrade weak_value (may return null if deallocated)."""
+    def __init__(self, weak_expr, line_number=None):
+        super().__init__("upgrade_expression", line_number)
+        self.weak_expr = weak_expr  # Weak expression to upgrade to Rc
+
 class OffsetofExpression(Expression):
     """Represents offsetof operator: offset of field in StructName."""
     def __init__(self, struct_type, field_name, line_number=None):

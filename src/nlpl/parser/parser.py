@@ -25,6 +25,8 @@ from nlpl.parser.ast import (
     YieldExpression, GeneratorExpression,
     # Low-level pointer operations
     AddressOfExpression, DereferenceExpression, SizeofExpression, PointerType,
+    # Smart pointer operations
+    DowngradeExpression, UpgradeExpression,
     # Struct and union types
     StructDefinition, StructField, UnionDefinition, EnumDefinition, EnumMember, OffsetofExpression, TypeCastExpression,
     # Inline assembly
@@ -4016,6 +4018,20 @@ class Parser:
                 target = self.unary()
             
             return SizeofExpression(target, line_num)
+        
+        # Handle downgrade operator: downgrade rc_value (Rc -> Weak)
+        if self.current_token and self.current_token.type == TokenType.DOWNGRADE:
+            line_num = self.current_token.line if hasattr(self.current_token, 'line') else 0
+            self.advance()  # consume 'downgrade'
+            rc_expr = self.unary()  # Get the Rc expression
+            return DowngradeExpression(rc_expr, line_num)
+        
+        # Handle upgrade operator: upgrade weak_value (Weak -> Rc, may return null)
+        if self.current_token and self.current_token.type == TokenType.UPGRADE:
+            line_num = self.current_token.line if hasattr(self.current_token, 'line') else 0
+            self.advance()  # consume 'upgrade'
+            weak_expr = self.unary()  # Get the Weak expression
+            return UpgradeExpression(weak_expr, line_num)
         
         # Handle offsetof operator: offsetof StructName.field_name OR offset of field in StructName
         if self.current_token and self.current_token.type == TokenType.OFFSETOF:

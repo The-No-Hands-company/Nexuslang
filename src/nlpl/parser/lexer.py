@@ -123,6 +123,8 @@ class TokenType(Enum):
     DEREFERENCE = auto()  # * or 'dereference' or 'value at'
     ARROW_OP = auto()     # -> for pointer member access
     SIZEOF = auto()       # sizeof operator for memory size
+    DOWNGRADE = auto()    # downgrade Rc to Weak (break cycles)
+    UPGRADE = auto()      # upgrade Weak to Rc (safe access)
     
     # Control flow
     IF = auto()
@@ -428,6 +430,10 @@ class Lexer:
             "value at": TokenType.DEREFERENCE,
             "sizeof": TokenType.SIZEOF,
             "size of": TokenType.SIZEOF,
+            
+            # Smart pointer operations (Rc/Weak)
+            "downgrade": TokenType.DOWNGRADE,
+            "upgrade": TokenType.UPGRADE,
             
             # Control flow
             "if": TokenType.IF,

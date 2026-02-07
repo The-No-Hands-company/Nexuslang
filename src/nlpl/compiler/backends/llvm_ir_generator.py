@@ -2600,6 +2600,51 @@ class LLVMIRGenerator(CodeGenerator):
                             self.rc_cleanup_stack[self.current_function_name] = []
                         self.rc_cleanup_stack[self.current_function_name].append(var_name)
             
+            # Track downgrade expression results (Rc -> Weak)
+            elif type(node.value).__name__ == 'DowngradeExpression':
+                # Get the source Rc variable to determine inner_type
+                if hasattr(node.value, 'rc_expr') and type(node.value.rc_expr).__name__ == 'Identifier':
+                    source_var = node.value.rc_expr.name
+                    if source_var in self.rc_variables:
+                        rc_info = self.rc_variables[source_var]
+                        inner_type = rc_info['inner_type']
+                        
+                        # Track as weak reference
+                        self.rc_variables[var_name] = {
+                            'kind': 'weak',
+                            'inner_type': inner_type,
+                            'ptr': value_reg
+                        }
+                        
+                        # Add to cleanup stack (uses weak_release instead of rc_release)
+                        if self.current_function_name:
+                            if self.current_function_name not in self.rc_cleanup_stack:
+                                self.rc_cleanup_stack[self.current_function_name] = []
+                            self.rc_cleanup_stack[self.current_function_name].append(var_name)
+            
+            # Track upgrade expression results (Weak -> Rc, may be null)
+            elif type(node.value).__name__ == 'UpgradeExpression':
+                # Get the source Weak variable to determine inner_type
+                if hasattr(node.value, 'weak_expr') and type(node.value.weak_expr).__name__ == 'Identifier':
+                    source_var = node.value.weak_expr.name
+                    if source_var in self.rc_variables:
+                        rc_info = self.rc_variables[source_var]
+                        inner_type = rc_info['inner_type']
+                        
+                        # Track as Rc (upgrade creates strong reference)
+                        # Note: upgrade may return null if object was deallocated
+                        self.rc_variables[var_name] = {
+                            'kind': 'rc',  # Upgraded to strong reference
+                            'inner_type': inner_type,
+                            'ptr': value_reg
+                        }
+                        
+                        # Add to cleanup stack (uses rc_release)
+                        if self.current_function_name:
+                            if self.current_function_name not in self.rc_cleanup_stack:
+                                self.rc_cleanup_stack[self.current_function_name] = []
+                            self.rc_cleanup_stack[self.current_function_name].append(var_name)
+            
             # Track if this is a closure assignment (lambda expression)
             if type(node.value).__name__ == 'LambdaExpression':
                 # Mark this variable as containing a closure for call site handling
@@ -5344,6 +5389,10 @@ class LLVMIRGenerator(CodeGenerator):
             return self._generate_dereference_expression(expr, indent)
         elif expr_type == 'AddressOfExpression':
             return self._generate_address_of_expression(expr, indent)
+        elif expr_type == 'DowngradeExpression':
+            return self._generate_downgrade_expression(expr, indent)
+        elif expr_type == 'UpgradeExpression':
+            return self._generate_upgrade_expression(expr, indent)
         elif expr_type == 'AwaitExpression':
             return self._generate_await_expression(expr, indent)
         elif expr_type == 'LambdaExpression':
@@ -5588,6 +5637,65 @@ class LLVMIRGenerator(CodeGenerator):
         # Other address-of cases can be added here
         else:
             return 'null'
+    
+    def _generate_downgrade_expression(self, expr, indent='') -> str:
+        """
+        Generate downgrade expression: downgrade rc_value (Rc -> Weak).
+        Creates a weak reference from a strong reference (breaks reference cycles).
+        
+        Runtime: rc_downgrade(i8*) -> i8* or arc_downgrade(i8*) -> i8*
+        """
+        if not hasattr(expr, 'rc_expr'):
+            return 'null'
+        
+        # Generate the Rc expression
+        rc_reg = self._generate_expression(expr.rc_expr, indent)
+        
+        # Determine if source is Rc or Arc
+        rc_kind = 'rc'  # Default to Rc
+        if type(expr.rc_expr).__name__ == 'Identifier':
+            source_var = expr.rc_expr.name
+            if source_var in self.rc_variables:
+                rc_kind = self.rc_variables[source_var]['kind']
+        
+        # Call appropriate downgrade function
+        result_reg = self._new_temp()
+        if rc_kind == 'arc':
+            self.emit(f'{indent}{result_reg} = call i8* @arc_downgrade(i8* {rc_reg})')
+        else:
+            self.emit(f'{indent}{result_reg} = call i8* @rc_downgrade(i8* {rc_reg})')
+        
+        return result_reg
+    
+    def _generate_upgrade_expression(self, expr, indent='') -> str:
+        """
+        Generate upgrade expression: upgrade weak_value (Weak -> Rc).
+        Attempts to convert a weak reference back to a strong reference.
+        Returns null if the object has been deallocated (strong_count == 0).
+        
+        Runtime: rc_upgrade(i8*) -> i8* or arc_upgrade(i8*) -> i8*
+        """
+        if not hasattr(expr, 'weak_expr'):
+            return 'null'
+        
+        # Generate the Weak expression
+        weak_reg = self._generate_expression(expr.weak_expr, indent)
+        
+        # Determine if source is Weak (from Rc) or Weak (from Arc)
+        rc_kind = 'rc'  # Default to Rc
+        if type(expr.weak_expr).__name__ == 'Identifier':
+            source_var = expr.weak_expr.name
+            if source_var in self.rc_variables:
+                rc_kind = self.rc_variables[source_var]['kind']
+        
+        # Call appropriate upgrade function
+        result_reg = self._new_temp()
+        if rc_kind == 'arc':
+            self.emit(f'{indent}{result_reg} = call i8* @arc_upgrade(i8* {weak_reg})')
+        else:
+            self.emit(f'{indent}{result_reg} = call i8* @rc_upgrade(i8* {weak_reg})')
+        
+        return result_reg
     
     def _generate_await_expression(self, expr, indent='') -> str:
         """
@@ -9280,6 +9388,12 @@ class LLVMIRGenerator(CodeGenerator):
             return 'i64'  # Default if no target_type
         elif expr_type == 'RcCreation':
             # Rc<T>/Weak<T>/Arc<T> creation - all return i8* (opaque pointer)
+            return 'i8*'
+        elif expr_type == 'DowngradeExpression':
+            # downgrade returns i8* (weak reference pointer)
+            return 'i8*'
+        elif expr_type == 'UpgradeExpression':
+            # upgrade returns i8* (strong reference pointer or NULL)
             return 'i8*'
         
         return 'i64'  # Default
