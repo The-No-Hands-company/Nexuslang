@@ -292,6 +292,11 @@ class LLVMIRGenerator(CodeGenerator):
             self.emit('')
             self.emit('; Class type declarations')
             for class_name, class_info in self.class_types.items():
+                # Skip generic specializations - they're emitted via late_type_declarations
+                # during code generation when actually instantiated
+                if class_info.get('is_specialization', False):
+                    continue
+                    
                 # Class is represented as a struct with fields for properties
                 # Format: %ClassName = type { field1_type, field2_type, ... }
                 # For inheritance, include parent class properties first
