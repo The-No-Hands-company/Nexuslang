@@ -9336,6 +9336,40 @@ class LLVMIRGenerator(CodeGenerator):
                 # Check user-defined functions
                 elif func_name in self.functions:
                     return self.functions[func_name][0]
+                # Check if it's a generic function that needs specialization
+                elif func_name in self.generic_functions:
+                    # Need to infer type arguments and construct specialized name
+                    type_args = []
+                    
+                    # PRIORITY 1: Use explicit type arguments if provided
+                    if hasattr(expr, 'type_arguments') and expr.type_arguments:
+                        type_args = expr.type_arguments
+                    # PRIORITY 2: Infer from actual arguments
+                    elif hasattr(expr, 'arguments') and expr.arguments:
+                        for arg_expr in expr.arguments:
+                            arg_type_llvm = self._infer_expression_type(arg_expr)
+                            # Map LLVM type back to NLPL type name
+                            nlpl_type = self._llvm_type_to_nlpl(arg_type_llvm)
+                            type_args.append(nlpl_type)
+                    
+                    if type_args:
+                        # Create specialized name
+                        type_names_capitalized = [t.capitalize() for t in type_args]
+                        specialized_name = f"{func_name}_{'_'.join(type_names_capitalized)}"
+                        
+                        # Check if already registered
+                        if specialized_name in self.functions:
+                            return self.functions[specialized_name][0]
+                        else:
+                            # Register it now so subsequent lookups work
+                            self._register_specialized_function_signature(func_name, type_args, specialized_name)
+                            if specialized_name not in self.specialized_functions:
+                                self.specialized_functions.add(specialized_name)
+                                self.pending_specializations.append((func_name, type_args, specialized_name))
+                            return self.functions[specialized_name][0]
+                    else:
+                        # Can't infer type args - default to i64
+                        return 'i64'
                 # Check extern functions (FFI)
                 elif func_name in self.extern_functions:
                     ret_type, _, _, _ = self.extern_functions[func_name]
