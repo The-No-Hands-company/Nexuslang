@@ -8568,12 +8568,26 @@ class LLVMIRGenerator(CodeGenerator):
             if llvm_type.startswith('%') and llvm_type.endswith('*'):
                 type_name = llvm_type[1:-1]  # Remove % and *
                 
-                # Check if it's a class
-                if type_name in self.class_types:
+                # Check if it's a class (including generic specializations like Box_Integer)
+                # For generic specializations, check if base generic class exists
+                base_class_name = type_name
+                if type_name not in self.class_types:
+                    # Check if this is a generic specialization (e.g., Box_Integer -> Box<T>)
+                    # Look for any generic class that matches the pattern
+                    for generic_name in self.class_types:
+                        if '<' in generic_name:  # It's a generic class
+                            # Extract base name (e.g., "Box" from "Box<T>")
+                            base_name = generic_name.split('<')[0]
+                            # Check if type_name starts with this base name
+                            if type_name.startswith(base_name + '_'):
+                                base_class_name = generic_name
+                                break
+                
+                if base_class_name in self.class_types:
                     # Check if this is a METHOD CALL (obj.method())
                     if hasattr(expr, 'is_method_call') and expr.is_method_call:
                         # Find the method in the class
-                        methods = self._get_all_class_methods(type_name)
+                        methods = self._get_all_class_methods(base_class_name)
                         for method_info in methods:
                             if method_info['name'] == member_name:
                                 # Generate method call: ClassName_methodName(this, args...)

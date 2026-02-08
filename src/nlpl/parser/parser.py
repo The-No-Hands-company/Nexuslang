@@ -4355,10 +4355,23 @@ class Parser:
                     self.advance()  # consume (
                     func_name_or_expr = self.expression()  # Parse the expression (e.g., value at ptr)
                     self.eat(TokenType.RIGHT_PAREN)
-                # Check for direct identifier: call func_name with args
+                # Check for direct identifier: call func_name with args OR call object.method
                 elif self.current_token and self.current_token.type == TokenType.IDENTIFIER:
-                    func_name_or_expr = self.current_token.lexeme
-                    self.advance()  # consume function name
+                    # Parse the identifier first
+                    identifier = self.current_token.lexeme
+                    id_line = self.current_token.line if hasattr(self.current_token, 'line') else 0
+                    self.advance()  # consume identifier
+                    
+                    # Check if this is member access: call object.method
+                    if self.current_token and self.current_token.type == TokenType.DOT:
+                        # Create Identifier node and parse member access with call context
+                        func_name_or_expr = Identifier(identifier, id_line)
+                        func_name_or_expr = self._parse_member_access(func_name_or_expr, is_call_context=True)
+                        # If member access parsed successfully, return it directly (it's already marked as method call)
+                        return func_name_or_expr
+                    else:
+                        # Simple function call: call func_name
+                        func_name_or_expr = identifier
                     
                     # Check for generic type arguments after function name
                     call_type_arguments = []
@@ -4383,12 +4396,21 @@ class Parser:
                         if arg:
                             arguments.append(arg)
                     
-                    expr = FunctionCall(func_name_or_expr, arguments, call_type_arguments, line_num)
-                    return self._parse_member_access(expr)
+                    # If func_name_or_expr is already a parsed expression (Identifier), create FunctionCall
+                    if isinstance(func_name_or_expr, str):
+                        expr = FunctionCall(func_name_or_expr, arguments, call_type_arguments, line_num)
+                    else:
+                        # It's already an expression node, just return it
+                        expr = func_name_or_expr
+                    return self._parse_member_access(expr, is_call_context=True)
                 elif func_name_or_expr:
                     # "call <function_name>" or "call (<expr>)" without "with" - no args
-                    expr = FunctionCall(func_name_or_expr, [], call_type_arguments if 'call_type_arguments' in locals() else [], line_num)
-                    return self._parse_member_access(expr)
+                    if isinstance(func_name_or_expr, str):
+                        expr = FunctionCall(func_name_or_expr, [], call_type_arguments if 'call_type_arguments' in locals() else [], line_num)
+                    else:
+                        # Already parsed as expression (e.g., member access)
+                        expr = func_name_or_expr
+                    return self._parse_member_access(expr, is_call_context=True)
             
             # Check if this is a function call with parentheses (e.g., "func(args)" or "func<T>(args)")
             if self.current_token and self.current_token.type == TokenType.LEFT_PAREN:
@@ -4495,8 +4517,14 @@ class Parser:
             
         return TypeCastExpression(expr, target_type, line_num)
 
-    def _parse_member_access(self, base_expr):
-        """Parse postfix operations: member access (.) and array indexing ([])."""
+    def _parse_member_access(self, base_expr, is_call_context=False):
+        """Parse postfix operations: member access (.) and array indexing ([]).
+        
+        Args:
+            base_expr: The base expression to apply postfix operations to
+            is_call_context: True if we're in a 'call' statement (marks member access as method call)
+        """
+        iteration_count = 0
         while self.current_token and (self.current_token.type == TokenType.DOT or 
                                       self.current_token.type == TokenType.LEFT_BRACKET):
             
@@ -4545,6 +4573,12 @@ class Parser:
                     member_name_parts.append(self.current_token.lexeme)
                     self.advance()
                     
+                    # CRITICAL FIX: In call context, only consume ONE identifier (the method name)
+                    # This prevents consuming tokens from subsequent statements
+                    # Example: "call obj.get\ncall obj.set" where lexer doesn't emit NEWLINE
+                    if is_call_context:
+                        break
+                    
                     # Peek at next token - if it's not another identifier that could be part of name, stop
                     if self.current_token and self.current_token.type not in (TokenType.IDENTIFIER,):
                         break
@@ -4589,8 +4623,21 @@ class Parser:
                     
                     base_expr = MemberAccess(base_expr, member_name, is_method_call=True, arguments=arguments, line_number=line_num)
                 else:
-                    # Property access
-                    base_expr = MemberAccess(base_expr, member_name, is_method_call=False, line_number=line_num)
+                    # Property access OR parameterless method call in 'call' context
+                    # If is_call_context is True, this is "call object.method" - mark as method call
+                    is_method = is_call_context
+                    arguments = [] if is_method else None
+                    base_expr = MemberAccess(base_expr, member_name, is_method_call=is_method, 
+                                           arguments=arguments if is_method else None, line_number=line_num)
+            
+            iteration_count += 1
+            
+            # CRITICAL FIX: In call context (e.g., "call object.method"), only parse ONE member access
+            # This prevents consuming tokens from the next statement
+            # Break AFTER processing the DOT, so "with args" gets handled above
+            # Example: "call obj.get\ncall obj.set" should NOT chain these!
+            if is_call_context and iteration_count >= 1:
+                break
         
         return base_expr
     
