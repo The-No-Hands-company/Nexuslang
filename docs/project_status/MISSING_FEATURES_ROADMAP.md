@@ -167,6 +167,7 @@ NLPL has achieved impressive maturity with:
 ### 2.1 Memory Safety Features ⚠️ PARTIAL
 
 **Current State:**
+
 - ✅ Basic pointers (address-of, dereference)
 - ✅ Rc<T> smart pointers with reference counting
 - ✅ Manual allocation (malloc/free equivalents)
@@ -175,6 +176,7 @@ NLPL has achieved impressive maturity with:
 - ❌ No lifetime tracking
 
 **What Rust Has (Best in Class):**
+
 - Ownership system (move semantics)
 - Borrow checker (compile-time checks)
 - Lifetime annotations
@@ -182,6 +184,7 @@ NLPL has achieved impressive maturity with:
 - Data race prevention at compile time
 
 **What C++ Has:**
+
 - RAII (Resource Acquisition Is Initialization)
 - std::unique_ptr, std::shared_ptr, std::weak_ptr
 - Move semantics (std::move)
@@ -189,6 +192,7 @@ NLPL has achieved impressive maturity with:
 - Reference counting
 
 **What NLPL Needs:**
+
 - [ ] **Ownership System**
   - Value ownership tracking
   - Move semantics (transfer ownership)
@@ -228,22 +232,26 @@ NLPL has achieved impressive maturity with:
 ### 2.2 Memory Allocator Control ⚠️ PARTIAL
 
 **Current State:**
+
 - ✅ Basic allocate/free
 - ❌ No custom allocators
 - ❌ No allocator selection per type
 
 **What C/C++ Have:**
+
 - Custom allocator implementations
 - Per-container allocators (C++ allocator concept)
 - Arena allocators, pool allocators
 - Malloc replacement (jemalloc, tcmalloc)
 
 **What Rust Has:**
+
 - Global allocator trait
 - Per-type allocators
 - Allocator API (#[global_allocator])
 
 **What NLPL Needs:**
+
 - [ ] **Custom Allocator API**
   - Allocator trait/interface
   - `allocate`, `deallocate`, `reallocate` methods
@@ -274,6 +282,7 @@ NLPL has achieved impressive maturity with:
 ### 2.3 Memory Ordering & Atomics ❌ MISSING
 
 **What C/C++/Rust Have:**
+
 - Atomic types (atomic_int, std::atomic<T>, AtomicUsize)
 - Memory ordering (relaxed, acquire, release, seq_cst)
 - Fence operations (memory barriers)
@@ -281,6 +290,7 @@ NLPL has achieved impressive maturity with:
 - Lock-free data structures
 
 **What NLPL Needs:**
+
 - [ ] **Atomic Types**
   - `AtomicInteger`, `AtomicBoolean`, `AtomicPointer`
   - Atomic operations: load, store, add, sub, and, or, xor
@@ -313,6 +323,7 @@ NLPL has achieved impressive maturity with:
 ### 3.1 Threading ⚠️ PARTIAL
 
 **Current State:**
+
 - ✅ ThreadPoolExecutor in runtime
 - ✅ Basic async/await (parser support)
 - ❌ No native thread creation
@@ -320,6 +331,7 @@ NLPL has achieved impressive maturity with:
 - ❌ No thread synchronization primitives
 
 **What C/C++/Rust Have:**
+
 - Native thread creation (pthread, std::thread, std::thread::spawn)
 - Thread joining, detaching
 - Thread-local storage (TLS)
@@ -327,6 +339,7 @@ NLPL has achieved impressive maturity with:
 - CPU affinity
 
 **What NLPL Needs:**
+
 - [ ] **Native Threading API**
   - `create_thread with function, arguments`
   - `join_thread with thread_handle`
@@ -359,11 +372,13 @@ NLPL has achieved impressive maturity with:
 ### 3.2 Synchronization Primitives ⚠️ PARTIAL
 
 **Current State:**
+
 - ❌ No mutexes, semaphores, condition variables
 - ❌ No read-write locks
 - ❌ No barriers
 
 **What C/C++/Rust Have:**
+
 - Mutexes (pthread_mutex, std::mutex, Mutex)
 - Recursive mutexes
 - Condition variables
@@ -373,6 +388,7 @@ NLPL has achieved impressive maturity with:
 - Once-initialization (pthread_once, std::call_once, Once)
 
 **What NLPL Needs:**
+
 - [ ] **Mutexes**
   - `create_mutex returns Mutex`
   - `lock_mutex with mutex`
@@ -417,6 +433,7 @@ NLPL has achieved impressive maturity with:
 ### 3.3 Async/Await Runtime ⚠️ PARTIAL
 
 **Current State:**
+
 - ✅ Parser supports async/await syntax
 - ✅ AsyncFunctionDefinition, AwaitExpression in AST
 - ❌ Incomplete interpreter implementation
@@ -424,6 +441,7 @@ NLPL has achieved impressive maturity with:
 - ❌ No Future/Promise types
 
 **What Rust Has (Gold Standard):**
+
 - tokio runtime (async executor)
 - Future trait
 - async/await syntax
@@ -431,16 +449,19 @@ NLPL has achieved impressive maturity with:
 - Select/join/race operations
 
 **What C++ Has:**
+
 - std::async, std::future, std::promise
 - Coroutines (C++20)
 - co_await, co_return
 
 **What JavaScript/Python Have:**
+
 - Event loops
 - Promise/Future objects
 - async/await syntax
 
 **What NLPL Needs:**
+
 - [ ] **Complete Async Interpreter**
   - `execute_async_function_definition()`
   - `execute_await_expression()`
