@@ -10,6 +10,7 @@
 ## Executive Summary
 
 NLPL has achieved impressive maturity with:
+
 - ✅ Full OOP, generics, pattern matching
 - ✅ Low-level memory control (pointers, structs, unions)
 - ✅ FFI with C libraries, inline assembly
@@ -33,6 +34,7 @@ NLPL has achieved impressive maturity with:
 ### 1.1 Direct Hardware Access ❌ MISSING
 
 **What C/C++/Rust/ASM Have:**
+
 - Direct I/O port access (in/out instructions)
 - Memory-mapped I/O
 - Interrupt handlers (IDT, IVT setup)
@@ -42,6 +44,7 @@ NLPL has achieved impressive maturity with:
 - Model-specific registers (MSRs)
 
 **What NLPL Needs:**
+
 - [ ] **Port I/O Operations**
   - `read_port with port as Integer returns Byte`
   - `write_port with port as Integer, value as Byte`
@@ -79,6 +82,7 @@ NLPL has achieved impressive maturity with:
 ### 1.2 Bootloader & Bare Metal Support ❌ MISSING
 
 **What C/C++/ASM Have:**
+
 - Bootloader development (BIOS/UEFI)
 - No-standard-library compilation (-nostdlib, -ffreestanding)
 - Custom linker scripts
@@ -86,6 +90,7 @@ NLPL has achieved impressive maturity with:
 - Direct boot sector code
 
 **What NLPL Needs:**
+
 - [ ] **Freestanding Mode**
   - `--freestanding` compiler flag
   - No stdlib dependencies
@@ -118,6 +123,7 @@ NLPL has achieved impressive maturity with:
 ### 1.3 OS Kernel Primitives ❌ MISSING
 
 **What C/C++/Rust Have:**
+
 - Process/thread creation (fork, clone, pthread_create)
 - Virtual memory management (mmap, mprotect)
 - Page table manipulation
@@ -126,6 +132,7 @@ NLPL has achieved impressive maturity with:
 - Scheduler hooks
 
 **What NLPL Needs:**
+
 - [ ] **Process Management**
   - `create_process` with fork/exec semantics
   - Process control blocks (PCB)
@@ -1341,9 +1348,11 @@ NLPL has achieved impressive maturity with:
 ### 10.2 WebAssembly Support ❌ MISSING
 
 **Current State:**
+
 - ❌ No WASM compilation
 
 **What Rust Has:**
+
 - wasm32 target
 - wasm-bindgen (JS interop)
 - wasm-pack (packaging tool)
@@ -1374,6 +1383,7 @@ NLPL has achieved impressive maturity with:
 ## Summary: Priority Matrix
 
 ### CRITICAL (Must-Have for Systems Language Status)
+
 1. **Ownership & Borrow Checking** - Memory safety without GC
 2. **Complete Async/Await** - Modern concurrency
 3. **Native Threading & Synchronization** - Multi-threading
@@ -1381,6 +1391,7 @@ NLPL has achieved impressive maturity with:
 5. **Build System & Package Manager** - Ecosystem growth
 
 ### HIGH PRIORITY (Essential for Production Use)
+
 6. **Direct Hardware Access** - OS development capability
 7. **Enhanced Static Analysis** - Bug prevention
 8. **IDE Integration** - Developer experience
@@ -1388,6 +1399,7 @@ NLPL has achieved impressive maturity with:
 10. **Compiler Optimizations** - Performance
 
 ### MEDIUM PRIORITY (Important but Not Blocking)
+
 11. **Parallel Computing** - Performance optimization
 12. **Cross-Platform Support** - Wider adoption
 13. **Documentation Tools** - API docs
