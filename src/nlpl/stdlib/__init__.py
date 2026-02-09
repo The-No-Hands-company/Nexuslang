@@ -66,6 +66,7 @@ from ..stdlib.interrupts import register_interrupt_functions
 from ..stdlib.type_traits import register_type_trait_functions
 from ..stdlib.hardware import register_stdlib as register_hardware_functions
 from ..stdlib.atomics import register_stdlib as register_atomics_functions
+from ..stdlib.threading import register_stdlib as register_native_threading_functions
 
 def register_stdlib(runtime: Runtime) -> None:
     """Register all standard library functions with the runtime."""
@@ -262,6 +263,9 @@ def register_stdlib(runtime: Runtime) -> None:
     # Register atomic operations and memory ordering
     register_atomics_functions(runtime)
     
+    # Register native threading API
+    register_native_threading_functions(runtime)
+    
     # Register module names for importing
     runtime.register_module("math")
     runtime.register_module("string")
@@ -309,4 +313,6 @@ def register_stdlib(runtime: Runtime) -> None:
     runtime.register_module("hardware")
     runtime.register_module("port_io")
     runtime.register_module("atomics")
-    runtime.register_module("atomic") 
+    runtime.register_module("atomic")
+    runtime.register_module("threading")
+    runtime.register_module("threads") 

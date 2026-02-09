@@ -1395,6 +1395,7 @@ NLPL has achieved impressive maturity with:
 15. **WASM Support** - Web deployment
 
 ### LOW PRIORITY (Nice to Have)
+
 16. **Formal Verification** - Safety-critical systems
 17. **Reflection** - Dynamic capabilities
 18. **Advanced Type Features** - Type system research
@@ -1406,6 +1407,7 @@ NLPL has achieved impressive maturity with:
 ## Estimated Timeline to Full Parity
 
 **Aggressive Schedule (with 3-5 full-time developers):**
+
 - **Phase 1 (6 months):** Memory safety (ownership/borrowing), async/await, threading
 - **Phase 2 (6 months):** Build system, package manager, atomics
 - **Phase 3 (6 months):** Hardware access, OS integration, platform support
@@ -1413,6 +1415,7 @@ NLPL has achieved impressive maturity with:
 - **Total:** ~24 months to achieve C/C++/Rust/ASM parity
 
 **Realistic Schedule (with 1-2 developers):**
+
 - **2-3 years** to reach feature parity with C/C++
 - **3-4 years** to reach feature parity with Rust (borrow checker is complex)
 - **4-5 years** to build mature ecosystem
@@ -1424,6 +1427,7 @@ NLPL has achieved impressive maturity with:
 NLPL has made impressive progress and achieved 95-100% of its initial scope. To become a true systems programming language on par with C, C++, Rust, and Assembly, it needs:
 
 **Key Differentiators to Add:**
+
 1. **Memory Safety** - Ownership/borrowing system
 2. **Production-Grade Concurrency** - Complete threading, async, atomics
 3. **Systems Programming** - Hardware access, OS integration
@@ -1433,6 +1437,7 @@ NLPL has made impressive progress and achieved 95-100% of its initial scope. To 
 The roadmap is ambitious but achievable. NLPL's natural language syntax combined with low-level control would be a unique and valuable contribution to the programming language ecosystem.
 
 **Next Immediate Steps:**
+
 1. Implement ownership system (6-8 months)
 2. Complete async/await runtime (4-6 months)
 3. Build package manager (6-9 months)
