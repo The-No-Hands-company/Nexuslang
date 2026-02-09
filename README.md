@@ -54,8 +54,9 @@ call greet with "Alice"
 - **Error Handling** - Try/catch with custom exceptions
 - **Module System** - Import/export with namespaces
 
-### Recent Additions (Feb 2-6, 2026)
+### Recent Additions (Feb 2-8, 2026)
 
+- ✨ **Generic types fully working** - Parameterless method calls fixed (Feb 8)
 - ✨ **Rc<T> smart pointers** - Reference counting with automatic memory management (Feb 6)
 - ✨ **LLVM compiler backend** - Native code generation, 1.80-2.52x C performance (Feb 6)
 - ✨ **Pattern matching interpreter** - Full match/case/guard support (Feb 2-3)
@@ -134,6 +135,50 @@ end
 print text classify with -5    # "negative"
 print text classify with 3     # "small positive"
 print text classify with 100   # "large positive"
+```
+
+### Generics NEW!
+```nlpl
+# Generic container with type parameters
+class Box<T>
+  property value as T
+  
+  method get_value returns T
+    return this.value
+  end method
+  
+  method set_value with v as T
+    set this.value to v
+  end method
+end class
+
+# Create specialized instances
+set int_box to new Box<Integer>
+set int_box.value to 42
+print text call int_box.get_value  # 42
+
+call int_box.set_value with 100
+print text call int_box.get_value  # 100
+
+# Generic pair class
+class Pair<K, V>
+  property key as K
+  property val as V
+  
+  method get_key returns K
+    return this.key
+  end method
+  
+  method get_value returns V
+    return this.val
+  end method
+end class
+
+set coord to new Pair<Integer, Integer>
+set coord.key to 10
+set coord.val to 20
+print text call coord.get_key    # 10
+print text call coord.get_value  # 20
 ```
 
 ### Object-Oriented Programming
@@ -522,5 +567,5 @@ MIT License - See [LICENSE](LICENSE) for details.
 
 ---
 
-*Last Updated: February 6, 2026*
+*Last Updated: February 9, 2026*
 
