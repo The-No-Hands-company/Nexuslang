@@ -65,6 +65,7 @@ from ..stdlib.simd import register_simd_functions
 from ..stdlib.interrupts import register_interrupt_functions
 from ..stdlib.type_traits import register_type_trait_functions
 from ..stdlib.hardware import register_stdlib as register_hardware_functions
+from ..stdlib.atomics import register_stdlib as register_atomics_functions
 
 def register_stdlib(runtime: Runtime) -> None:
     """Register all standard library functions with the runtime."""
@@ -258,6 +259,9 @@ def register_stdlib(runtime: Runtime) -> None:
     # Register hardware access (port I/O, MMIO, interrupts)
     register_hardware_functions(runtime)
     
+    # Register atomic operations and memory ordering
+    register_atomics_functions(runtime)
+    
     # Register module names for importing
     runtime.register_module("math")
     runtime.register_module("string")
@@ -303,4 +307,6 @@ def register_stdlib(runtime: Runtime) -> None:
     runtime.register_module("templates")
     runtime.register_module("testing")
     runtime.register_module("hardware")
-    runtime.register_module("port_io") 
+    runtime.register_module("port_io")
+    runtime.register_module("atomics")
+    runtime.register_module("atomic") 
