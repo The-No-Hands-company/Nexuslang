@@ -16,6 +16,7 @@ from ..parser.ast import (
     TypeParameter, TypeConstraint, TypeGuard,
     PrintStatement,  # Add print statement
     TypeCastExpression,  # Add type cast
+    RaiseStatement,  # Add raise statement
     # Low-level constructs
     StructDefinition, UnionDefinition, ObjectInstantiation, MemberAssignment,
     SizeofExpression, AddressOfExpression, DereferenceExpression
@@ -365,6 +366,16 @@ class TypeChecker:
             if result_types and all(t == result_types[0] for t in result_types):
                 return result_types[0]
             return ANY_TYPE
+        elif isinstance(statement, RaiseStatement):
+            # Raise statements don't return a value, but we check the message type
+            if statement.message:
+                message_type = self.check_statement(statement.message, env)
+                # Message should be a string, but we're lenient
+                if message_type != STRING_TYPE and message_type != ANY_TYPE:
+                    self.errors.append(
+                        f"Line {getattr(statement, 'line_number', '?')}: Raise message should be String, got {message_type}"
+                    )
+            return ANY_TYPE  # Raise statements don't produce a value
         else:
             raise TypeCheckError(f"Unsupported statement type: {statement.__class__.__name__}")
             return ANY_TYPE
