@@ -126,34 +126,40 @@ class Interpreter:
                 self.type_checker.env.define_function(func_name, func_type)
         
     def create_function_wrapper(self, function_def):
-        """Create a callable wrapper for a user-defined function."""
-        def wrapper(*args):
+        """Create a callable wrapper for a user-defined function.
+        
+        Supports both positional and keyword arguments, including:
+        - Named/keyword parameters
+        - Default values
+        - Variadic parameters (*args)
+        - Keyword-only parameters (after * separator)
+        """
+        def wrapper(*args, **kwargs):
+            # Use _resolve_function_arguments to handle all parameter types
+            resolved_args = self._resolve_function_arguments(
+                function_def,
+                list(args),
+                kwargs,
+                function_def.name
+            )
+            
             # Create a new scope
             self.enter_scope()
-            
-            # Use 'create list of values' pattern to satisfy the expectation that each argument is a pair (name, value)
-            # Actually, `self.functions` stores `FunctionDefinition` nodes.
-            # We need to map `args` to `function_def.parameters`.
-            
-            # Check parameter count
-            if len(args) != len(function_def.parameters):
-                 # Handle varargs if needed, otherwise strict check
-                 if not function_def.variadic:
-                    raise TypeError(f"{function_def.name} expects {len(function_def.parameters)} arguments, got {len(args)}")
 
             try:
                 # Bind parameters
-                for param, value in zip(function_def.parameters, args):
+                for param, value in zip(function_def.parameters, resolved_args):
                     self.set_variable(param.name, value)
                 
                 # Execute body
+                result = None
                 for statement in function_def.body:
-                    self.execute(statement)
+                    result = self.execute(statement)
             except ReturnException as ret:
                 return ret.value
             finally:
                 self.exit_scope()
-            return None
+            return result
         return wrapper
 
     def _get_module_loader(self):

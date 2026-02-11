@@ -48,7 +48,7 @@ print text result4
 # Test 3: Keyword-only without defaults (required)
 print text ""
 print text "Test 3: Required keyword-only parameters"
-function connect with url as String, *, api_key as String, secret as String
+function connect_api with url as String, *, api_key as String, secret as String
     print text "Connecting to:"
     print text url
     print text "API Key:"
@@ -58,7 +58,7 @@ function connect with url as String, *, api_key as String, secret as String
     return "connected"
 end
 
-set result5 to connect with "https://api.example.com", api_key: "abc123", secret: "xyz789"
+set result5 to connect_api with "https://api.example.com", api_key: "abc123", secret: "xyz789"
 print text result5
 
 # Test 4: All keyword-only (no positional)
