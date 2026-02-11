@@ -2001,6 +2001,50 @@ class Interpreter:
         
         return lambda_func
     
+    def _create_closure(self, lambda_node):
+        """Create a Python callable closure from a lambda/block AST node.
+        
+        This wraps the lambda/block execution in a proper Python callable
+        that can be passed as an argument and called later.
+        
+        Args:
+            lambda_node: LambdaExpression AST node representing the block
+            
+        Returns:
+            Python callable that executes the block when called
+        """
+        # Capture current scope
+        captured_scope = dict(self.current_scope[-1]) if self.current_scope else {}
+        
+        def closure(*args):
+            """Closure that executes the block with the given arguments."""
+            # Enter new scope with captured variables
+            self.enter_scope()
+            
+            # Restore captured scope
+            for var, val in captured_scope.items():
+                self.set_variable(var, val)
+            
+            # Bind block parameters to arguments
+            for i, param in enumerate(lambda_node.parameters):
+                if i < len(args):
+                    self.set_variable(param.name, args[i])
+            
+            # Execute block body
+            result = None
+            try:
+                for stmt in lambda_node.body:
+                    result = self.execute(stmt)
+            except ReturnException as ret:
+                # Block used explicit return
+                result = ret.value
+            finally:
+                self.exit_scope()
+            
+            return result
+        
+        return closure
+    
     def execute_list_expression(self, node):
         """Execute a list expression (array literal)."""
         # Evaluate all elements in the list
@@ -2124,19 +2168,36 @@ class Interpreter:
             raise NameError(f"Variable or function '{node.name}' is not defined")
         
     def execute_function_call(self, node):
-        """Execute a function call.
+        """Execute a function call with positional and/or named arguments.
         
         Supports both:
         - Direct function calls: add with 5 and 10
+        - Named arguments: add with x: 5 and y: 10
+        - Mixed arguments: add with 5 and y: 10
         - Module function calls: module.function with args
         - Callable values: (function stored in variable or passed as argument)
+        - Trailing blocks: func do ... end
         """
         function_name = node.name
-        args = [self.execute(arg) for arg in node.arguments]
+        
+        # Evaluate positional arguments
+        positional_args = [self.execute(arg) for arg in node.arguments]
+        
+        # Evaluate named arguments
+        named_args = {}
+        if hasattr(node, 'named_arguments') and node.named_arguments:
+            for param_name, arg_expr in node.named_arguments.items():
+                named_args[param_name] = self.execute(arg_expr)
+        
+        # Handle trailing block - create closure and add as last positional argument
+        if hasattr(node, 'trailing_block') and node.trailing_block:
+            block_closure = self._create_closure(node.trailing_block)
+            positional_args.append(block_closure)
         
         # If function_name is already a callable (function value), call it directly
         if callable(function_name):
-            return function_name(*args)
+            # Python functions - pass positional and kwargs
+            return function_name(*positional_args, **named_args)
         
         # Handle expressions that evaluate to callables (e.g., function pointers)
         # Check if function_name is actually an expression node
@@ -2144,9 +2205,21 @@ class Interpreter:
             # It's an expression - evaluate it to get the callable
             func_value = self.execute(function_name)
             if callable(func_value):
-                return func_value(*args)
+                return func_value(*positional_args, **named_args)
             else:
                 raise TypeError(f"Cannot call non-function value: {type(func_value).__name__}")
+        
+        # Check if function_name is a variable holding a callable (e.g., closure, function reference)
+        # This enables: block() where block is a variable containing a closure
+        try:
+            var_value = self.get_variable(function_name)
+            if callable(var_value):
+                # It's a callable stored in a variable - call it
+                return var_value(*positional_args, **named_args)
+            # If it's not callable, fall through to check if it's a function name
+        except NameError:
+            # Variable not found, continue to check if it's a function name
+            pass
         
         # Handle module.function calls (function_name contains a dot)
         if '.' in function_name:
@@ -2158,7 +2231,7 @@ class Interpreter:
                     if hasattr(module, member_name):
                         func = getattr(module, member_name)
                         if callable(func):
-                            return func(*args)
+                            return func(*positional_args, **named_args)
                         else:
                             raise TypeError(f"{module_name}.{member_name} is not callable")
                     else:
@@ -2169,11 +2242,31 @@ class Interpreter:
         
         # Check for built-in functions in the runtime
         if function_name in self.runtime.functions:
-            return self.runtime.functions[function_name](*args)
+            # For runtime functions, we need to handle named args manually
+            # since most Python stdlib functions don't accept them by name
+            if named_args:
+                # Try calling with kwargs first
+                try:
+                    return self.runtime.functions[function_name](*positional_args, **named_args)
+                except TypeError:
+                    # Fall back to positional-only if kwargs not supported
+                    # This is for backward compatibility with existing functions
+                    all_args = list(positional_args) + list(named_args.values())
+                    return self.runtime.functions[function_name](*all_args)
+            else:
+                return self.runtime.functions[function_name](*positional_args)
         
-        # Check for user-defined functions (for backward compatibility)
+        # Check for user-defined functions
         if function_name in self.functions:
             function_def = self.functions[function_name]
+            
+            # Combine positional and named arguments
+            args = self._resolve_function_arguments(
+                function_def, 
+                positional_args, 
+                named_args,
+                function_name
+            )
             
             # Debugger hook: trace function call
             if self.debugger:
@@ -2222,11 +2315,112 @@ class Interpreter:
         try:
             func_value = self.get_variable(function_name)
             if callable(func_value):
-                return func_value(*args)
+                return func_value(*positional_args, **named_args)
         except:
             pass
         
         raise NameError(f"Function '{function_name}' is not defined")
+    
+    def _resolve_function_arguments(self, function_def, positional_args, named_args, function_name):
+        """Resolve positional and named arguments into a single argument list.
+        
+        Handles:
+        - Positional arguments
+        - Named arguments (param: value)
+        - Default parameter values
+        - Variadic parameters (*args)
+        - Keyword-only parameters (after * separator)
+        
+        Args:
+            function_def: FunctionDefinition AST node
+            positional_args: List of positional argument values
+            named_args: Dict of parameter_name -> value
+            function_name: Name of function (for error messages)
+            
+        Returns:
+            List of argument values in parameter order
+        """
+        params = function_def.parameters
+        
+        # Find variadic parameter and keyword-only parameters
+        variadic_param_index = None
+        first_keyword_only_index = None
+        for i, param in enumerate(params):
+            if hasattr(param, 'is_variadic') and param.is_variadic:
+                variadic_param_index = i
+            if hasattr(param, 'keyword_only') and param.keyword_only and first_keyword_only_index is None:
+                first_keyword_only_index = i
+        
+        # Validate positional args don't fill keyword-only parameters
+        if first_keyword_only_index is not None and len(positional_args) > first_keyword_only_index:
+            # Count how many non-variadic positional params before keyword-only
+            non_kw_count = first_keyword_only_index
+            raise TypeError(
+                f"Function '{function_name}' takes at most {non_kw_count} positional arguments "
+                f"but {len(positional_args)} were given. Parameters after '*' must be passed by name."
+            )
+        
+        resolved_args = [None] * len(params)
+        
+        # Fill in positional arguments first
+        if variadic_param_index is not None:
+            # If there's a variadic parameter, collect excess args into it
+            for i, arg in enumerate(positional_args):
+                if i < variadic_param_index:
+                    # Regular parameter
+                    resolved_args[i] = arg
+                elif i == variadic_param_index:
+                    # Start of variadic args - collect all remaining into a list
+                    resolved_args[i] = positional_args[i:]
+                    break
+        else:
+            # No variadic parameter - strict argument count
+            for i, arg in enumerate(positional_args):
+                if i >= len(params):
+                    raise TypeError(f"Function '{function_name}' takes {len(params)} parameters but {len(positional_args)} positional arguments were given")
+                # Check if this parameter is keyword-only
+                if hasattr(params[i], 'keyword_only') and params[i].keyword_only:
+                    raise TypeError(f"Parameter '{params[i].name}' is keyword-only and cannot be passed positionally in '{function_name}'")
+                resolved_args[i] = arg
+        
+        # Fill in named arguments
+        for param_name, value in named_args.items():
+            # Find parameter index by name
+            param_index = None
+            for i, param in enumerate(params):
+                if param.name == param_name:
+                    param_index = i
+                    break
+            
+            if param_index is None:
+                raise TypeError(f"Function '{function_name}' has no parameter named '{param_name}'")
+            
+            # Check if this parameter was already filled by positional arg
+            if resolved_args[param_index] is not None:
+                raise TypeError(f"Function '{function_name}' got multiple values for parameter '{param_name}'")
+            
+            resolved_args[param_index] = value
+        
+        # Check that all keyword-only parameters without defaults were provided
+        for i, param in enumerate(params):
+            if hasattr(param, 'keyword_only') and param.keyword_only:
+                if resolved_args[i] is None and not (hasattr(param, 'default_value') and param.default_value is not None):
+                    raise TypeError(f"Missing required keyword-only parameter '{param.name}' in call to '{function_name}'")
+        
+        # Fill in default values for missing parameters
+        for i, (arg, param) in enumerate(zip(resolved_args, params)):
+            if arg is None:
+                # Check if this is a variadic parameter
+                if hasattr(param, 'is_variadic') and param.is_variadic:
+                    # Variadic parameter with no args gets empty list
+                    resolved_args[i] = []
+                # Check if parameter has a default value
+                elif hasattr(param, 'default_value') and param.default_value is not None:
+                    # Execute the default value expression to get the actual value
+                    resolved_args[i] = self.execute(param.default_value)
+                # If no default and no value, it remains None (which will cause an error later)
+        
+        return resolved_args
         
     def execute_return_statement(self, node):
         """Execute a return statement."""

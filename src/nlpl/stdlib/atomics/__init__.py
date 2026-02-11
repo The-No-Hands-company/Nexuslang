@@ -422,8 +422,9 @@ def register_stdlib(runtime):
     runtime.register_function("atomic_fence", atomic_fence)
     
     # Memory order constants
-    runtime.set_variable("MEMORY_ORDER_RELAXED", "relaxed")
-    runtime.set_variable("MEMORY_ORDER_ACQUIRE", "acquire")
-    runtime.set_variable("MEMORY_ORDER_RELEASE", "release")
-    runtime.set_variable("MEMORY_ORDER_ACQ_REL", "acq_rel")
-    runtime.set_variable("MEMORY_ORDER_SEQ_CST", "seq_cst")
+    runtime.register_constant("MEMORY_ORDER_RELAXED", "relaxed")
+    runtime.register_constant("MEMORY_ORDER_ACQUIRE", "acquire")
+    runtime.register_constant("MEMORY_ORDER_RELEASE", "release")
+    runtime.register_constant("MEMORY_ORDER_ACQ_REL", "acq_rel")
+    runtime.register_constant("MEMORY_ORDER_SEQ_CST", "seq_cst")
+

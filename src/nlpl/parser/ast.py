@@ -200,11 +200,14 @@ class AwaitExpression(ASTNode):
 
 class Parameter(ASTNode):
     """Represents a function parameter."""
-    def __init__(self, name, type_annotation=None, size_param=None, line_number=None):
+    def __init__(self, name, type_annotation=None, size_param=None, default_value=None, is_variadic=False, keyword_only=False, line_number=None):
         super().__init__("parameter", line_number)
         self.name = name
         self.type_annotation = type_annotation  # Optional type annotation
         self.size_param = size_param  # Optional size parameter name for array bounds
+        self.default_value = default_value  # Optional default value expression
+        self.is_variadic = is_variadic  # True if this is a *args style parameter
+        self.keyword_only = keyword_only  # True if parameter must be passed by name (comes after * separator)
 
 class IfStatement(ASTNode):
     """Represents an if statement."""
@@ -594,12 +597,14 @@ class Identifier(Expression):
         self.name = name
 
 class FunctionCall(Expression):
-    """Represents a function call."""
-    def __init__(self, name, arguments=None, type_arguments=None, line_number=None):
+    """Represents a function call with positional and/or named arguments, optionally with a trailing block."""
+    def __init__(self, name, arguments=None, type_arguments=None, named_arguments=None, trailing_block=None, line_number=None):
         super().__init__("function_call", line_number)
         self.name = name
-        self.arguments = arguments or []
+        self.arguments = arguments or []  # Positional arguments (list)
+        self.named_arguments = named_arguments or {}  # Named arguments (dict: param_name -> value)
         self.type_arguments = type_arguments or []  # Generic type arguments like <Integer, String>
+        self.trailing_block = trailing_block  # Optional trailing block (LambdaExpression)
 
 class RepeatNTimesLoop(ASTNode):
     """Represents a repeat-n-times loop."""

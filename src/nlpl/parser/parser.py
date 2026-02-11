@@ -50,6 +50,7 @@ class Parser:
         self.tokens = tokens
         self.current_token_index = 0
         self.current_token = tokens[0] if tokens else None
+        self._in_argument_context = False  # Prevents parsing trailing blocks in function arguments
         
     def error(self, message):
         """Raise a syntax error with enhanced context and suggestions."""
@@ -1094,9 +1095,10 @@ class Parser:
         return AsyncFunctionDefinition(function_name, parameters, body, return_type, type_parameters, line_number)
         
     def parameter_list(self):
-        """Parse a parameter list, including optional variadic (...) parameters."""
+        """Parse a parameter list, including optional variadic (...) parameters and keyword-only parameters."""
         parameters = []
         variadic = False
+        seen_keyword_only_separator = False  # Track if we've seen bare * separator
         
         # Handle empty parameter list
         if self.current_token.type == TokenType.NOTHING or \
@@ -1122,14 +1124,60 @@ class Parser:
                 if self.current_token and self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() == 'parameter':
                     self.advance()
         
-        # Parse first parameter
-        param = self.parameter()
-        if param:
-            parameters.append(param)
+        # Check for bare * separator at the start (all params keyword-only)
+        if self.current_token and self.current_token.type == TokenType.TIMES:
+            next_token = self.peek()
+            if next_token and next_token.type in (TokenType.COMMA, TokenType.AND):
+                # Bare * separator - all params are keyword-only
+                self.advance()  # Eat '*'
+                seen_keyword_only_separator = True
+                # Eat the separator (comma or 'and')
+                if self.current_token and self.current_token.type in (TokenType.COMMA, TokenType.AND):
+                    self.advance()
+        
+        # Parse first parameter (if not just a bare * separator)
+        if self.current_token and self.current_token.type not in (TokenType.RETURNS, TokenType.NEWLINE, TokenType.INDENT):
+            param = self.parameter(keyword_only=seen_keyword_only_separator)
+            if param:
+                parameters.append(param)
             
         # Parse additional parameters (separated by comma or 'and')
         while self.current_token and self.current_token.type in (TokenType.COMMA, TokenType.AND):
             self.advance()  # Eat comma or 'and'
+            
+            # Check for bare * separator (keyword-only marker) RIGHT AFTER comma/and
+            if self.current_token and self.current_token.type == TokenType.TIMES:
+                # Peek ahead to see if there's an identifier (variadic param) or comma/and (separator)
+                next_token = self.peek()
+                if next_token and next_token.type in (TokenType.COMMA, TokenType.AND):
+                    # This is the keyword-only separator (bare * followed by comma)
+                    self.advance()  # Eat '*'
+                    self.advance()  # Eat the comma/and after *
+                    seen_keyword_only_separator = True
+                    # Continue to next parameter (which will be keyword-only)
+                    param = self.parameter(keyword_only=True)
+                    if param:
+                        parameters.append(param)
+                    continue
+                elif next_token and next_token.type in (TokenType.IDENTIFIER, TokenType.NAME, TokenType.A) or \
+                     (next_token and self._can_be_identifier(next_token)):
+                    # This is *args variadic parameter - let parameter() handle it
+                    pass
+                else:
+                    # Bare * at end or before returns/newline - marks remaining as keyword-only
+                    self.advance()  # Eat '*'
+                    seen_keyword_only_separator = True
+                    # Check if there's a separator after *
+                    if self.current_token and self.current_token.type in (TokenType.COMMA, TokenType.AND):
+                        self.advance()  # Eat comma or 'and'
+                        # Continue to next parameter
+                        param = self.parameter(keyword_only=True)
+                        if param:
+                            parameters.append(param)
+                        continue
+                    else:
+                        # No more parameters after bare *
+                        break
             
             # Skip optional "a" or "a parameter" with same logic
             if self.current_token and self.current_token.type == TokenType.A:
@@ -1147,28 +1195,41 @@ class Parser:
                 variadic = True
                 break  # Ellipsis must be last
             
-            param = self.parameter()
+            param = self.parameter(keyword_only=seen_keyword_only_separator)
             if param:
                 parameters.append(param)
                 
         return parameters, variadic
         
-    def parameter(self):
-        """Parse a parameter."""
+    def parameter(self, keyword_only=False):
+        """Parse a parameter with optional type annotation and default value.
+        
+        Args:
+            keyword_only: If True, this parameter must be passed by name (comes after * separator)
+        """
         # Syntax: 
-        #  - <identifier> [as <type>]
-        #  - <identifier> [of type <type>]
-        #  - <identifier> [as <type>[<size_param>]]
+        #  - <identifier> [as <type>] [defaults to <expression>]
+        #  - <identifier> [of type <type>] [defaults to <expression>]
+        #  - <identifier> [as <type>[<size_param>]] [defaults to <expression>]
+        #  - *<identifier> [as <type>]  # Variadic parameter
+        
+        # Check for variadic parameter (*param)
+        is_variadic = False
+        if self.current_token and self.current_token.type == TokenType.TIMES:
+            is_variadic = True
+            self.advance()  # Eat '*'
         
         # Accept IDENTIFIER, NAME, A (as parameter name), or contextual keywords as parameter names
         if self.current_token.type in (TokenType.IDENTIFIER, TokenType.NAME, TokenType.A) or \
            self._can_be_identifier(self.current_token):
             param_name = self.current_token.lexeme
+            line_number = self.current_token.line
             self.advance()
             
             # Check for optional type annotation
             type_annotation = None
             size_param = None
+            default_value = None
             
             # Handle "as Type" syntax
             if self.current_token and self.current_token.type == TokenType.AS:
@@ -1200,8 +1261,23 @@ class Parser:
                 if self.current_token and self.current_token.type == TokenType.TYPE:
                     self.advance()  # Eat 'type'
                     type_annotation = self.parse_type()
+            
+            # Check for "defaults to" syntax (not allowed for variadic parameters)
+            if self.current_token and self.current_token.type == TokenType.DEFAULT:
+                if is_variadic:
+                    self.error("Variadic parameters cannot have default values")
+                self.advance()  # Eat 'default' or 'defaults'
                 
-            return Parameter(param_name, type_annotation, size_param)
+                # Expect 'to'
+                if self.current_token and self.current_token.type == TokenType.TO:
+                    self.advance()  # Eat 'to'
+                    
+                    # Parse the default value expression
+                    default_value = self.comparison()
+                else:
+                    self.error("Expected 'to' after 'defaults'")
+            
+            return Parameter(param_name, type_annotation, size_param, default_value, is_variadic, keyword_only, line_number)
         else:
             self.error("Expected a parameter name")
         
@@ -4425,42 +4501,53 @@ class Parser:
                         arguments.append(self.expression())
                         
                 self.eat(TokenType.RIGHT_PAREN)
-                expr = FunctionCall(name, arguments, type_arguments, line_num)
+                expr = FunctionCall(name, arguments, type_arguments, named_arguments=None, trailing_block=None, line_number=line_num)
                 # Check for member access on function result
                 return self._parse_member_access(expr)
             
             # Check if this is a function call with "with" keyword (e.g., "func with args")
             # This enables inline function calls without needing the 'call' keyword
             elif self.current_token and self.current_token.type == TokenType.WITH:
-                self.advance()  # consume "with"
-                arguments = []
-                
-                # Parse first argument - use comparison() to stop before 'and'
-                arg = self.comparison()
-                if arg:
-                    arguments.append(arg)
-                
-                # Parse additional arguments (separated by comma or "and")
-                while self.current_token and (self.current_token.type == TokenType.COMMA or
-                                               self.current_token.type == TokenType.AND):
-                    self.advance()  # consume comma or "and"
-                    arg = self.comparison()
-                    if arg:
-                        arguments.append(arg)
-                
-                expr = FunctionCall(name, arguments, type_arguments, line_num)
+                # Use the full function_call parser which handles named arguments
+                # Need to backtrack since function_call expects to be at the 'with' token
+                # But we've already consumed the function name, so pass it along
+                func_call = self.function_call(name, line_num)
                 # Check for member access on function result
-                return self._parse_member_access(expr)
+                return self._parse_member_access(func_call)
             
             # Check if this is a zero-argument function call (just identifier, but it's a function)
             # This is tricky: we need to distinguish between variable reference and function call
             # For now, we'll treat it as an identifier and let the interpreter handle it
             # The interpreter can check if it's a function and call it if needed
             # Or we can require explicit '()' for zero-arg functions: func()
+            # 
+            # SPECIAL CASE: Check for trailing block without 'with'
+            # This handles: "func_name do ... end" (zero-arg function with trailing block)
+            # But NOT: "variable do" in argument contexts (which would be a bug)
             
-            # It's just an identifier - check for member access
+            # First parse member access to handle chaining like obj.method
             expr = Identifier(name)
-            return self._parse_member_access(expr)
+            expr = self._parse_member_access(expr)
+            
+            # Now check if this is followed by 'do' - but NOT if we're parsing function arguments
+            if (self.current_token and self.current_token.type == TokenType.DO 
+                and not self._in_argument_context):
+                trailing_block = self.parse_trailing_block()
+                # Convert to function call
+                if isinstance(expr, Identifier):
+                    # Simple case: func_name do
+                    func_call = FunctionCall(expr.name, [], None, None, trailing_block, line_num)
+                    return func_call
+                elif isinstance(expr, MemberAccess):
+                    # Method call: obj.method do
+                    # Keep the member access but mark it as having a trailing block
+                    # We'll handle this in the interpreter
+                    # For now, treat it as a function call to the method
+                    return FunctionCall(expr, [], None, None, trailing_block, line_num)
+                else:
+                    self.error(f"Cannot attach trailing block to {type(expr).__name__}")
+            
+            return expr
             
         elif token.type == TokenType.LEFT_PAREN:
             line_num = token.line if hasattr(token, 'line') else 0
@@ -4690,38 +4777,203 @@ class Parser:
                 self.error("Expected an identifier after '.'")
         
         # Function call
-        if self.current_token and self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() == 'with':
+        if self.current_token and (self.current_token.type == TokenType.WITH or 
+                                   (self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() == 'with')):
             return self.function_call(identifier, self.current_token.line)
         
         # Simple identifier
         return Identifier(identifier, self.current_token.line)
         
     def function_call(self, function_name, line_number):
-        """Parse a function call."""
-        # Syntax: <identifier> with <argument_list>
-        # Arguments can be separated by comma or 'and'
+        """Parse a function call with positional and/or named arguments.
         
+        Syntax:
+            function_name                           # No arguments
+            function_name with arg1                 # Single positional arg
+            function_name with arg1 and arg2        # Multiple positional args
+            function_name with param1: value1       # Single named arg
+            function_name with param1: value1 and param2: value2  # Multiple named args
+            function_name with arg1 and param1: value1  # Mixed (positional first)
+        """
         # Eat 'with'
-        if self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() == 'with':
+        if self.current_token and (self.current_token.type == TokenType.WITH or
+                                   (self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() == 'with')):
             self.advance()
             
-        # Parse arguments
-        arguments = []
+        # Parse arguments (positional and named)
+        positional_args = []
+        named_args = {}
+        seen_named = False  # Once we see a named arg, all subsequent must be named
         
-        # First argument - use comparison() to avoid parsing 'and' as logical operator
-        arg = self.comparison()
-        if arg:
-            arguments.append(arg)
+        # Check if we have any arguments
+        if (self.current_token and 
+            self.current_token.type not in [TokenType.EOF, TokenType.NEWLINE, TokenType.INDENT, TokenType.DEDENT, TokenType.END]):
             
-        # Additional arguments (separated by comma or 'and')
-        while self.current_token and (self.current_token.type == TokenType.COMMA or
-                                       self.current_token.type == TokenType.AND):
-            self.advance()  # Eat comma or 'and'
-            arg = self.comparison()
-            if arg:
-                arguments.append(arg)
+            # Parse first argument
+            # DEBUG
+            # print(f"DEBUG: Checking first arg, current token: {self.current_token}")
+            # print(f"DEBUG: _is_named_argument() = {self._is_named_argument()}")
+            if self._is_named_argument():
+                # Named argument
+                param_name, value_expr = self._parse_named_argument()
+                named_args[param_name] = value_expr
+                seen_named = True
+            else:
+                # Positional argument - set flag to prevent nested trailing block parsing
+                self._in_argument_context = True
+                arg = self.comparison()
+                self._in_argument_context = False
+                if arg:
+                    positional_args.append(arg)
+            
+            # Additional arguments (separated by comma or 'and')
+            while self.current_token and (self.current_token.type == TokenType.COMMA or
+                                           self.current_token.type == TokenType.AND):
+                self.advance()  # Eat comma or 'and'
                 
-        return FunctionCall(function_name, arguments, line_number)
+                if self._is_named_argument():
+                    # Named argument
+                    if not seen_named and positional_args:
+                        # First named arg after positional args
+                        seen_named = True
+                    param_name, value_expr = self._parse_named_argument()
+                    named_args[param_name] = value_expr
+                else:
+                    # Positional argument - set flag to prevent nested trailing block parsing
+                    if seen_named:
+                        self.error(f"Positional argument cannot follow named argument in function call '{function_name}'")
+                    self._in_argument_context = True
+                    arg = self.comparison()
+                    self._in_argument_context = False
+                    if arg:
+                        positional_args.append(arg)
+        
+        # Check for trailing block (do...end)
+        trailing_block = None
+        if self.current_token and self.current_token.type == TokenType.DO:
+            trailing_block = self.parse_trailing_block()
+        
+        return FunctionCall(function_name, positional_args, named_arguments=named_args, 
+                          trailing_block=trailing_block, line_number=line_number)
+    
+    def _is_named_argument(self):
+        """Check if the current position starts a named argument (identifier: value)."""
+        # Check if current token can be an identifier (including contextual keywords)
+        is_identifier_like = (self.current_token.type == TokenType.IDENTIFIER or 
+                             self._can_be_identifier(self.current_token))
+        
+        return (self.current_token and 
+                is_identifier_like and
+                self.peek() and
+                self.peek().type == TokenType.COLON)
+    
+    def _parse_named_argument(self):
+        """Parse a named argument (param_name: value).
+        
+        Returns:
+            (param_name, value_expression)
+        """
+        param_name = self.current_token.lexeme
+        self.advance()  # Consume parameter name
+        self.advance()  # Consume colon
+        
+        # Parse the value expression
+        value_expr = self.comparison()
+        
+        return (param_name, value_expr)
+    
+    def parse_trailing_block(self):
+        """Parse a trailing block after a function call.
+        
+        Syntax:
+            do
+                [body]
+            end
+            
+            do param1
+                [body]
+            end
+            
+            do param1 and param2
+                [body]
+            end
+        
+        Returns a LambdaExpression representing the block.
+        """
+        line_number = self.current_token.line
+        
+        # Eat 'do'
+        self.eat(TokenType.DO)
+        
+        # Parse optional block parameters (separated by 'and')
+        params = []
+        
+        # Check if we have parameters (not a newline or indent after 'do')
+        if (self.current_token and 
+            self.current_token.type not in [TokenType.NEWLINE, TokenType.INDENT, TokenType.EOF]):
+            
+            # Parse parameters separated by 'and'
+            while True:
+                if self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
+                    param_name = self.current_token.lexeme
+                    self.advance()
+                    
+                    # Optional type annotation (param_name as Type)
+                    param_type = None
+                    if self.current_token and self.current_token.type == TokenType.AS:
+                        self.advance()  # Eat 'as'
+                        param_type = self.parse_type()
+                    
+                    params.append(Parameter(param_name, param_type, line_number=line_number))
+                    
+                    # Check for more parameters
+                    if self.current_token and self.current_token.type == TokenType.AND:
+                        self.advance()  # Eat 'and'
+                        continue
+                    else:
+                        break
+                else:
+                    break
+        
+        # Expect newline or indent after 'do' or after parameters
+        while self.current_token and self.current_token.type == TokenType.NEWLINE:
+            self.advance()
+        
+        # Check for INDENT (indentation-based syntax)
+        if self.current_token and self.current_token.type == TokenType.INDENT:
+            self.advance()  # Consume INDENT
+            
+            # Parse body until DEDENT
+            body = []
+            while (self.current_token and 
+                   self.current_token.type != TokenType.EOF and
+                   self.current_token.type != TokenType.DEDENT and
+                   self.current_token.type != TokenType.END):
+                statement = self.statement()
+                if statement:
+                    body.append(statement)
+            
+            # Consume DEDENT if present
+            if self.current_token and self.current_token.type == TokenType.DEDENT:
+                self.advance()
+        else:
+            # Fallback: Parse body with 'end' keyword (non-indented style)
+            body = []
+            while (self.current_token and 
+                   self.current_token.type != TokenType.EOF and
+                   self.current_token.type != TokenType.END):
+                statement = self.statement()
+                if statement:
+                    body.append(statement)
+        
+        # Eat 'end'
+        if self.current_token and self.current_token.type == TokenType.END:
+            self.advance()
+        else:
+            self.error(f"Expected 'end' to close trailing block at line {line_number}")
+        
+        # Create and return lambda expression for the block
+        return LambdaExpression(params, body, line_number)
         
     def repeat_n_times_loop(self):
         """Parse a repeat-n-times loop.

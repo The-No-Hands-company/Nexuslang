@@ -479,16 +479,44 @@ class TypeChecker:
         
         # Process parameters
         param_types = []
-        for param in definition.parameters:
+        min_params = 0  # Count of required parameters (without defaults)
+        has_defaults = False
+        has_variadic = False
+        variadic_index = -1
+        
+        for i, param in enumerate(definition.parameters):
             param_type = ANY_TYPE
+            
+            # Check if this is a variadic parameter
+            is_variadic_param = hasattr(param, 'is_variadic') and param.is_variadic
+            if is_variadic_param:
+                has_variadic = True
+                variadic_index = i
+            
             if param.type_annotation:
                 # Check if this is a type parameter
                 if env.is_type_parameter(param.type_annotation):
                     param_type = GenericParameter(param.type_annotation)
                 else:
                     param_type = get_type_by_name(param.type_annotation)
+                
+                # Wrap variadic parameter type in ListType
+                if is_variadic_param:
+                    param_type = ListType(param_type)
+            elif is_variadic_param:
+                # Variadic parameter with no type annotation defaults to List of Any
+                param_type = ListType(ANY_TYPE)
+            
             param_types.append(param_type)
             function_env.define_variable(param.name, param_type)
+            
+            # Track if parameter has a default value
+            if hasattr(param, 'default_value') and param.default_value is not None:
+                has_defaults = True
+            elif not is_variadic_param:
+                # If no default and not variadic, this parameter is required
+                if not has_defaults and not has_variadic:
+                    min_params += 1
         
         # Set return type
         return_type = ANY_TYPE
@@ -506,8 +534,12 @@ class TypeChecker:
         
         function_env.set_return_type(return_type)
         
-        # Create function type
+        # Create function type with default parameter info
         function_type = FunctionType(param_types, return_type)
+        function_type.has_defaults = has_defaults
+        function_type.min_params = min_params
+        function_type.variadic = has_variadic
+        function_type.variadic_index = variadic_index
         
         # Define the function in the parent environment
         env.define_function(definition.name, function_type)
@@ -700,21 +732,70 @@ class TypeChecker:
             # Get the function type
             function_type = env.get_function_type(call.name)
             
+            # Count total arguments (positional + named)
+            total_args = len(call.arguments)
+            if hasattr(call, 'named_arguments') and call.named_arguments:
+                total_args += len(call.named_arguments)
+            
             # Check argument count (skip for variadic functions)
-            if not getattr(function_type, 'variadic', False):
-                if len(call.arguments) != len(function_type.param_types):
+            has_variadic = getattr(function_type, 'variadic', False)
+            if not has_variadic:
+                # Count required parameters (those without defaults)
+                required_params = len(function_type.param_types)
+                if hasattr(function_type, 'has_defaults') and function_type.has_defaults:
+                    # If function has defaults, allow fewer arguments
+                    required_params = function_type.min_params if hasattr(function_type, 'min_params') else 0
+                
+                # Allow arguments between min and max
+                max_params = len(function_type.param_types)
+                if total_args < required_params or total_args > max_params:
+                    if required_params == max_params:
+                        self.errors.append(
+                            f"Type error: Function '{call.name}' expects {required_params} arguments, got {total_args}"
+                        )
+                    else:
+                        self.errors.append(
+                            f"Type error: Function '{call.name}' expects {required_params}-{max_params} arguments, got {total_args}"
+                        )
+                    return function_type.return_type
+            else:
+                # Variadic function - check we have at least min_params
+                min_required = function_type.min_params if hasattr(function_type, 'min_params') else 0
+                variadic_index = function_type.variadic_index if hasattr(function_type, 'variadic_index') else len(function_type.param_types) - 1
+                
+                # Need at least enough args for non-variadic parameters
+                if total_args < min_required:
                     self.errors.append(
-                        f"Type error: Function '{call.name}' expects {len(function_type.param_types)} arguments, got {len(call.arguments)}"
+                        f"Type error: Function '{call.name}' expects at least {min_required} arguments, got {total_args}"
                     )
                     return function_type.return_type
             
-            # Use bidirectional inference: infer argument types with expected parameter types
+            # Type check positional arguments
             arg_types = self.type_inference.infer_argument_types_from_function(
                 function_type, call.arguments, env.variables
             )
             
-            # Check argument types against parameter types (skip for ANY_TYPE params)
-            for i, (arg_type, param_type) in enumerate(zip(arg_types, function_type.param_types)):
+            # Type check named arguments (just ensure expressions are valid, not param matching)
+            # Note: We can't match named args to param types here because FunctionType
+            # doesn't include parameter names, only types
+            if hasattr(call, 'named_arguments') and call.named_arguments:
+                for param_name, arg_expr in call.named_arguments.items():
+                    # Just check that the expression is valid
+                    self.check_statement(arg_expr, env)
+            
+            # Only check positional argument types against parameter types
+            # Named arguments will be validated at runtime
+            # For variadic functions, stop type checking before the variadic parameter
+            if has_variadic and hasattr(function_type, 'variadic_index'):
+                # Only check non-variadic parameters
+                check_count = min(len(call.arguments), function_type.variadic_index)
+                positional_param_types = function_type.param_types[:check_count]
+                arg_types_to_check = arg_types[:check_count]
+            else:
+                positional_param_types = function_type.param_types[:len(call.arguments)]
+                arg_types_to_check = arg_types
+            
+            for i, (arg_type, param_type) in enumerate(zip(arg_types_to_check, positional_param_types)):
                 if param_type != ANY_TYPE and not arg_type.is_compatible_with(param_type):
                     self.errors.append(
                         f"Type error: Function '{call.name}' argument {i+1} expects type '{self._type_name(param_type)}', got '{self._type_name(arg_type)}'"
@@ -725,6 +806,10 @@ class TypeChecker:
             # If the function is not defined, assume it's a runtime-registered function (stdlib)
             # Check arguments without expected types to ensure they're valid expressions
             arg_types = [self.check_statement(arg, env) for arg in call.arguments]
+            # Also check named arguments
+            if hasattr(call, 'named_arguments') and call.named_arguments:
+                for param_name, arg_expr in call.named_arguments.items():
+                    self.check_statement(arg_expr, env)
             # Return ANY_TYPE to allow runtime resolution
             # NOTE: The function MUST exist at runtime or it will fail there
             return ANY_TYPE
