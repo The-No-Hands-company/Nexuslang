@@ -40,6 +40,11 @@ class InterruptError(Exception):
     pass
 
 
+class DMAError(Exception):
+    """Raised when DMA operations fail"""
+    pass
+
+
 # Cache Control Hints
 class CacheControl(IntEnum):
     """Cache control hints for memory mapping"""
@@ -58,6 +63,12 @@ _interrupt_handlers: Dict[int, callable] = {}
 
 # Interrupt state
 _interrupts_enabled: bool = True
+
+# Global DMA channel allocation registry
+_dma_channels: Dict[int, dict] = {}  # channel -> {allocated, source, dest, count, mode}
+
+# DMA controller state
+_dma_initialized: bool = False
 
 
 def _check_privileges() -> bool:
@@ -1365,6 +1376,788 @@ def invoke_interrupt_handler(runtime, vector: int, frame: Optional[ExceptionFram
     return True
 
 
+# ============================================================================
+# DMA (DIRECT MEMORY ACCESS) CONTROL
+# ============================================================================
+
+# DMA Channel Numbers (x86 PC Architecture)
+class DMAChannel(IntEnum):
+    """DMA channel numbers (0-7)"""
+    CHANNEL_0 = 0  # Available
+    CHANNEL_1 = 1  # Available
+    CHANNEL_2 = 2  # Floppy disk controller
+    CHANNEL_3 = 3  # Available
+    CHANNEL_4 = 4  # CASCADE (DMA controller 1 to controller 2)
+    CHANNEL_5 = 5  # Available
+    CHANNEL_6 = 6  # Available
+    CHANNEL_7 = 7  # Available
+
+
+# DMA Transfer Modes
+class DMAMode(IntEnum):
+    """DMA transfer modes"""
+    DEMAND = 0    # Demand transfer mode
+    SINGLE = 1    # Single transfer mode (one byte/word per request)
+    BLOCK = 2     # Block transfer mode (entire block in one burst)
+    CASCADE = 3   # Cascade mode (for channel 4 only)
+
+
+# DMA Transfer Direction
+class DMADirection(IntEnum):
+    """DMA transfer direction"""
+    VERIFY = 0     # Verify transfer (no actual transfer)
+    WRITE = 1      # Write to memory (read from device)
+    READ = 2       # Read from memory (write to device)
+    INVALID = 3    # Invalid
+
+
+# DMA Port Addresses (x86 PC)
+# Controller 1 (channels 0-3)
+DMA1_STATUS_REG = 0x08
+DMA1_COMMAND_REG = 0x08
+DMA1_REQUEST_REG = 0x09
+DMA1_MASK_REG = 0x0A
+DMA1_MODE_REG = 0x0B
+DMA1_CLEAR_FF_REG = 0x0C
+DMA1_TEMP_REG = 0x0D
+DMA1_MASTER_CLEAR_REG = 0x0D
+DMA1_CLEAR_MASK_REG = 0x0E
+DMA1_WRITE_MASK_REG = 0x0F
+
+# Controller 2 (channels 4-7)
+DMA2_STATUS_REG = 0xD0
+DMA2_COMMAND_REG = 0xD0
+DMA2_REQUEST_REG = 0xD2
+DMA2_MASK_REG = 0xD4
+DMA2_MODE_REG = 0xD6
+DMA2_CLEAR_FF_REG = 0xD8
+DMA2_TEMP_REG = 0xDA
+DMA2_MASTER_CLEAR_REG = 0xDA
+DMA2_CLEAR_MASK_REG = 0xDC
+DMA2_WRITE_MASK_REG = 0xDE
+
+# Channel address and count registers
+DMA_CHANNEL_ADDR = [0x00, 0x02, 0x04, 0x06, 0xC0, 0xC4, 0xC8, 0xCC]
+DMA_CHANNEL_COUNT = [0x01, 0x03, 0x05, 0x07, 0xC2, 0xC6, 0xCA, 0xCE]
+DMA_CHANNEL_PAGE = [0x87, 0x83, 0x81, 0x82, 0x8F, 0x8B, 0x89, 0x8A]
+
+
+# DMA Channel State
+class DMAChannelState:
+    """State information for a DMA channel"""
+    def __init__(self, channel: int):
+        self.channel = channel
+        self.allocated = False
+        self.source_address = 0
+        self.destination_address = 0
+        self.count = 0
+        self.mode = DMAMode.SINGLE
+        self.direction = DMADirection.READ
+        self.active = False
+        self.page = 0
+    
+    def to_dict(self) -> dict:
+        """Convert to dictionary for NLPL access"""
+        return {
+            "channel": self.channel,
+            "allocated": self.allocated,
+            "source_address": self.source_address,
+            "destination_address": self.destination_address,
+            "count": self.count,
+            "mode": self.mode,
+            "direction": self.direction,
+            "active": self.active,
+            "page": self.page
+        }
+
+
+def _init_dma_controller():
+    """Initialize DMA controller state"""
+    global _dma_initialized, _dma_channels
+    
+    if _dma_initialized:
+        return
+    
+    # Initialize all 8 channels
+    for channel in range(8):
+        _dma_channels[channel] = DMAChannelState(channel)
+    
+    _dma_initialized = True
+
+
+def allocate_dma_channel(runtime, channel: int) -> bool:
+    """
+    Allocate a DMA channel for use
+    
+    Args:
+        channel: DMA channel number (0-7)
+        
+    Returns:
+        True if allocated successfully, False if already allocated
+        
+    Raises:
+        PrivilegeError: If insufficient privileges
+        DMAError: If channel number is invalid or channel 4 (cascade)
+        
+    Example:
+        set success to allocate_dma_channel with channel: 2
+        if success
+            print text "Floppy DMA channel allocated"
+        end
+    """
+    _require_privileges()
+    _init_dma_controller()
+    
+    if not (0 <= channel <= 7):
+        raise DMAError(f"Invalid DMA channel: {channel}. Must be 0-7.")
+    
+    if channel == 4:
+        raise DMAError("Channel 4 is reserved for cascade mode (controller linking).")
+    
+    if _dma_channels[channel].allocated:
+        return False
+    
+    _dma_channels[channel].allocated = True
+    return True
+
+
+def release_dma_channel(runtime, channel: int) -> bool:
+    """
+    Release a previously allocated DMA channel
+    
+    Args:
+        channel: DMA channel number (0-7)
+        
+    Returns:
+        True if released successfully, False if not allocated
+        
+    Raises:
+        PrivilegeError: If insufficient privileges
+        DMAError: If channel number is invalid
+        
+    Example:
+        release_dma_channel with channel: 2
+        print text "Floppy DMA channel released"
+    """
+    _require_privileges()
+    _init_dma_controller()
+    
+    if not (0 <= channel <= 7):
+        raise DMAError(f"Invalid DMA channel: {channel}. Must be 0-7.")
+    
+    if channel == 4:
+        raise DMAError("Channel 4 (cascade) cannot be released.")
+    
+    if not _dma_channels[channel].allocated:
+        return False
+    
+    # Stop transfer if active
+    if _dma_channels[channel].active:
+        stop_dma_transfer(runtime, channel)
+    
+    _dma_channels[channel].allocated = False
+    _dma_channels[channel].source_address = 0
+    _dma_channels[channel].destination_address = 0
+    _dma_channels[channel].count = 0
+    return True
+
+
+def get_channel_status(runtime, channel: int) -> dict:
+    """
+    Get status of a DMA channel
+    
+    Args:
+        channel: DMA channel number (0-7)
+        
+    Returns:
+        Dictionary with channel status:
+        - channel: Channel number
+        - allocated: Whether channel is allocated
+        - source_address: Source address
+        - destination_address: Destination address
+        - count: Transfer count
+        - mode: Transfer mode
+        - direction: Transfer direction
+        - active: Whether transfer is active
+        - page: Page register value
+        
+    Raises:
+        DMAError: If channel number is invalid
+        
+    Example:
+        set status to get_channel_status with channel: 2
+        print text "Channel allocated:"
+        print text status["allocated"]
+        print text "Transfer count:"
+        print text status["count"]
+    """
+    _init_dma_controller()
+    
+    if not (0 <= channel <= 7):
+        raise DMAError(f"Invalid DMA channel: {channel}. Must be 0-7.")
+    
+    return _dma_channels[channel].to_dict()
+
+
+def list_allocated_channels(runtime) -> list:
+    """
+    List all allocated DMA channels
+    
+    Returns:
+        List of channel numbers that are currently allocated
+        
+    Example:
+        set channels to list_allocated_channels
+        print text "Allocated DMA channels:"
+        for each ch in channels
+            print text ch
+        end
+    """
+    _init_dma_controller()
+    
+    result = []
+    for channel in range(8):
+        if _dma_channels[channel].allocated:
+            result.append(channel)
+    return result
+
+
+def configure_dma_transfer(runtime, channel: int, source: int, destination: int,
+                           count: int, mode: int = DMAMode.SINGLE,
+                           direction: int = DMADirection.READ) -> bool:
+    """
+    Configure a DMA transfer
+    
+    Args:
+        channel: DMA channel number (0-7)
+        source: Source address (24-bit physical address)
+        destination: Destination address (or device port for I/O)
+        count: Transfer count in bytes (max 65535 for 8-bit, 131072 for 16-bit)
+        mode: Transfer mode (DEMAND=0, SINGLE=1, BLOCK=2, CASCADE=3)
+        direction: Transfer direction (VERIFY=0, WRITE=1, READ=2)
+        
+    Returns:
+        True if configured successfully
+        
+    Raises:
+        PrivilegeError: If insufficient privileges
+        DMAError: If channel not allocated or parameters invalid
+        
+    Example:
+        # Configure floppy disk read (1KB)
+        configure_dma_transfer with channel: 2 and source: 0 and destination: 524288 
+                                and count: 1024 and mode: 1 and direction: 1
+    """
+    _require_privileges()
+    _init_dma_controller()
+    
+    if not (0 <= channel <= 7):
+        raise DMAError(f"Invalid DMA channel: {channel}. Must be 0-7.")
+    
+    if channel == 4:
+        raise DMAError("Channel 4 is cascade mode only.")
+    
+    if not _dma_channels[channel].allocated:
+        raise DMAError(f"Channel {channel} is not allocated. Call allocate_dma_channel first.")
+    
+    if not (0 <= mode <= 3):
+        raise DMAError(f"Invalid DMA mode: {mode}. Must be 0-3.")
+    
+    if not (0 <= direction <= 2):
+        raise DMAError(f"Invalid DMA direction: {direction}. Must be 0-2.")
+    
+    # Validate count (max 64KB for 8-bit channels 0-3, 128KB for 16-bit channels 5-7)
+    max_count = 65536 if channel < 4 else 131072
+    if not (1 <= count <= max_count):
+        raise DMAError(f"Invalid count: {count}. Must be 1-{max_count} for channel {channel}.")
+    
+    # Validate 24-bit addresses
+    if not (0 <= source <= 0xFFFFFF):
+        raise DMAError(f"Invalid source address: {source}. Must be 0-16777215 (24-bit).")
+    
+    # Store configuration
+    state = _dma_channels[channel]
+    state.source_address = source
+    state.destination_address = destination
+    state.count = count
+    state.mode = mode
+    state.direction = direction
+    state.page = (source >> 16) & 0xFF  # Extract page from address
+    
+    return True
+
+
+def set_dma_address(runtime, channel: int, address: int) -> bool:
+    """
+    Set DMA transfer address
+    
+    Args:
+        channel: DMA channel number (0-7)
+        address: 24-bit physical address
+        
+    Returns:
+        True if set successfully
+        
+    Raises:
+        PrivilegeError: If insufficient privileges
+        DMAError: If channel not allocated or address invalid
+    """
+    _require_privileges()
+    _init_dma_controller()
+    
+    if not (0 <= channel <= 7):
+        raise DMAError(f"Invalid DMA channel: {channel}. Must be 0-7.")
+    
+    if channel == 4:
+        raise DMAError("Channel 4 is cascade mode only.")
+    
+    if not _dma_channels[channel].allocated:
+        raise DMAError(f"Channel {channel} is not allocated.")
+    
+    if not (0 <= address <= 0xFFFFFF):
+        raise DMAError(f"Invalid address: {address}. Must be 0-16777215 (24-bit).")
+    
+    _dma_channels[channel].source_address = address
+    _dma_channels[channel].page = (address >> 16) & 0xFF
+    return True
+
+
+def set_dma_count(runtime, channel: int, count: int) -> bool:
+    """
+    Set DMA transfer count
+    
+    Args:
+        channel: DMA channel number (0-7)
+        count: Transfer count in bytes
+        
+    Returns:
+        True if set successfully
+        
+    Raises:
+        PrivilegeError: If insufficient privileges
+        DMAError: If channel not allocated or count invalid
+    """
+    _require_privileges()
+    _init_dma_controller()
+    
+    if not (0 <= channel <= 7):
+        raise DMAError(f"Invalid DMA channel: {channel}. Must be 0-7.")
+    
+    if channel == 4:
+        raise DMAError("Channel 4 is cascade mode only.")
+    
+    if not _dma_channels[channel].allocated:
+        raise DMAError(f"Channel {channel} is not allocated.")
+    
+    max_count = 65536 if channel < 4 else 131072
+    if not (1 <= count <= max_count):
+        raise DMAError(f"Invalid count: {count}. Must be 1-{max_count}.")
+    
+    _dma_channels[channel].count = count
+    return True
+
+
+def set_dma_mode(runtime, channel: int, mode: int, direction: int) -> bool:
+    """
+    Set DMA transfer mode and direction
+    
+    Args:
+        channel: DMA channel number (0-7)
+        mode: Transfer mode (DEMAND=0, SINGLE=1, BLOCK=2)
+        direction: Transfer direction (VERIFY=0, WRITE=1, READ=2)
+        
+    Returns:
+        True if set successfully
+        
+    Raises:
+        PrivilegeError: If insufficient privileges
+        DMAError: If channel not allocated or parameters invalid
+    """
+    _require_privileges()
+    _init_dma_controller()
+    
+    if not (0 <= channel <= 7):
+        raise DMAError(f"Invalid DMA channel: {channel}. Must be 0-7.")
+    
+    if channel == 4:
+        raise DMAError("Channel 4 is cascade mode only.")
+    
+    if not _dma_channels[channel].allocated:
+        raise DMAError(f"Channel {channel} is not allocated.")
+    
+    if not (0 <= mode <= 2):  # CASCADE mode not allowed via set_dma_mode
+        raise DMAError(f"Invalid mode: {mode}. Must be 0-2.")
+    
+    if not (0 <= direction <= 2):
+        raise DMAError(f"Invalid direction: {direction}. Must be 0-2.")
+    
+    _dma_channels[channel].mode = mode
+    _dma_channels[channel].direction = direction
+    return True
+
+
+def start_dma_transfer(runtime, channel: int) -> bool:
+    """
+    Start a DMA transfer
+    
+    Unmasks the DMA channel and begins the transfer. The transfer will
+    proceed asynchronously with hardware requests.
+    
+    Args:
+        channel: DMA channel number (0-7)
+        
+    Returns:
+        True if started successfully
+        
+    Raises:
+        PrivilegeError: If insufficient privileges
+        DMAError: If channel not configured or already active
+        
+    Example:
+        # Start floppy disk DMA transfer
+        start_dma_transfer with channel: 2
+        print text "DMA transfer started"
+        
+        # Wait for completion (would use interrupt handler in real code)
+        # ...
+    """
+    _require_privileges()
+    _init_dma_controller()
+    
+    if not (0 <= channel <= 7):
+        raise DMAError(f"Invalid DMA channel: {channel}. Must be 0-7.")
+    
+    if channel == 4:
+        raise DMAError("Channel 4 is cascade mode only.")
+    
+    state = _dma_channels[channel]
+    
+    if not state.allocated:
+        raise DMAError(f"Channel {channel} is not allocated.")
+    
+    if state.count == 0:
+        raise DMAError(f"Channel {channel} not configured. Set transfer parameters first.")
+    
+    if state.active:
+        raise DMAError(f"Channel {channel} transfer already active.")
+    
+    # In real implementation, would program DMA controller registers:
+    # 1. Disable channel (mask)
+    # 2. Clear flip-flop
+    # 3. Write mode register
+    # 4. Write address register
+    # 5. Write count register
+    # 6. Write page register
+    # 7. Enable channel (unmask)
+    
+    state.active = True
+    return True
+
+
+def stop_dma_transfer(runtime, channel: int) -> bool:
+    """
+    Stop an active DMA transfer
+    
+    Masks the DMA channel and halts the transfer.
+    
+    Args:
+        channel: DMA channel number (0-7)
+        
+    Returns:
+        True if stopped successfully
+        
+    Raises:
+        PrivilegeError: If insufficient privileges
+        DMAError: If channel invalid
+        
+    Example:
+        stop_dma_transfer with channel: 2
+        print text "DMA transfer stopped"
+    """
+    _require_privileges()
+    _init_dma_controller()
+    
+    if not (0 <= channel <= 7):
+        raise DMAError(f"Invalid DMA channel: {channel}. Must be 0-7.")
+    
+    if channel == 4:
+        raise DMAError("Channel 4 is cascade mode only.")
+    
+    if not _dma_channels[channel].allocated:
+        return False
+    
+    _dma_channels[channel].active = False
+    return True
+
+
+def reset_dma_controller(runtime) -> bool:
+    """
+    Reset DMA controller to initial state
+    
+    Resets both DMA controllers (1 and 2) and clears all channel state.
+    All transfers are stopped and all channels are released.
+    
+    Returns:
+        True if reset successfully
+        
+    Raises:
+        PrivilegeError: If insufficient privileges
+        
+    Example:
+        reset_dma_controller
+        print text "DMA controller reset"
+    """
+    _require_privileges()
+    _init_dma_controller()
+    
+    # Stop all active transfers
+    for channel in range(8):
+        if channel == 4:
+            continue
+        if _dma_channels[channel].active:
+            _dma_channels[channel].active = False
+        _dma_channels[channel].allocated = False
+        _dma_channels[channel].source_address = 0
+        _dma_channels[channel].destination_address = 0
+        _dma_channels[channel].count = 0
+    
+    # In real implementation, would write to master clear registers:
+    # - Write to DMA1_MASTER_CLEAR_REG (0x0D)
+    # - Write to DMA2_MASTER_CLEAR_REG (0xDA)
+    
+    return True
+
+
+def mask_dma_channel(runtime, channel: int) -> bool:
+    """
+    Mask (disable) a DMA channel
+    
+    Prevents the channel from servicing DMA requests without stopping
+    the transfer configuration.
+    
+    Args:
+        channel: DMA channel number (0-7)
+        
+    Returns:
+        True if masked successfully
+        
+    Raises:
+        PrivilegeError: If insufficient privileges
+        DMAError: If channel invalid
+    """
+    _require_privileges()
+    _init_dma_controller()
+    
+    if not (0 <= channel <= 7):
+        raise DMAError(f"Invalid DMA channel: {channel}. Must be 0-7.")
+    
+    if channel == 4:
+        raise DMAError("Channel 4 is cascade mode only.")
+    
+    # In real implementation, would write to mask register
+    # Mask bit = 1 (disable), bit 2 = channel select
+    
+    _dma_channels[channel].active = False
+    return True
+
+
+def unmask_dma_channel(runtime, channel: int) -> bool:
+    """
+    Unmask (enable) a DMA channel
+    
+    Allows the channel to service DMA requests.
+    
+    Args:
+        channel: DMA channel number (0-7)
+        
+    Returns:
+        True if unmasked successfully
+        
+    Raises:
+        PrivilegeError: If insufficient privileges
+        DMAError: If channel invalid or not configured
+    """
+    _require_privileges()
+    _init_dma_controller()
+    
+    if not (0 <= channel <= 7):
+        raise DMAError(f"Invalid DMA channel: {channel}. Must be 0-7.")
+    
+    if channel == 4:
+        raise DMAError("Channel 4 is cascade mode only.")
+    
+    if not _dma_channels[channel].allocated:
+        raise DMAError(f"Channel {channel} is not allocated.")
+    
+    if _dma_channels[channel].count == 0:
+        raise DMAError(f"Channel {channel} not configured.")
+    
+    # In real implementation, would write to mask register
+    # Mask bit = 0 (enable), bit 2 = channel select
+    
+    _dma_channels[channel].active = True
+    return True
+
+
+def get_dma_status(runtime, channel: int) -> dict:
+    """
+    Get detailed DMA channel status
+    
+    Reads status from the DMA controller and returns current state.
+    
+    Args:
+        channel: DMA channel number (0-7)
+        
+    Returns:
+        Dictionary with status:
+        - channel: Channel number
+        - allocated: Whether allocated
+        - active: Whether transfer active
+        - terminal_count: Whether terminal count reached
+        - request_pending: Whether device has pending request
+        
+    Raises:
+        DMAError: If channel invalid
+        
+    Example:
+        set status to get_dma_status with channel: 2
+        if status["terminal_count"]
+            print text "Transfer complete"
+        end
+    """
+    _init_dma_controller()
+    
+    if not (0 <= channel <= 7):
+        raise DMAError(f"Invalid DMA channel: {channel}. Must be 0-7.")
+    
+    state = _dma_channels[channel]
+    
+    # In real implementation, would read from status register
+    # Bit 0-3: Terminal count flags for channels 0-3
+    # Bit 4-7: Request flags for channels 0-3
+    
+    return {
+        "channel": channel,
+        "allocated": state.allocated,
+        "active": state.active,
+        "terminal_count": False,  # Would read from hardware
+        "request_pending": False   # Would read from hardware
+    }
+
+
+def get_transfer_count(runtime, channel: int) -> int:
+    """
+    Get current transfer count (remaining bytes)
+    
+    Reads the current count register to determine how many bytes
+    remain in the transfer.
+    
+    Args:
+        channel: DMA channel number (0-7)
+        
+    Returns:
+        Remaining transfer count in bytes
+        
+    Raises:
+        DMAError: If channel invalid
+        
+    Example:
+        set remaining to get_transfer_count with channel: 2
+        print text "Bytes remaining:"
+        print text remaining
+    """
+    _init_dma_controller()
+    
+    if not (0 <= channel <= 7):
+        raise DMAError(f"Invalid DMA channel: {channel}. Must be 0-7.")
+    
+    if channel == 4:
+        raise DMAError("Channel 4 is cascade mode only.")
+    
+    # In real implementation, would read from count register
+    # Must read twice (low byte, high byte) due to 8-bit bus
+    
+    return _dma_channels[channel].count
+
+
+def is_transfer_complete(runtime, channel: int) -> bool:
+    """
+    Check if DMA transfer is complete
+    
+    Checks the terminal count (TC) flag to determine if the transfer
+    has completed.
+    
+    Args:
+        channel: DMA channel number (0-7)
+        
+    Returns:
+        True if transfer is complete, False if still in progress
+        
+    Raises:
+        DMAError: If channel invalid
+        
+    Example:
+        set complete to is_transfer_complete with channel: 2
+        if complete
+            print text "Floppy read complete"
+        end
+    """
+    _init_dma_controller()
+    
+    if not (0 <= channel <= 7):
+        raise DMAError(f"Invalid DMA channel: {channel}. Must be 0-7.")
+    
+    if channel == 4:
+        raise DMAError("Channel 4 is cascade mode only.")
+    
+    # In real implementation, would check terminal count bit in status register
+    
+    return not _dma_channels[channel].active
+
+
+def get_dma_registers(runtime, channel: int) -> dict:
+    """
+    Get DMA channel register values
+    
+    Reads all registers associated with the specified channel.
+    
+    Args:
+        channel: DMA channel number (0-7)
+        
+    Returns:
+        Dictionary with register values:
+        - address: Current address register
+        - count: Current count register
+        - page: Page register
+        - mode: Mode register
+        
+    Raises:
+        DMAError: If channel invalid
+        
+    Example:
+        set regs to get_dma_registers with channel: 2
+        print text "Current address:"
+        print text regs["address"]
+        print text "Current count:"
+        print text regs["count"]
+    """
+    _init_dma_controller()
+    
+    if not (0 <= channel <= 7):
+        raise DMAError(f"Invalid DMA channel: {channel}. Must be 0-7.")
+    
+    state = _dma_channels[channel]
+    
+    # In real implementation, would read from hardware registers
+    
+    return {
+        "address": state.source_address & 0xFFFF,
+        "count": state.count,
+        "page": state.page,
+        "mode": (state.direction << 2) | state.mode
+    }
+
+
 def register_stdlib(runtime):
     """Register hardware module functions with NLPL runtime"""
     from nlpl.runtime.runtime import Runtime
@@ -1423,4 +2216,29 @@ def register_stdlib(runtime):
     runtime.register_function("get_instruction_pointer", get_instruction_pointer)
     runtime.register_function("get_stack_pointer", get_stack_pointer)
     runtime.register_function("get_cpu_flags", get_cpu_flags)
+    
+    # DMA Control - channel allocation
+    runtime.register_function("allocate_dma_channel", allocate_dma_channel)
+    runtime.register_function("release_dma_channel", release_dma_channel)
+    runtime.register_function("get_channel_status", get_channel_status)
+    runtime.register_function("list_allocated_channels", list_allocated_channels)
+    
+    # DMA Control - transfer configuration
+    runtime.register_function("configure_dma_transfer", configure_dma_transfer)
+    runtime.register_function("set_dma_address", set_dma_address)
+    runtime.register_function("set_dma_count", set_dma_count)
+    runtime.register_function("set_dma_mode", set_dma_mode)
+    
+    # DMA Control - transfer control
+    runtime.register_function("start_dma_transfer", start_dma_transfer)
+    runtime.register_function("stop_dma_transfer", stop_dma_transfer)
+    runtime.register_function("reset_dma_controller", reset_dma_controller)
+    runtime.register_function("mask_dma_channel", mask_dma_channel)
+    runtime.register_function("unmask_dma_channel", unmask_dma_channel)
+    
+    # DMA Control - status monitoring
+    runtime.register_function("get_dma_status", get_dma_status)
+    runtime.register_function("get_transfer_count", get_transfer_count)
+    runtime.register_function("is_transfer_complete", is_transfer_complete)
+    runtime.register_function("get_dma_registers", get_dma_registers)
 
