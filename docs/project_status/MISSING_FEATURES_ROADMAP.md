@@ -150,12 +150,44 @@ NLPL has achieved impressive maturity with:
   - Mapping management: map_memory, unmap_memory, get_mapping_info, list_mappings ✅ COMPLETE
   - Platform support: Linux (full), Windows (requires kernel driver - documented)
 
-- [ ] **Interrupt/Exception Handling**
-  - `register_interrupt_handler with vector as Integer, handler as Function`
-  - `enable_interrupts`, `disable_interrupts`
-  - Interrupt descriptor table (IDT) management
-  - Exception frame access in handlers
-  - Requires OS-level privileges
+- [x] **Interrupt/Exception Handling** ✅ COMPLETE (Feb 12, 2026)
+  - IDT Management ✅ COMPLETE
+    - `setup_idt()` - Initialize 256-entry IDT
+    - `get_idt_entry(vector)` - Read IDT gate descriptor
+    - `set_idt_entry(vector, offset, segment, gate_type, dpl)` - Configure IDT entry
+    - `get_idt_base()` - Read IDTR base address
+    - `get_idt_limit()` - Read IDTR limit (4095 for standard IDT)
+  - Handler Registration ✅ COMPLETE
+    - `register_interrupt_handler(vector, handler)` - Register handler function
+    - `unregister_interrupt_handler(vector)` - Remove handler
+    - `list_interrupt_handlers()` - List all registered handlers
+  - Interrupt Control (CLI/STI) ✅ COMPLETE
+    - `enable_interrupts()` - Set IF flag (STI instruction)
+    - `disable_interrupts()` - Clear IF flag (CLI instruction)
+    - `get_interrupt_flag()` - Read IF state
+    - `set_interrupt_flag(enabled)` - Set IF state directly
+  - Exception Frame Access ✅ COMPLETE
+    - `get_exception_frame()` - Get full CPU state dict
+    - `get_error_code()` - Exception error code
+    - `get_instruction_pointer()` - RIP register
+    - `get_stack_pointer()` - RSP register
+    - `get_cpu_flags()` - RFLAGS register
+  - Standard x86 Vectors ✅ COMPLETE
+    - InterruptVector enum: DIVIDE_BY_ZERO(0), DEBUG(1), NMI(2), BREAKPOINT(3), OVERFLOW(4), INVALID_OPCODE(6), DOUBLE_FAULT(8), INVALID_TSS(10), SEGMENT_NOT_PRESENT(11), STACK_SEGMENT_FAULT(12), GENERAL_PROTECTION(13), PAGE_FAULT(14), FPU_ERROR(16), ALIGNMENT_CHECK(17), MACHINE_CHECK(18), SIMD_EXCEPTION(19), TIMER(32), KEYBOARD(33), MOUSE(44), etc. (0-255)
+  - IDT Entry Structure ✅ COMPLETE
+    - Gate descriptors with offset, segment, gate_type (0x8E interrupt, 0x8F trap, 0xEE user-callable)
+    - DPL (Descriptor Privilege Level 0-3)
+  - Exception Frame Structure ✅ COMPLETE
+    - All general-purpose registers (RAX-R15)
+    - Instruction pointer (RIP), stack pointer (RSP)
+    - CPU flags (RFLAGS), segment registers (CS, SS)
+    - Error code and vector number
+  - Error Handling ✅ COMPLETE
+    - InterruptError exception for invalid operations
+    - Vector validation (0-255), DPL validation (0-3)
+    - Callable handler validation
+    - Privilege checking (root/administrator required)
+  - Platform Support: Linux/Windows (requires ring 0 privileges)
 
 - [ ] **DMA Control**
   - DMA channel allocation/configuration
@@ -169,7 +201,7 @@ NLPL has achieved impressive maturity with:
   - Feature detection (SSE, AVX, etc.)
 
 **Priority:** HIGH for OS development  
-**Estimated Effort:** Port I/O ✅ Done (Feb 2026); MMIO ✅ Done (Feb 12, 2026); Interrupts 3-4 weeks; DMA/CPU 4-6 weeks
+**Estimated Effort:** Port I/O ✅ Done (Feb 2026); MMIO ✅ Done (Feb 12, 2026); Interrupts ✅ Done (Feb 12, 2026); DMA/CPU 4-6 weeks
 
 ---
 
