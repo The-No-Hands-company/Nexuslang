@@ -2223,7 +2223,7 @@ class Interpreter:
                 # It's a callable stored in a variable - call it
                 return var_value(*positional_args, **named_args)
             # If it's not callable, fall through to check if it's a function name
-        except NameError:
+        except (NameError, NLPLNameError):
             # Variable not found, continue to check if it's a function name
             pass
         
@@ -2248,19 +2248,28 @@ class Interpreter:
         
         # Check for built-in functions in the runtime
         if function_name in self.runtime.functions:
+            import inspect
+            func = self.runtime.functions[function_name]
+            sig = inspect.signature(func)
+            params = list(sig.parameters.keys())
+            
+            # Check if first parameter is 'runtime' - if so, inject it
+            if params and params[0] == 'runtime':
+                positional_args = [self.runtime] + list(positional_args)
+            
             # For runtime functions, we need to handle named args manually
             # since most Python stdlib functions don't accept them by name
             if named_args:
                 # Try calling with kwargs first
                 try:
-                    return self.runtime.functions[function_name](*positional_args, **named_args)
+                    return func(*positional_args, **named_args)
                 except TypeError:
                     # Fall back to positional-only if kwargs not supported
                     # This is for backward compatibility with existing functions
                     all_args = list(positional_args) + list(named_args.values())
-                    return self.runtime.functions[function_name](*all_args)
+                    return func(*all_args)
             else:
-                return self.runtime.functions[function_name](*positional_args)
+                return func(*positional_args)
         
         # Check for user-defined functions
         if function_name in self.functions:

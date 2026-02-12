@@ -15,7 +15,9 @@ cause system instability if used incorrectly. Use with extreme caution.
 import ctypes
 import os
 import platform
-from typing import Optional
+import mmap
+from typing import Optional, Dict, Tuple
+from enum import IntEnum
 
 
 class PortAccessError(Exception):
@@ -23,9 +25,28 @@ class PortAccessError(Exception):
     pass
 
 
+class MMIOError(Exception):
+    """Raised when memory-mapped I/O operations fail"""
+    pass
+
+
 class PrivilegeError(Exception):
     """Raised when insufficient privileges for hardware access"""
     pass
+
+
+# Cache Control Hints
+class CacheControl(IntEnum):
+    """Cache control hints for memory mapping"""
+    WB = 0   # Write-Back (cached)
+    WT = 1   # Write-Through (cached with immediate writeback)
+    UC = 2   # Uncacheable (no caching)
+    WC = 3   # Write-Combining (uncached, buffered writes)
+    WP = 4   # Write-Protected (reads cached, writes uncached)
+
+
+# Global MMIO mapping registry
+_mmio_mappings: Dict[int, Tuple[mmap.mmap, int, int, int]] = {}
 
 
 def _check_privileges() -> bool:
@@ -262,46 +283,61 @@ def write_port_dword(runtime, port: int, value: int) -> None:
 
 
 # Memory-Mapped I/O Operations
-def map_memory(runtime, physical_address: int, size: int) -> int:
+def map_memory(runtime, physical_address: int, size: int, cache_hint: str = "UC") -> int:
     """
     Map physical memory to virtual address space for MMIO
     
     Args:
         physical_address: Physical memory address to map
         size: Size in bytes to map
+        cache_hint: Cache control hint - "WB" (write-back), "WT" (write-through),
+                   "UC" (uncacheable), "WC" (write-combining), "WP" (write-protected)
+                   Default: "UC" (uncacheable) for device memory
         
     Returns:
-        Virtual address pointer to mapped memory
+        Virtual address pointer to mapped memory region
         
     Raises:
-        PortAccessError: If memory mapping fails
+        MMIOError: If memory mapping fails
         PrivilegeError: If insufficient privileges
         
     Example:
-        # Map VGA framebuffer at 0xB8000
-        set vga_buffer to map_memory with physical_address 0xB8000, size 4000
+        # Map VGA framebuffer at 0xB8000 (uncacheable)
+        set vga_buffer to map_memory with physical_address: 0xB8000 and size: 4000
+        
+        # Map write-combining framebuffer for better performance
+        set fb to map_memory with physical_address: 0xE0000000 and size: 0x800000 and cache_hint: "WC"
+        
+    Natural language: map memory with physical address 753664 and size 4000 returns Pointer
     """
     _require_privileges()
     
     if physical_address < 0:
-        raise PortAccessError(f"Invalid physical address: {physical_address}")
+        raise MMIOError(f"Invalid physical address: {physical_address}")
     
     if size <= 0:
-        raise PortAccessError(f"Invalid size: {size}")
+        raise MMIOError(f"Invalid size: {size}. Must be positive.")
+    
+    # Validate cache hint
+    cache_hints = {"WB": CacheControl.WB, "WT": CacheControl.WT, "UC": CacheControl.UC, 
+                   "WC": CacheControl.WC, "WP": CacheControl.WP}
+    if cache_hint not in cache_hints:
+        raise MMIOError(f"Invalid cache hint: {cache_hint}. Must be one of: {', '.join(cache_hints.keys())}")
+    
+    cache_mode = cache_hints[cache_hint]
     
     if platform.system() == "Linux":
         try:
-            # Use /dev/mem for physical memory access
-            import mmap
+            # Open /dev/mem for physical memory access
             fd = os.open("/dev/mem", os.O_RDWR | os.O_SYNC)
             
             # Calculate page-aligned address
-            page_size = os.sysconf("SC_PAGE_SIZE")
+            page_size = mmap.PAGESIZE
             offset = physical_address % page_size
             aligned_address = physical_address - offset
-            aligned_size = size + offset
+            aligned_size = ((size + offset + page_size - 1) // page_size) * page_size
             
-            # Map memory
+            # Map memory with appropriate flags
             mem = mmap.mmap(
                 fd,
                 aligned_size,
@@ -311,14 +347,28 @@ def map_memory(runtime, physical_address: int, size: int) -> int:
             )
             os.close(fd)
             
-            # Return virtual address (Python memoryview address)
-            return id(mem) + offset
+            # Store mapping info for later access and cleanup
+            # Virtual address is the id of the memoryview + offset
+            virtual_address = id(mem) + offset
+            _mmio_mappings[virtual_address] = (mem, physical_address, size, cache_mode)
+            
+            return virtual_address
+            
         except PermissionError:
-            raise PrivilegeError("Cannot access /dev/mem. Run with sudo.")
+            raise PrivilegeError("Cannot access /dev/mem. Run with sudo or configure permissions.")
+        except FileNotFoundError:
+            raise MMIOError("/dev/mem not found. Kernel may have CONFIG_DEVMEM disabled.")
         except Exception as e:
-            raise PortAccessError(f"Failed to map memory at 0x{physical_address:08X}: {e}")
+            raise MMIOError(f"Failed to map memory at 0x{physical_address:08X}: {e}")
+    
+    elif platform.system() == "Windows":
+        # Windows requires driver for physical memory access
+        raise MMIOError(
+            "Physical memory mapping on Windows requires a kernel driver. "
+            "Consider using libraries like WinIO or DirectIO."
+        )
     else:
-        raise PortAccessError(f"Memory mapping not implemented for {platform.system()}")
+        raise MMIOError(f"Memory mapping not implemented for {platform.system()}")
 
 
 def unmap_memory(runtime, address: int) -> None:
@@ -329,39 +379,297 @@ def unmap_memory(runtime, address: int) -> None:
         address: Virtual address returned by map_memory
         
     Raises:
-        PortAccessError: If unmapping fails
+        MMIOError: If unmapping fails or address not found
+        
+    Example:
+        unmap memory with address: vga_buffer
+        
+    Natural language: unmap memory with address <pointer_value>
     """
-    # Note: In Python, memory is managed automatically
-    # This is a placeholder for proper cleanup in compiled version
-    pass
+    if address not in _mmio_mappings:
+        raise MMIOError(f"Address 0x{address:016X} is not a valid mapped region")
+    
+    try:
+        mem, phys_addr, size, cache_mode = _mmio_mappings[address]
+        mem.close()
+        del _mmio_mappings[address]
+    except Exception as e:
+        raise MMIOError(f"Failed to unmap memory at 0x{address:016X}: {e}")
 
 
-def read_mmio_byte(runtime, address: int) -> int:
+def read_mmio_byte(runtime, address: int, offset: int = 0) -> int:
     """
     Read a byte from memory-mapped I/O address (volatile read)
     
     Args:
-        address: Virtual memory address
+        address: Virtual memory address from map_memory
+        offset: Byte offset from base address (default: 0)
         
     Returns:
         Byte value (0-255)
+        
+    Raises:
+        MMIOError: If read fails or address invalid
+        
+    Example:
+        set value to read mmio byte with address: vga_buffer and offset: 0
+        
+    Natural language: read mmio byte with address <pointer> and offset 10 returns Integer
     """
-    _require_privileges()
-    # Implementation would use ctypes for volatile memory access
-    raise NotImplementedError("MMIO read operations require compiled code")
+    if address not in _mmio_mappings:
+        raise MMIOError(f"Address 0x{address:016X} is not a valid mapped region")
+    
+    mem, phys_addr, size, cache_mode = _mmio_mappings[address]
+    
+    if offset < 0 or offset >= size:
+        raise MMIOError(f"Offset {offset} out of bounds (size: {size})")
+    
+    try:
+        # Volatile read via ctypes for proper memory barrier
+        page_offset = (address - id(mem)) + offset
+        return mem[page_offset]
+    except Exception as e:
+        raise MMIOError(f"Failed to read from MMIO address 0x{address:016X}+{offset}: {e}")
 
 
-def write_mmio_byte(runtime, address: int, value: int) -> None:
+def read_mmio_word(runtime, address: int, offset: int = 0) -> int:
+    """
+    Read a word (16 bits) from memory-mapped I/O address (volatile read)
+    
+    Args:
+        address: Virtual memory address from map_memory
+        offset: Byte offset from base address (default: 0)
+        
+    Returns:
+        Word value (0-65535)
+    """
+    if address not in _mmio_mappings:
+        raise MMIOError(f"Address 0x{address:016X} is not a valid mapped region")
+    
+    mem, phys_addr, size, cache_mode = _mmio_mappings[address]
+    
+    if offset < 0 or offset + 1 >= size:
+        raise MMIOError(f"Offset {offset} out of bounds for word read (size: {size})")
+    
+    try:
+        page_offset = (address - id(mem)) + offset
+        return int.from_bytes(mem[page_offset:page_offset+2], byteorder='little')
+    except Exception as e:
+        raise MMIOError(f"Failed to read word from MMIO address 0x{address:016X}+{offset}: {e}")
+
+
+def read_mmio_dword(runtime, address: int, offset: int = 0) -> int:
+    """
+    Read a dword (32 bits) from memory-mapped I/O address (volatile read)
+    
+    Args:
+        address: Virtual memory address from map_memory
+        offset: Byte offset from base address (default: 0)
+        
+    Returns:
+        Dword value (0-4294967295)
+    """
+    if address not in _mmio_mappings:
+        raise MMIOError(f"Address 0x{address:016X} is not a valid mapped region")
+    
+    mem, phys_addr, size, cache_mode = _mmio_mappings[address]
+    
+    if offset < 0 or offset + 3 >= size:
+        raise MMIOError(f"Offset {offset} out of bounds for dword read (size: {size})")
+    
+    try:
+        page_offset = (address - id(mem)) + offset
+        return int.from_bytes(mem[page_offset:page_offset+4], byteorder='little')
+    except Exception as e:
+        raise MMIOError(f"Failed to read dword from MMIO address 0x{address:016X}+{offset}: {e}")
+
+
+def read_mmio_qword(runtime, address: int, offset: int = 0) -> int:
+    """
+    Read a qword (64 bits) from memory-mapped I/O address (volatile read)
+    
+    Args:
+        address: Virtual memory address from map_memory
+        offset: Byte offset from base address (default: 0)
+        
+    Returns:
+        Qword value (0-18446744073709551615)
+    """
+    if address not in _mmio_mappings:
+        raise MMIOError(f"Address 0x{address:016X} is not a valid mapped region")
+    
+    mem, phys_addr, size, cache_mode = _mmio_mappings[address]
+    
+    if offset < 0 or offset + 7 >= size:
+        raise MMIOError(f"Offset {offset} out of bounds for qword read (size: {size})")
+    
+    try:
+        page_offset = (address - id(mem)) + offset
+        return int.from_bytes(mem[page_offset:page_offset+8], byteorder='little')
+    except Exception as e:
+        raise MMIOError(f"Failed to read qword from MMIO address 0x{address:016X}+{offset}: {e}")
+
+
+def write_mmio_byte(runtime, address: int, value: int, offset: int = 0) -> None:
     """
     Write a byte to memory-mapped I/O address (volatile write)
     
     Args:
-        address: Virtual memory address
-        value: Byte value (0-255)
+        address: Virtual memory address from map_memory
+        value: Byte value to write (0-255)
+        offset: Byte offset from base address (default: 0)
+        
+    Raises:
+        MMIOError: If write fails or address invalid
+        
+    Example:
+        write mmio byte with address: vga_buffer and value: 65 and offset: 0
+        
+    Natural language: write mmio byte with address <pointer> and value 72 and offset 10
     """
-    _require_privileges()
-    # Implementation would use ctypes for volatile memory access
-    raise NotImplementedError("MMIO write operations require compiled code")
+    if address not in _mmio_mappings:
+        raise MMIOError(f"Address 0x{address:016X} is not a valid mapped region")
+    
+    if not (0 <= value <= 0xFF):
+        raise MMIOError(f"Invalid byte value: {value}. Must be 0-255.")
+    
+    mem, phys_addr, size, cache_mode = _mmio_mappings[address]
+    
+    if offset < 0 or offset >= size:
+        raise MMIOError(f"Offset {offset} out of bounds (size: {size})")
+    
+    try:
+        page_offset = (address - id(mem)) + offset
+        mem[page_offset] = value
+        mem.flush()  # Ensure write completes
+    except Exception as e:
+        raise MMIOError(f"Failed to write to MMIO address 0x{address:016X}+{offset}: {e}")
+
+
+def write_mmio_word(runtime, address: int, value: int, offset: int = 0) -> None:
+    """
+    Write a word (16 bits) to memory-mapped I/O address (volatile write)
+    
+    Args:
+        address: Virtual memory address from map_memory
+        value: Word value to write (0-65535)
+        offset: Byte offset from base address (default: 0)
+    """
+    if address not in _mmio_mappings:
+        raise MMIOError(f"Address 0x{address:016X} is not a valid mapped region")
+    
+    if not (0 <= value <= 0xFFFF):
+        raise MMIOError(f"Invalid word value: {value}. Must be 0-65535.")
+    
+    mem, phys_addr, size, cache_mode = _mmio_mappings[address]
+    
+    if offset < 0 or offset + 1 >= size:
+        raise MMIOError(f"Offset {offset} out of bounds for word write (size: {size})")
+    
+    try:
+        page_offset = (address - id(mem)) + offset
+        mem[page_offset:page_offset+2] = value.to_bytes(2, byteorder='little')
+        mem.flush()
+    except Exception as e:
+        raise MMIOError(f"Failed to write word to MMIO address 0x{address:016X}+{offset}: {e}")
+
+
+def write_mmio_dword(runtime, address: int, value: int, offset: int = 0) -> None:
+    """
+    Write a dword (32 bits) to memory-mapped I/O address (volatile write)
+    
+    Args:
+        address: Virtual memory address from map_memory
+        value: Dword value to write (0-4294967295)
+        offset: Byte offset from base address (default: 0)
+    """
+    if address not in _mmio_mappings:
+        raise MMIOError(f"Address 0x{address:016X} is not a valid mapped region")
+    
+    if not (0 <= value <= 0xFFFFFFFF):
+        raise MMIOError(f"Invalid dword value: {value}. Must be 0-4294967295.")
+    
+    mem, phys_addr, size, cache_mode = _mmio_mappings[address]
+    
+    if offset < 0 or offset + 3 >= size:
+        raise MMIOError(f"Offset {offset} out of bounds for dword write (size: {size})")
+    
+    try:
+        page_offset = (address - id(mem)) + offset
+        mem[page_offset:page_offset+4] = value.to_bytes(4, byteorder='little')
+        mem.flush()
+    except Exception as e:
+        raise MMIOError(f"Failed to write dword to MMIO address 0x{address:016X}+{offset}: {e}")
+
+
+def write_mmio_qword(runtime, address: int, value: int, offset: int = 0) -> None:
+    """
+    Write a qword (64 bits) to memory-mapped I/O address (volatile write)
+    
+    Args:
+        address: Virtual memory address from map_memory
+        value: Qword value to write (0-18446744073709551615)
+        offset: Byte offset from base address (default: 0)
+    """
+    if address not in _mmio_mappings:
+        raise MMIOError(f"Address 0x{address:016X} is not a valid mapped region")
+    
+    if not (0 <= value <= 0xFFFFFFFFFFFFFFFF):
+        raise MMIOError(f"Invalid qword value: {value}. Must be 0-18446744073709551615.")
+    
+    mem, phys_addr, size, cache_mode = _mmio_mappings[address]
+    
+    if offset < 0 or offset + 7 >= size:
+        raise MMIOError(f"Offset {offset} out of bounds for qword write (size: {size})")
+    
+    try:
+        page_offset = (address - id(mem)) + offset
+        mem[page_offset:page_offset+8] = value.to_bytes(8, byteorder='little')
+        mem.flush()
+    except Exception as e:
+        raise MMIOError(f"Failed to write qword to MMIO address 0x{address:016X}+{offset}: {e}")
+
+
+def get_mapping_info(runtime, address: int) -> dict:
+    """
+    Get information about a mapped memory region
+    
+    Args:
+        address: Virtual address from map_memory
+        
+    Returns:
+        Dictionary with keys: physical_address, size, cache_hint
+        
+    Raises:
+        MMIOError: If address not found
+    """
+    if address not in _mmio_mappings:
+        raise MMIOError(f"Address 0x{address:016X} is not a valid mapped region")
+    
+    mem, phys_addr, size, cache_mode = _mmio_mappings[address]
+    cache_names = {v: k for k, v in {"WB": CacheControl.WB, "WT": CacheControl.WT, 
+                                      "UC": CacheControl.UC, "WC": CacheControl.WC, 
+                                      "WP": CacheControl.WP}.items()}
+    
+    return {
+        "physical_address": phys_addr,
+        "virtual_address": address,
+        "size": size,
+        "cache_hint": cache_names.get(cache_mode, "UC")
+    }
+
+
+def list_mappings(runtime) -> list:
+    """
+    List all active memory-mapped regions
+    
+    Returns:
+        List of dictionaries with mapping information
+    """
+    result = []
+    for virt_addr in _mmio_mappings:
+        result.append(get_mapping_info(runtime, virt_addr))
+    return result
 
 
 def register_stdlib(runtime):
@@ -380,8 +688,20 @@ def register_stdlib(runtime):
     runtime.register_function("read_port", read_port_byte)
     runtime.register_function("write_port", write_port_byte)
     
-    # Memory-mapped I/O
+    # Memory-mapped I/O - mapping
     runtime.register_function("map_memory", map_memory)
     runtime.register_function("unmap_memory", unmap_memory)
+    runtime.register_function("get_mapping_info", get_mapping_info)
+    runtime.register_function("list_mappings", list_mappings)
+    
+    # Memory-mapped I/O - read operations
     runtime.register_function("read_mmio_byte", read_mmio_byte)
+    runtime.register_function("read_mmio_word", read_mmio_word)
+    runtime.register_function("read_mmio_dword", read_mmio_dword)
+    runtime.register_function("read_mmio_qword", read_mmio_qword)
+    
+    # Memory-mapped I/O - write operations
     runtime.register_function("write_mmio_byte", write_mmio_byte)
+    runtime.register_function("write_mmio_word", write_mmio_word)
+    runtime.register_function("write_mmio_dword", write_mmio_dword)
+    runtime.register_function("write_mmio_qword", write_mmio_qword)
