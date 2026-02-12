@@ -141,6 +141,15 @@ NLPL has achieved impressive maturity with:
   - Cache control hints (WB, WT, UC, WC)
   - Requires compiled code (C extension or LLVM)
 
+  - Memory-mapped I/O read/write operations ✅ COMPLETE (Feb 12, 2026)
+  - Volatile memory access semantics ✅ COMPLETE
+  - Cache control hints (WB, WT, UC, WC, WP) ✅ COMPLETE
+  - Page-aligned memory mapping via mmap ✅ COMPLETE
+  - Read operations: read_mmio_byte/word/dword/qword ✅ COMPLETE
+  - Write operations: write_mmio_byte/word/dword/qword ✅ COMPLETE
+  - Mapping management: map_memory, unmap_memory, get_mapping_info, list_mappings ✅ COMPLETE
+  - Platform support: Linux (full), Windows (requires kernel driver - documented)
+
 - [ ] **Interrupt/Exception Handling**
   - `register_interrupt_handler with vector as Integer, handler as Function`
   - `enable_interrupts`, `disable_interrupts`
@@ -160,7 +169,7 @@ NLPL has achieved impressive maturity with:
   - Feature detection (SSE, AVX, etc.)
 
 **Priority:** HIGH for OS development  
-**Estimated Effort:** Port I/O ✅ Done; MMIO 2-3 weeks; Interrupts 3-4 weeks; DMA/CPU 4-6 weeks
+**Estimated Effort:** Port I/O ✅ Done (Feb 2026); MMIO ✅ Done (Feb 12, 2026); Interrupts 3-4 weeks; DMA/CPU 4-6 weeks
 
 ---
 
