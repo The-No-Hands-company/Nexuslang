@@ -189,10 +189,66 @@ NLPL has achieved impressive maturity with:
     - Privilege checking (root/administrator required)
   - Platform Support: Linux/Windows (requires ring 0 privileges)
 
-- [ ] **DMA Control**
-  - DMA channel allocation/configuration
-  - Transfer setup and initiation
-  - Completion polling/interrupt handling
+- ✅ **DMA (Direct Memory Access) Control** (COMPLETE - Feb 12, 2026)
+  - Channel Management ✅ COMPLETE
+    - `allocate_dma_channel(channel)` - Allocate DMA channel (0-7, except 4)
+    - `release_dma_channel(channel)` - Release allocated channel
+    - `get_channel_status(channel)` - Get channel status dict
+    - `list_allocated_channels()` - List all allocated channels
+  - Transfer Configuration ✅ COMPLETE
+    - `configure_dma_transfer(channel, source, destination, count, mode, direction)` - Full config
+    - `set_dma_address(channel, address)` - Set 24-bit physical address
+    - `set_dma_count(channel, count)` - Set transfer count (1-65536 for 8-bit, 1-131072 for 16-bit)
+    - `set_dma_mode(channel, mode, direction)` - Set mode and direction
+  - Transfer Control ✅ COMPLETE
+    - `start_dma_transfer(channel)` - Start transfer (unmask channel)
+    - `stop_dma_transfer(channel)` - Stop transfer (mask channel)
+    - `reset_dma_controller()` - Reset both DMA controllers
+    - `mask_dma_channel(channel)` - Disable channel (pause)
+    - `unmask_dma_channel(channel)` - Enable channel (resume)
+  - Status Monitoring ✅ COMPLETE
+    - `get_dma_status(channel)` - Get detailed status (terminal count, request pending)
+    - `get_transfer_count(channel)` - Get remaining transfer count
+    - `is_transfer_complete(channel)` - Check if transfer finished
+    - `get_dma_registers(channel)` - Read all channel registers (address, count, page, mode)
+  - DMA Architecture ✅ COMPLETE
+    - DMAChannel enum: 8 channels (0-7), channel 4 cascade mode
+    - DMAMode enum: DEMAND(0), SINGLE(1), BLOCK(2), CASCADE(3)
+    - DMADirection enum: VERIFY(0), WRITE(1), READ(2), INVALID(3)
+    - DMAChannelState class: Full channel state tracking
+  - Transfer Modes ✅ COMPLETE
+    - DEMAND: Transfer on device demand
+    - SINGLE: One byte/word per DMA request
+    - BLOCK: Entire block in one burst
+    - CASCADE: Channel 4 controller linking (8-bit to 16-bit)
+  - Channel Support ✅ COMPLETE
+    - Channels 0-3: 8-bit DMA (up to 64KB transfers)
+    - Channel 4: Cascade mode (links controllers)
+    - Channels 5-7: 16-bit DMA (up to 128KB transfers)
+  - Error Handling ✅ COMPLETE
+    - DMAError exception for all errors
+    - Channel validation (0-7, cascade protection)
+    - Count validation (size limits per channel type)
+    - Address validation (24-bit, page-aligned)
+    - State validation (allocation, configuration required)
+    - Mode/direction validation
+  - Test Coverage ✅ COMPLETE
+    - test_dma_simple.nlpl - Basic allocation/release
+    - test_dma_config.nlpl - Configuration and parameter setting
+    - test_dma_transfer.nlpl - Transfer control (start/stop/mask/unmask)
+    - test_dma_errors.nlpl - Comprehensive error handling (12 error cases)
+    - test_dma_cascade.nlpl - Multi-channel and reset operations
+  - Example Program ✅ COMPLETE
+    - examples/hardware_dma.nlpl (445 lines)
+    - Memory-to-memory transfer
+    - Floppy disk controller setup (channel 2)
+    - Sound card audio DMA (channel 1)
+    - 16-bit DMA transfers (channel 5)
+    - Multiple concurrent transfers
+    - Controller reset and recovery
+    - Error handling demonstrations
+    - All transfer modes (DEMAND/SINGLE/BLOCK)
+  - Platform Support: x86 PC architecture, Linux/Windows (requires ring 0 privileges)
 
 - [ ] **CPU Control**
   - Read/write control registers (CR0, CR2, CR3, CR4)
