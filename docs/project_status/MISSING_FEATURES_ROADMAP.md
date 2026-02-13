@@ -22,12 +22,13 @@ NLPL has achieved impressive maturity with:
 - ✅ **Trailing block syntax** (February 11, 2026)
 - ✅ **Keyword-only parameters** (February 11, 2026)
 - ✅ **Bitwise operations** (Complete + Documented February 13, 2026)
+- ⚠️ **Inline Assembly** (In progress - Week 1/8 started February 13, 2026)
 
 **However**, to match C/C++/Rust/ASM as a **truly universal general-purpose language**, NLPL needs infrastructure and primitives that enable **all domains equally**:
 
 0. **Language Features & Usability** (100% complete - all parameter features done!)
 1. **Universal Infrastructure** (40% complete - FFI, Build System, Package Manager needed)
-2. **Low-Level Primitives** (85% complete - Hardware Access, Memory Control, Bitwise Ops COMPLETE)
+2. **Low-Level Primitives** (85% → 90% in progress - Inline ASM implementation started)
 3. **Advanced Memory Management** (60% complete)
 4. **Concurrency & Parallelism** (50% complete - Threading, Sync, Atomics COMPLETE)
 5. **Cross-Platform Support** (30% complete)
@@ -646,7 +647,137 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 
 ---
 
-### 1.2 Bootloader & Bare Metal Support ❌ MISSING
+### 2.3 Inline Assembly ⚠️ IN PROGRESS
+
+**Status:** Parser complete, LLVM backend in progress (8-week implementation)
+
+**What C/C++/Rust/ASM Have:**
+
+- Inline assembly blocks within high-level code
+- Register constraints (input/output operands)
+- Clobber lists (modified registers)
+- Memory barriers and ordering
+- Architecture-specific instruction access
+
+**What NLPL Has:**
+
+- ✅ **Lexer Tokens** (COMPLETE)
+  - `ASM` - Short form keyword
+  - `INLINE` - Long form keyword
+  - Both recognized in keyword map
+
+- ✅ **Parser Support** (COMPLETE)
+  - `parse_inline_assembly()` - Full syntax parser (lines 3415-3510 in parser.py)
+  - Syntax:
+    ```nlpl
+    asm
+        code
+            "mov rax, rbx"
+            "add rax, 5"
+        inputs "r": x, "r": y
+        outputs "=r": result
+        clobbers "rax", "rbx"
+    end
+    ```
+  - Section parsing: code, inputs, outputs, clobbers
+  - Helper methods: `_parse_asm_operands()`, `_parse_asm_clobbers()`
+
+- ✅ **AST Node** (COMPLETE)
+  - `InlineAssembly` class in ast.py
+  - Fields: asm_code, inputs, outputs, clobbers, line_number
+
+- ⚠️ **Interpreter** (STUB - compiled mode only)
+  - `execute_inline_assembly()` returns None
+  - Comment: "Inline assembly is only fully supported in compiled mode"
+
+- ❌ **LLVM Backend** (IN PROGRESS - Week 1-2)
+  - Need: `codegen_inline_assembly()` in compiler backend
+  - Generate LLVM inline assembly calls
+  - Constraint translation (NLPL → LLVM)
+  - Register allocation interface
+
+**Implementation Roadmap (8 Weeks):**
+
+**Week 1-2: LLVM Backend Foundation**
+- Implement `codegen_inline_assembly()` in LLVM backend
+- Basic constraint translation (NLPL → LLVM)
+- Generate LLVM inline assembly IR
+- Simple single-instruction blocks
+- x86/x64 architecture support
+
+**Week 3-4: Register Constraints**
+- Complete constraint system
+- Support all x86/x64 constraint types: "r", "a", "b", "c", "d", "S", "D", "m", "i", "n", "g"
+- Output constraints: "=r", "+r", "=m"
+- Constraint modifiers: "&" (early clobber), "%" (commutative)
+- Register conflict detection
+- Comprehensive constraint validation
+
+**Week 5-6: Multi-Instruction Blocks & Clobbers**
+- Multi-instruction block generation
+- Clobber list processing: registers, "memory", "cc"
+- Instruction ordering preservation
+- Label support within inline assembly
+- Jump target handling
+
+**Week 7: Architecture Support**
+- Architecture detection (x86/x64/ARM/AArch64)
+- x86-specific features (32-bit/64-bit modes, register translation)
+- Architecture-specific constraint validation
+- Foundation for ARM support
+
+**Week 8: Safety & Validation**
+- Assembly syntax validation
+- Dangerous instruction warnings (stack manipulation, privileged instructions)
+- Register usage analysis
+- Memory access validation
+- Clear error messages
+
+**Use Cases (Domain-Agnostic):**
+
+- **Performance Optimization**: POPCNT, RDTSC, SIMD operations
+- **Hardware Control**: Direct register access, I/O instructions
+- **Systems Programming**: Task switching, system calls, interrupt handlers
+- **Cryptography**: AES-NI, RDRAND for fast crypto operations
+- **Timing**: Cycle counters, precise timing measurements
+- **Low-level Debugging**: Breakpoints, watchpoints, trace markers
+
+**Testing Plan:**
+
+- **Unit Tests** (5 files):
+  - test_asm_basic.nlpl - Simple single instructions
+  - test_asm_constraints.nlpl - All constraint types
+  - test_asm_multi_instruction.nlpl - Complex blocks
+  - test_asm_clobbers.nlpl - Register/memory clobbers
+  - test_asm_errors.nlpl - Error validation
+
+- **Integration Tests** (3 files):
+  - test_asm_with_hardware.nlpl - Combine with Port I/O, MMIO, CPU Control
+  - test_asm_performance.nlpl - Fast math, SIMD operations
+  - test_asm_os_kernel.nlpl - Task switching, interrupt handlers
+
+- **Example Programs** (2 files):
+  - examples/inline_assembly_guide.nlpl (500+ lines) - Complete guide, all constraints, use cases
+  - examples/hardware_inline_asm.nlpl - Hardware control examples
+
+**Completion Criteria:**
+
+- ✅ LLVM backend generates correct inline assembly IR
+- ✅ All constraint types supported and validated
+- ✅ Multi-instruction blocks working with labels/jumps
+- ✅ Architecture detection and x86/x64 support complete
+- ✅ Safety features: syntax validation, dangerous instruction warnings
+- ✅ 5+ unit tests, 3+ integration tests, 2+ example programs
+- ✅ Comprehensive documentation (constraint reference, use cases, best practices)
+
+**Priority:** HIGH (completes Part 2 to 100%, enables direct hardware control)  
+**Estimated Effort:** 8 weeks (2 months)  
+**Target Completion:** ~April 13, 2026  
+**Detailed Plan:** `docs/8_planning/inline_assembly_roadmap.md`
+
+---
+
+### 2.4 Bootloader & Bare Metal Support ❌ MISSING
 
 **What C/C++/ASM Have:**
 
