@@ -2418,6 +2418,8 @@ class LLVMIRGenerator(CodeGenerator):
             pass  # Imports handled at module level
         elif stmt_type == 'PanicStatement':
             self._generate_panic_statement(stmt, indent)
+        elif stmt_type == 'InlineAssembly':
+            self._generate_inline_assembly(stmt, indent)
         # Add more statement types as needed
     
     def _generate_variable_declaration(self, node, indent=''):
@@ -2719,6 +2721,156 @@ class LLVMIRGenerator(CodeGenerator):
         # Call nlpl_panic
         self.emit(f'{indent}call void @nlpl_panic(i8* {msg_reg})')
         self.emit(f'{indent}unreachable')
+    
+    def _generate_inline_assembly(self, node, indent=''):
+        """
+        Generate LLVM inline assembly from InlineAssembly AST node.
+        
+        Week 1-2 Implementation: Basic LLVM inline assembly generation.
+        Supports:
+        - Assembly code blocks
+        - Input operands with constraints
+        - Output operands with constraints
+        - Clobber lists
+        
+        LLVM inline assembly syntax:
+        call <return_type> asm [sideeffect] "assembly_code", 
+                              "constraint_string" (operands)
+        """
+        # Extract assembly instructions
+        asm_instructions = []
+        if hasattr(node, 'asm_code') and node.asm_code:
+            for instruction in node.asm_code:
+                # Strip quotes from string literals
+                inst_str = instruction.strip('"').strip("'")
+                asm_instructions.append(inst_str)
+        
+        # Join instructions with newlines and semicolons for LLVM
+        asm_code = '; '.join(asm_instructions)
+        
+        # Process input operands
+        input_regs = []
+        input_constraints = []
+        if hasattr(node, 'inputs') and node.inputs:
+            for constraint, expr in node.inputs.items():
+                # Generate expression to get the input value
+                input_reg = self._generate_expression(expr, indent)
+                input_type = self._infer_expression_type(expr)
+                input_regs.append((input_reg, input_type))
+                
+                # Translate NLPL constraint to LLVM constraint
+                llvm_constraint = self._translate_asm_constraint(constraint, is_output=False)
+                input_constraints.append(llvm_constraint)
+        
+        # Process output operands
+        output_allocas = []
+        output_constraints = []
+        if hasattr(node, 'outputs') and node.outputs:
+            for constraint, var_name in node.outputs.items():
+                # Get or create alloca for output variable
+                if var_name in self.local_vars:
+                    output_type, output_alloca = self.local_vars[var_name]
+                else:
+                    # Create new variable for output
+                    output_type = 'i64'  # Default output type
+                    output_alloca = f'%{var_name}'
+                    self.emit(f'{indent}{output_alloca} = alloca {output_type}, align 8')
+                    self.local_vars[var_name] = (output_type, output_alloca)
+                
+                output_allocas.append((output_alloca, output_type))
+                
+                # Translate NLPL constraint to LLVM constraint
+                llvm_constraint = self._translate_asm_constraint(constraint, is_output=True)
+                output_constraints.append(llvm_constraint)
+        
+        # Process clobber list
+        clobber_constraints = []
+        if hasattr(node, 'clobbers') and node.clobbers:
+            for clobber in node.clobbers:
+                # Add ~ prefix for clobbers in LLVM constraint string
+                clobber_str = clobber.strip('"').strip("'")
+                # Special clobbers: "memory", "cc" (condition codes)
+                if clobber_str in ('memory', 'cc', 'flags'):
+                    clobber_constraints.append(f'~{{{clobber_str}}}')
+                else:
+                    # Register clobber
+                    clobber_constraints.append(f'~{{{clobber_str}}}')
+        
+        # Build constraint string
+        # Format: "output_constraints,input_constraints,clobber_constraints"
+        all_constraints = output_constraints + input_constraints + clobber_constraints
+        constraint_string = ','.join(all_constraints)
+        
+        # Determine return type
+        if output_allocas:
+            # If there are outputs, inline asm returns the output value(s)
+            if len(output_allocas) == 1:
+                return_type = output_allocas[0][1]
+            else:
+                # Multiple outputs: use struct (for future enhancement)
+                return_type = 'void'
+        else:
+            return_type = 'void'
+        
+        # Build operand list for call
+        operand_list = []
+        for input_reg, input_type in input_regs:
+            operand_list.append(f'{input_type} {input_reg}')
+        
+        # Generate the inline assembly call
+        # LLVM syntax: call <ret_type> asm sideeffect "asm_code", "constraints" (operands)
+        if operand_list:
+            operands_str = ', '.join(operand_list)
+            if return_type != 'void':
+                result_reg = self._new_temp()
+                self.emit(f'{indent}{result_reg} = call {return_type} asm sideeffect "{asm_code}", "{constraint_string}" ({operands_str})')
+                
+                # Store result to output variable
+                if output_allocas:
+                    output_alloca, output_type = output_allocas[0]
+                    self.emit(f'{indent}store {output_type} {result_reg}, {output_type}* {output_alloca}, align 8')
+            else:
+                self.emit(f'{indent}call void asm sideeffect "{asm_code}", "{constraint_string}" ({operands_str})')
+        else:
+            # No operands
+            if return_type != 'void':
+                result_reg = self._new_temp()
+                self.emit(f'{indent}{result_reg} = call {return_type} asm sideeffect "{asm_code}", "{constraint_string}" ()')
+                
+                # Store result to output variable
+                if output_allocas:
+                    output_alloca, output_type = output_allocas[0]
+                    self.emit(f'{indent}store {output_type} {result_reg}, {output_type}* {output_alloca}, align 8')
+            else:
+                self.emit(f'{indent}call void asm sideeffect "{asm_code}", "{constraint_string}" ()')
+    
+    def _translate_asm_constraint(self, constraint: str, is_output: bool = False) -> str:
+        """
+        Translate NLPL inline assembly constraint to LLVM constraint syntax.
+        
+        Week 1-2: Basic constraint translation.
+        
+        NLPL Constraints:
+        - "r"   : Any general-purpose register
+        - "a"   : RAX register
+        - "b"   : RBX register
+        - "c"   : RCX register
+        - "d"   : RDX register
+        - "S"   : RSI register
+        - "D"   : RDI register
+        - "m"   : Memory operand
+        - "i"   : Immediate integer
+        - "=r"  : Output to register (write-only)
+        - "+r"  : Output to register (read-write)
+        
+        LLVM uses similar syntax but with some differences.
+        """
+        # Remove quotes if present
+        constraint = constraint.strip('"').strip("'")
+        
+        # Direct pass-through for now (LLVM uses same constraint syntax as GCC)
+        # Future enhancement: more sophisticated translation if needed
+        return constraint
     
     def _generate_print_statement(self, node, indent=''):
         """Generate printf call for print statement."""

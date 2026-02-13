@@ -881,17 +881,6 @@ class Interpreter:
         pointer = self.get_variable(node.identifier)
         self.runtime.free_memory(pointer)
         return None
-    
-    def execute_inline_assembly(self, node):
-        """Execute inline assembly block.
-        
-        Note: Inline assembly is only fully supported in compiled mode.
-        In interpreter mode, we skip execution with a warning.
-        """
-        # Inline assembly cannot be executed in interpreted mode
-        # It requires compilation to native code
-        # For now, just skip it silently (compilation will handle it)
-        return None
         
     def execute_class_definition(self, node):
         """Execute a class definition."""
@@ -1728,78 +1717,23 @@ class Interpreter:
             )
     
     def execute_inline_assembly(self, node):
-        """Execute inline assembly code.
+        """Execute inline assembly block.
         
-        Handles assembly blocks with:
-        - Assembly code strings
-        - Input operands (read-only variables/expressions)
-        - Output operands (writable variables)
-        - Clobbered registers
+        Note: Inline assembly is primarily supported in compiled mode.
+        In interpreter mode, we skip execution with a warning (printed once).
         
-        Example:
-            asm
-                code
-                    "mov rax, 0"
-                    "ret"
-                inputs "r": my_input
-                outputs "=r": my_output
-                clobbers "rax", "rbx"
-            end
+        For limited interpreter support of hardcoded x86 instructions,
+        use the execute_asm() stdlib function from nlpl.stdlib.asm
         """
-        # Get the ASM executor from runtime (registered by stdlib)
-        if not hasattr(self.runtime, 'asm_executor'):
-            raise NLPLRuntimeError(
-                "Inline assembly support not available - ASM stdlib not loaded",
-                line=getattr(node, 'line_number', None)
-            )
+        # Print warning once
+        if not hasattr(self, '_inline_asm_warned'):
+            print("Warning: Inline assembly is only fully supported in compiled mode.")
+            print("         Assembly blocks are skipped in interpreter mode.")
+            print("         Compile with 'nlplc' to generate actual inline assembly.")
+            self._inline_asm_warned = True
         
-        executor = self.runtime.asm_executor
-        
-        # Join all assembly code lines
-        asm_code = '\n'.join(node.asm_code)
-        
-        # Process input operands (evaluate expressions)
-        input_values = {}
-        for constraint, expr in node.inputs.items():
-            value = self.execute(expr)
-            input_values[constraint] = value
-        
-        # For simple cases without complex operand handling,
-        # we just assemble and execute the code
-        # More complex implementations would handle register allocation,
-        # input/output substitution, etc.
-        
-        try:
-            # Assemble the code
-            machine_code = executor.assemble_code(asm_code)
-            
-            # Execute and get result
-            result = executor.execute_assembly(machine_code)
-            
-            # Process output operands (assign results to variables)
-            # In a full implementation, outputs would be extracted from registers
-            # For now, we just use the return value for the first output
-            if node.outputs:
-                first_output = list(node.outputs.values())[0]
-                if hasattr(first_output, 'name'):
-                    # It's an Identifier
-                    self.set_variable(first_output.name, result)
-                elif isinstance(first_output, str):
-                    # Direct variable name
-                    self.set_variable(first_output, result)
-            
-            return result
-            
-        except ValueError as e:
-            raise NLPLRuntimeError(
-                f"Assembly error: {str(e)}",
-                line=getattr(node, 'line_number', None)
-            )
-        except RuntimeError as e:
-            raise NLPLRuntimeError(
-                f"Assembly execution error: {str(e)}",
-                line=getattr(node, 'line_number', None)
-            )
+        # Skip execution - inline assembly requires compiled native code
+        return None
             
     def execute_print_statement(self, node):
         """Execute a print statement with optional type conversion."""
