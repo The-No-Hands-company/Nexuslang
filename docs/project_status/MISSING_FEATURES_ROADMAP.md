@@ -2,8 +2,8 @@
 
 **Document Purpose:** Comprehensive analysis of what NLPL needs to achieve feature parity with industrial-strength general-purpose languages.
 
-**Last Updated:** February 11, 2026  
-**Current NLPL Version:** v1.0 Pre-release (95-100% complete for current scope)
+**Last Updated:** February 13, 2026  
+**Current NLPL Version:** v1.3+ (Hardware Access Complete, All Parameter Features, IDE Support)
 
 ---
 
@@ -21,15 +21,16 @@ NLPL has achieved impressive maturity with:
 - ✅ **Variadic parameters** (February 10, 2026)
 - ✅ **Trailing block syntax** (February 11, 2026)
 - ✅ **Keyword-only parameters** (February 11, 2026)
+- ✅ **Bitwise operations** (Complete + Documented February 13, 2026)
 
-**However**, to match C/C++/Rust/ASM as a truly universal systems programming language, NLPL needs significant additions in:
+**However**, to match C/C++/Rust/ASM as a **truly universal general-purpose language**, NLPL needs infrastructure and primitives that enable **all domains equally**:
 
 0. **Language Features & Usability** (100% complete - all parameter features done!)
-1. **Low-Level Systems Programming** (30% complete)
-2. **Advanced Memory Management** (60% complete)
-3. **Concurrency & Parallelism** (40% complete)
-4. **Hardware & OS Integration** (20% complete)
-5. **Tooling & Ecosystem** (50% complete)
+1. **Universal Infrastructure** (40% complete - FFI, Build System, Package Manager needed)
+2. **Low-Level Primitives** (85% complete - Hardware Access, Memory Control, Bitwise Ops COMPLETE)
+3. **Advanced Memory Management** (60% complete)
+4. **Concurrency & Parallelism** (50% complete - Threading, Sync, Atomics COMPLETE)
+5. **Cross-Platform Support** (30% complete)
 6. **Performance & Optimization** (55% complete)
 7. **Safety & Correctness** (45% complete)
 
@@ -111,9 +112,336 @@ NLPL has achieved impressive maturity with:
 
 ---
 
-## PART 1: Low-Level Systems Programming
+## PART 1: Universal Infrastructure (Enables All Domains)
 
-### 1.1 Direct Hardware Access ⚡ IN PROGRESS
+### 1.1 Foreign Function Interface (FFI) ⚠️ PARTIAL
+
+**Current State:**
+
+- ✅ Parser support for `external` keyword
+- ✅ AST nodes for external function declarations
+- ✅ Basic C library calling via ctypes (interpreter mode)
+- ❌ Incomplete compiled mode FFI
+- ❌ No automatic C header parsing
+- ❌ Limited type marshalling
+
+**What C/C++/Rust Enable:**
+
+- **C/C++**: Can call any library via headers
+- **Rust**: `extern "C"` blocks, bindgen for automatic bindings
+- **Python**: ctypes, cffi for C library access
+
+**Why This is Critical for NLPL:**
+
+FFI lets users leverage **existing ecosystems** without reimplementation:
+- **Graphics**: OpenGL, Vulkan, DirectX (via C libraries)
+- **OS APIs**: POSIX, Win32, system calls
+- **Math**: BLAS, LAPACK, scientific libraries
+- **Networking**: libcurl, OpenSSL
+- **Any domain**: Call existing battle-tested C/C++ code
+
+**What NLPL Needs:**
+
+- [ ] **Complete FFI Implementation**
+  - Compiled mode FFI (LLVM foreign function calls)
+  - Automatic C header parsing (bindgen equivalent)
+  - Type marshalling (NLPL types ↔ C types)
+  - Struct layout compatibility
+  - Function pointer callbacks
+  - Variadic C functions support
+
+- [ ] **FFI Safety**
+  - Unsafe FFI blocks (mark boundary)
+  - Null pointer validation
+  - Buffer overflow protection
+  - Type safety at FFI boundary
+
+- [ ] **C++ Interop**
+  - Name mangling support
+  - C++ class wrapping
+  - Template instantiation
+  - Exception handling across FFI
+
+- [ ] **FFI Tools**
+  - Automatic binding generator
+  - C header analysis
+  - ABI compatibility checking
+  - FFI documentation generator
+
+**Priority:** **CRITICAL** (enables all domains without reimplementation)  
+**Estimated Effort:** 3-6 months for complete implementation
+
+---
+
+### 1.2 Build System ⚠️ MINIMAL
+
+**Current State:**
+
+- ✅ Basic compilation with `nlplc`
+- ❌ No build configuration files
+- ❌ No dependency management
+- ❌ No incremental compilation
+- ❌ No build caching
+
+**What Makes Rust/Cargo Universal:**
+
+Cargo doesn't care if you're building:
+- A web server
+- A game engine
+- An operating system kernel
+- A scientific computing library
+
+**It provides domain-agnostic infrastructure:**
+- Project structure
+- Dependency resolution
+- Build configuration
+- Testing framework
+- Documentation generation
+- Package distribution
+
+**What NLPL Needs:**
+
+- [ ] **Build Configuration**
+  - `nlpl.toml` manifest file
+  - Project metadata (name, version, author, license)
+  - Build targets (library, executable, multiple binaries)
+  - Dependency declarations with version constraints
+  - Feature flags (conditional compilation)
+  - Platform-specific configurations
+
+- [ ] **Build Tool (`nlpl build`)**
+  - Incremental compilation (only recompile changed files)
+  - Build caching (artifact reuse)
+  - Parallel compilation (utilize all CPU cores)
+  - Clean builds (`nlpl clean`)
+  - Build profiles (debug, release, custom)
+  - Build scripts (pre/post build hooks)
+
+- [ ] **Dependency Management**
+  - Dependency resolution algorithm
+  - Version constraints (semver: ^, ~, >=, etc.)
+  - Dependency locking (nlpl.lock file)
+  - Private/dev dependencies
+  - Workspace management (multi-crate projects)
+  - Local path dependencies
+
+- [ ] **Cross-Compilation**
+  - Target specification (x86_64, ARM, WASM, etc.)
+  - Toolchain management
+  - Cross-compile for embedded targets
+  - Platform-specific code selection
+
+- [ ] **Build Optimization**
+  - Link-time optimization (LTO)
+  - Dead code elimination
+  - Symbol stripping
+  - Size optimization
+
+**Priority:** **CRITICAL** (foundation for ecosystem growth)  
+**Estimated Effort:** 6-9 months
+
+---
+
+### 1.3 Package Manager ❌ MISSING
+
+**Current State:**
+
+- ❌ No package manager
+- ❌ No package registry
+- ❌ No versioning system
+- ❌ Community must manually distribute code
+
+**Why This Enables Universal Adoption:**
+
+A package manager lets the **community** build domain-specific libraries:
+- Graphics developers publish rendering engines
+- Systems programmers publish low-level utilities
+- Web developers publish HTTP frameworks
+- Scientists publish numerical libraries
+
+**NLPL provides universal primitives, community builds specialized tools.**
+
+**What NLPL Needs:**
+
+- [ ] **Package Registry**
+  - Central package repository (nlpl.io or similar)
+  - Package search/discovery by keywords
+  - Package metadata (readme, license, docs)
+  - Download statistics
+  - Package ratings/reviews
+
+- [ ] **Package Manager Commands**
+  - `nlpl install package_name` - Install from registry
+  - `nlpl publish` - Publish to registry
+  - `nlpl search keyword` - Search packages
+  - `nlpl update` - Update dependencies
+  - `nlpl remove package_name` - Uninstall package
+  - `nlpl init` - Create new project
+  - `nlpl test` - Run tests
+  - `nlpl doc` - Generate documentation
+
+- [ ] **Versioning System**
+  - Semantic versioning enforcement
+  - Version constraints (>=, ^, ~, exact)
+  - Dependency resolution algorithm (handles conflicts)
+  - Version conflict detection and resolution
+  - Yanking (deprecating published versions)
+
+- [ ] **Package Structure**
+  - Standard package layout
+  - Module exports/public API definition
+  - Package documentation (README, examples)
+  - License files
+  - Changelog tracking
+
+- [ ] **Security**
+  - Package signing (verify authenticity)
+  - Checksum verification
+  - Security audit tool
+  - Vulnerability database
+
+**Priority:** **CRITICAL** (enables ecosystem growth and community contributions)  
+**Estimated Effort:** 9-12 months
+
+---
+
+### 1.4 Documentation & API Generation ⚠️ PARTIAL
+
+**Current State:**
+
+- ✅ 8000+ lines of documentation
+- ❌ No auto-generated API docs
+- ❌ No doc comments in code
+- ❌ Manual documentation only
+
+**Why This is Universal Infrastructure:**
+
+Good documentation isn't domain-specific - it helps developers in **all fields**:
+- API reference for any library
+- Examples for any use case
+- Searchable documentation
+- Version-specific docs
+
+**What NLPL Needs:**
+
+- [ ] **Documentation Comments**
+  - Doc comment syntax (# or ##?)
+  - Function/class documentation
+  - Parameter descriptions (@param)
+  - Return value documentation (@returns)
+  - Example code blocks (@example)
+  - See also links (@see)
+
+- [ ] **Documentation Generator (`nlpl doc`)**
+  - HTML documentation output
+  - Searchable documentation
+  - Cross-references (click to jump)
+  - Module hierarchy navigation
+  - Syntax highlighting in code examples
+  - Dark/light themes
+
+- [ ] **Documentation Tests**
+  - Run examples in documentation
+  - Verify code examples compile
+  - Integration with test suite
+  - Fail build if docs are broken
+
+- [ ] **Documentation Site**
+  - API reference
+  - Guides and tutorials
+  - Cookbook examples
+  - Searchable index
+  - Version selector (docs for each release)
+
+**Priority:** HIGH (improves developer experience across all domains)  
+**Estimated Effort:** 3-6 months
+
+---
+
+## PART 2: Low-Level Primitives (Domain-Agnostic Building Blocks)
+
+### 2.1 Bitwise Operations ✅ COMPLETE
+
+**Current State:**
+
+- ✅ Lexer tokens (BITWISE_AND, BITWISE_OR, BITWISE_XOR, BITWISE_NOT, LEFT_SHIFT, RIGHT_SHIFT)
+- ✅ Parser support (bitwise_or(), bitwise_xor(), bitwise_and(), bitwise_shift() methods)
+- ✅ Interpreter execution (all operations working)
+- ✅ Tested and verified (February 13, 2026)
+
+**What NLPL Has:**
+
+- ✅ **Bitwise AND** (`a bitwise and b` or `a & b`)
+  - Binary AND operation
+  - Example: `5 bitwise and 3` returns `1` (0101 & 0011 = 0001)
+
+- ✅ **Bitwise OR** (`a bitwise or b` or `a | b`)
+  - Binary OR operation
+  - Example: `5 bitwise or 3` returns `7` (0101 | 0011 = 0111)
+
+- ✅ **Bitwise XOR** (`a bitwise xor b` or `a ^ b`)
+  - Binary XOR (exclusive OR) operation
+  - Example: `5 bitwise xor 3` returns `6` (0101 ^ 0011 = 0110)
+
+- ✅ **Bitwise NOT** (`bitwise not a` or `~a`)
+  - Binary complement operation
+  - Example: `bitwise not 5` returns `-6` (two's complement)
+
+- ✅ **Left Shift** (`a shift left n` or `a << n`)
+  - Shift bits left by n positions
+  - Example: `5 shift left 1` returns `10` (0101 << 1 = 1010)
+
+- ✅ **Right Shift** (`a shift right n` or `a >> n`)
+  - Shift bits right by n positions
+  - Example: `8 shift right 1` returns `4` (1000 >> 1 = 0100)
+
+**Use Cases (Domain-Agnostic):**
+
+- **Low-level hardware control**: Device registers, port manipulation
+- **Cryptography**: Encryption algorithms, hash functions
+- **Graphics**: Pixel manipulation, color blending
+- **Compression**: Huffman coding, bit packing
+- **Networking**: Protocol implementation, checksums
+- **Performance**: Fast multiplication/division by powers of 2
+- **Data structures**: Bloom filters, bit arrays
+- **Systems programming**: Flag manipulation, register control
+
+**Implementation Details:**
+
+- **Operator Precedence**: Bitwise operators follow C/C++ precedence
+  - `~` (NOT) - Highest (unary)
+  - `<<`, `>>` (shifts)
+  - `&` (AND)
+  - `^` (XOR)
+  - `|` (OR) - Lowest
+- **Natural Language Syntax**: `bitwise and`, `bitwise or`, `bitwise xor`, `shift left`, `shift right`
+- **Symbol Syntax**: `&`, `|`, `^`, `~`, `<<`, `>>`
+- **Module**: Built into parser/interpreter (no stdlib registration needed)
+
+**Test Coverage:**
+
+- ✅ `test_programs/unit/basic/test_bitwise_basic.nlpl` - Fundamental AND/OR/XOR operations (88 lines)
+- ✅ `test_programs/unit/basic/test_bitwise_shift.nlpl` - Left/right shift operations (134 lines)
+- ✅ `test_programs/unit/basic/test_bitwise_not.nlpl` - Bitwise NOT complement (66 lines)
+- ✅ `test_programs/unit/basic/test_bitwise_practical.nlpl` - Real-world applications (188 lines)
+- ✅ `test_programs/unit/basic/test_bitwise_symbols.nlpl` - Symbol syntax verification (90 lines)
+
+**Example Program:**
+
+- ✅ `examples/bitwise_operations.nlpl` - Comprehensive guide (380+ lines)
+  - Introduction to bitwise operations
+  - All 6 operations with examples
+  - Practical applications (permissions, colors, power-of-2 detection)
+  - Performance considerations
+  - Common bitwise patterns
+  - Hardware control use cases
+
+**Status:** ✅ COMPLETE (Implementation + Testing + Documentation)  
+**Completion Date:** Implemented pre-v1.0, documented February 13, 2026
+
+---
+
+### 2.2 Direct Hardware Access ⚡ COMPLETE
 
 **What C/C++/Rust/ASM Have:**
 
@@ -125,7 +453,7 @@ NLPL has achieved impressive maturity with:
 - CPU control registers (CR0, CR3, etc.)
 - Model-specific registers (MSRs)
 
-**What NLPL Has/Needs:**
+**What NLPL Has:**
 
 - ✅ **Port I/O Operations** (COMPLETE - Feb 2026)
   - `read_port_byte/word/dword with port as Integer returns Integer`
@@ -313,7 +641,7 @@ NLPL has achieved impressive maturity with:
     - Complete CPU information summary
   - Platform Support: x86/x64 architecture, Linux/Windows (CR and MSR operations require ring 0 privileges)
 
-**Priority:** HIGH for OS development  
+**Priority:** HIGH (enables low-level systems programming across all domains)  
 **Estimated Effort:** Port I/O ✅ Done (Feb 2026); MMIO ✅ Done (Feb 12, 2026); Interrupts ✅ Done (Feb 12, 2026); DMA ✅ Done (Feb 12, 2026); CPU Control ✅ Done (Feb 12, 2026)
 
 ---
@@ -396,7 +724,7 @@ NLPL has achieved impressive maturity with:
   - Real-time scheduling (FIFO, RR)
   - CPU affinity control
 
-**Priority:** HIGH for OS development  
+**Priority:** HIGH (enables low-level systems programming and kernel development)  
 **Estimated Effort:** 6-12 months
 
 ---
@@ -858,7 +1186,7 @@ NLPL has achieved impressive maturity with:
 
 ### 4.3 Device Drivers ❌ MISSING
 
-**What C/C++ Have (for OS development):**
+**What C/C++ Provide:**
 
 - Character device drivers
 - Block device drivers
@@ -1703,7 +2031,7 @@ NLPL has achieved impressive maturity with:
 
 ### HIGH PRIORITY (Essential for Production Use)
 
-1. **Direct Hardware Access** - OS development capability
+1. **Direct Hardware Access** - Low-level systems programming capability
 2. **Enhanced Static Analysis** - Bug prevention
 3. **IDE Integration** - Developer experience
 4. **Testing Framework** - Quality assurance
