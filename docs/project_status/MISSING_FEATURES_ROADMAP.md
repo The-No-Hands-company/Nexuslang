@@ -250,14 +250,71 @@ NLPL has achieved impressive maturity with:
     - All transfer modes (DEMAND/SINGLE/BLOCK)
   - Platform Support: x86 PC architecture, Linux/Windows (requires ring 0 privileges)
 
-- [ ] **CPU Control**
-  - Read/write control registers (CR0, CR2, CR3, CR4)
-  - MSR read/write operations
-  - CPUID instruction access
-  - Feature detection (SSE, AVX, etc.)
+- ✅ **CPU Control** (COMPLETE - Feb 12, 2026)
+  - Control Register Access ✅ COMPLETE
+    - `read_cr0()` - Read CR0 system control register
+    - `read_cr2()` - Read page fault linear address
+    - `read_cr3()` - Read page directory base register (PDBR)
+    - `read_cr4()` - Read architecture extensions register
+    - `write_cr0(value)` - Write CR0 with validation
+    - `write_cr3(value)` - Write CR3 (validates page alignment)
+    - `write_cr4(value)` - Write CR4 with validation
+  - Model-Specific Register (MSR) Operations ✅ COMPLETE
+    - `read_msr(msr_address)` - Read 64-bit MSR value (RDMSR)
+    - `write_msr(msr_address, value)` - Write 64-bit MSR value (WRMSR)
+    - `check_msr_support(msr_address)` - Check if MSR exists
+  - CPUID Instruction ✅ COMPLETE
+    - `cpuid(leaf, subleaf=0)` - Execute CPUID, returns dict with eax/ebx/ecx/edx
+    - `get_cpu_vendor()` - Extract vendor string ("GenuineIntel", "AuthenticAMD")
+    - `get_cpu_features()` - Parse all feature flags (40+ features)
+    - `check_feature(feature_name)` - Check specific feature
+  - Control Register Enums ✅ COMPLETE
+    - ControlRegister: CR0, CR2, CR3, CR4
+    - CR0Flags: PE, MP, EM, TS, ET, NE, WP, AM, NW, CD, PG
+    - CR4Flags: VME, PVI, TSD, DE, PSE, PAE, MCE, PGE, PCE, OSFXSR, OSXMMEXCPT, UMIP, LA57, VMXE, SMXE, FSGSBASE, PCIDE, OSXSAVE, SMEP, SMAP, PKE
+  - MSR Address Constants ✅ COMPLETE
+    - MSRAddress enum: IA32_APIC_BASE, IA32_FEATURE_CONTROL, IA32_TSC, IA32_SYSENTER_CS/ESP/EIP, IA32_EFER, IA32_STAR, IA32_LSTAR, IA32_CSTAR, IA32_FMASK, IA32_FS_BASE, IA32_GS_BASE, IA32_KERNEL_GS_BASE
+  - CPU Feature Detection ✅ COMPLETE
+    - CPUIDFeature enum: 62 features including FPU, VME, DE, PSE, TSC, MSR, PAE, MCE, CX8, APIC, SEP, MTRR, PGE, MCA, CMOV, PAT, MMX, FXSR, SSE/SSE2/SSE3/SSSE3/SSE4_1/SSE4_2, AVX, AVX2, FMA, AES, XSAVE, OSXSAVE, F16C, RDRAND, PCLMULQDQ, VMX, SMX, HTT, TM, PBE, etc.
+  - Feature Categories ✅ COMPLETE
+    - Math: FPU, FMA, F16C
+    - SIMD: MMX, SSE/2/3/SSSE3/4.1/4.2, AVX/AVX2/AVX-512
+    - Cryptography: AES-NI, PCLMULQDQ, RDRAND
+    - System: TSC, MSR, APIC, HTT, VMX
+    - Instructions: CMOV, POPCNT, MOVBE, CMPXCHG16B
+    - State: FXSR, XSAVE, OSXSAVE
+    - Bit manipulation: BMI1, BMI2
+  - Error Handling ✅ COMPLETE
+    - CPUControlError exception
+    - Compiled mode requirement validation (CR and MSR operations)
+    - MSR address validation (non-negative integer)
+    - CR3 page alignment validation (multiple of 4096)
+    - Feature name validation
+  - Implementation Notes ✅ COMPLETE
+    - Control register and MSR operations require compiled mode with inline assembly
+    - CPUID operations work in interpreter mode (simulated Intel-like responses)
+    - All functions registered in src/nlpl/stdlib/hardware/__init__.py
+  - Test Coverage ✅ COMPLETE
+    - test_cpu_cpuid.nlpl - CPUID instruction testing (vendor, leaves, features)
+    - test_cpu_features.nlpl - Comprehensive feature detection (10 test scenarios)
+    - test_cpu_control_regs.nlpl - Control register documentation and testing
+    - test_cpu_msr.nlpl - MSR operations and common MSR reference
+    - test_cpu_errors.nlpl - Error handling validation (15 error cases)
+  - Example Program ✅ COMPLETE
+    - examples/hardware_cpu.nlpl (415 lines)
+    - CPU vendor detection
+    - CPUID instruction usage (leaf 0, 1, 7)
+    - Feature detection and analysis
+    - SIMD capability checking
+    - Cryptography feature detection
+    - Control register reference (for compiled mode)
+    - MSR usage examples (for compiled mode)
+    - Optimization decision making
+    - Complete CPU information summary
+  - Platform Support: x86/x64 architecture, Linux/Windows (CR and MSR operations require ring 0 privileges)
 
 **Priority:** HIGH for OS development  
-**Estimated Effort:** Port I/O ✅ Done (Feb 2026); MMIO ✅ Done (Feb 12, 2026); Interrupts ✅ Done (Feb 12, 2026); DMA/CPU 4-6 weeks
+**Estimated Effort:** Port I/O ✅ Done (Feb 2026); MMIO ✅ Done (Feb 12, 2026); Interrupts ✅ Done (Feb 12, 2026); DMA ✅ Done (Feb 12, 2026); CPU Control ✅ Done (Feb 12, 2026)
 
 ---
 

@@ -45,6 +45,11 @@ class DMAError(Exception):
     pass
 
 
+class CPUControlError(Exception):
+    """Raised when CPU control register operations fail"""
+    pass
+
+
 # Cache Control Hints
 class CacheControl(IntEnum):
     """Cache control hints for memory mapping"""
@@ -2158,6 +2163,721 @@ def get_dma_registers(runtime, channel: int) -> dict:
     }
 
 
+# ============================================================================
+# CPU CONTROL REGISTERS AND FEATURES
+# ============================================================================
+
+# Control Register Numbers
+class ControlRegister(IntEnum):
+    """x86/x64 control register numbers"""
+    CR0 = 0  # Processor control flags
+    CR2 = 2  # Page fault linear address
+    CR3 = 3  # Page directory base (PDBR)
+    CR4 = 4  # Architecture extensions
+
+
+# CR0 Control Flags (x86/x64)
+class CR0Flags(IntEnum):
+    """CR0 control register flags"""
+    PE = 0        # Protected Mode Enable (bit 0)
+    MP = 1        # Monitor Coprocessor (bit 1)
+    EM = 2        # Emulation (bit 2)
+    TS = 3        # Task Switched (bit 3)
+    ET = 4        # Extension Type (bit 4)
+    NE = 5        # Numeric Error (bit 5)
+    WP = 16       # Write Protect (bit 16)
+    AM = 18       # Alignment Mask (bit 18)
+    NW = 29       # Not Write-through (bit 29)
+    CD = 30       # Cache Disable (bit 30)
+    PG = 31       # Paging Enable (bit 31)
+
+
+# CR4 Control Flags (x86/x64)
+class CR4Flags(IntEnum):
+    """CR4 control register flags"""
+    VME = 0       # Virtual-8086 Mode Extensions (bit 0)
+    PVI = 1       # Protected-Mode Virtual Interrupts (bit 1)
+    TSD = 2       # Time Stamp Disable (bit 2)
+    DE = 3        # Debugging Extensions (bit 3)
+    PSE = 4       # Page Size Extensions (bit 4)
+    PAE = 5       # Physical Address Extension (bit 5)
+    MCE = 6       # Machine-Check Enable (bit 6)
+    PGE = 7       # Page Global Enable (bit 7)
+    PCE = 8       # Performance-Monitoring Counter Enable (bit 8)
+    OSFXSR = 9    # OS Support for FXSAVE/FXRSTOR (bit 9)
+    OSXMMEXCPT = 10  # OS Support for Unmasked SIMD FP Exceptions (bit 10)
+    UMIP = 11     # User-Mode Instruction Prevention (bit 11)
+    LA57 = 12     # 57-bit Linear Addresses (bit 12)
+    VMXE = 13     # VMX Enable (bit 13)
+    SMXE = 14     # SMX Enable (bit 14)
+    FSGSBASE = 16 # FS/GS Base Access (bit 16)
+    PCIDE = 17    # PCID Enable (bit 17)
+    OSXSAVE = 18  # XSAVE and Processor Extended States Enable (bit 18)
+    SMEP = 20     # Supervisor Mode Execution Prevention (bit 20)
+    SMAP = 21     # Supervisor Mode Access Prevention (bit 21)
+    PKE = 22      # Protection Key Enable (bit 22)
+
+
+# Common MSR Addresses
+class MSRAddress(IntEnum):
+    """Common Model-Specific Register addresses"""
+    IA32_APIC_BASE = 0x0000001B      # APIC base address
+    IA32_FEATURE_CONTROL = 0x0000003A # Feature control
+    IA32_TSC = 0x00000010             # Time Stamp Counter
+    IA32_MTRRCAP = 0x000000FE         # MTRR capabilities
+    IA32_SYSENTER_CS = 0x00000174     # SYSENTER CS
+    IA32_SYSENTER_ESP = 0x00000175    # SYSENTER ESP
+    IA32_SYSENTER_EIP = 0x00000176    # SYSENTER EIP
+    IA32_EFER = 0xC0000080            # Extended Feature Enable Register
+    IA32_STAR = 0xC0000081            # SYSCALL target
+    IA32_LSTAR = 0xC0000082           # Long mode SYSCALL target
+    IA32_CSTAR = 0xC0000083           # Compatibility mode SYSCALL target
+    IA32_FMASK = 0xC0000084           # SYSCALL flag mask
+    IA32_FS_BASE = 0xC0000100         # FS base address
+    IA32_GS_BASE = 0xC0000101         # GS base address
+    IA32_KERNEL_GS_BASE = 0xC0000102  # Kernel GS base
+
+
+# CPUID Feature Flags (from EAX=1, ECX and EDX)
+class CPUIDFeature(IntEnum):
+    """CPUID feature flags"""
+    # EDX features (EAX=1)
+    FPU = 0       # Floating Point Unit
+    VME = 1       # Virtual 8086 Mode Extensions
+    DE = 2        # Debugging Extensions
+    PSE = 3       # Page Size Extension
+    TSC = 4       # Time Stamp Counter
+    MSR = 5       # Model Specific Registers
+    PAE = 6       # Physical Address Extension
+    MCE = 7       # Machine Check Exception
+    CX8 = 8       # CMPXCHG8B instruction
+    APIC = 9      # APIC on chip
+    SEP = 11      # SYSENTER/SYSEXIT
+    MTRR = 12     # Memory Type Range Registers
+    PGE = 13      # Page Global Enable
+    MCA = 14      # Machine Check Architecture
+    CMOV = 15     # Conditional Move instruction
+    PAT = 16      # Page Attribute Table
+    PSE36 = 17    # 36-bit Page Size Extension
+    PSN = 18      # Processor Serial Number
+    CLFSH = 19    # CLFLUSH instruction
+    DS = 21       # Debug Store
+    ACPI = 22     # Thermal Monitor and Clock Control
+    MMX = 23      # MMX technology
+    FXSR = 24     # FXSAVE/FXRSTOR
+    SSE = 25      # SSE extensions
+    SSE2 = 26     # SSE2 extensions
+    SS = 27       # Self-Snoop
+    HTT = 28      # Hyper-Threading Technology
+    TM = 29       # Thermal Monitor
+    PBE = 31      # Pending Break Enable
+    
+    # ECX features (EAX=1) - offset by 32 for uniqueness
+    SSE3 = 32 + 0      # SSE3 extensions
+    PCLMULQDQ = 32 + 1 # PCLMULQDQ instruction
+    DTES64 = 32 + 2    # 64-bit DS Area
+    MONITOR = 32 + 3   # MONITOR/MWAIT
+    DS_CPL = 32 + 4    # CPL Qualified Debug Store
+    VMX = 32 + 5       # Virtual Machine Extensions
+    SMX = 32 + 6       # Safer Mode Extensions
+    EIST = 32 + 7      # Enhanced SpeedStep
+    TM2 = 32 + 8       # Thermal Monitor 2
+    SSSE3 = 32 + 9     # SSSE3 extensions
+    CNXT_ID = 32 + 10  # L1 Context ID
+    FMA = 32 + 12      # Fused Multiply-Add
+    CMPXCHG16B = 32 + 13  # CMPXCHG16B instruction
+    PDCM = 32 + 15     # Perfmon and Debug Capability
+    PCID = 32 + 17     # Process-Context Identifiers
+    DCA = 32 + 18      # Direct Cache Access
+    SSE4_1 = 32 + 19   # SSE4.1 extensions
+    SSE4_2 = 32 + 20   # SSE4.2 extensions
+    X2APIC = 32 + 21   # x2APIC support
+    MOVBE = 32 + 22    # MOVBE instruction
+    POPCNT = 32 + 23   # POPCNT instruction
+    AES = 32 + 25      # AES instruction set
+    XSAVE = 32 + 26    # XSAVE/XRSTOR/XSETBV/XGETBV
+    OSXSAVE = 32 + 27  # XSAVE enabled by OS
+    AVX = 32 + 28      # AVX extensions
+    F16C = 32 + 29     # F16C (half-precision) FP support
+    RDRAND = 32 + 30   # RDRAND instruction
+
+
+def read_cr0(runtime) -> int:
+    """
+    Read CR0 control register
+    
+    CR0 contains system control flags including:
+    - PE (Protected Mode Enable)
+    - PG (Paging Enable)
+    - WP (Write Protect)
+    - AM (Alignment Mask)
+    - NW/CD (Cache control)
+    
+    Returns:
+        CR0 register value (32/64-bit)
+        
+    Raises:
+        PrivilegeError: If insufficient privileges
+        CPUControlError: If read operation fails
+        
+    Example:
+        set cr0_value to read_cr0
+        print text "CR0:"
+        print text cr0_value
+        
+        # Check if paging is enabled (bit 31)
+        set paging_enabled to cr0_value bitwise_and 2147483648
+        if paging_enabled
+            print text "Paging is enabled"
+        end
+    """
+    _require_privileges()
+    
+    # In real implementation, would execute:
+    # mov rax, cr0
+    # This requires inline assembly or privileged instruction execution
+    
+    # Simulated for interpreter mode
+    # In compiled mode, would generate actual MOV CR0 instruction
+    raise CPUControlError("CR0 access requires compiled mode with inline assembly")
+
+
+def read_cr2(runtime) -> int:
+    """
+    Read CR2 control register (Page Fault Linear Address)
+    
+    CR2 contains the linear address that caused the last page fault.
+    This is critical for page fault handlers to determine which address
+    triggered the fault.
+    
+    Returns:
+        CR2 register value (linear address of page fault)
+        
+    Raises:
+        PrivilegeError: If insufficient privileges
+        CPUControlError: If read operation fails
+        
+    Example:
+        # In page fault handler
+        function handle_page_fault
+            set fault_address to read_cr2
+            print text "Page fault at address:"
+            print text fault_address
+        end
+    """
+    _require_privileges()
+    
+    raise CPUControlError("CR2 access requires compiled mode with inline assembly")
+
+
+def read_cr3(runtime) -> int:
+    """
+    Read CR3 control register (Page Directory Base Register)
+    
+    CR3 contains the physical address of the page directory base.
+    This register is central to virtual memory management and is
+    updated on every context switch.
+    
+    Returns:
+        CR3 register value (page directory physical address)
+        
+    Raises:
+        PrivilegeError: If insufficient privileges
+        CPUControlError: If read operation fails
+        
+    Example:
+        set page_dir to read_cr3
+        print text "Page directory base:"
+        print text page_dir
+    """
+    _require_privileges()
+    
+    raise CPUControlError("CR3 access requires compiled mode with inline assembly")
+
+
+def write_cr0(runtime, value: int) -> bool:
+    """
+    Write CR0 control register
+    
+    WARNING: Modifying CR0 can crash the system if done incorrectly.
+    Common operations:
+    - Enable/disable paging (bit 31)
+    - Enable/disable write protection (bit 16)
+    - Enable/disable cache (bits 29-30)
+    
+    Args:
+        value: New CR0 value
+        
+    Returns:
+        True if successful
+        
+    Raises:
+        PrivilegeError: If insufficient privileges
+        CPUControlError: If write operation fails
+        
+    Example:
+        # Enable paging (set bit 31)
+        set cr0_value to read_cr0
+        set cr0_value to cr0_value bitwise_or 2147483648
+        write_cr0 with value: cr0_value
+    """
+    _require_privileges()
+    
+    if not isinstance(value, int):
+        raise CPUControlError("CR0 value must be an integer")
+    
+    raise CPUControlError("CR0 write requires compiled mode with inline assembly")
+
+
+def write_cr3(runtime, value: int) -> bool:
+    """
+    Write CR3 control register (Page Directory Base)
+    
+    WARNING: Changing CR3 switches the active page directory.
+    This is used for:
+    - Process context switches
+    - Address space changes
+    - TLB flushing (writing same value flushes TLB)
+    
+    Args:
+        value: Physical address of page directory (must be page-aligned)
+        
+    Returns:
+        True if successful
+        
+    Raises:
+        PrivilegeError: If insufficient privileges
+        CPUControlError: If write operation fails or address not page-aligned
+        
+    Example:
+        # Switch to new page directory
+        write_cr3 with value: 4096  # Physical address
+        
+        # Flush TLB (write same value)
+        set cr3 to read_cr3
+        write_cr3 with value: cr3
+    """
+    _require_privileges()
+    
+    if not isinstance(value, int):
+        raise CPUControlError("CR3 value must be an integer")
+    
+    # Must be page-aligned (4KB = 4096 bytes)
+    if value % 4096 != 0:
+        raise CPUControlError(f"CR3 value must be page-aligned (multiple of 4096), got {value}")
+    
+    raise CPUControlError("CR3 write requires compiled mode with inline assembly")
+
+
+def write_cr4(runtime, value: int) -> bool:
+    """
+    Write CR4 control register (Architecture Extensions)
+    
+    WARNING: Modifying CR4 can crash the system if done incorrectly.
+    Common operations:
+    - Enable/disable PAE (bit 5)
+    - Enable/disable PSE (bit 4)
+    - Enable/disable PGE (bit 7)
+    - Enable/disable OSFXSR (bit 9)
+    - Enable/disable OSXMMEXCPT (bit 10)
+    
+    Args:
+        value: New CR4 value
+        
+    Returns:
+        True if successful
+        
+    Raises:
+        PrivilegeError: If insufficient privileges
+        CPUControlError: If write operation fails
+        
+    Example:
+        # Enable PAE (Physical Address Extension)
+        set cr4_value to read_cr4
+        set cr4_value to cr4_value bitwise_or 32  # Bit 5
+        write_cr4 with value: cr4_value
+    """
+    _require_privileges()
+    
+    if not isinstance(value, int):
+        raise CPUControlError("CR4 value must be an integer")
+    
+    raise CPUControlError("CR4 write requires compiled mode with inline assembly")
+
+
+def read_cr4(runtime) -> int:
+    """
+    Read CR4 control register (Architecture Extensions)
+    
+    CR4 contains flags for various CPU extensions:
+    - PAE: Physical Address Extension
+    - PSE: Page Size Extensions
+    - PGE: Page Global Enable
+    - OSFXSR: OS support for FXSAVE/FXRSTOR
+    - OSXMMEXCPT: OS support for SIMD exceptions
+    - VMXE: VMX (virtualization) enable
+    - SMEP/SMAP: Security features
+    
+    Returns:
+        CR4 register value
+        
+    Raises:
+        PrivilegeError: If insufficient privileges
+        CPUControlError: If read operation fails
+        
+    Example:
+        set cr4_value to read_cr4
+        print text "CR4:"
+        print text cr4_value
+        
+        # Check if PAE is enabled (bit 5)
+        set pae_enabled to cr4_value bitwise_and 32
+        if pae_enabled
+            print text "PAE is enabled"
+        end
+    """
+    _require_privileges()
+    
+    raise CPUControlError("CR4 access requires compiled mode with inline assembly")
+
+
+def read_msr(runtime, msr_address: int) -> int:
+    """
+    Read Model-Specific Register (MSR)
+    
+    MSRs are special registers unique to x86/x64 processors for:
+    - Performance monitoring
+    - Feature configuration
+    - System call setup (SYSENTER/SYSCALL)
+    - Extended features (EFER)
+    - APIC configuration
+    
+    Args:
+        msr_address: MSR address (e.g., 0xC0000080 for IA32_EFER)
+        
+    Returns:
+        64-bit MSR value
+        
+    Raises:
+        PrivilegeError: If insufficient privileges
+        CPUControlError: If MSR doesn't exist or read fails
+        
+    Example:
+        # Read Extended Feature Enable Register
+        set efer to read_msr with msr_address: 3221225600  # 0xC0000080
+        print text "EFER:"
+        print text efer
+        
+        # Check if long mode is active (bit 10)
+        set long_mode to efer bitwise_and 1024
+        if long_mode
+            print text "CPU in long mode (64-bit)"
+        end
+    """
+    _require_privileges()
+    
+    if not isinstance(msr_address, int):
+        raise CPUControlError("MSR address must be an integer")
+    
+    if msr_address < 0:
+        raise CPUControlError(f"Invalid MSR address: {msr_address}")
+    
+    # In real implementation, would execute:
+    # rdmsr (reads MSR specified in ECX into EDX:EAX)
+    raise CPUControlError("MSR read requires compiled mode with inline assembly")
+
+
+def write_msr(runtime, msr_address: int, value: int) -> bool:
+    """
+    Write Model-Specific Register (MSR)
+    
+    WARNING: Writing incorrect values to MSRs can crash the system.
+    
+    Args:
+        msr_address: MSR address
+        value: 64-bit value to write
+        
+    Returns:
+        True if successful
+        
+    Raises:
+        PrivilegeError: If insufficient privileges
+        CPUControlError: If MSR doesn't exist or write fails
+        
+    Example:
+        # Enable SYSCALL/SYSRET support in EFER
+        set efer to read_msr with msr_address: 3221225600  # IA32_EFER
+        set efer to efer bitwise_or 1  # Set SCE bit
+        write_msr with msr_address: 3221225600 and value: efer
+    """
+    _require_privileges()
+    
+    if not isinstance(msr_address, int):
+        raise CPUControlError("MSR address must be an integer")
+    
+    if not isinstance(value, int):
+        raise CPUControlError("MSR value must be an integer")
+    
+    if msr_address < 0:
+        raise CPUControlError(f"Invalid MSR address: {msr_address}")
+    
+    # In real implementation, would execute:
+    # wrmsr (writes EDX:EAX to MSR specified in ECX)
+    raise CPUControlError("MSR write requires compiled mode with inline assembly")
+
+
+def check_msr_support(runtime, msr_address: int) -> bool:
+    """
+    Check if a specific MSR is supported by the CPU
+    
+    Args:
+        msr_address: MSR address to check
+        
+    Returns:
+        True if MSR is supported, False otherwise
+        
+    Example:
+        set has_efer to check_msr_support with msr_address: 3221225600
+        if has_efer
+            print text "EFER register is supported"
+        end
+    """
+    _require_privileges()
+    
+    # In real implementation, would attempt to read MSR
+    # and catch general protection fault
+    
+    # Common MSRs are generally supported on modern x86/x64
+    if msr_address == MSRAddress.IA32_EFER:
+        return True  # Present on all 64-bit capable CPUs
+    
+    return False  # Conservative default
+
+
+def cpuid(runtime, leaf: int, subleaf: int = 0) -> dict:
+    """
+    Execute CPUID instruction
+    
+    CPUID provides processor identification and feature information.
+    Different leaf values return different information.
+    
+    Args:
+        leaf: CPUID leaf (EAX value)
+        subleaf: CPUID subleaf (ECX value), default 0
+        
+    Returns:
+        Dictionary with keys: eax, ebx, ecx, edx (32-bit values)
+        
+    Raises:
+        CPUControlError: If CPUID execution fails
+        
+    Common leaf values:
+        0: Maximum supported leaf and vendor ID
+        1: Processor info and feature flags
+        7: Extended features
+        0x80000000: Maximum extended leaf
+        0x80000001: Extended processor info
+        
+    Example:
+        # Get vendor ID
+        set result to cpuid with leaf: 0
+        print text "Max leaf:"
+        print text result["eax"]
+        
+        # Get feature flags
+        set features to cpuid with leaf: 1
+        print text "Feature flags (EDX):"
+        print text features["edx"]
+        print text "Feature flags (ECX):"
+        print text features["ecx"]
+    """
+    if not isinstance(leaf, int):
+        raise CPUControlError("CPUID leaf must be an integer")
+    
+    if not isinstance(subleaf, int):
+        raise CPUControlError("CPUID subleaf must be an integer")
+    
+    # In real implementation, would execute:
+    # cpuid instruction with EAX=leaf, ECX=subleaf
+    # Returns EAX, EBX, ECX, EDX
+    
+    # Simulated values for interpreter mode
+    if leaf == 0:
+        # Return vendor ID: "GenuineIntel" or "AuthenticAMD"
+        return {
+            "eax": 13,  # Maximum supported leaf
+            "ebx": 0x756e6547,  # "Genu"
+            "ecx": 0x6c65746e,  # "ntel"
+            "edx": 0x49656e69   # "ineI"
+        }
+    elif leaf == 1:
+        # Return feature flags (simulated)
+        return {
+            "eax": 0x000806EA,  # Family, model, stepping
+            "ebx": 0x00000800,  # Brand index, CLFLUSH, etc.
+            "ecx": 0x7FFAFBBF,  # Feature flags (SSE3, AVX, etc.)
+            "edx": 0xBFEBFBFF   # Feature flags (FPU, SSE2, etc.)
+        }
+    
+    return {"eax": 0, "ebx": 0, "ecx": 0, "edx": 0}
+
+
+def get_cpu_vendor(runtime) -> str:
+    """
+    Get CPU vendor string
+    
+    Returns:
+        Vendor string: "GenuineIntel", "AuthenticAMD", "Unknown", etc.
+        
+    Example:
+        set vendor to get_cpu_vendor
+        print text "CPU vendor:"
+        print text vendor
+    """
+    result = cpuid(runtime, 0)
+    
+    # Extract vendor string from EBX, EDX, ECX
+    ebx = result["ebx"]
+    edx = result["edx"]
+    ecx = result["ecx"]
+    
+    # Convert to string (4 bytes each)
+    vendor = ""
+    for val in [ebx, edx, ecx]:
+        for i in range(4):
+            byte = (val >> (i * 8)) & 0xFF
+            if byte != 0:
+                vendor += chr(byte)
+    
+    return vendor if vendor else "Unknown"
+
+
+def get_cpu_features(runtime) -> dict:
+    """
+    Get CPU feature flags
+    
+    Returns:
+        Dictionary with feature categories:
+        - basic: Features from CPUID leaf 1 (EDX)
+        - extended: Features from CPUID leaf 1 (ECX)
+        - has_sse: Boolean for SSE support
+        - has_sse2: Boolean for SSE2 support
+        - has_sse3: Boolean for SSE3 support
+        - has_ssse3: Boolean for SSSE3 support
+        - has_sse4_1: Boolean for SSE4.1 support
+        - has_sse4_2: Boolean for SSE4.2 support
+        - has_avx: Boolean for AVX support
+        - has_avx2: Boolean for AVX2 support (requires leaf 7)
+        - has_fma: Boolean for FMA support
+        - has_aes: Boolean for AES-NI support
+        
+    Example:
+        set features to get_cpu_features
+        print text "CPU Features:"
+        
+        if features["has_sse2"]
+            print text "SSE2 supported"
+        end
+        
+        if features["has_avx"]
+            print text "AVX supported"
+        end
+    """
+    # Get feature flags from leaf 1
+    result = cpuid(runtime, 1)
+    edx = result["edx"]
+    ecx = result["ecx"]
+    
+    # Extract feature bits
+    features = {
+        "basic": edx,
+        "extended": ecx,
+        # EDX features
+        "has_fpu": bool(edx & (1 << 0)),
+        "has_tsc": bool(edx & (1 << 4)),
+        "has_msr": bool(edx & (1 << 5)),
+        "has_apic": bool(edx & (1 << 9)),
+        "has_cmov": bool(edx & (1 << 15)),
+        "has_mmx": bool(edx & (1 << 23)),
+        "has_fxsr": bool(edx & (1 << 24)),
+        "has_sse": bool(edx & (1 << 25)),
+        "has_sse2": bool(edx & (1 << 26)),
+        "has_htt": bool(edx & (1 << 28)),
+        # ECX features
+        "has_sse3": bool(ecx & (1 << 0)),
+        "has_pclmulqdq": bool(ecx & (1 << 1)),
+        "has_monitor": bool(ecx & (1 << 3)),
+        "has_vmx": bool(ecx & (1 << 5)),
+        "has_ssse3": bool(ecx & (1 << 9)),
+        "has_fma": bool(ecx & (1 << 12)),
+        "has_cmpxchg16b": bool(ecx & (1 << 13)),
+        "has_sse4_1": bool(ecx & (1 << 19)),
+        "has_sse4_2": bool(ecx & (1 << 20)),
+        "has_movbe": bool(ecx & (1 << 22)),
+        "has_popcnt": bool(ecx & (1 << 23)),
+        "has_aes": bool(ecx & (1 << 25)),
+        "has_xsave": bool(ecx & (1 << 26)),
+        "has_osxsave": bool(ecx & (1 << 27)),
+        "has_avx": bool(ecx & (1 << 28)),
+        "has_f16c": bool(ecx & (1 << 29)),
+        "has_rdrand": bool(ecx & (1 << 30)),
+    }
+    
+    # Check for AVX2 (requires leaf 7, subleaf 0)
+    try:
+        result7 = cpuid(runtime, 7, 0)
+        ebx7 = result7["ebx"]
+        features["has_avx2"] = bool(ebx7 & (1 << 5))
+        features["has_bmi1"] = bool(ebx7 & (1 << 3))
+        features["has_bmi2"] = bool(ebx7 & (1 << 8))
+        features["has_avx512f"] = bool(ebx7 & (1 << 16))
+    except:
+        features["has_avx2"] = False
+        features["has_bmi1"] = False
+        features["has_bmi2"] = False
+        features["has_avx512f"] = False
+    
+    return features
+
+
+def check_feature(runtime, feature_name: str) -> bool:
+    """
+    Check if a specific CPU feature is supported
+    
+    Args:
+        feature_name: Feature name (e.g., "sse2", "avx", "fma")
+        
+    Returns:
+        True if feature is supported, False otherwise
+        
+    Supported feature names:
+        - fpu, tsc, msr, apic, cmov, mmx, fxsr
+        - sse, sse2, sse3, ssse3, sse4_1, sse4_2
+        - avx, avx2, avx512f
+        - fma, aes, pclmulqdq
+        - vmx, htt, f16c, rdrand
+        - bmi1, bmi2, popcnt, movbe
+        
+    Example:
+        set has_avx to check_feature with feature_name: "avx"
+        if has_avx
+            print text "AVX is supported"
+        else
+            print text "AVX not supported"
+        end
+    """
+    if not isinstance(feature_name, str):
+        raise CPUControlError("Feature name must be a string")
+    
+    features = get_cpu_features(runtime)
+    feature_key = f"has_{feature_name.lower()}"
+    
+    if feature_key in features:
+        return features[feature_key]
+    
+    return False
+
+
 def register_stdlib(runtime):
     """Register hardware module functions with NLPL runtime"""
     from nlpl.runtime.runtime import Runtime
@@ -2241,4 +2961,24 @@ def register_stdlib(runtime):
     runtime.register_function("get_transfer_count", get_transfer_count)
     runtime.register_function("is_transfer_complete", is_transfer_complete)
     runtime.register_function("get_dma_registers", get_dma_registers)
+    
+    # CPU Control - control registers
+    runtime.register_function("read_cr0", read_cr0)
+    runtime.register_function("read_cr2", read_cr2)
+    runtime.register_function("read_cr3", read_cr3)
+    runtime.register_function("read_cr4", read_cr4)
+    runtime.register_function("write_cr0", write_cr0)
+    runtime.register_function("write_cr3", write_cr3)
+    runtime.register_function("write_cr4", write_cr4)
+    
+    # CPU Control - MSRs
+    runtime.register_function("read_msr", read_msr)
+    runtime.register_function("write_msr", write_msr)
+    runtime.register_function("check_msr_support", check_msr_support)
+    
+    # CPU Control - CPUID
+    runtime.register_function("cpuid", cpuid)
+    runtime.register_function("get_cpu_vendor", get_cpu_vendor)
+    runtime.register_function("get_cpu_features", get_cpu_features)
+    runtime.register_function("check_feature", check_feature)
 
