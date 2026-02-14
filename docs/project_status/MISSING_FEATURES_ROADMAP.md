@@ -22,13 +22,13 @@ NLPL has achieved impressive maturity with:
 - ✅ **Trailing block syntax** (February 11, 2026)
 - ✅ **Keyword-only parameters** (February 11, 2026)
 - ✅ **Bitwise operations** (Complete + Documented February 13, 2026)
-- ⚠️ **Inline Assembly** (In progress - Week 3-4/8 complete February 14, 2026 - 90%)
+- ⚠️ **Inline Assembly** (In progress - Week 7/8 complete February 14, 2026 - 75%)
 
 **However**, to match C/C++/Rust/ASM as a **truly universal general-purpose language**, NLPL needs infrastructure and primitives that enable **all domains equally**:
 
 0. **Language Features & Usability** (100% complete - all parameter features done!)
 1. **Universal Infrastructure** (40% complete - FFI, Build System, Package Manager needed)
-2. **Low-Level Primitives** (85% → 90% in progress - Inline ASM implementation started)
+2. **Low-Level Primitives** (85% → 90% in progress - Inline ASM Week 7 complete)
 3. **Advanced Memory Management** (60% complete)
 4. **Concurrency & Parallelism** (50% complete - Threading, Sync, Atomics COMPLETE)
 5. **Cross-Platform Support** (30% complete)
