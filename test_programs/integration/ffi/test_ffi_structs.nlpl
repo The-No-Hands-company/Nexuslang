@@ -39,9 +39,9 @@ function test_struct_creation
     set p to create Point with x: 10 and y: 20
     
     print text "Point created: ("
-    print integer p.x
+    print number p.x
     print text ", "
-    print integer p.y
+    print number p.y
     print text ")"
     
     if p.x is equal to 10 and p.y is equal to 20
@@ -73,9 +73,9 @@ function test_struct_modification
     set p.y to 200
     
     print text "Modified point: ("
-    print integer p.x
+    print number p.x
     print text ", "
-    print integer p.y
+    print number p.y
     print text ")"
     
     if p.x is equal to 100 and p.y is equal to 200
@@ -97,9 +97,9 @@ function test_nested_structs
     
     print text "Rectangle created"
     print text "  Width: "
-    print integer rect.width
+    print number rect.width
     print text "  Height: "
-    print integer rect.height
+    print number rect.height
     
     if rect.width is equal to 100 and rect.height is equal to 50
         print text "  PASS: Nested struct pointers work"
@@ -116,7 +116,7 @@ function test_c_struct_interop
     set current_time to time(null_ptr)
     
     print text "Current Unix timestamp: "
-    print integer current_time
+    print number current_time
     
     if current_time is greater than 0
         print text "  PASS: Can receive integers from C functions"
@@ -139,19 +139,19 @@ function test_struct_array
     
     print text "Points created:"
     print text "  P1: ("
-    print integer p1.x
+    print number p1.x
     print text ", "
-    print integer p1.y
+    print number p1.y
     print text ")"
     print text "  P2: ("
-    print integer p2.x
+    print number p2.x
     print text ", "
-    print integer p2.y
+    print number p2.y
     print text ")"
     print text "  P3: ("
-    print integer p3.x
+    print number p3.x
     print text ", "
-    print integer p3.y
+    print number p3.y
     print text ")"
     
     print text "  PASS: Multiple struct instances work"
@@ -162,7 +162,7 @@ function test_struct_size
     
     set point_size to sizeof Point
     print text "sizeof(Point) = "
-    print integer point_size
+    print number point_size
     
     # Point has 2 Integers (each likely 8 bytes on 64-bit) = 16 bytes
     if point_size is greater than 0
@@ -173,7 +173,7 @@ function test_struct_size
     
     set rect_size to sizeof Rectangle
     print text "sizeof(Rectangle) = "
-    print integer rect_size
+    print number rect_size
     
     # Rectangle has 1 Pointer + 2 Integers
     if rect_size is greater than point_size

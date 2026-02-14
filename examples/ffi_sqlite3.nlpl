@@ -23,28 +23,28 @@ set constant SQLITE_BLOB to 4
 set constant SQLITE_NULL to 5
 
 # SQLite3 core functions
-extern function sqlite3_open with filename as String and ppDb as Pointer returns Integer from library "sqlite3"
+extern function sqlite3_open with filename as String, ppDb as Pointer returns Integer from library "sqlite3"
 extern function sqlite3_close with db as Pointer returns Integer from library "sqlite3"
-extern function sqlite3_exec with db as Pointer and sql as String and callback as Pointer and arg as Pointer and errmsg as Pointer returns Integer from library "sqlite3"
+extern function sqlite3_exec with db as Pointer, sql as String, callback as Pointer, arg as Pointer, errmsg as Pointer returns Integer from library "sqlite3"
 extern function sqlite3_errmsg with db as Pointer returns String from library "sqlite3"
 
 # Prepared statement functions
-extern function sqlite3_prepare_v2 with db as Pointer and sql as String and nByte as Integer and ppStmt as Pointer and pzTail as Pointer returns Integer from library "sqlite3"
+extern function sqlite3_prepare_v2 with db as Pointer, sql as String, nByte as Integer, ppStmt as Pointer, pzTail as Pointer returns Integer from library "sqlite3"
 extern function sqlite3_step with stmt as Pointer returns Integer from library "sqlite3"
 extern function sqlite3_finalize with stmt as Pointer returns Integer from library "sqlite3"
 
 # Column access functions
 extern function sqlite3_column_count with stmt as Pointer returns Integer from library "sqlite3"
-extern function sqlite3_column_name with stmt as Pointer and col as Integer returns String from library "sqlite3"
-extern function sqlite3_column_type with stmt as Pointer and col as Integer returns Integer from library "sqlite3"
-extern function sqlite3_column_int with stmt as Pointer and col as Integer returns Integer from library "sqlite3"
-extern function sqlite3_column_double with stmt as Pointer and col as Integer returns Float from library "sqlite3"
-extern function sqlite3_column_text with stmt as Pointer and col as Integer returns String from library "sqlite3"
+extern function sqlite3_column_name with stmt as Pointer, col as Integer returns String from library "sqlite3"
+extern function sqlite3_column_type with stmt as Pointer, col as Integer returns Integer from library "sqlite3"
+extern function sqlite3_column_int with stmt as Pointer, col as Integer returns Integer from library "sqlite3"
+extern function sqlite3_column_double with stmt as Pointer, col as Integer returns Float from library "sqlite3"
+extern function sqlite3_column_text with stmt as Pointer, col as Integer returns String from library "sqlite3"
 
 # Bind functions (for parameterized queries)
-extern function sqlite3_bind_int with stmt as Pointer and index as Integer and value as Integer returns Integer from library "sqlite3"
-extern function sqlite3_bind_double with stmt as Pointer and index as Integer and value as Float returns Integer from library "sqlite3"
-extern function sqlite3_bind_text with stmt as Pointer and index as Integer and value as String and n as Integer and destructor as Pointer returns Integer from library "sqlite3"
+extern function sqlite3_bind_int with stmt as Pointer, index as Integer, value as Integer returns Integer from library "sqlite3"
+extern function sqlite3_bind_double with stmt as Pointer, index as Integer, value as Float returns Integer from library "sqlite3"
+extern function sqlite3_bind_text with stmt as Pointer, index as Integer, value as String, n as Integer, destructor as Pointer returns Integer from library "sqlite3"
 
 function check_result with result as Integer and db as Pointer
     # Check if SQLite operation succeeded

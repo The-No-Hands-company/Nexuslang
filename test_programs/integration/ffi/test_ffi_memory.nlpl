@@ -1,15 +1,15 @@
-# FFI Test: Memory Ownership and Management
-# Tests proper memory allocation, deallocation, and ownership tracking
+# FFI Test: Memory Ownership ,Management
+# Tests proper memory allocation, deallocation, ,ownership tracking
 
 # Memory allocation functions
 extern function malloc with size as Integer returns Pointer from library "c"
-extern function calloc with num as Integer and size as Integer returns Pointer from library "c"
-extern function realloc with ptr as Pointer and size as Integer returns Pointer from library "c"
+extern function calloc with num as Integer ,size as Integer returns Pointer from library "c"
+extern function realloc with ptr as Pointer ,size as Integer returns Pointer from library "c"
 extern function free with ptr as Pointer from library "c"
 
 # Memory manipulation
-extern function memset with ptr as Pointer and value as Integer and size as Integer returns Pointer from library "c"
-extern function memcpy with dest as Pointer and src as Pointer and size as Integer returns Pointer from library "c"
+extern function memset with ptr as Pointer ,value as Integer ,size as Integer returns Pointer from library "c"
+extern function memcpy with dest as Pointer ,src as Pointer ,size as Integer returns Pointer from library "c"
 
 function test_basic_allocation
     print text "Testing basic malloc/free..."
@@ -19,7 +19,7 @@ function test_basic_allocation
     set ptr to malloc(size)
     
     print text "Allocated "
-    print integer size
+    print number size
     print text " bytes at address: "
     print pointer ptr
     
@@ -43,9 +43,9 @@ function test_calloc
     set ptr to calloc(count, size)
     
     print text "Allocated "
-    print integer count
+    print number count
     print text " items of "
-    print integer size
+    print number size
     print text " bytes each"
     
     if ptr is not null
@@ -65,7 +65,7 @@ function test_realloc
     
     if ptr is not null
         print text "Initial allocation: "
-        print integer initial_size
+        print number initial_size
         print text " bytes"
         
         # Grow the allocation
@@ -74,7 +74,7 @@ function test_realloc
         
         if new_ptr is not null
             print text "Resized to: "
-            print integer new_size
+            print number new_size
             print text " bytes"
             print text "  PASS: realloc succeeded"
             call free with new_ptr
@@ -96,12 +96,12 @@ function test_memset
     if ptr is not null
         # Fill with value 42
         set fill_value to 42
-        call memset with ptr and fill_value and size
+        call memset with ptr ,fill_value ,size
         
         print text "Filled "
-        print integer size
+        print number size
         print text " bytes with value "
-        print integer fill_value
+        print number fill_value
         print text "  PASS: memset completed"
         
         call free with ptr
@@ -117,15 +117,15 @@ function test_memcpy
     set src_ptr to malloc(size)
     set dest_ptr to malloc(size)
     
-    if src_ptr is not null and dest_ptr is not null
+    if src_ptr is not null ,dest_ptr is not null
         # Initialize source memory
-        call memset with src_ptr and 77 and size
+        call memset with src_ptr ,77 ,size
         
         # Copy to destination
-        call memcpy with dest_ptr and src_ptr and size
+        call memcpy with dest_ptr ,src_ptr ,size
         
         print text "Copied "
-        print integer size
+        print number size
         print text " bytes from source to destination"
         print text "  PASS: memcpy completed"
         
@@ -180,7 +180,7 @@ function test_multiple_allocations
     end
     
     print text "Successfully allocated "
-    print integer success_count
+    print number success_count
     print text " out of 3 blocks"
     
     if success_count is equal to 3
@@ -210,7 +210,7 @@ function test_large_allocation
     
     if large_ptr is not null
         print text "Successfully allocated "
-        print integer large_size
+        print number large_size
         print text " bytes (10 MB)"
         print text "  PASS: Large allocations work"
         call free with large_ptr
@@ -221,7 +221,7 @@ function test_large_allocation
 end
 
 function main
-    print text "=== FFI Memory Ownership and Management Test ==="
+    print text "=== FFI Memory Ownership ,Management Test ==="
     print text ""
     print text "IMPORTANT: This test demonstrates manual memory management."
     print text "In production code:"
