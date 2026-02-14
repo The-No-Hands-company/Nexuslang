@@ -3,8 +3,9 @@
 **Feature:** Complete Inline Assembly Support  
 **Priority:** HIGH (Quick Win - Phase 1)  
 **Estimated Effort:** 1-2 months  
-**Status:** ⚠️ PARTIAL (Parser complete, LLVM backend needed)  
-**Start Date:** February 13, 2026
+**Status:** 🟢 IN PROGRESS - Week 1-2 Complete (70%)  
+**Start Date:** February 13, 2026  
+**Week 1-2 Complete:** February 14, 2026
 
 ---
 
@@ -67,58 +68,114 @@ Inline assembly is **partially implemented** in NLPL with full parser support bu
 - Currently returns None with comment explaining compiled-mode requirement
 - Proper structure for future LLVM implementation
 
-### ❌ MISSING Components
+### ❌ MISSING Components (Week 3-8)
 
-**1. LLVM IR Generation**
-- No `codegen_inline_assembly()` in compiler backend
-- Need to generate LLVM inline assembly instructions
-- Must handle constraint translation (NLPL → LLVM)
+**1. Complete Constraint System (Week 3-4)**
+- ⚠️ Full constraint validation with type compatibility checking
+- ⚠️ All x86/x64 constraint types (currently basic set working)
+- ⚠️ Memory constraints (m) need refinement
+- ⚠️ Read-write constraints (+r) need special handling
+- ⚠️ Multiple output operands (requires struct return)
 
-**2. Register Constraints**
-- No constraint validation
-- No constraint translation (e.g., "r" → any register, "a" → rax)
-- No architecture-specific constraint handling
+**2. Register Conflict Detection (Week 3-4)**
+- ❌ No register conflict detection
+- ❌ No validation that clobbers don't overlap with constraints
+- ❌ No detection of register usage conflicts
 
-**3. Multi-Architecture Support**
-- No x86/x64 specific handling
-- No ARM support
-- No architecture detection/selection
+**3. Multi-Architecture Support (Week 7)**
+- ⚠️ x86/x64 specific handling (basic support exists)
+- ❌ No ARM support
+- ❌ No architecture detection/selection
+- ❌ No cross-platform constraint translation
 
-**4. Safety Features**
-- No validation of assembly syntax
-- No register conflict detection
-- No dangerous instruction warnings
+**4. Advanced Safety Features (Week 8)**
+- ❌ No validation of assembly syntax
+- ❌ No dangerous instruction warnings
+- ❌ No privileged instruction detection
+- ❌ No stack manipulation warnings
 
-**5. Testing & Documentation**
-- No test files for inline assembly
-- No example programs demonstrating usage
-- No comprehensive documentation
+**5. Advanced Features (Week 5-6)**
+- ❌ No label support within inline assembly
+- ❌ No jump target handling
+- ❌ No instruction scheduling awareness
 
 ---
 
 ## Implementation Plan
 
-### **Week 1-2: LLVM Backend Foundation**
+### **Week 1-2: LLVM Backend Foundation ✅ COMPLETE**
+
+**Status:** ✅ COMPLETE (70%) - February 13-14, 2026  
+**Commits:** d724bdc, 72db63a
 
 **Goals:**
-- Implement basic LLVM inline assembly generation
-- Support simple single-instruction blocks
-- x86/x64 architecture support
+- ✅ Implement basic LLVM inline assembly generation
+- ✅ Support simple single-instruction blocks
+- ✅ x86/x64 architecture support with Intel syntax
 
-**Tasks:**
-1. Create `codegen_inline_assembly()` in LLVM compiler backend
-2. Implement constraint translation (NLPL → LLVM syntax)
-3. Generate LLVM inline assembly calls
-4. Handle basic input/output operands
-5. Test with simple examples (mov, add, nop)
+**Tasks Completed:**
+1. ✅ Created `_generate_inline_assembly()` in LLVM compiler backend
+   - Generates LLVM `call asm` instructions
+   - Handles operand numbering ($0, $1, $2...)
+   - Supports multiple instructions with semicolon separator
+   
+2. ✅ Implemented constraint translation (NLPL → LLVM syntax)
+   - `_translate_asm_constraint()` method (direct pass-through for Week 1-2)
+   - Input constraints: "r", "a", "b", "c", "d", "S", "D", "m", "i"
+   - Output constraints: "=r", "=&r" (early clobber)
+   
+3. ✅ Added constraint validation foundation
+   - `_validate_asm_constraint()` method
+   - Validates constraint format (=r, +r, =&r, etc.)
+   - Checks output vs input constraint rules
+   - Provides helpful error messages with hints
+   
+4. ✅ Implemented Intel syntax support
+   - `inteldialect` attribute in LLVM asm calls
+   - Automatic detection when operands are used
+   - Proper operand substitution ($0, $1, $2...)
+   
+5. ✅ Added type inference for operands
+   - `_infer_asm_operand_type()` method
+   - Infers LLVM types from NLPL types (Integer→i64, Float→double)
+   - Constraint-based inference (m→i8*, f→double, r→i64)
+   - Input operands already had comprehensive type inference
+   
+6. ✅ Implemented clobber list support
+   - Register clobbers: "rax", "rbx", "rcx", "rdx", etc.
+   - Special clobbers: "memory", "cc"
+   - Proper LLVM constraint string format (~{rax})
+   
+7. ✅ Created comprehensive test suite
+   - test_programs/unit/assembly/test_asm_operands_simple.nlpl
+   - test_programs/unit/assembly/test_asm_clobbers.nlpl  
+   - test_programs/unit/assembly/test_asm_operand_numbering.nlpl
+   - test_programs/unit/assembly/test_asm_type_inference.nlpl
+   - test_programs/unit/assembly/test_asm_constraint_validation.nlpl
+   
+8. ✅ Created comprehensive documentation
+   - examples/25_inline_assembly.nlpl (400+ lines)
+   - 10 sections covering all Week 1-2 features
+   - Practical use cases and examples
+   - Constraint reference guide
 
 **Deliverables:**
-- Basic inline assembly working in compiled mode
-- Simple test cases passing
+- ✅ Basic inline assembly working in compiled mode
+- ✅ Simple test cases passing (all 5 test files PASS)
+- ✅ Type inference working correctly
+- ✅ Constraint validation foundation in place
+- ✅ Comprehensive example and documentation
+
+**Known Limitations (Week 3-4 targets):**
+- ⚠️ Multiple output operands not yet supported (requires struct return)
+- ⚠️ Read-write constraints (+r) need special handling
+- ⚠️ Memory constraints (m) need refinement
+- ⚠️ Output operand scoping issue (Test 3 in operands_simple)
+- ⚠️ Full constraint validation pending (Week 3-4)
 
 ---
 
-### **Week 3-4: Register Constraints**
+### **Week 3-4: Register Constraints** 🔜 NEXT
 
 **Goals:**
 - Complete constraint system

@@ -3501,8 +3501,12 @@ class Parser:
         return InlineAssembly(asm_code, inputs, outputs, clobbers, line_number)
     
     def _parse_asm_operands(self):
-        """Parse assembly operands: "constraint": expression, ..."""
-        operands = {}
+        """Parse assembly operands: "constraint": expression, ...
+        
+        Returns list of (constraint, expression) tuples to support
+        multiple operands with the same constraint.
+        """
+        operands = []
         
         while self.current_token:
             # Check for string constraint
@@ -3523,7 +3527,8 @@ class Parser:
                 else:
                     operand = self.expression()
                 
-                operands[constraint] = operand
+                # Append as tuple to preserve order and allow duplicate constraints
+                operands.append((constraint, operand))
                 
                 # Check for comma (more operands)
                 if self.current_token and self.current_token.type == TokenType.COMMA:

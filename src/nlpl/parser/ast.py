@@ -1004,12 +1004,15 @@ class InlineAssembly(ASTNode):
     def __init__(self, asm_code, inputs=None, outputs=None, clobbers=None, line_number=None):
         super().__init__("inline_assembly", line_number)
         self.asm_code = asm_code          # Assembly code string
-        self.inputs = inputs or {}        # Input operands: {"name": expression}
-        self.outputs = outputs or {}      # Output operands: {"name": variable}
+        self.inputs = inputs or []        # Input operands: [(constraint, expression), ...]
+        self.outputs = outputs or []      # Output operands: [(constraint, variable), ...]
         self.clobbers = clobbers or []    # Clobbered registers
     
     def __str__(self):
-        return f"InlineAssembly({len(self.asm_code)} bytes)"
+        return f"InlineAssembly({len(self.asm_code)} instructions)"
+    
+    def __repr__(self):
+        return f"InlineAssembly(code={len(self.asm_code)}, inputs={len(self.inputs)}, outputs={len(self.outputs)}, clobbers={len(self.clobbers)})"
 
 class ExternFunctionDeclaration(ASTNode):
     """Represents an external function declaration for FFI.

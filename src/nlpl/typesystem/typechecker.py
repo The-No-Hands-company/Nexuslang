@@ -308,12 +308,14 @@ class TypeChecker:
             # Assembly can read/write variables, but we can't statically type check it
             # Just verify that input/output operands exist in scope
             if hasattr(statement, 'inputs'):
-                for constraint, expr in statement.inputs.items():
+                # inputs is a list of (constraint, expr) tuples
+                for constraint, expr in statement.inputs:
                     # Check that input expressions are valid
                     self.check_expression(expr, env)
             
             if hasattr(statement, 'outputs'):
-                for constraint, var in statement.outputs.items():
+                # outputs is a list of (constraint, var) tuples
+                for constraint, var in statement.outputs:
                     # Outputs should be identifiers (variables)
                     # They can be assigned to, so we don't need to check if they exist yet
                     pass

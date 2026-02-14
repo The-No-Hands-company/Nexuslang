@@ -2729,13 +2729,19 @@ class LLVMIRGenerator(CodeGenerator):
         Week 1-2 Implementation: Basic LLVM inline assembly generation.
         Supports:
         - Assembly code blocks
-        - Input operands with constraints
+        - Input operands with constraints ($0, $1, $2 references)
         - Output operands with constraints
         - Clobber lists
+        - Operand numbering (outputs first, then inputs)
         
         LLVM inline assembly syntax:
         call <return_type> asm [sideeffect] "assembly_code", 
                               "constraint_string" (operands)
+        
+        Operand numbering in LLVM:
+        - Output operands are numbered first: $0, $1, ...
+        - Input operands follow: $N, $N+1, ...
+        - Example: 1 output + 2 inputs = $0 (output), $1 (input1), $2 (input2)
         """
         # Extract assembly instructions
         asm_instructions = []
@@ -2745,43 +2751,83 @@ class LLVMIRGenerator(CodeGenerator):
                 inst_str = instruction.strip('"').strip("'")
                 asm_instructions.append(inst_str)
         
-        # Join instructions with newlines and semicolons for LLVM
-        asm_code = '; '.join(asm_instructions)
+        # Join instructions with newlines for multi-instruction blocks
+        # Use actual newline character, not escaped \n
+        asm_code = '\n'.join(asm_instructions)
         
-        # Process input operands
+        # IMPORTANT: LLVM inline assembly syntax handling
+        # For Intel syntax with operand substitution, we use "inteldialect" attribute
+        # This tells LLVM to substitute operands using Intel syntax (not AT&T)
+        # The .intel_syntax directive is for assembly WITHOUT operand substitution
+        # 
+        # When we have operands ($0, $1, etc.), LLVM needs to know how to substitute them:
+        # - AT&T (default): $1 becomes %rax (with % prefix)
+        # - Intel (inteldialect): $1 becomes rax (no prefix)
+        use_inteldialect = False
+        
+        # Check if assembly code contains operand references ($0, $1, etc.)
+        import re
+        if re.search(r'\$\d+', asm_code):
+            # Assembly uses operand references - use inteldialect attribute
+            use_inteldialect = True
+            # Don't add .intel_syntax directive when using inteldialect
+        else:
+            # No operand references - use .intel_syntax directive for plain assembly
+            if asm_code and not asm_code.strip().startswith('.intel_syntax'):
+                # Prepend Intel syntax directive for x86/x64 targets
+                asm_code = '.intel_syntax noprefix\n' + asm_code
+        
+        # Process output operands FIRST (they get numbered $0, $1, ...)
+        output_allocas = []
+        output_constraints = []
+        num_outputs = 0
+        if hasattr(node, 'outputs') and node.outputs:
+            for constraint, var_name in node.outputs:  # Now iterating over list of tuples
+                # var_name might be Identifier node, extract name
+                if hasattr(var_name, 'name'):
+                    var_name_str = var_name.name
+                else:
+                    var_name_str = str(var_name)
+                
+                # Get or create alloca for output variable
+                if var_name_str in self.local_vars:
+                    output_type, output_alloca = self.local_vars[var_name_str]
+                else:
+                    # Create new variable for output - infer type from constraint
+                    output_type = self._infer_asm_operand_type(constraint, var_name)
+                    output_alloca = f'%{var_name_str}'
+                    self.emit(f'{indent}{output_alloca} = alloca {output_type}, align 8')
+                    self.local_vars[var_name_str] = (output_type, output_alloca)
+                
+                output_allocas.append((output_alloca, output_type))
+                
+                # Validate constraint (Week 1-2: basic validation)
+                self._validate_asm_constraint(constraint, is_output=True)
+                
+                # Translate NLPL constraint to LLVM constraint
+                llvm_constraint = self._translate_asm_constraint(constraint, is_output=True)
+                output_constraints.append(llvm_constraint)
+                num_outputs += 1
+        
+        # Process input operands SECOND (they get numbered $N, $N+1, ...)
+        # where N = number of outputs
         input_regs = []
         input_constraints = []
+        num_inputs = 0
         if hasattr(node, 'inputs') and node.inputs:
-            for constraint, expr in node.inputs.items():
+            for constraint, expr in node.inputs:  # Now iterating over list of tuples
                 # Generate expression to get the input value
                 input_reg = self._generate_expression(expr, indent)
                 input_type = self._infer_expression_type(expr)
                 input_regs.append((input_reg, input_type))
                 
+                # Validate constraint (Week 1-2: basic validation)
+                self._validate_asm_constraint(constraint, is_output=False)
+                
                 # Translate NLPL constraint to LLVM constraint
                 llvm_constraint = self._translate_asm_constraint(constraint, is_output=False)
                 input_constraints.append(llvm_constraint)
-        
-        # Process output operands
-        output_allocas = []
-        output_constraints = []
-        if hasattr(node, 'outputs') and node.outputs:
-            for constraint, var_name in node.outputs.items():
-                # Get or create alloca for output variable
-                if var_name in self.local_vars:
-                    output_type, output_alloca = self.local_vars[var_name]
-                else:
-                    # Create new variable for output
-                    output_type = 'i64'  # Default output type
-                    output_alloca = f'%{var_name}'
-                    self.emit(f'{indent}{output_alloca} = alloca {output_type}, align 8')
-                    self.local_vars[var_name] = (output_type, output_alloca)
-                
-                output_allocas.append((output_alloca, output_type))
-                
-                # Translate NLPL constraint to LLVM constraint
-                llvm_constraint = self._translate_asm_constraint(constraint, is_output=True)
-                output_constraints.append(llvm_constraint)
+                num_inputs += 1
         
         # Process clobber list
         clobber_constraints = []
@@ -2798,8 +2844,20 @@ class LLVMIRGenerator(CodeGenerator):
         
         # Build constraint string
         # Format: "output_constraints,input_constraints,clobber_constraints"
+        # Example: "=r,r,r,~{rax}" means: 1 output (=r), 2 inputs (r,r), 1 clobber (~{rax})
         all_constraints = output_constraints + input_constraints + clobber_constraints
         constraint_string = ','.join(all_constraints)
+        
+        # NOTE: Operand numbering explanation for developers
+        # If you have 1 output and 2 inputs:
+        # - $0 refers to the output operand
+        # - $1 refers to the first input operand
+        # - $2 refers to the second input operand
+        # Example assembly: "add $0, $1" means "add output, input1"
+        #
+        # The assembly code in asm_code should already contain $0, $1, etc.
+        # references if the user wants to reference operands.
+        # We don't automatically insert them - the user writes them in NLPL code.
         
         # Determine return type
         if output_allocas:
@@ -2813,36 +2871,60 @@ class LLVMIRGenerator(CodeGenerator):
             return_type = 'void'
         
         # Build operand list for call
+        # IMPORTANT: Order matters! Outputs first, then inputs
         operand_list = []
+        
+        # Add output operands (for assignment, we need to pass pointer or load before)
+        # For Week 1-2: simplified handling - outputs are via constraints only
+        # Full implementation in Week 3-4 will handle output operand passing
+        
+        # Add input operands
         for input_reg, input_type in input_regs:
             operand_list.append(f'{input_type} {input_reg}')
         
         # Generate the inline assembly call
-        # LLVM syntax: call <ret_type> asm sideeffect "asm_code", "constraints" (operands)
+        # LLVM syntax: call <ret_type> asm [sideeffect] [inteldialect] "asm_code", "constraints" (operands)
+        # 
+        # Use "inteldialect" when operand substitution is needed ($0, $1, etc.)
+        # This tells LLVM to substitute operands using Intel syntax (rax, not %rax)
+        # Correct LLVM IR attribute order: sideeffect must come BEFORE inteldialect
+        asm_attrs = 'sideeffect inteldialect' if use_inteldialect else 'sideeffect'
+        
+        # IMPORTANT: Assembly code formatting for LLVM IR
+        # For inteldialect: use semicolon (;) to separate instructions
+        # For AT&T syntax (with .intel_syntax): use \0A (hex escape for newline)
+        if use_inteldialect:
+            # Intel dialect: separate instructions with semicolons
+            asm_code_formatted = asm_code.replace('\n', '; ')
+        else:
+            # AT&T syntax: use hex escape \0A for newlines in LLVM IR
+            # LLVM IR string literals support \0A but not \n
+            asm_code_formatted = asm_code.replace('\n', '\\0A')
+        
         if operand_list:
             operands_str = ', '.join(operand_list)
             if return_type != 'void':
                 result_reg = self._new_temp()
-                self.emit(f'{indent}{result_reg} = call {return_type} asm sideeffect "{asm_code}", "{constraint_string}" ({operands_str})')
+                self.emit(f'{indent}{result_reg} = call {return_type} asm {asm_attrs} "{asm_code_formatted}", "{constraint_string}" ({operands_str})')
                 
                 # Store result to output variable
                 if output_allocas:
                     output_alloca, output_type = output_allocas[0]
                     self.emit(f'{indent}store {output_type} {result_reg}, {output_type}* {output_alloca}, align 8')
             else:
-                self.emit(f'{indent}call void asm sideeffect "{asm_code}", "{constraint_string}" ({operands_str})')
+                self.emit(f'{indent}call void asm {asm_attrs} "{asm_code_formatted}", "{constraint_string}" ({operands_str})')
         else:
             # No operands
             if return_type != 'void':
                 result_reg = self._new_temp()
-                self.emit(f'{indent}{result_reg} = call {return_type} asm sideeffect "{asm_code}", "{constraint_string}" ()')
+                self.emit(f'{indent}{result_reg} = call {return_type} asm {asm_attrs} "{asm_code_formatted}", "{constraint_string}" ()')
                 
                 # Store result to output variable
                 if output_allocas:
                     output_alloca, output_type = output_allocas[0]
                     self.emit(f'{indent}store {output_type} {result_reg}, {output_type}* {output_alloca}, align 8')
             else:
-                self.emit(f'{indent}call void asm sideeffect "{asm_code}", "{constraint_string}" ()')
+                self.emit(f'{indent}call void asm {asm_attrs} "{asm_code_formatted}", "{constraint_string}" ()')
     
     def _translate_asm_constraint(self, constraint: str, is_output: bool = False) -> str:
         """
@@ -2871,6 +2953,137 @@ class LLVMIRGenerator(CodeGenerator):
         # Direct pass-through for now (LLVM uses same constraint syntax as GCC)
         # Future enhancement: more sophisticated translation if needed
         return constraint
+    
+    def _validate_asm_constraint(self, constraint: str, is_output: bool = False) -> bool:
+        """
+        Validate inline assembly constraint syntax.
+        
+        Week 1-2: Basic validation of constraint format.
+        Week 3-4: Full validation with type checking and compatibility.
+        
+        Valid constraint formats:
+        - Input: "r", "a", "b", "c", "d", "S", "D", "m", "i", "n", "g"
+        - Output: "=r", "=a", "=b", "=c", "=d", "=S", "=D", "=m", "=g"
+        - Read-write: "+r", "+a", "+b", "+c", "+d", "+S", "+D", "+m"
+        - Early clobber: "=&r", "=&a", etc.
+        - Commutative: "%0", "%1", etc. (handled by LLVM)
+        
+        Args:
+            constraint: Constraint string (e.g., "=r", "+a", "m")
+            is_output: Whether this is an output constraint
+        
+        Returns:
+            True if valid, raises exception if invalid
+        
+        Raises:
+            Exception: If constraint is invalid with helpful message
+        """
+        # Strip quotes and whitespace
+        constraint_clean = constraint.strip('"').strip("'").strip()
+        
+        if not constraint_clean:
+            raise Exception(f"Empty constraint not allowed")
+        
+        # Valid constraint characters (base types)
+        valid_base_chars = set('rabcdSDmingftuxy')
+        
+        # Modifiers
+        output_modifiers = set('=+')
+        special_modifiers = set('&%')
+        
+        # Parse constraint
+        idx = 0
+        has_modifier = False
+        
+        # Check for output modifier (= or +)
+        if constraint_clean[idx] in output_modifiers:
+            if not is_output:
+                raise Exception(
+                    f"Output modifier '{constraint_clean[idx]}' not allowed in input constraint: {constraint}\n"
+                    f"Hint: Use '=' for output operands, no modifier for input operands"
+                )
+            has_modifier = True
+            idx += 1
+        elif is_output:
+            raise Exception(
+                f"Output constraint must start with '=' or '+': {constraint}\n"
+                f"Hint: Use '=r' for write-only, '+r' for read-write"
+            )
+        
+        # Check for early clobber (&)
+        if idx < len(constraint_clean) and constraint_clean[idx] == '&':
+            if not is_output:
+                raise Exception(
+                    f"Early clobber '&' only allowed in output constraints: {constraint}"
+                )
+            idx += 1
+        
+        # Validate base constraint character
+        if idx >= len(constraint_clean):
+            raise Exception(f"Constraint has modifier but no base type: {constraint}")
+        
+        base_char = constraint_clean[idx]
+        if base_char not in valid_base_chars:
+            # Provide helpful suggestions
+            if base_char == 'e':
+                hint = "Hint: Use 'r' for any register, 'a' for RAX, 'd' for RDX"
+            elif base_char == 'x':
+                hint = "Hint: 'x' is for SSE/AVX registers (xmm0-xmm15)"
+            else:
+                hint = f"Hint: Valid constraints are: r, a, b, c, d, S, D, m, i, n, g, f, t, u, x, y"
+            raise Exception(f"Invalid constraint character '{base_char}' in: {constraint}\n{hint}")
+        
+        # Week 1-2: Basic format validation only
+        # Week 3-4: Will add type compatibility checking, register conflict detection
+        
+        return True
+    
+    def _infer_asm_operand_type(self, constraint: str, var_name) -> str:
+        """
+        Infer LLVM type for inline assembly operand from constraint and variable.
+        
+        Type Inference Rules:
+        1. Check if variable has explicit type annotation (from AST)
+        2. Check constraint for hints (e.g., byte/word/dword/qword)
+        3. Default to i64 for general-purpose register constraints
+        4. Default to i8* for memory constraints
+        
+        Args:
+            constraint: Assembly constraint string (e.g., "=r", "m", "i")
+            var_name: Variable name or Identifier node
+        
+        Returns:
+            LLVM type string (e.g., "i64", "i32", "i8*", "double")
+        """
+        # Strip quotes from constraint
+        constraint_clean = constraint.strip('"').strip("'")
+        
+        # Check if var_name is an Identifier node with type annotation
+        if hasattr(var_name, 'var_type') and var_name.var_type:
+            # Map NLPL type to LLVM type
+            nlpl_type = var_name.var_type
+            if isinstance(nlpl_type, str):
+                return self._map_nlpl_type_to_llvm(nlpl_type)
+        
+        # Infer from constraint
+        # Remove output modifiers (=, +, &)
+        constraint_base = constraint_clean.lstrip('=+&')
+        
+        # Memory constraints typically hold addresses (pointers)
+        if 'm' in constraint_base:
+            return 'i8*'  # Generic pointer
+        
+        # Immediate constraints are compile-time constants
+        if constraint_base in ('i', 'n'):
+            return 'i64'  # Default integer size
+        
+        # Floating-point constraints (if any - x87/SSE/AVX)
+        if constraint_base in ('f', 't', 'u', 'x', 'y'):
+            return 'double'  # Default float size
+        
+        # Register constraints default to i64 (64-bit general-purpose register)
+        # This covers: r, a, b, c, d, S, D, and specific registers
+        return 'i64'
     
     def _generate_print_statement(self, node, indent=''):
         """Generate printf call for print statement."""
