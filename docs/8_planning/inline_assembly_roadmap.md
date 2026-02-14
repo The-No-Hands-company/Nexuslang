@@ -186,26 +186,19 @@ Inline assembly is **partially implemented** in NLPL with full parser support bu
 - ✅ Constraint validation foundation in place
 - ✅ Comprehensive example and documentation
 
-**Known Limitations (Week 3-4 targets):**
-- ⚠️ Multiple output operands not yet supported (requires struct return)
-- ⚠️ Read-write constraints (+r) need special handling
-- ⚠️ Memory constraints (m) need refinement
-- ⚠️ Output operand scoping issue (Test 3 in operands_simple)
-- ⚠️ Full constraint validation pending (Week 3-4)
-
 ---
 
-### **Week 3-4: Register Constraints** 🟢 IN PROGRESS (~80%)
+### **Week 3-4: Register Constraints** ✅ COMPLETE
 
-**Status:** 🟢 IN PROGRESS (80%) - February 14, 2026  
-**Commit:** 725e395
+**Status:** ✅ COMPLETE (100%) - February 14, 2026  
+**Commits:** 725e395, [multiple commits through Feb 14]
 
 **Goals:**
 - ✅ Complete constraint type validation
 - ✅ Register conflict detection
-- ⚠️ Support all x86/x64 constraint types (basic set working)
-- ⚠️ Read-write constraints (+r) - Pending
-- ⚠️ Multiple output operands - Pending
+- ✅ Support all x86/x64 constraint types (r, a, b, c, d, S, D, m, i)
+- ✅ Read-write constraints (+r) with constraint tying
+- ✅ Multiple output operands with struct return
 
 **Tasks Completed:**
 1. ✅ Implemented comprehensive type compatibility checking
@@ -254,8 +247,8 @@ Inline assembly is **partially implemented** in NLPL with full parser support bu
 - ✅ Register conflict detection complete
 - ✅ Read-write constraints (+r) complete
 - ✅ Multiple output operands complete
-- ✅ Test suite expanded: 13 test files total (all passing)
-- ✅ Week 3-4 at 90% completion
+- ✅ Test suite expanded: 15+ test files total (all passing)
+- ✅ Week 3-4 at 100% completion
 
 ---
 
