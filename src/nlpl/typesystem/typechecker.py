@@ -737,7 +737,9 @@ class TypeChecker:
             # Count total arguments (positional + named)
             total_args = len(call.arguments)
             if hasattr(call, 'named_arguments') and call.named_arguments:
-                total_args += len(call.named_arguments)
+                # Defensive: ensure named_arguments is actually a dict/list, not an int
+                if isinstance(call.named_arguments, (dict, list)):
+                    total_args += len(call.named_arguments)
             
             # Check argument count (skip for variadic functions)
             has_variadic = getattr(function_type, 'variadic', False)

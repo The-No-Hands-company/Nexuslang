@@ -1,11 +1,11 @@
 # FFI Test: String Marshalling
-# Tests automatic conversion between NLPL strings and C null-terminated strings
+# Tests automatic conversion between NLPL strings , C null-terminated strings
 
 # String manipulation functions
 extern function strlen with str as String returns Integer from library "c"
-extern function strcmp with str1 as String and str2 as String returns Integer from library "c"
-extern function strcat with dest as String and src as String returns String from library "c"
-extern function strcpy with dest as String and src as String returns String from library "c"
+extern function strcmp with str1 as String  ,str2 as String returns Integer from library "c"
+extern function strcat with dest as String  ,src as String returns String from library "c"
+extern function strcpy with dest as String  ,src as String returns String from library "c"
 
 # Output functions taking strings
 extern function puts with str as String returns Integer from library "c"
@@ -38,7 +38,7 @@ function test_string_comparison
     set str3 to "apple"
     
     # Compare different strings (should be negative)
-    set result1 to strcmp(str1, str2)
+    set result1 to strcmp(str1 ,str2)
     print text "strcmp('apple', 'banana') = "
     print integer result1
     
@@ -49,7 +49,7 @@ function test_string_comparison
     end
     
     # Compare identical strings (should be zero)
-    set result2 to strcmp(str1, str3)
+    set result2 to strcmp(str1 ,str3)
     print text "strcmp('apple', 'apple') = "
     print integer result2
     
@@ -61,7 +61,7 @@ function test_string_comparison
 end
 
 function test_string_output
-    print text "Testing puts and printf..."
+    print text "Testing puts , printf..."
     
     # Test puts (simple output)
     set message to "Output from C puts function"

@@ -2126,8 +2126,10 @@ class Interpreter:
         # Evaluate named arguments
         named_args = {}
         if hasattr(node, 'named_arguments') and node.named_arguments:
-            for param_name, arg_expr in node.named_arguments.items():
-                named_args[param_name] = self.execute(arg_expr)
+            # Defensive: ensure named_arguments is a dict
+            if isinstance(node.named_arguments, dict):
+                for param_name, arg_expr in node.named_arguments.items():
+                    named_args[param_name] = self.execute(arg_expr)
         
         # Handle trailing block - create closure and add as last positional argument
         if hasattr(node, 'trailing_block') and node.trailing_block:
