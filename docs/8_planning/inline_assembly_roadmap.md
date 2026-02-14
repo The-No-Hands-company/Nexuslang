@@ -3,9 +3,10 @@
 **Feature:** Complete Inline Assembly Support  
 **Priority:** HIGH (Quick Win - Phase 1)  
 **Estimated Effort:** 1-2 months  
-**Status:** 🟢 IN PROGRESS - Week 1-2 Complete (70%)  
+**Status:** 🟢 IN PROGRESS - Week 3-4 ~80% Complete  
 **Start Date:** February 13, 2026  
-**Week 1-2 Complete:** February 14, 2026
+**Week 1-2 Complete:** February 14, 2026  
+**Week 3-4 Progress:** February 14, 2026 (80%)
 
 ---
 
@@ -175,7 +176,66 @@ Inline assembly is **partially implemented** in NLPL with full parser support bu
 
 ---
 
-### **Week 3-4: Register Constraints** 🔜 NEXT
+### **Week 3-4: Register Constraints** 🟢 IN PROGRESS (~80%)
+
+**Status:** 🟢 IN PROGRESS (80%) - February 14, 2026  
+**Commit:** 725e395
+
+**Goals:**
+- ✅ Complete constraint type validation
+- ✅ Register conflict detection
+- ⚠️ Support all x86/x64 constraint types (basic set working)
+- ⚠️ Read-write constraints (+r) - Pending
+- ⚠️ Multiple output operands - Pending
+
+**Tasks Completed:**
+1. ✅ Implemented comprehensive type compatibility checking
+   - `_check_constraint_type_compatibility()` method
+   - Validates integer types (i8, i16, i32, i64) with register constraints
+   - Validates float types (float, double) with float constraints  
+   - Validates immediate constraints require integer types
+   - Memory constraints accept any type (address taken)
+   - Detailed error messages with variable names and hints
+   
+2. ✅ Added register conflict detection
+   - `_detect_register_conflicts()` method
+   - Normalizes register names (rax/eax/ax/al treated as same)
+   - Maps constraint characters to register names (a→rax, b→rbx, etc.)
+   - Detects overlaps between clobbers and input/output constraints
+   - Week 3-4: Permissive approach (let LLVM handle allocation)
+   
+3. ✅ Integrated validation into inline assembly generation
+   - Type checking for output operands
+   - Type checking for input operands with variable name extraction
+   - Better error messages with context
+   
+4. ✅ Created comprehensive tests
+   - test_asm_type_validation_pass.nlpl (5 tests, all PASS)
+   - Tests integer with register constraints
+   - Tests multiple operands
+   - Tests memory constraints
+   - Tests output type inference
+
+**Tasks Remaining (Week 3-4):**
+- ⚠️ Read-write constraints (+r)
+  - Requires load-modify-store pattern in LLVM IR
+  - Need to handle initial value load
+  - Need to store modified value back
+  
+- ⚠️ Multiple output operands
+  - Requires LLVM struct return type
+  - Need to extract individual values from struct
+  - Complex LLVM IR generation
+
+**Deliverables:**
+- ✅ Type compatibility validation working
+- ✅ Register conflict detection foundation
+- ✅ Test suite passing (all 6 test files + new validation tests)
+- ⚠️ Full constraint system pending read-write and multiple outputs
+
+---
+
+### **Week 5-6: Multi-Instruction Blocks & Clobbers** 🔜 NEXT
 
 **Goals:**
 - Complete constraint system
