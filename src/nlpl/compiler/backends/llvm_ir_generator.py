@@ -333,6 +333,206 @@ class LLVMIRGenerator(CodeGenerator):
         else:
             # Default to x86_64
             return self._get_valid_registers.__wrapped__(self, 'x86_64')
+    
+    def _validate_dangerous_instructions(self, asm_code: list) -> list:
+        """
+        Detect dangerous/privileged instructions in assembly code (Week 8).
+        
+        Returns list of warning messages (not errors - allow but warn).
+        """
+        warnings = []
+        arch = self.target_arch
+        
+        # Define dangerous instruction patterns by architecture
+        if arch in ['x86_64', 'x86']:
+            dangerous_patterns = {
+                'privileged': {
+                    'instructions': ['cli', 'sti', 'hlt', 'lgdt', 'lidt', 'lldt', 'ltr', 
+                                    'in', 'out', 'ins', 'outs', 'rdmsr', 'wrmsr'],
+                    'message': 'Privileged instruction requires kernel mode (Ring 0)'
+                },
+                'control_register': {
+                    'instructions': ['mov cr', 'mov dr'],
+                    'message': 'Control/debug register access requires privileged mode'
+                },
+                'stack_manipulation': {
+                    'instructions': ['push', 'pop', 'call', 'ret'],
+                    'message': 'Stack manipulation - ensure proper balancing'
+                },
+                'interrupt': {
+                    'instructions': ['int', 'into', 'iret', 'iretd', 'iretq'],
+                    'message': 'Interrupt instruction may require privileged mode'
+                }
+            }
+        elif arch in ['aarch64', 'arm']:
+            dangerous_patterns = {
+                'privileged': {
+                    'instructions': ['msr', 'mrs', 'wfi', 'wfe', 'sev', 'sevl'],
+                    'message': 'System register access or privileged instruction'
+                },
+                'barrier': {
+                    'instructions': ['dmb', 'dsb', 'isb'],
+                    'message': 'Memory barrier instruction - use with caution'
+                },
+                'exception': {
+                    'instructions': ['svc', 'hvc', 'smc'],
+                    'message': 'Exception generation instruction'
+                }
+            }
+        else:
+            return warnings  # No validation for unknown architectures
+        
+        # Check each line of assembly code
+        for line_num, line in enumerate(asm_code, start=1):
+            line_lower = line.strip().lower()
+            
+            # Skip empty lines and comments
+            if not line_lower or line_lower.startswith('#') or line_lower.startswith(';'):
+                continue
+            
+            # Check for dangerous instruction patterns
+            for category, pattern_info in dangerous_patterns.items():
+                for instruction in pattern_info['instructions']:
+                    if instruction in line_lower:
+                        warnings.append(
+                            f"Line {line_num}: {pattern_info['message']} - '{instruction}' detected"
+                        )
+                        break  # Only warn once per line
+        
+        return warnings
+    
+    def _analyze_register_usage(self, asm_code: list, clobbers: list) -> list:
+        """
+        Analyze register usage and detect missing clobbers (Week 8).
+        
+        Returns list of suggestions for missing clobber declarations.
+        """
+        suggestions = []
+        arch = self.target_arch
+        
+        # Get valid register set for architecture
+        valid_regs = self._get_valid_registers()
+        
+        # Track registers that appear to be modified
+        used_registers = set()
+        
+        # Common instruction patterns that modify registers
+        if arch in ['x86_64', 'x86']:
+            modify_patterns = ['mov', 'add', 'sub', 'mul', 'div', 'xor', 'or', 'and', 
+                             'shl', 'shr', 'lea', 'inc', 'dec', 'neg', 'not']
+        elif arch in ['aarch64', 'arm']:
+            modify_patterns = ['mov', 'add', 'sub', 'mul', 'ldr', 'str', 'and', 'orr', 
+                             'eor', 'lsl', 'lsr', 'asr']
+        else:
+            return suggestions  # No analysis for unknown architectures
+        
+        # Parse assembly to extract register references
+        for line in asm_code:
+            line_lower = line.strip().lower()
+            
+            # Skip empty lines and comments
+            if not line_lower or line_lower.startswith('#') or line_lower.startswith(';'):
+                continue
+            
+            # Check if this instruction modifies registers
+            for pattern in modify_patterns:
+                if line_lower.startswith(pattern):
+                    # Extract potential register names
+                    words = line_lower.split()
+                    for word in words[1:]:  # Skip instruction itself
+                        # Clean up register name (remove commas, brackets, etc.)
+                        reg = word.strip(',[]()%').split('+')[0].split('-')[0]
+                        
+                        # Check if this looks like a register
+                        if reg in valid_regs:
+                            # Check if register is a destination (modified)
+                            # For x86: first operand after instruction is usually destination
+                            # For ARM/AArch64: first operand is usually destination
+                            if words.index(word) == 1 or (',' in word and words.index(word) == 1):
+                                used_registers.add(reg)
+                    break
+        
+        # Check for implicit register usage
+        if arch in ['x86_64', 'x86']:
+            implicit_usage = {
+                'mul': ['rdx', 'rax'],  # mul uses rdx:rax
+                'div': ['rdx', 'rax'],  # div uses rdx:rax
+                'imul': ['rdx', 'rax'],
+                'idiv': ['rdx', 'rax'],
+            }
+            
+            for line in asm_code:
+                line_lower = line.strip().lower()
+                for instr, regs in implicit_usage.items():
+                    if line_lower.startswith(instr):
+                        used_registers.update(regs)
+        
+        # Compare used registers against clobber list
+        declared_clobbers = set(c.lower() for c in clobbers if c.lower() != 'cc' and c.lower() != 'memory')
+        
+        # Find registers that are used but not declared as clobbered
+        missing_clobbers = used_registers - declared_clobbers
+        
+        if missing_clobbers:
+            suggestions.append(
+                f"Consider adding these registers to clobber list: {', '.join(sorted(missing_clobbers))}"
+            )
+        
+        return suggestions
+    
+    def _validate_memory_accesses(self, asm_code: list) -> list:
+        """
+        Validate memory access patterns and suggest improvements (Week 8).
+        
+        Returns list of warnings about potentially unsafe memory accesses.
+        """
+        warnings = []
+        arch = self.target_arch
+        
+        # Define memory access patterns by architecture
+        if arch in ['x86_64', 'x86']:
+            memory_patterns = ['[', ']', 'ptr', 'qword', 'dword', 'word', 'byte']
+        elif arch in ['aarch64', 'arm']:
+            memory_patterns = ['[', ']', 'ldr', 'str', 'ldp', 'stp']
+        else:
+            return warnings  # No validation for unknown architectures
+        
+        # Check each line for memory access patterns
+        for line_num, line in enumerate(asm_code, start=1):
+            line_lower = line.strip().lower()
+            
+            # Skip empty lines and comments
+            if not line_lower or line_lower.startswith('#') or line_lower.startswith(';'):
+                continue
+            
+            # Check for memory access
+            has_memory_access = any(pattern in line_lower for pattern in memory_patterns)
+            
+            if has_memory_access:
+                # Check for potential issues
+                
+                # 1. Unaligned access (not divisible by access size)
+                if 'byte' not in line_lower:  # Byte access is always aligned
+                    if any(x in line_lower for x in ['+1', '+3', '+5', '+7', '+9']):
+                        warnings.append(
+                            f"Line {line_num}: Potential unaligned memory access - may cause performance penalty"
+                        )
+                
+                # 2. Null pointer dereference potential
+                if '[0]' in line_lower or '[ 0 ]' in line_lower:
+                    warnings.append(
+                        f"Line {line_num}: Potential null pointer dereference - consider bounds checking"
+                    )
+                
+                # 3. Suggest bounds checking for array access
+                if any(x in line_lower for x in ['[rax', '[rbx', '[rcx', '[rdx', '[x0', '[x1']):
+                    # Only warn once about bounds checking
+                    if not any('bounds checking' in w for w in warnings):
+                        warnings.append(
+                            "Memory access detected - ensure bounds checking is performed before access"
+                        )
+        
+        return warnings
         
     def generate(self, ast, source_file: str = None, debug_info: bool = False) -> str:
         """Generate complete LLVM IR module from AST."""
@@ -2911,6 +3111,16 @@ class LLVMIRGenerator(CodeGenerator):
                 inst_str = instruction.strip('"').strip("'")
                 asm_instructions.append(inst_str)
         
+        # Week 8: Safety validation - warn about dangerous instructions
+        dangerous_warnings = self._validate_dangerous_instructions(asm_instructions)
+        for warning in dangerous_warnings:
+            print(f"Warning (inline assembly): {warning}")
+        
+        # Week 8: Validate memory accesses
+        memory_warnings = self._validate_memory_accesses(asm_instructions)
+        for warning in memory_warnings:
+            print(f"Warning (inline assembly): {warning}")
+        
         # Join instructions with newlines for multi-instruction blocks
         # Use actual newline character, not escaped \n
         asm_code = '\n'.join(asm_instructions)
@@ -3032,11 +3242,13 @@ class LLVMIRGenerator(CodeGenerator):
         
         # Process clobber list (Week 7: Architecture-aware validation)
         clobber_constraints = []
+        clobber_list = []  # Track clobbers for Week 8 register analysis
         if hasattr(node, 'clobbers') and node.clobbers:
             valid_registers = self._get_valid_registers()
             for clobber in node.clobbers:
                 # Add ~ prefix for clobbers in LLVM constraint string
                 clobber_str = clobber.strip('"').strip("'")
+                clobber_list.append(clobber_str)
                 # Special clobbers: "memory", "cc" (condition codes)
                 if clobber_str in ('memory', 'cc', 'flags'):
                     clobber_constraints.append(f'~{{{clobber_str}}}')
@@ -3048,6 +3260,11 @@ class LLVMIRGenerator(CodeGenerator):
                             f"Valid registers: {', '.join(sorted(list(valid_registers)[:20]))}..."
                         )
                     clobber_constraints.append(f'~{{{clobber_str}}}')
+        
+        # Week 8: Register usage analysis - suggest missing clobbers
+        register_suggestions = self._analyze_register_usage(asm_instructions, clobber_list)
+        for suggestion in register_suggestions:
+            print(f"Suggestion (inline assembly): {suggestion}")
         
         # Detect register conflicts (Week 3-4)
         if hasattr(node, 'clobbers') and node.clobbers:
