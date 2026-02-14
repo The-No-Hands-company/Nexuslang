@@ -2780,6 +2780,8 @@ class LLVMIRGenerator(CodeGenerator):
         # Process output operands FIRST (they get numbered $0, $1, ...)
         output_allocas = []
         output_constraints = []
+        input_constraints = []  # Initialize early for read-write constraint tying
+        readwrite_inputs = []  # Track read-write constraint inputs (Week 3-4)
         num_outputs = 0
         if hasattr(node, 'outputs') and node.outputs:
             for constraint, var_name in node.outputs:  # Now iterating over list of tuples
@@ -2789,15 +2791,34 @@ class LLVMIRGenerator(CodeGenerator):
                 else:
                     var_name_str = str(var_name)
                 
+                # Check if this is a read-write constraint (+r, +a, +b, etc.)
+                constraint_str = constraint.strip('"').strip("'")
+                is_readwrite = constraint_str.startswith('+')
+                
                 # Get or create alloca for output variable
+                # Check local variables first, then globals
                 if var_name_str in self.local_vars:
                     output_type, output_alloca = self.local_vars[var_name_str]
+                elif var_name_str in self.global_vars:
+                    output_type, global_name = self.global_vars[var_name_str]
+                    # For globals, we need to work with a pointer
+                    output_alloca = global_name  # @x
                 else:
-                    # Create new variable for output - infer type from constraint
+                    # Create new local variable for output - infer type from constraint
                     output_type = self._infer_asm_operand_type(constraint, var_name)
                     output_alloca = f'%{var_name_str}'
                     self.emit(f'{indent}{output_alloca} = alloca {output_type}, align 8')
                     self.local_vars[var_name_str] = (output_type, output_alloca)
+                
+                # For read-write constraints (+r), load the initial value
+                if is_readwrite:
+                    # Load current value - it will be passed as input
+                    initial_value_reg = self._new_temp()
+                    self.emit(f'{indent}{initial_value_reg} = load {output_type}, {output_type}* {output_alloca}, align 8')
+                    readwrite_inputs.append((initial_value_reg, output_type, num_outputs))
+                    # Convert +r to =r and add matching constraint for tying
+                    # LLVM uses =r,0 to mean "output in register, tied to operand 0 (read-write)"
+                    constraint_str = '=' + constraint_str[1:]  # +r -> =r
                 
                 output_allocas.append((output_alloca, output_type))
                 
@@ -2810,14 +2831,20 @@ class LLVMIRGenerator(CodeGenerator):
                 )
                 
                 # Translate NLPL constraint to LLVM constraint
-                llvm_constraint = self._translate_asm_constraint(constraint, is_output=True)
+                llvm_constraint = self._translate_asm_constraint(constraint_str, is_output=True)
                 output_constraints.append(llvm_constraint)
+                
+                # For read-write constraints, add matching constraint number for tying
+                # This MUST happen before constraint_string is built
+                if is_readwrite:
+                    # Add tying constraint: "0" ties input to output 0, "1" to output 1, etc.
+                    input_constraints.append(str(num_outputs))
+                
                 num_outputs += 1
         
         # Process input operands SECOND (they get numbered $N, $N+1, ...)
         # where N = number of outputs
         input_regs = []
-        input_constraints = []
         num_inputs = 0
         if hasattr(node, 'inputs') and node.inputs:
             for constraint, expr in node.inputs:  # Now iterating over list of tuples
@@ -2878,25 +2905,31 @@ class LLVMIRGenerator(CodeGenerator):
         # We don't automatically insert them - the user writes them in NLPL code.
         
         # Determine return type
+        # For read-write constraints (+r), LLVM inline asm returns the modified value
         if output_allocas:
             # If there are outputs, inline asm returns the output value(s)
             if len(output_allocas) == 1:
                 return_type = output_allocas[0][1]
             else:
-                # Multiple outputs: use struct (for future enhancement)
-                return_type = 'void'
+                # Multiple outputs: use struct type (Week 3-4 enhancement)
+                # Format: {i64, i64, i32} for 3 outputs of different types
+                output_types = [alloca[1] for alloca in output_allocas]
+                return_type = '{' + ', '.join(output_types) + '}'
         else:
             return_type = 'void'
         
         # Build operand list for call
-        # IMPORTANT: Order matters! Outputs first, then inputs
+        # IMPORTANT: Order matters! Read-write initial values first, then regular inputs
+        # For read-write constraints (+r), the initial value is passed as an input
+        # and tied to the output using a matching constraint number (already added)
         operand_list = []
         
-        # Add output operands (for assignment, we need to pass pointer or load before)
-        # For Week 1-2: simplified handling - outputs are via constraints only
-        # Full implementation in Week 3-4 will handle output operand passing
+        # Add read-write constraint initial values (Week 3-4)
+        # These are treated as inputs with matching constraint numbers
+        for rw_reg, rw_type, output_num in readwrite_inputs:
+            operand_list.append(f'{rw_type} {rw_reg}')
         
-        # Add input operands
+        # Add regular input operands
         for input_reg, input_type in input_regs:
             operand_list.append(f'{input_type} {input_reg}')
         
@@ -2925,10 +2958,18 @@ class LLVMIRGenerator(CodeGenerator):
                 result_reg = self._new_temp()
                 self.emit(f'{indent}{result_reg} = call {return_type} asm {asm_attrs} "{asm_code_formatted}", "{constraint_string}" ({operands_str})')
                 
-                # Store result to output variable
+                # Store result to output variable(s)
                 if output_allocas:
-                    output_alloca, output_type = output_allocas[0]
-                    self.emit(f'{indent}store {output_type} {result_reg}, {output_type}* {output_alloca}, align 8')
+                    if len(output_allocas) == 1:
+                        # Single output: direct store
+                        output_alloca, output_type = output_allocas[0]
+                        self.emit(f'{indent}store {output_type} {result_reg}, {output_type}* {output_alloca}, align 8')
+                    else:
+                        # Multiple outputs: extract from struct and store each
+                        for idx, (output_alloca, output_type) in enumerate(output_allocas):
+                            extract_reg = self._new_temp()
+                            self.emit(f'{indent}{extract_reg} = extractvalue {return_type} {result_reg}, {idx}')
+                            self.emit(f'{indent}store {output_type} {extract_reg}, {output_type}* {output_alloca}, align 8')
             else:
                 self.emit(f'{indent}call void asm {asm_attrs} "{asm_code_formatted}", "{constraint_string}" ({operands_str})')
         else:
@@ -2937,10 +2978,18 @@ class LLVMIRGenerator(CodeGenerator):
                 result_reg = self._new_temp()
                 self.emit(f'{indent}{result_reg} = call {return_type} asm {asm_attrs} "{asm_code_formatted}", "{constraint_string}" ()')
                 
-                # Store result to output variable
+                # Store result to output variable(s)
                 if output_allocas:
-                    output_alloca, output_type = output_allocas[0]
-                    self.emit(f'{indent}store {output_type} {result_reg}, {output_type}* {output_alloca}, align 8')
+                    if len(output_allocas) == 1:
+                        # Single output: direct store
+                        output_alloca, output_type = output_allocas[0]
+                        self.emit(f'{indent}store {output_type} {result_reg}, {output_type}* {output_alloca}, align 8')
+                    else:
+                        # Multiple outputs: extract from struct and store each
+                        for idx, (output_alloca, output_type) in enumerate(output_allocas):
+                            extract_reg = self._new_temp()
+                            self.emit(f'{indent}{extract_reg} = extractvalue {return_type} {result_reg}, {idx}')
+                            self.emit(f'{indent}store {output_type} {extract_reg}, {output_type}* {output_alloca}, align 8')
             else:
                 self.emit(f'{indent}call void asm {asm_attrs} "{asm_code_formatted}", "{constraint_string}" ()')
     
