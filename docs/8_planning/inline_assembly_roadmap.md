@@ -3,10 +3,10 @@
 **Feature:** Complete Inline Assembly Support  
 **Priority:** HIGH (Quick Win - Phase 1)  
 **Estimated Effort:** 1-2 months  
-**Status:** 🟢 IN PROGRESS - Week 3-4 ~80% Complete  
+**Status:** 🟢 IN PROGRESS - Week 3-4 ~90% Complete  
 **Start Date:** February 13, 2026  
 **Week 1-2 Complete:** February 14, 2026  
-**Week 3-4 Progress:** February 14, 2026 (80%)
+**Week 3-4 Complete:** February 14, 2026 (90%)
 
 ---
 
@@ -69,19 +69,19 @@ Inline assembly is **partially implemented** in NLPL with full parser support bu
 - Currently returns None with comment explaining compiled-mode requirement
 - Proper structure for future LLVM implementation
 
-### ❌ MISSING Components (Week 3-8)
+### ❌ MISSING Components (Week 5-8)
 
-**1. Complete Constraint System (Week 3-4)**
-- ⚠️ Full constraint validation with type compatibility checking
-- ⚠️ All x86/x64 constraint types (currently basic set working)
-- ⚠️ Memory constraints (m) need refinement
-- ⚠️ Read-write constraints (+r) need special handling
-- ⚠️ Multiple output operands (requires struct return)
+**1. Complete Constraint System (Week 3-4) ✅ 90% COMPLETE**
+- ✅ Full constraint validation with type compatibility checking
+- ✅ All x86/x64 constraint types working (r, a, b, c, d, S, D, m, i)
+- ✅ Memory constraints (m) validated with pointer types
+- ✅ Read-write constraints (+r) with LLVM constraint tying ('=r,0')
+- ✅ Multiple output operands (struct return with extractvalue)
 
-**2. Register Conflict Detection (Week 3-4)**
-- ❌ No register conflict detection
-- ❌ No validation that clobbers don't overlap with constraints
-- ❌ No detection of register usage conflicts
+**2. Register Conflict Detection (Week 3-4) ✅ COMPLETE**
+- ✅ Register conflict detection with normalization (rax/eax/ax/al)
+- ✅ Validation that clobbers don't overlap with constraints
+- ✅ Constraint-to-register mapping (a→rax, b→rbx, etc.)
 
 **3. Multi-Architecture Support (Week 7)**
 - ⚠️ x86/x64 specific handling (basic support exists)
@@ -216,22 +216,27 @@ Inline assembly is **partially implemented** in NLPL with full parser support bu
    - Tests memory constraints
    - Tests output type inference
 
-**Tasks Remaining (Week 3-4):**
-- ⚠️ Read-write constraints (+r)
-  - Requires load-modify-store pattern in LLVM IR
-  - Need to handle initial value load
-  - Need to store modified value back
+**Tasks Completed (Week 3-4):**
+- ✅ Read-write constraints (+r)
+  - ✅ Load-modify-store pattern in LLVM IR
+  - ✅ Handle initial value load from global/local variables
+  - ✅ Constraint tying with matching numbers ('=r,0')
+  - ✅ Store modified value back to original variable
+  - ✅ All 5 tests passing (increment, decrement, multiply, shift, negation)
   
-- ⚠️ Multiple output operands
-  - Requires LLVM struct return type
-  - Need to extract individual values from struct
-  - Complex LLVM IR generation
+- ✅ Multiple output operands
+  - ✅ LLVM struct return type: {i64, i64, i32}
+  - ✅ Extract individual values with extractvalue instruction
+  - ✅ Store each value to respective output variable
+  - ✅ All 5 tests passing (RDTSC-like, arithmetic, division, bitwise, with-input)
 
 **Deliverables:**
 - ✅ Type compatibility validation working
-- ✅ Register conflict detection foundation
-- ✅ Test suite passing (all 6 test files + new validation tests)
-- ⚠️ Full constraint system pending read-write and multiple outputs
+- ✅ Register conflict detection complete
+- ✅ Read-write constraints (+r) complete
+- ✅ Multiple output operands complete
+- ✅ Test suite expanded: 13 test files total (all passing)
+- ✅ Week 3-4 at 90% completion
 
 ---
 
