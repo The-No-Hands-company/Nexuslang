@@ -14,8 +14,8 @@ NLPL is a **production-ready** programming language designed to be:
 
 - **Natural:** Reads like English prose (`set x to 10`, `if age is greater than 18`)
 - **Powerful:** Full OOP, generics, pattern matching, inline assembly
-- **Universal:** One language for OS kernels, web apps, system tools, and everything between
-- **Low-level capable:** Direct memory access, FFI, inline x86_64 assembly
+- **Universal:** One language for web services, business applications, data processing, scientific computing, system programming, and any other development domain
+- **Low-level capable:** Direct memory access, FFI, inline x86_64 assembly (for domains requiring it)
 - **Type-safe:** Optional strong typing with inference and generics
 
 ```nlpl
@@ -480,14 +480,14 @@ Every feature is built to compete with established languages like C++, Python, a
 | FFI | ✅ | ✅ | ✅ | ✅ |
 | Easy to read | ✅ | ✅ | ❌ | ❌ |
 | Type safety | ✅ | ⚠️ (optional) | ⚠️ | ✅ |
-| OS development | ✅ | ❌ | ✅ | ✅ |
+| Low-level capability | ✅ | ❌ | ✅ | ✅ |
 | Performance | 1.8-2.5x C | ~50x slower | 1.0x (baseline) | 0.9-1.1x C |
 
 **NLPL combines:**
-- Python's readability
-- C++'s low-level power
+- Python's readability and ease of use
+- C++'s low-level power and performance
 - Rust's safety features
-- Its own natural language syntax
+- Its own natural language syntax for universal accessibility
 
 ---
 

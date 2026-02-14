@@ -2,21 +2,21 @@
 # This demonstrates a complete nlpl.toml configuration
 
 [package]
-name = "example-game"
+name = "data-processor"
 version = "0.1.0"
-authors = ["Game Developer <dev@example.com>"]
+authors = ["Developer <dev@example.com>"]
 license = "MIT"
-description = "An example game using NLPL graphics libraries"
-repository = "https://github.com/user/example-game"
-keywords = ["game", "graphics", "3d"]
+description = "A data processing application demonstrating NLPL capabilities"
+repository = "https://github.com/user/data-processor"
+keywords = ["data", "processing", "analytics"]
 edition = "2026"
 build = "build.nlpl"  # Custom build script
 
 # Runtime dependencies
 [dependencies]
 nlpl-math = "1.0"
-nlpl-graphics = { version = "2.0", features = ["opengl", "vulkan"] }
-nlpl-audio = "0.5"
+nlpl-csv = "2.0"
+nlpl-database = "1.5"
 
 # Development dependencies (testing, benchmarking)
 [dev-dependencies]
@@ -29,17 +29,17 @@ nlpl-build-tools = "0.2"
 
 # Binary targets
 [[bin]]
-name = "game"
+name = "processor"
 path = "src/main.nlpl"
 
 [[bin]]
-name = "editor"
-path = "src/bin/editor.nlpl"
-required-features = ["editor-mode"]
+name = "analyzer"
+path = "src/bin/analyzer.nlpl"
+required-features = ["advanced-analytics"]
 
 # Library target (if this package is also a library)
 [lib]
-name = "example_game_lib"
+name = "data_processor_lib"
 path = "src/lib.nlpl"
 crate-type = ["lib"]
 
@@ -61,11 +61,11 @@ codegen-units = 1  # Maximum optimization
 
 # Feature flags
 [features]
-default = ["graphics-basic"]
-graphics-basic = []
-graphics-advanced = ["nlpl-graphics/advanced"]
-editor-mode = ["dep:nlpl-editor"]
-experimental = []
+default = ["csv-support"]
+csv-support = []
+advanced-analytics = ["nlpl-math/statistics"]
+database-support = ["dep:nlpl-database"]
+parallel-processing = []
 
 # Platform-specific dependencies
 [target.'cfg(unix)'.dependencies]
