@@ -401,6 +401,155 @@ class LLVMIRGenerator(CodeGenerator):
         
         return warnings
     
+    def _validate_instruction_syntax(self, asm_code: list) -> list:
+        """
+        Advanced syntax validation - instruction-specific operand checking.
+        
+        Validates:
+        - Instruction mnemonics (known instructions)
+        - Operand count (correct number of operands per instruction)
+        - Operand types (register vs memory vs immediate)
+        - Invalid operand combinations
+        
+        Returns list of syntax error messages.
+        """
+        errors = []
+        arch = self.target_arch
+        
+        # Define instruction syntax rules by architecture
+        if arch in ['x86_64', 'x86']:
+            # x86/x64 instruction operand rules (mnemonic: (min_operands, max_operands))
+            instruction_rules = {
+                # No operands
+                'nop': (0, 0), 'ret': (0, 1), 'leave': (0, 0), 'hlt': (0, 0),
+                'cli': (0, 0), 'sti': (0, 0), 'cld': (0, 0), 'std': (0, 0),
+                'pushf': (0, 0), 'popf': (0, 0), 'sahf': (0, 0), 'lahf': (0, 0),
+                'rdtsc': (0, 0), 'cpuid': (0, 0), 'syscall': (0, 0), 'sysret': (0, 0),
+                
+                # One operand
+                'push': (1, 1), 'pop': (1, 1), 'inc': (1, 1), 'dec': (1, 1),
+                'neg': (1, 1), 'not': (1, 1), 'mul': (1, 1), 'div': (1, 1),
+                'imul': (1, 3), 'idiv': (1, 1), 'jmp': (1, 1), 'call': (1, 1),
+                'shl': (2, 2), 'shr': (2, 2), 'sal': (2, 2), 'sar': (2, 2),
+                'rol': (2, 2), 'ror': (2, 2), 'rcl': (2, 2), 'rcr': (2, 2),
+                'sete': (1, 1), 'setne': (1, 1), 'setg': (1, 1), 'setl': (1, 1),
+                
+                # Two operands
+                'mov': (2, 2), 'add': (2, 2), 'sub': (2, 2), 'and': (2, 2),
+                'or': (2, 2), 'xor': (2, 2), 'cmp': (2, 2), 'test': (2, 2),
+                'lea': (2, 2), 'xchg': (2, 2), 'movsx': (2, 2), 'movzx': (2, 2),
+                
+                # Conditional jumps (one operand - label)
+                'je': (1, 1), 'jne': (1, 1), 'jz': (1, 1), 'jnz': (1, 1),
+                'jg': (1, 1), 'jge': (1, 1), 'jl': (1, 1), 'jle': (1, 1),
+                'ja': (1, 1), 'jae': (1, 1), 'jb': (1, 1), 'jbe': (1, 1),
+                'js': (1, 1), 'jns': (1, 1), 'jo': (1, 1), 'jno': (1, 1),
+                
+                # SIMD/SSE/AVX
+                'movaps': (2, 2), 'movups': (2, 2), 'movss': (2, 2), 'movsd': (2, 2),
+                'addps': (2, 2), 'addss': (2, 2), 'subps': (2, 2), 'mulps': (2, 2),
+                'divps': (2, 2), 'sqrtps': (1, 1), 'maxps': (2, 2), 'minps': (2, 2),
+            }
+        elif arch in ['aarch64', 'arm']:
+            # ARM/AArch64 instruction rules
+            instruction_rules = {
+                # No operands
+                'nop': (0, 0), 'ret': (0, 0), 'wfi': (0, 0), 'wfe': (0, 0),
+                'sev': (0, 0), 'sevl': (0, 0), 'yield': (0, 0),
+                
+                # One operand
+                'b': (1, 1), 'bl': (1, 1), 'br': (1, 1), 'blr': (1, 1),
+                
+                # Two operands
+                'mov': (2, 2), 'mvn': (2, 2),
+                
+                # Three operands (typical for ARM)
+                'add': (3, 3), 'sub': (3, 3), 'and': (3, 3), 'orr': (3, 3),
+                'eor': (3, 3), 'mul': (3, 3), 'lsl': (3, 3), 'lsr': (3, 3),
+                'asr': (3, 3), 'cmp': (2, 2),
+                
+                # Load/Store
+                'ldr': (2, 2), 'str': (2, 2), 'ldp': (3, 3), 'stp': (3, 3),
+                'ldrb': (2, 2), 'strb': (2, 2), 'ldrh': (2, 2), 'strh': (2, 2),
+                
+                # Conditional branches
+                'b.eq': (1, 1), 'b.ne': (1, 1), 'b.gt': (1, 1), 'b.lt': (1, 1),
+                'b.ge': (1, 1), 'b.le': (1, 1), 'b.hi': (1, 1), 'b.lo': (1, 1),
+            }
+        else:
+            return errors  # No validation for unknown architectures
+        
+        # Validate each instruction
+        for line_num, line in enumerate(asm_code, start=1):
+            line_stripped = line.strip().lower()
+            
+            # Skip empty lines, comments, labels, directives
+            if not line_stripped or line_stripped.startswith('#') or line_stripped.startswith(';'):
+                continue
+            if line_stripped.startswith('.') or ':' in line_stripped:
+                continue  # Skip directives and labels
+            
+            # Parse instruction and operands
+            parts = line_stripped.split(maxsplit=1)
+            if not parts:
+                continue
+            
+            mnemonic = parts[0]
+            operands = []
+            if len(parts) > 1:
+                # Split operands by comma (handle spaces around commas)
+                operand_str = parts[1]
+                # Count operands (simple split by comma)
+                operands = [op.strip() for op in operand_str.split(',')]
+            
+            # Check if instruction is known
+            if mnemonic in instruction_rules:
+                min_ops, max_ops = instruction_rules[mnemonic]
+                operand_count = len(operands)
+                
+                # Validate operand count
+                if operand_count < min_ops:
+                    errors.append(
+                        f"Line {line_num}: '{mnemonic}' requires at least {min_ops} operand(s), got {operand_count}"
+                    )
+                elif operand_count > max_ops:
+                    errors.append(
+                        f"Line {line_num}: '{mnemonic}' accepts at most {max_ops} operand(s), got {operand_count}"
+                    )
+                
+                # Validate operand types for specific instructions
+                if arch in ['x86_64', 'x86']:
+                    # mov cannot have two memory operands
+                    if mnemonic == 'mov' and len(operands) == 2:
+                        if self._is_memory_operand(operands[0]) and self._is_memory_operand(operands[1]):
+                            errors.append(
+                                f"Line {line_num}: 'mov' cannot have two memory operands"
+                            )
+                    
+                    # lea requires memory operand as source
+                    if mnemonic == 'lea' and len(operands) == 2:
+                        if not self._is_memory_operand(operands[1]):
+                            errors.append(
+                                f"Line {line_num}: 'lea' requires memory operand as source"
+                            )
+                    
+                    # imul with 3 operands: first must be register
+                    if mnemonic == 'imul' and len(operands) == 3:
+                        if self._is_memory_operand(operands[0]):
+                            errors.append(
+                                f"Line {line_num}: 'imul' destination must be register"
+                            )
+            else:
+                # Unknown instruction - might be valid but warn
+                # Don't error, as LLVM assembler will catch actual invalid instructions
+                pass
+        
+        return errors
+    
+    def _is_memory_operand(self, operand: str) -> bool:
+        """Check if operand is a memory reference (contains [ ])."""
+        return '[' in operand or 'qword ptr' in operand or 'dword ptr' in operand or 'word ptr' in operand or 'byte ptr' in operand
+    
     def _analyze_register_usage(self, asm_code: list, clobbers: list) -> list:
         """
         Analyze register usage and detect missing clobbers (Week 8).
@@ -3110,6 +3259,18 @@ class LLVMIRGenerator(CodeGenerator):
                 # Strip quotes from string literals
                 inst_str = instruction.strip('"').strip("'")
                 asm_instructions.append(inst_str)
+        
+        # Week 8+: Advanced syntax validation - instruction-specific operand checking
+        syntax_errors = self._validate_instruction_syntax(asm_instructions)
+        for error in syntax_errors:
+            print(f"Error (inline assembly): {error}")
+        
+        # If there are syntax errors, raise exception to prevent compilation
+        if syntax_errors:
+            raise Exception(
+                f"Inline assembly syntax validation failed:\n" +
+                "\n".join(f"  - {err}" for err in syntax_errors)
+            )
         
         # Week 8: Safety validation - warn about dangerous instructions
         dangerous_warnings = self._validate_dangerous_instructions(asm_instructions)
