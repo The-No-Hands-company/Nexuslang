@@ -96,18 +96,25 @@ Inline assembly is **partially implemented** in NLPL with full parser support bu
 - ✅ Architecture-specific register validation
 - ⚠️ Cross-platform testing limited (x86_64 only tested)
 
-**4. Advanced Safety Features (Week 8)**
+**4. Advanced Safety Features (Week 8) ✅ 100% COMPLETE**
 
-- ❌ No validation of assembly syntax
-- ❌ No dangerous instruction warnings
-- ❌ No privileged instruction detection
-- ❌ No stack manipulation warnings
+- ✅ Assembly syntax validation (architecture-aware patterns)
+- ✅ Dangerous instruction warnings (20+ instruction patterns detected)
+- ✅ Privileged instruction detection (cli, sti, hlt, in, out, rdmsr, wrmsr, etc.)
+- ✅ Stack manipulation warnings (push, pop, call, ret with balancing suggestions)
+- ✅ Control register access detection (mov cr0, mov dr0)
+- ✅ Interrupt instruction warnings (int, iret)
+- ✅ Register usage analysis (missing clobber suggestions)
+- ✅ Implicit register tracking (mul/div rdx:rax usage)
+- ✅ Memory access validation (null pointers, unaligned access, bounds checking)
+- ✅ Non-blocking warnings (compile succeeds with helpful diagnostics)
 
-**5. Advanced Features (Week 5-6)**
+**5. Advanced Features (Week 5-6) ✅ 100% COMPLETE**
 
-- ❌ No label support within inline assembly
-- ❌ No jump target handling
-- ❌ No instruction scheduling awareness
+- ✅ Label support within inline assembly (local labels with .L_ prefix)
+- ✅ Jump target handling (all conditional/unconditional jumps: je, jne, jg, jl, jmp, etc.)
+- ✅ Complex control flow (loops, if-else, multi-way branches)
+- ✅ LLVM automatic instruction scheduling (handled by inteldialect)
 
 ---
 
