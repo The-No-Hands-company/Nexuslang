@@ -24,6 +24,7 @@ import subprocess
 import os
 import tempfile
 import struct
+import platform
 
 
 class LLVMIRGenerator(CodeGenerator):
@@ -87,6 +88,10 @@ class LLVMIRGenerator(CodeGenerator):
         # Class method context
         self.current_class_context: Optional[str] = None  # Name of class when generating methods
         
+        # Architecture detection (Week 7)
+        self.target_arch = self._detect_architecture()
+        self.target_triple = self._get_target_triple()
+        self.target_datalayout = self._get_target_datalayout()
         # Current function context
         self.current_function_name: Optional[str] = None
         self.current_return_type: str = "void"
@@ -173,6 +178,161 @@ class LLVMIRGenerator(CodeGenerator):
         self.extern_functions: Dict[str, Tuple[str, List[str], str]] = {}  # name -> (ret_type, param_types, library)
         self.required_libraries: Set[str] = set()  # Libraries to link against
         self.exported_functions: List[str] = []  # List of function names to export to C header
+    
+    def _detect_architecture(self) -> str:
+        """
+        Detect target architecture at compile time (Week 7).
+        
+        Returns architecture string: 'x86', 'x86_64', 'arm', 'aarch64'
+        """
+        machine = platform.machine().lower()
+        
+        # Map platform.machine() output to standard arch names
+        if machine in ('amd64', 'x86_64', 'x64'):
+            return 'x86_64'
+        elif machine in ('i386', 'i686', 'x86'):
+            return 'x86'
+        elif machine in ('arm64', 'aarch64'):
+            return 'aarch64'
+        elif machine.startswith('arm'):
+            return 'arm'
+        else:
+            # Default to x86_64 for unknown architectures
+            return 'x86_64'
+    
+    def _get_target_triple(self) -> str:
+        """
+        Get LLVM target triple based on detected architecture (Week 7).
+        
+        Format: <arch>-<vendor>-<os>
+        """
+        arch = self.target_arch
+        
+        # Detect OS
+        system = platform.system().lower()
+        if system == 'linux':
+            os_part = 'linux-gnu'
+        elif system == 'darwin':
+            os_part = 'apple-darwin'
+        elif system == 'windows':
+            os_part = 'pc-windows-msvc'
+        else:
+            os_part = 'unknown'
+        
+        # Build triple
+        if arch == 'x86_64':
+            return f'x86_64-pc-{os_part}'
+        elif arch == 'x86':
+            return f'i686-pc-{os_part}'
+        elif arch == 'aarch64':
+            return f'aarch64-unknown-{os_part}'
+        elif arch == 'arm':
+            return f'arm-unknown-{os_part}'
+        else:
+            return f'x86_64-pc-{os_part}'  # Default
+    
+    def _get_target_datalayout(self) -> str:
+        """
+        Get LLVM data layout string based on architecture (Week 7).
+        
+        This defines memory layout, alignment, pointer sizes, etc.
+        """
+        arch = self.target_arch
+        
+        if arch == 'x86_64':
+            # x86_64: little-endian, 64-bit pointers, 128-bit long double
+            return 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128'
+        elif arch == 'x86':
+            # x86: little-endian, 32-bit pointers
+            return 'e-m:e-p:32:32-f64:32:64-f80:32-n8:16:32-S128'
+        elif arch == 'aarch64':
+            # AArch64: little-endian, 64-bit pointers
+            return 'e-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128'
+        elif arch == 'arm':
+            # ARM: little-endian, 32-bit pointers
+            return 'e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64'
+        else:
+            # Default to x86_64
+            return 'e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128'
+    
+    def _get_valid_registers(self) -> set:
+        """
+        Get set of valid register names for the current architecture (Week 7).
+        
+        Returns architecture-specific register names for validation.
+        """
+        arch = self.target_arch
+        
+        if arch == 'x86_64':
+            # x86_64 registers: 64-bit (rax), 32-bit (eax), 16-bit (ax), 8-bit (al/ah)
+            return {
+                # General purpose 64-bit
+                'rax', 'rbx', 'rcx', 'rdx', 'rsi', 'rdi', 'rbp', 'rsp',
+                'r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'r14', 'r15',
+                # General purpose 32-bit
+                'eax', 'ebx', 'ecx', 'edx', 'esi', 'edi', 'ebp', 'esp',
+                'r8d', 'r9d', 'r10d', 'r11d', 'r12d', 'r13d', 'r14d', 'r15d',
+                # General purpose 16-bit
+                'ax', 'bx', 'cx', 'dx', 'si', 'di', 'bp', 'sp',
+                'r8w', 'r9w', 'r10w', 'r11w', 'r12w', 'r13w', 'r14w', 'r15w',
+                # General purpose 8-bit
+                'al', 'bl', 'cl', 'dl', 'sil', 'dil', 'bpl', 'spl',
+                'ah', 'bh', 'ch', 'dh',
+                'r8b', 'r9b', 'r10b', 'r11b', 'r12b', 'r13b', 'r14b', 'r15b',
+                # Special registers
+                'rip', 'eip', 'ip',  # Instruction pointer
+                # SSE/AVX registers
+                'xmm0', 'xmm1', 'xmm2', 'xmm3', 'xmm4', 'xmm5', 'xmm6', 'xmm7',
+                'xmm8', 'xmm9', 'xmm10', 'xmm11', 'xmm12', 'xmm13', 'xmm14', 'xmm15',
+                'ymm0', 'ymm1', 'ymm2', 'ymm3', 'ymm4', 'ymm5', 'ymm6', 'ymm7',
+                'ymm8', 'ymm9', 'ymm10', 'ymm11', 'ymm12', 'ymm13', 'ymm14', 'ymm15',
+            }
+        elif arch == 'x86':
+            # x86 32-bit registers
+            return {
+                'eax', 'ebx', 'ecx', 'edx', 'esi', 'edi', 'ebp', 'esp',
+                'ax', 'bx', 'cx', 'dx', 'si', 'di', 'bp', 'sp',
+                'al', 'bl', 'cl', 'dl', 'ah', 'bh', 'ch', 'dh',
+                'eip', 'ip',
+                'xmm0', 'xmm1', 'xmm2', 'xmm3', 'xmm4', 'xmm5', 'xmm6', 'xmm7',
+            }
+        elif arch == 'aarch64':
+            # AArch64 registers: x0-x30 (64-bit), w0-w30 (32-bit)
+            registers = {
+                # 64-bit general purpose
+                'x0', 'x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7',
+                'x8', 'x9', 'x10', 'x11', 'x12', 'x13', 'x14', 'x15',
+                'x16', 'x17', 'x18', 'x19', 'x20', 'x21', 'x22', 'x23',
+                'x24', 'x25', 'x26', 'x27', 'x28', 'x29', 'x30',
+                # 32-bit general purpose
+                'w0', 'w1', 'w2', 'w3', 'w4', 'w5', 'w6', 'w7',
+                'w8', 'w9', 'w10', 'w11', 'w12', 'w13', 'w14', 'w15',
+                'w16', 'w17', 'w18', 'w19', 'w20', 'w21', 'w22', 'w23',
+                'w24', 'w25', 'w26', 'w27', 'w28', 'w29', 'w30',
+                # Special registers
+                'sp', 'xzr', 'wzr',  # Stack pointer, zero registers
+                # NEON/SIMD registers
+                'v0', 'v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7',
+                'v8', 'v9', 'v10', 'v11', 'v12', 'v13', 'v14', 'v15',
+                'v16', 'v17', 'v18', 'v19', 'v20', 'v21', 'v22', 'v23',
+                'v24', 'v25', 'v26', 'v27', 'v28', 'v29', 'v30', 'v31',
+            }
+            return registers
+        elif arch == 'arm':
+            # ARM 32-bit registers: r0-r15
+            return {
+                'r0', 'r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7',
+                'r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'r14', 'r15',
+                # Special registers
+                'sp', 'lr', 'pc',  # Stack pointer, link register, program counter
+                # NEON registers
+                'd0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7',
+                'd8', 'd9', 'd10', 'd11', 'd12', 'd13', 'd14', 'd15',
+                'q0', 'q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7',
+            }
+        else:
+            # Default to x86_64
+            return self._get_valid_registers.__wrapped__(self, 'x86_64')
         
     def generate(self, ast, source_file: str = None, debug_info: bool = False) -> str:
         """Generate complete LLVM IR module from AST."""
@@ -203,8 +363,8 @@ class LLVMIRGenerator(CodeGenerator):
         module_id = self.module_name or "nlpl_module"
         self.emit(f'; ModuleID = "{module_id}"')
         self.emit(f'source_filename = "{module_id}.nlpl"')
-        self.emit('target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"')
-        self.emit('target triple = "x86_64-pc-linux-gnu"')
+        self.emit(f'target datalayout = "{self.target_datalayout}"')
+        self.emit(f'target triple = "{self.target_triple}"')
         self.emit('')
         
         # Emit exception handling infrastructure (C++ RTTI vtable, typeinfo)
@@ -2870,9 +3030,10 @@ class LLVMIRGenerator(CodeGenerator):
                 input_constraints.append(llvm_constraint)
                 num_inputs += 1
         
-        # Process clobber list
+        # Process clobber list (Week 7: Architecture-aware validation)
         clobber_constraints = []
         if hasattr(node, 'clobbers') and node.clobbers:
+            valid_registers = self._get_valid_registers()
             for clobber in node.clobbers:
                 # Add ~ prefix for clobbers in LLVM constraint string
                 clobber_str = clobber.strip('"').strip("'")
@@ -2880,7 +3041,12 @@ class LLVMIRGenerator(CodeGenerator):
                 if clobber_str in ('memory', 'cc', 'flags'):
                     clobber_constraints.append(f'~{{{clobber_str}}}')
                 else:
-                    # Register clobber
+                    # Register clobber - validate against architecture-specific register set
+                    if clobber_str not in valid_registers:
+                        raise Exception(
+                            f"Invalid clobber register '{clobber_str}' for {self.target_arch} architecture.\n"
+                            f"Valid registers: {', '.join(sorted(list(valid_registers)[:20]))}..."
+                        )
                     clobber_constraints.append(f'~{{{clobber_str}}}')
         
         # Detect register conflicts (Week 3-4)
@@ -2998,21 +3164,32 @@ class LLVMIRGenerator(CodeGenerator):
         Translate NLPL inline assembly constraint to LLVM constraint syntax.
         
         Week 1-2: Basic constraint translation.
+        Week 7: Architecture-aware constraints.
         
-        NLPL Constraints:
-        - "r"   : Any general-purpose register
-        - "a"   : RAX register
-        - "b"   : RBX register
-        - "c"   : RCX register
-        - "d"   : RDX register
-        - "S"   : RSI register
-        - "D"   : RDI register
+        NLPL Constraints (Architecture-Specific):
+        
+        x86_64/x86:
+        - "r"   : Any general-purpose register (rax-r15 on x86_64, eax-edi on x86)
+        - "a"   : Accumulator (rax on x86_64, eax on x86)
+        - "b"   : Base (rbx on x86_64, ebx on x86)
+        - "c"   : Counter (rcx on x86_64, ecx on x86)
+        - "d"   : Data (rdx on x86_64, edx on x86)
+        - "S"   : Source index (rsi on x86_64, esi on x86)
+        - "D"   : Destination index (rdi on x86_64, edi on x86)
+        - "x"   : SSE register (xmm0-xmm15)
+        
+        AArch64/ARM:
+        - "r"   : Any general-purpose register (x0-x30 on AArch64, r0-r15 on ARM)
+        - "w"   : Floating-point/NEON register
+        
+        All Architectures:
         - "m"   : Memory operand
         - "i"   : Immediate integer
         - "=r"  : Output to register (write-only)
         - "+r"  : Output to register (read-write)
         
         LLVM uses similar syntax but with some differences.
+        Current architecture: {self.target_arch}
         """
         # Remove quotes if present
         constraint = constraint.strip('"').strip("'")
