@@ -250,7 +250,7 @@ You were **100% RIGHT**. Here's what we learned:
 1. **LLVM Backend** - Production-quality optimization
 2. **JavaScript Backend** - Web applications
 3. **WASM Backend** - Universal binaries
-4. **Assembly Backend** - OS kernel development
+4. **Assembly Backend** - Low-level system programming
 
 ---
 

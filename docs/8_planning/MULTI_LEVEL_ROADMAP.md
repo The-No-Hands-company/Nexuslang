@@ -276,7 +276,7 @@ Phase 1: Level 3 & 2
  
  Phase 3: Level 1 (Assembly) HIGH PRIORITY
  
- Kernel Development Possible
+ Low-Level Features Complete
  
 Phase 5: Level 5 (Natural Language) 
  (Independent, can be done anytime)
@@ -307,7 +307,7 @@ Phase 5: Level 5 (Natural Language)
 
 1. **Completes the Vision**
  - "Assembly to English" promise
- - OS kernel development
+ - System programming and low-level control
  - Bare metal programming
 
 2. **Fills Unique Niche**
@@ -492,7 +492,7 @@ end
 | **M2: Channels** | April 2026 | Full channel implementation |
 | **M3: Level 4 Complete** | June 2026 | Goroutines production-ready |
 | **M4: Inline Assembly** | August 2026 | Assembly blocks working |
-| **M5: Level 1 Complete** | September 2026 | Kernel development possible |
+| **M5: Level 1 Complete** | September 2026 | Low-level system programming enabled |
 | **M6: Structured Concurrency** | November 2026 | All concurrency models ready |
 | **M7: NLPL 2.0 Release** | December 2026 | All 5 levels complete |
 

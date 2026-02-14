@@ -57,7 +57,7 @@ Create GUI application:
 - Connect to external services
 
 ### Educational Use
-- Perfect for beginners
+- Well-suited to beginners and experienced developers
 - Learn programming concepts naturally
 - Immediate visual results
 - Focus on logic rather than syntax

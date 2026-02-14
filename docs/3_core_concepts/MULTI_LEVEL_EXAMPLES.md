@@ -23,7 +23,7 @@ This document shows how the **same functionality** can be implemented at differe
 ### Level 5: Natural Language
 
 **Lines of Code:** ~10 
-**Best For:** Prototyping, scripts, non-programmers
+**Capable of:** Prototyping, scripts, rapid development
 
 ```nlpl
 # Create a simple web server
@@ -56,7 +56,7 @@ tell me when it's running
 ### Level 4: Goroutines (High-Level)
 
 **Lines of Code:** ~20 
-**Best For:** Production web services, APIs, microservices
+**Capable of:** Production web services, APIs, microservices
 
 ```nlpl
 import from stdlib/http
@@ -105,7 +105,7 @@ start_server
 ### Level 3: Application Programming
 
 **Lines of Code:** ~40 
-**Best For:** Desktop apps, custom servers with specific requirements
+**Capable of:** Desktop apps, custom servers, applications with specific requirements
 
 ```nlpl
 import from stdlib/net
@@ -175,7 +175,7 @@ server.start
 ### Level 2: Systems Programming
 
 **Lines of Code:** ~80 
-**Best For:** High-performance servers, embedded systems
+**Capable of:** High-performance servers, embedded systems, performance-critical applications
 
 ```nlpl
 # Direct system calls via FFI
@@ -284,7 +284,7 @@ start_server with 8080
 ### Level 1: Assembly-Level
 
 **Lines of Code:** ~150+ 
-**Best For:** Bare metal, OS kernels, extreme optimization
+**Capable of:** Bare metal programming, OS components, extreme optimization
 
 ```nlpl
 # Define syscall numbers
@@ -424,7 +424,7 @@ start_server with 8080
 - Absolute maximum control
 - Zero runtime overhead
 - Direct syscalls
-- Perfect for OS development
+- Well-suited to system programming
 
 **Cons:**
 - Extremely verbose
@@ -866,7 +866,7 @@ end
 | **Concurrency** | Auto | Excellent | Manual | Manual | None |
 | **Memory Management** | Auto | Auto | Manual | Manual | Manual |
 | **Error Handling** | Auto | Auto | Manual | Manual | None |
-| **Best For** | Scripts, prototypes | Web apps, services | Desktop apps | High-perf, embedded | OS kernels |
+| **Capable of** | Scripts, prototypes | Web apps, services | Desktop apps | High-perf systems | System programming |
 
 **Key Insight:** All levels compile to the same performant code! Choose based on your needs, not performance.
 

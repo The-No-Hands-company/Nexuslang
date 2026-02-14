@@ -735,7 +735,7 @@ end
 - ✅ SIMD vectorization for data processing
 - ✅ System calls (if FFI unavailable)
 - ✅ Hardware-specific features (CPUID, MSRs)
-- ✅ OS kernel development
+- ✅ System programming and low-level control
 - ✅ Critical inner loops (after profiling!)
 
 **Bad use cases:**

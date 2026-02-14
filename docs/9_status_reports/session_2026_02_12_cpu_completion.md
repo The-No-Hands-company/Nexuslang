@@ -24,7 +24,7 @@ Successfully implemented **CPU Control** system with 14 functions across 3 categ
 - DMA ✅ (17 functions, 3 enums, 1 class)
 - **CPU Control ✅ (14 functions, 5 enums, 1 exception)**
 
-**Total:** 73 functions + 9 enums + 4 classes + 1 exception = Complete OS kernel development support
+**Total:** 73 functions + 9 enums + 4 classes + 1 exception = Complete low-level system programming support
 
 ---
 
@@ -1476,7 +1476,7 @@ With CPU Control complete, NLPL now provides comprehensive low-level hardware ac
 - **9 enums** (1 + 5 + 3)
 - **4 classes** (3 + 1)
 - **1 exception**
-- **Complete OS kernel development support**
+- **Complete low-level system programming support**
 
 ---
 

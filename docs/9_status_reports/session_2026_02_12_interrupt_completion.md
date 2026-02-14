@@ -501,7 +501,7 @@ With this implementation, NLPL now has complete low-level hardware access:
    - Interrupt control (CLI/STI)
    - Exception frame access
 
-**This completes the foundation for NLPL OS kernel development.**
+**This completes the foundation for NLPL low-level system programming.**
 
 ---
 
@@ -635,6 +635,6 @@ Completes hardware access trilogy: Port I/O + MMIO + Interrupts
 **Documentation:** Updated roadmap, complete docstrings, example program  
 **Commitment Quality:** Production-ready code following all development rules  
 
-**Hardware access trilogy complete. NLPL is now capable of OS kernel development.**
+**Hardware access trilogy complete. NLPL is now capable of system programming and direct hardware control.**
 
 Ready for next feature per user direction.

@@ -445,34 +445,44 @@ end
 - Packed structs
 
 **Priority 2: Tooling** (supporting role)
+
 - nlpllint (done)
 - Enhanced debug mode
 - Sanitizer integration
 
 ### Q2 2026 (Apr-Jun): Concurrency for Systems
+
 **Priority 1: Goroutines** (Level 4)
+
 - M:N threading for systems work
 - Channels for IPC
 - Async I/O for servers
 
 **Priority 2: Compiler**
+
 - Optimization passes
 - Platform-specific backends
 - Cross-compilation
 
-### Q3 2026 (Jul-Sep): OS Development Ready
+### Q3 2026 (Jul-Sep): Low-Level Features Complete
+
 **Priority 1: Assembly Level** (Level 1)
+
 - Complete inline assembly
 - Register hints
 - Interrupt handling
 - Bootloader support
 
 **Priority 2: Debug tools**
+
 - Kernel debugger
 - Memory visualizer
 - Profiler
 
 ### Q4 2026 (Oct-Dec): Production Ready
+
+**Priority 1: Stability and polish**
+
 - Stable ABI
 - Standard library completion
 - Documentation
@@ -485,16 +495,19 @@ end
 ### NLPL's Real Value Proposition
 
 **"The ONLY language you'll ever need"**
+
 - Beginner scripts Professional apps OS kernels
 - ONE language, 5 abstraction levels
 - Use what you need, when you need it
 
 **"90% development, 10% debugging"**
+
 - Static analysis catches bugs before runtime
 - Educational errors help you learn
 - Great tools for when debugging is needed
 
 **"From assembly to natural language"**
+
 - Level 1: Write bootloaders
 - Level 2: Build databases 
 - Level 3: Create desktop apps
@@ -502,6 +515,7 @@ end
 - Level 5: Automate tasks
 
 **"Replace everything"**
+
 - Replace Python for scripting (native performance)
 - Replace C/C++ for systems (better ergonomics)
 - Replace JavaScript for web (10-100x faster)
@@ -518,6 +532,7 @@ end
 **Not:** "Easier debugging" (that's a feature, not the value)
 
 **Example:**
+
 ```nlpl
 # Same OS kernel, different levels per component:
 
@@ -549,6 +564,7 @@ end
 ## Summary: What We Built vs What NLPL Needs
 
 ### What We Built Today
+
 - nlpllint (static analyzer) - **CRITICAL for productivity goal**
 - Memory/null/resource/init checkers - Catch bugs before runtime
 - CLI tool with good UX - Beginner-friendly tooling
@@ -558,26 +574,31 @@ end
 ### What NLPL Needs (All Equal Priority)
 
 **1. Level 5 (Natural Language)** DONE
+
  - Beginner entry point
  - Scripting capability
  - Replaces Python/Lua
 
 **2. Level 3-4 (Modern Features)** MOSTLY DONE
+
  - OOP, generics, concurrency
  - Professional development
  - Replaces Java/C#/Node.js
 
 **3. Level 2 (Systems)** MOSTLY DONE
+
  - Manual control, FFI
  - High performance
  - Replaces C/C++
 
 **4. Level 1 (Assembly)** CRITICAL
+
  - Inline assembly, hardware access
  - OS development
  - Replaces Assembly
 
 **5. Great Tooling** STARTED
+
  - Static analyzer (nlpllint) 
  - Enhanced debugger 
  - Build system 
@@ -590,18 +611,21 @@ end
 ## Action Items (Refocused)
 
 ### This Week
+
 - [ ] Implement inline assembly (Level 1) - **HIGH PRIORITY**
 - [ ] Hardware I/O operations - **HIGH PRIORITY**
 - [ ] Complete FFI edge cases
 - [x] nlpllint (done - but it's supporting tool)
 
 ### This Month
+
 - [ ] Prove NLPL can write real OS code
 - [ ] Complete all Level 1 features
 - [ ] Compiler optimizations
 - [ ] Cross-platform support
 
 ### This Quarter
+
 - [ ] Build minimal OS kernel as proof
 - [ ] Complete Level 4 (goroutines)
 - [ ] Mature tooling

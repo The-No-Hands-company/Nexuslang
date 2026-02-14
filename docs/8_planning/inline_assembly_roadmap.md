@@ -19,7 +19,7 @@ Inline assembly is **partially implemented** in NLPL with full parser support bu
 - Direct hardware control (complement to Port I/O, MMIO, DMA, CPU Control)
 - Performance-critical code sections
 - Architecture-specific optimizations
-- Bootloader and OS kernel development
+- Low-level system programming and bare-metal control
 - Device driver implementation
 
 **Key Achievement Target:** 100% completion of Part 2 (Low-Level Primitives), giving NLPL **complete parity** with C/C++/Rust/ASM for systems programming.
@@ -635,7 +635,7 @@ function read_tsc returns Integer
 end
 ```
 
-### 3. OS Kernel Development
+### 3. System Programming Applications
 
 ```nlpl
 # Switch to user mode
@@ -855,7 +855,7 @@ end
 - ✅ NLPL has **complete parity** with C/C++/Rust for systems programming
 - ✅ Full hardware control capability
 - ✅ Performance optimization toolkit complete
-- ✅ OS kernel development fully enabled
+- ✅ Low-level system programming fully enabled
 - ✅ Device driver development fully supported
 
 **This positions NLPL as a truly universal systems programming language, ready for Phase 2 (Universal Infrastructure) implementation.**

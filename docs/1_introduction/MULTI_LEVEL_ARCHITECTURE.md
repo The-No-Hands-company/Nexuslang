@@ -34,27 +34,27 @@ NLPL operates at **five distinct abstraction levels**, each optimized for differ
 
  Level 5: Natural Language (English-like, almost no syntax) 
  • "fetch user data and display it" 
- • Perfect for: Scripts, prototypes, teaching 
+ • Capable of: Scripts, prototypes, teaching 
  • Abstraction: MAXIMUM | Control: MINIMUM 
 
  Level 4: High-Level Abstractions (Automatic management) 
  • Goroutines, GC, automatic parallelization 
- • Perfect for: Web apps, services, business logic 
+ • Capable of: Web apps, services, business logic 
  • Abstraction: HIGH | Control: LOW 
 
  Level 3: Application Programming (Modern features) 
  • Classes, generics, pattern matching, manual memory 
- • Perfect for: Desktop apps, games, tools 
+ • Capable of: Desktop apps, applications, tools 
  • Abstraction: MEDIUM | Control: MEDIUM 
 
  Level 2: Systems Programming (Explicit control) 
  • Direct memory, FFI, precise layouts, no overhead 
- • Perfect for: Drivers, embedded, performance-critical 
+ • Capable of: Drivers, embedded systems, performance-critical applications 
  • Abstraction: LOW | Control: HIGH 
 
  Level 1: Assembly-Level (Hardware control) 
  • Inline assembly, registers, hardware I/O 
- • Perfect for: Bootloaders, kernels, bare metal 
+ • Capable of: Bootloaders, low-level system components, bare metal 
  • Abstraction: MINIMUM | Control: MAXIMUM 
 
  LLVM IR Backend

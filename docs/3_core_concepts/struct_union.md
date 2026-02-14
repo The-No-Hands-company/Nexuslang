@@ -332,7 +332,7 @@ end
 
 ### When to Use Structs
 
-**Structs are best for:**
+**Structs are well-suited to:**
 - ✅ Plain data containers (POD types)
 - ✅ C FFI interoperability
 - ✅ Exact memory layout requirements
@@ -353,7 +353,7 @@ end
 
 ### When to Use Classes
 
-**Classes are best for:**
+**Classes are well-suited to:**
 - ✅ Complex behavior and logic
 - ✅ Inheritance hierarchies
 - ✅ Encapsulation and data hiding

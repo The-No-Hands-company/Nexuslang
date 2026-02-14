@@ -48,7 +48,7 @@ After comprehensive analysis of **46+ documentation files**, **15,394 lines of i
  - **JavaScript/TypeScript** (planned): Web apps, Node.js
  - **WebAssembly** (planned): Universal binaries, browser performance
  - **LLVM IR** (planned): Production-quality optimization
- - **Native Assembly** (planned): OS kernel development, bare-metal
+ - **Native Assembly** (planned): System programming, bare-metal control
 - NLP Resolver component design (contextual disambiguation, intent classification)
 - Error handling with natural language messages
 - IDE integration design (code completion, debugging)

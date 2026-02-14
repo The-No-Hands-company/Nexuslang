@@ -68,6 +68,9 @@ from ..stdlib.hardware import register_stdlib as register_hardware_functions
 from ..stdlib.atomics import register_stdlib as register_atomics_functions
 from ..stdlib.threading import register_stdlib as register_native_threading_functions
 from ..stdlib.sync import register_stdlib as register_sync_functions
+from ..stdlib.business import register_business_functions
+from ..stdlib.data import register_data_functions
+from ..stdlib.scientific import register_scientific_functions
 
 def register_stdlib(runtime: Runtime) -> None:
     """Register all standard library functions with the runtime."""
@@ -234,6 +237,15 @@ def register_stdlib(runtime: Runtime) -> None:
     # Register statistics and data analysis
     register_statistics_functions(runtime)
     
+    # Register business logic and financial calculations
+    register_business_functions(runtime)
+    
+    # Register data processing and analytics
+    register_data_functions(runtime)
+    
+    # Register scientific computing and physics
+    register_scientific_functions(runtime)
+    
     # Register bit manipulation operations (ASM/C essential)
     register_bit_ops_functions(runtime)
     
@@ -321,4 +333,7 @@ def register_stdlib(runtime: Runtime) -> None:
     runtime.register_module("threading")
     runtime.register_module("threads")
     runtime.register_module("sync")
-    runtime.register_module("synchronization") 
+    runtime.register_module("synchronization")
+    runtime.register_module("business")
+    runtime.register_module("data")
+    runtime.register_module("scientific") 
