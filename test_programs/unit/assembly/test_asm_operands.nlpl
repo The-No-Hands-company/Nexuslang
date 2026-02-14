@@ -84,15 +84,17 @@ print text "Memory operand test complete (value 77 loaded from memory)"
 print text ""
 
 # Test 6: Immediate operand constraint
-print text "Test 6: Immediate operand constraint"
+# NOTE: 'i' constraint requires compile-time constants in LLVM
+# Variables cannot be used with 'i' constraint - use 'r' instead for variables
+print text "Test 6: Register operand with immediate value"
 set imm_value to 99
 asm
     code
-        "# Use immediate operand $0"
+        "# Use register operand $0 (not immediate - variables aren't constant)"
         "mov rbx, $0"
-    inputs "i": imm_value
+    inputs "r": imm_value
 end
-print text "Immediate operand test complete (value 99 as immediate)"
+print text "Register operand test complete (value 99 in register)"
 print text ""
 
 print text "============================="
@@ -102,8 +104,9 @@ print text "- Test 2: Output operand (=r constraint) - DONE"
 print text "- Test 3: Mixed input/output - DONE"
 print text "- Test 4: Multiple inputs - DONE"
 print text "- Test 5: Memory operand (m constraint) - DONE"
-print text "- Test 6: Immediate operand (i constraint) - DONE"
+print text "- Test 6: Register operand (r constraint) - DONE"
 print text ""
 print text "NOTE: In interpreter mode, all inline assembly is skipped."
 print text "      Compile with 'nlplc' to generate actual inline assembly."
 print text "      Operand numbering: outputs first ($0...), then inputs ($N...)."
+print text "      'i' constraint requires compile-time constants, not variables."
