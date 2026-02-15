@@ -1,0 +1,2 @@
+# Simple hello world program
+print text "Hello from NLPL Build System!"

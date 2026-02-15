@@ -35,7 +35,7 @@ path = "src/main.nlpl"
 [[bin]]
 name = "analyzer"
 path = "src/bin/analyzer.nlpl"
-required-features = ["advanced-analytics"]
+required-features = ["data-analytics"]
 
 # Library target (if this package is also a library)
 [lib]
@@ -59,13 +59,13 @@ panic = "abort"
 inherits = "release"
 codegen-units = 1  # Maximum optimization
 
-# Feature flags
+# Feature flags (domain-neutral capabilities)
 [features]
-default = ["csv-support"]
-csv-support = []
-advanced-analytics = ["nlpl-math/statistics"]
-database-support = ["dep:nlpl-database"]
-parallel-processing = []
+default = ["text-processing"]
+text-processing = []  # Text/string manipulation features
+data-analytics = ["nlpl-math/statistics"]  # Statistical analysis capabilities
+storage-backend = ["dep:nlpl-database"]  # Persistent data storage
+concurrent-execution = []  # Multi-threading/parallel processing
 
 # Platform-specific dependencies
 [target.'cfg(unix)'.dependencies]
