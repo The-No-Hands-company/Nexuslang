@@ -89,6 +89,35 @@ class SymbolProvider:
         """
         symbols = []
         
+        # Try workspace index first (much faster for cross-file search)
+        if hasattr(self.server, 'workspace_index') and self.server.workspace_index:
+            index_symbols = self.server.workspace_index.find_symbols(query)
+            for sym in index_symbols:
+                # Convert to LSP format
+                kind_map = {
+                    'function': 12,  # Function
+                    'class': 5,      # Class
+                    'method': 6,     # Method
+                    'struct': 23,    # Struct
+                    'variable': 13,  # Variable
+                    'field': 8,      # Field
+                    'parameter': 13  # Variable
+                }
+                symbols.append({
+                    'name': sym.name,
+                    'kind': kind_map.get(sym.kind, 13),
+                    'location': {
+                        'uri': sym.file_uri,
+                        'range': {
+                            'start': {'line': sym.line, 'character': sym.column},
+                            'end': {'line': sym.line, 'character': sym.column + len(sym.name)}
+                        }
+                    },
+                    'containerName': sym.scope
+                })
+            return symbols
+        
+        # Fallback to AST-based search on open documents
         for uri, text in documents.items():
             # Build symbol table
             symbol_table = self._get_or_build_symbol_table(text, uri)

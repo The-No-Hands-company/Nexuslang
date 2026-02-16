@@ -13,6 +13,8 @@ Features:
 
 import os
 import sys
+import time
+import threading
 from enum import Enum
 from typing import Optional, Dict, List, Any, Callable, Set
 from dataclasses import dataclass, field
@@ -97,6 +99,11 @@ class Debugger:
         self.on_breakpoint: Optional[Callable[[Breakpoint, CallFrame], None]] = None
         self.on_step: Optional[Callable[[str, int], None]] = None
         self.on_exception: Optional[Callable[[Exception, CallFrame], None]] = None
+        
+        # Non-interactive pause mechanism (for DAP)
+        self.pause_event = threading.Event()
+        self.resume_event = threading.Event()
+        self.resume_event.set()  # Start in resumed state
     
     # ============= Breakpoint Management =============
     
@@ -229,21 +236,37 @@ class Debugger:
         """Step into next statement (including function calls)."""
         self.state = DebuggerState.STEPPING
         self.target_depth = None
+        
+        # Signal resume for non-interactive mode
+        if not self.interactive:
+            self.resume_event.set()
     
     def step_over(self):
         """Step over next statement (don't enter function calls)."""
         self.state = DebuggerState.STEP_OVER
         self.target_depth = self.step_depth
+        
+        # Signal resume for non-interactive mode
+        if not self.interactive:
+            self.resume_event.set()
     
     def step_out(self):
         """Step out of current function."""
         self.state = DebuggerState.STEP_OUT
         self.target_depth = self.step_depth - 1 if self.step_depth > 0 else 0
+        
+        # Signal resume for non-interactive mode
+        if not self.interactive:
+            self.resume_event.set()
     
     def continue_execution(self):
         """Continue execution until next breakpoint."""
         self.state = DebuggerState.RUNNING
         self.target_depth = None
+        
+        # Signal resume for non-interactive mode
+        if not self.interactive:
+            self.resume_event.set()
     
     def _should_pause(self, file: str, line: int) -> bool:
         """Determine if debugger should pause at current location."""
@@ -357,9 +380,12 @@ class Debugger:
             if bp:
                 self.on_breakpoint(bp, frame)
         
-        # Interactive command loop
+        # Interactive command loop OR wait for DAP resume
         if self.interactive:
             self._debug_repl()
+        else:
+            # Non-interactive mode: wait for resume signal from DAP
+            self._wait_for_resume()
     
     def _show_source_context(self, file: str, line: int, context: int = 5):
         """Show source code context around current line."""
@@ -496,6 +522,27 @@ class Debugger:
                 print("\nQuitting debugger...")
                 self.state = DebuggerState.FINISHED
                 sys.exit(0)
+    
+    def _wait_for_resume(self):
+        """
+        Wait for resume signal in non-interactive mode (for DAP).
+        This blocks until continue/step command is received via DAP.
+        """
+        # Clear resume event (will be set by continue/step methods)
+        self.resume_event.clear()
+        
+        # Wait for resume signal (with timeout to allow checking state)
+        while self.state == DebuggerState.PAUSED:
+            # Wait with timeout to allow state changes
+            if self.resume_event.wait(timeout=0.1):
+                break
+            
+            # Check if debugger was terminated
+            if self.state == DebuggerState.FINISHED:
+                break
+        
+        # Set resume event for next pause
+        self.resume_event.set()
     
     # ============= Integration Points =============
     

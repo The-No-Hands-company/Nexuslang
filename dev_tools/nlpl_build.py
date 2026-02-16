@@ -30,6 +30,7 @@ from dataclasses import dataclass
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from nlpl.build.manifest import load_manifest, Manifest, BuildProfile, BinaryTarget
+from nlpl.build.incremental import BuildCache, extract_imports_from_source
 from nlpl.parser.lexer import Lexer
 from nlpl.parser.parser import Parser
 from nlpl.compiler import Compiler, CompilerOptions
@@ -52,24 +53,35 @@ class BuildContext:
 class BuildTool:
     """NLPL Build Tool - manages compilation of NLPL projects."""
     
-    def __init__(self, manifest_path: Optional[str] = None, verbose: bool = False):
+    def __init__(self, manifest_path: Optional[str] = None, verbose: bool = False, 
+                 incremental: bool = True):
         """
         Initialize build tool.
         
         Args:
             manifest_path: Path to nlpl.toml. If None, searches current directory.
             verbose: Enable verbose output
+            incremental: Enable incremental compilation (default: True)
         """
         self.manifest = load_manifest(manifest_path)
         self.verbose = verbose
+        self.incremental = incremental
         self.project_root = self.manifest.project_root
         
         # Default build directory
         self.build_dir = self.project_root / 'build'
         
+        # Initialize build cache for incremental compilation
+        if self.incremental:
+            cache_dir = self.build_dir / '.cache'
+            self.build_cache = BuildCache(cache_dir)
+        else:
+            self.build_cache = None
+        
         if self.verbose:
             print(f"Project: {self.manifest.package.name if self.manifest.package else 'workspace'}")
             print(f"Root: {self.project_root}")
+            print(f"Incremental: {'enabled' if self.incremental else 'disabled'}")
     
     def build(
         self,
@@ -112,12 +124,24 @@ class BuildTool:
         
         # Build targets
         success = True
+        compiled_count = 0
+        skipped_count = 0
         
         # Build library target if exists
         if self.manifest.library_target:
-            print(f"  Compiling library {self.manifest.library_target.name}...")
-            if not self._build_library(ctx):
-                success = False
+            lib_path = self.manifest.resolve_path(self.manifest.library_target.path)
+            
+            # Check if incremental rebuild needed
+            if self.incremental and not self._needs_rebuild(lib_path, profile_name, enabled_features):
+                if self.verbose:
+                    print(f"  Skipping library {self.manifest.library_target.name} (up to date)")
+                skipped_count += 1
+            else:
+                print(f"  Compiling library {self.manifest.library_target.name}...")
+                if not self._build_library(ctx, lib_path):
+                    success = False
+                else:
+                    compiled_count += 1
         
         # Build binary targets
         binary_targets = self.manifest.binary_targets
@@ -139,12 +163,30 @@ class BuildTool:
                         print(f"  Skipping {target.name} (missing features: {', '.join(missing)})")
                     continue
             
-            print(f"  Compiling binary {target.name}...")
-            if not self._build_binary(ctx, target):
-                success = False
+            bin_path = self.manifest.resolve_path(target.path)
+            
+            # Check if incremental rebuild needed
+            if self.incremental and not self._needs_rebuild(bin_path, profile_name, enabled_features):
+                if self.verbose:
+                    print(f"  Skipping binary {target.name} (up to date)")
+                skipped_count += 1
+            else:
+                print(f"  Compiling binary {target.name}...")
+                if not self._build_binary(ctx, target, bin_path):
+                    success = False
+                else:
+                    compiled_count += 1
+        
+        # Save build cache
+        if self.incremental and self.build_cache:
+            self.build_cache.save()
         
         if success:
-            print(f"Finished build [profile: {profile_name}]")
+            if self.incremental:
+                print(f"Finished build [profile: {profile_name}] " +
+                      f"({compiled_count} compiled, {skipped_count} up-to-date)")
+            else:
+                print(f"Finished build [profile: {profile_name}]")
         else:
             print("Build failed", file=sys.stderr)
         
@@ -152,7 +194,7 @@ class BuildTool:
     
     def clean(self) -> bool:
         """
-        Remove build artifacts.
+        Remove build artifacts and cache.
         
         Returns:
             True if clean succeeded
@@ -167,6 +209,10 @@ class BuildTool:
             except Exception as e:
                 print(f"Error cleaning build directory: {e}", file=sys.stderr)
                 return False
+        
+        # Clear build cache
+        if self.build_cache:
+            self.build_cache.clear()
         
         # Clean any .o, .ll, .bc files in project root
         for pattern in ['*.o', '*.ll', '*.bc']:
@@ -351,6 +397,30 @@ class BuildTool:
         print(f"\nTest result: {passed} passed, {failed} failed")
         return failed == 0
     
+    def _needs_rebuild(self, source_path: Path, profile: str, features: Set[str]) -> bool:
+        """
+        Check if a source file needs to be rebuilt.
+        
+        Args:
+            source_path: Source file path
+            profile: Build profile
+            features: Enabled features
+        
+        Returns:
+            True if rebuild is needed
+        """
+        if not self.build_cache:
+            return True  # Always rebuild if caching disabled
+        
+        needs_rebuild, reason = self.build_cache.needs_rebuild(
+            source_path, profile, list(features)
+        )
+        
+        if self.verbose and needs_rebuild:
+            print(f"    Rebuild reason: {reason}")
+        
+        return needs_rebuild
+    
     def _resolve_features(self, requested: List[str]) -> Set[str]:
         """
         Resolve feature flags and their dependencies.
@@ -381,21 +451,74 @@ class BuildTool:
         
         return enabled
     
-    def _build_library(self, ctx: BuildContext) -> bool:
+    def _build_library(self, ctx: BuildContext, lib_path: Path) -> bool:
         """Build library target."""
-        lib_path = self.manifest.resolve_path(self.manifest.library_target.path)
         output = ctx.build_dir / f"lib{self.manifest.library_target.name}.a"
         
-        return self._compile_single_file(lib_path, output, ctx.profile.name)
+        success = self._compile_single_file(lib_path, output, ctx.profile.name, ctx.features)
+        
+        # Record build in cache (extract imports for dependency tracking)
+        if success and self.build_cache:
+            with open(lib_path, 'r') as f:
+                source_code = f.read()
+            imports = extract_imports_from_source(source_code)
+            import_paths = []
+            for imp in imports:
+                imp_file = self.project_root / f"{imp.replace('.', '/')}.nlpl"
+                if imp_file.exists():
+                    import_paths.append(str(imp_file))
+            
+            # Update metadata for source file
+            self.build_cache.update_file_metadata(lib_path, import_paths)
+            
+            # Also update metadata for all imported files (so we can track their changes)
+            for imp_path_str in import_paths:
+                imp_path = Path(imp_path_str)
+                if imp_path.exists():
+                    self.build_cache.update_file_metadata(imp_path, [])
+            
+            self.build_cache.record_build(lib_path, output, ctx.profile.name, list(ctx.features))
+        
+        return success
     
-    def _build_binary(self, ctx: BuildContext, target: BinaryTarget) -> bool:
+    def _build_binary(self, ctx: BuildContext, target: BinaryTarget, bin_path: Path) -> bool:
         """Build binary target."""
-        bin_path = self.manifest.resolve_path(target.path)
         output = ctx.build_dir / target.name
         
-        return self._compile_single_file(bin_path, output, ctx.profile.name)
+        success = self._compile_single_file(bin_path, output, ctx.profile.name, ctx.features)
+        
+        # Record build in cache (extract imports for dependency tracking)
+        if success and self.build_cache:
+            with open(bin_path, 'r') as f:
+                source_code = f.read()
+            imports = extract_imports_from_source(source_code)
+            import_paths = []
+            for imp in imports:
+                imp_file = self.project_root / f"{imp.replace('.', '/')}.nlpl"
+                if imp_file.exists():
+                    import_paths.append(str(imp_file))
+            
+            # Update metadata for source file
+            self.build_cache.update_file_metadata(bin_path, import_paths)
+            
+            # Also update metadata for all imported files (so we can track their changes)
+            for imp_path_str in import_paths:
+                imp_path = Path(imp_path_str)
+                if imp_path.exists():
+                    self.build_cache.update_file_metadata(imp_path, [])
+            
+            self.build_cache.record_build(bin_path, output, ctx.profile.name, list(ctx.features))
+        
+        return success
+        
+        # Record build in cache
+        if success and self.build_cache:
+            self.build_cache.record_build(bin_path, output, ctx.profile.name, list(ctx.features))
+        
+        return success
     
-    def _compile_single_file(self, source: Path, output: Path, profile: str) -> bool:
+    def _compile_single_file(self, source: Path, output: Path, profile: str, 
+                            features: Optional[Set[str]] = None) -> bool:
         """
         Compile single NLPL file to executable.
         
@@ -403,6 +526,7 @@ class BuildTool:
             source: Source file path
             output: Output binary path
             profile: Build profile name
+            features: Enabled features
         
         Returns:
             True if compilation succeeded
@@ -506,6 +630,7 @@ def main():
     # Global options
     parser.add_argument("--manifest-path", help="Path to nlpl.toml (default: search current directory)")
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
+    parser.add_argument("--no-incremental", action="store_true", help="Disable incremental compilation")
     
     # Subcommands
     subparsers = parser.add_subparsers(dest="command", help="Build command")
@@ -546,7 +671,11 @@ def main():
     
     # Create build tool
     try:
-        tool = BuildTool(manifest_path=args.manifest_path, verbose=args.verbose)
+        tool = BuildTool(
+            manifest_path=args.manifest_path, 
+            verbose=args.verbose,
+            incremental=not args.no_incremental
+        )
     except FileNotFoundError as e:
         print(f"Error: {e}", file=sys.stderr)
         print("Run this command from a directory containing nlpl.toml", file=sys.stderr)

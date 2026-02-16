@@ -2,20 +2,28 @@
 NLPL Debugger Integration
 ==========================
 
-Enables source-level debugging of compiled NLPL programs using GDB/LLDB.
+Enables source-level debugging of NLPL programs.
 
 Components:
+- Interactive debugger (debugger.py)
 - DWARF debug info generation (debug_info.py)
 - Debug symbol table (symbols.py)
-- Debugger adapter protocol (dap_server.py)
+- Debug Adapter Protocol server (dap_server.py)
 """
 
 from .debug_info import DebugInfoGenerator
 from .symbols import SymbolTable, DebugSymbol, SymbolType
+from .debugger import Debugger, DebuggerState, Breakpoint, CallFrame
+from .dap_server import DAPServer
 
 __all__ = [
     'DebugInfoGenerator',
     'SymbolTable',
     'DebugSymbol',
     'SymbolType',
+    'Debugger',
+    'DebuggerState',
+    'Breakpoint',
+    'CallFrame',
+    'DAPServer',
 ]

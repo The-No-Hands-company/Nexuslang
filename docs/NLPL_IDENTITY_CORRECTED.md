@@ -656,6 +656,7 @@ end
 ### The Vision
 
 **Replace the polyglot mess:**
+
 - Python for scripts
 - JavaScript for web
 - C++ for systems
@@ -663,6 +664,7 @@ end
 - Assembly for hardware
 
 **With ONE language:**
+
 - NLPL for everything
 - Choose your abstraction level
 - Seamlessly mix levels in one project
@@ -670,6 +672,7 @@ end
 ### Why This Works
 
 **Key insight:** Different parts of a program need different levels
+
 - Beginner scripts Level 5
 - Web APIs Level 4
 - Business logic Level 3

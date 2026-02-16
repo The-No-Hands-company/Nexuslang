@@ -35,11 +35,15 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.activate = activate;
 exports.deactivate = deactivate;
+const path = __importStar(require("path"));
 const vscode = __importStar(require("vscode"));
 const node_1 = require("vscode-languageclient/node");
+const debugAdapter_1 = require("./debugAdapter");
 let client;
 function activate(context) {
     console.log('NLPL extension is now active');
+    // Activate debug support
+    (0, debugAdapter_1.activateDebugSupport)(context);
     // Get configuration
     const config = vscode.workspace.getConfiguration('nlpl');
     const enabled = config.get('languageServer.enabled', true);
@@ -49,12 +53,26 @@ function activate(context) {
     }
     // Determine server path
     let serverPath = config.get('languageServer.path', '');
+    let args = [];
     if (!serverPath) {
-        // Use bundled server or system installation
-        serverPath = 'nlpl-lsp'; // Assumes nlpl-lsp is in PATH
+        // Default: use Python to run LSP server from workspace
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        if (workspaceFolder) {
+            const pythonPath = config.get('languageServer.pythonPath', 'python3');
+            const lspServerPath = path.join(workspaceFolder.uri.fsPath, 'src', 'nlpl', 'lsp', 'server.py');
+            serverPath = pythonPath;
+            args = [lspServerPath];
+        }
+        else {
+            // Fallback to system installation
+            serverPath = 'nlpl-lsp';
+            args = config.get('languageServer.arguments', []);
+        }
     }
-    // Server arguments
-    let args = config.get('languageServer.arguments', ['--stdio']);
+    else {
+        // Server path was manually configured
+        args = config.get('languageServer.arguments', []);
+    }
     if (config.get('languageServer.debug', false)) {
         args.push('--debug');
     }

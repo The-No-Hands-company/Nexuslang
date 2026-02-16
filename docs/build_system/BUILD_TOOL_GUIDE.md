@@ -1,6 +1,6 @@
 # NLPL Build Tool (nlpl_build.py)
 
-**Status**: ✅ Task 3 Complete - Build Tool CLI Implementation
+**Status**: ✅ Complete - Build Tool CLI + Incremental Compilation
 
 ---
 
@@ -10,6 +10,7 @@
 
 **Key Features**:
 - **Manifest-driven builds**: Reads `nlpl.toml` for project configuration
+- **Incremental compilation**: Smart rebuilds only recompile changed files (see [INCREMENTAL_COMPILATION.md](INCREMENTAL_COMPILATION.md))
 - **Build profiles**: Support for dev, release, and custom profiles
 - **Feature flags**: Enable/disable capabilities at compile time
 - **Multiple targets**: Build libraries and multiple binaries
@@ -62,6 +63,8 @@ nlpl_build.py build --bin processor    # Build specific binary
 - `--profile NAME` - Build with custom profile
 - `--features LIST` - Comma-separated feature flags
 - `--bin NAME` - Build specific binary (can be repeated)
+- `--no-incremental` - Disable incremental compilation (force full rebuild)
+- `--verbose` - Show detailed build information and rebuild reasons
 
 **Examples**:
 ```bash
@@ -78,6 +81,33 @@ nlpl_build.py build --features data-analytics,storage-backend
 nlpl_build.py build --bin analyzer
 ```
 
+**Incremental Compilation**:
+
+By default, `nlpl_build.py build` uses incremental compilation to skip recompiling unchanged files. This dramatically improves build times for large projects.
+
+```bash
+# First build - compiles everything
+nlpl_build.py build --verbose
+# Output: "Finished build [profile: dev] (5 compiled, 0 up-to-date)"
+
+# Second build - skips unchanged files
+nlpl_build.py build --verbose
+# Output: "Finished build [profile: dev] (0 compiled, 5 up-to-date)"
+
+# After modifying a file
+echo '# Modified' >> src/utils.nlpl
+nlpl_build.py build --verbose
+# Output: "Rebuild reason: Dependency utils.nlpl changed"
+#         "Finished build [profile: dev] (2 compiled, 3 up-to-date)"
+```
+
+**Disable incremental builds** (force full rebuild):
+```bash
+nlpl_build.py build --no-incremental
+```
+
+See [INCREMENTAL_COMPILATION.md](INCREMENTAL_COMPILATION.md) for detailed documentation on the incremental compilation system.
+
 **Build Artifacts**:
 - **Location**: `build/<profile>/`
 - **Structure**:
@@ -90,6 +120,8 @@ nlpl_build.py build --bin analyzer
     release/       # Release builds
       binary_name
       ...
+    .cache/        # Incremental compilation cache
+      build_cache.json
   ```
 
 ---

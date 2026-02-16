@@ -1,7 +1,78 @@
 # NLPL Development Roadmap
 
-**Last Updated:** February 3, 2026  
-**Status:** Comprehensive update - reflects ACTUAL implementation state
+**Last Updated:** February 15, 2026  
+**Status:** 🔴 Phase 1 - Maturity & Production Readiness (LSP + Showcase Projects)
+
+---
+
+## 🔴 CURRENT FOCUS: Phase 1 (Feb 15 - May 15, 2026)
+
+**Mission:** Polish existing features to production-ready state BEFORE building package ecosystem.
+
+### Track A: Complete LSP Implementation (2-3 months)
+**Status:** 🟡 Week 1 IN PROGRESS - Cross-File Navigation  
+**Goal:** Production-ready IDE support (VS Code, Neovim, Emacs)
+
+- **Week 1** (Feb 15-21): Cross-file navigation, workspace indexing
+- **Week 2** (Feb 22-28): Performance optimization (incremental parsing, caching)
+- **Week 3** (Feb 29-Mar 7): 🚀 **Showcase Project #1** - CLI Log Analyzer
+- **Week 4** (Mar 8-14): Enhanced hover, signature help, code lens
+- **Week 5** (Mar 15-21): Advanced code actions & refactoring
+- **Week 6** (Mar 22-28): Performance optimization sprint
+- **Week 7** (Mar 29-Apr 4): 🚀 **Showcase Project #2** - Data Processor
+- **Week 8** (Apr 5-11): Editor integration testing (VS Code, Neovim, Emacs)
+- **Week 9** (Apr 12-18): Production hardening (error recovery, crash resilience)
+- **Week 10** (Apr 19-25): Documentation & tutorials
+- **Week 11** (Apr 26-May 2): 🚀 **Showcase Project #3** - Scientific Computing
+- **Week 12** (May 3-15): Polish, marketing, launch
+
+**Deliverables:**
+- ✅ LSP working in 3+ editors
+- ✅ <100ms response time consistently
+- ✅ 3 real-world showcase applications (500-800 lines each)
+- ✅ 15-20 new stdlib modules (added organically based on showcase needs)
+- ✅ Performance benchmarks documented
+- ✅ 50+ GitHub stars, 5+ contributors
+
+**Documentation:**
+- **Detailed Roadmap:** `docs/8_planning/LSP_COMPLETION_ROADMAP.md` (12-week plan)
+- **Week 1 Kickoff:** `docs/9_status_reports/LSP_WEEK_01_KICKOFF.md` (daily tasks)
+- **Quick Reference:** `docs/7_development/LSP_QUICK_REFERENCE.md` (commands, tips)
+
+### Track B: Standard Library Expansion (ongoing)
+Add 1-2 critical stdlib modules per week as needed by showcase projects:
+- Week 1: Logging, CLI argument parsing
+- Week 2: Robust JSON, regex
+- Week 3: Terminal colors, CSV production parser
+- Week 4+: HTTP, databases, scientific computing, etc.
+
+**Rationale:** Organic growth ensures modules are actually useful, not speculative.
+
+---
+
+## Phase 2 (Post-LSP): Package Manager (9-12 months)
+**Status:** ⚪ NOT STARTED - Waiting for Phase 1 completion  
+**Start Date:** May 2026 (after LSP complete)
+
+Build package ecosystem on solid foundation:
+- Registry infrastructure
+- CLI tools (publish, install, search)
+- Dependency resolution
+- Security scanning
+- Community standards
+
+**Documentation:** `docs/project_status/MISSING_FEATURES_ROADMAP.md` (Part 1.2)
+
+---
+
+## Phase 3 (Long-term): Language Evolution (12-24+ months)
+**Status:** ⚪ FUTURE WORK
+
+Advanced features:
+- Ownership & borrow checking (memory safety)
+- Complete async/await runtime
+- Cross-platform expansion (ARM, WASM)
+- Advanced type system features
 
 ---
 

@@ -35,6 +35,10 @@ class DefinitionProvider:
         # Cache symbol tables per document
         self.symbol_tables: Dict[str, SymbolTable] = {}
     
+    def _get_word_at_position(self, text: str, position):
+        """Alias for _get_symbol_at_position for workspace index code."""
+        return self._get_symbol_at_position(text, position)
+    
     def _get_or_build_symbol_table(self, text: str, uri: str) -> Optional[SymbolTable]:
         """
         Get cached symbol table or build new one from document text.
@@ -75,7 +79,24 @@ class DefinitionProvider:
         Returns:
             Location or None
         """
-        # Build symbol table from AST
+        # First, try workspace index for cross-file lookup
+        if hasattr(self.server, 'workspace_index') and self.server.workspace_index:
+            word = self._get_word_at_position(text, position)
+            if word:
+                symbols = self.server.workspace_index.get_symbol(word)
+                if symbols:
+                    # Return first matching symbol (could enhance to handle multiple)
+                    sym = symbols[0]
+                    from lsprotocol.types import Location, Range, Position as LSPPosition
+                    return Location(
+                        uri=sym.file_uri,
+                        range=Range(
+                            start=LSPPosition(line=sym.line, character=sym.column),
+                            end=LSPPosition(line=sym.line, character=sym.column + len(sym.name))
+                        )
+                    )
+        
+        # Fallback to AST-based symbol table
         symbol_table = self._get_or_build_symbol_table(text, uri)
         if not symbol_table:
             # Fallback to regex-based search

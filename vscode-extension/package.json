@@ -25,7 +25,8 @@
     "language server"
   ],
   "activationEvents": [
-    "onLanguage:nlpl"
+    "onLanguage:nlpl",
+    "onDebug"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -61,7 +62,12 @@
         "nlpl.languageServer.path": {
           "type": "string",
           "default": "",
-          "description": "Path to NLPL language server executable. Leave empty to use bundled server."
+          "description": "Path to NLPL language server executable. Leave empty to auto-detect from workspace."
+        },
+        "nlpl.languageServer.pythonPath": {
+          "type": "string",
+          "default": "python3",
+          "description": "Path to Python interpreter for running LSP server"
         },
         "nlpl.languageServer.arguments": {
           "type": "array",
@@ -89,9 +95,104 @@
           ],
           "default": "off",
           "description": "Traces the communication between VS Code and the language server"
+        },
+        "nlpl.debugger.pythonPath": {
+          "type": "string",
+          "default": "python3",
+          "description": "Path to Python interpreter for running debug adapter"
+        },
+        "nlpl.debugger.logFile": {
+          "type": "string",
+          "default": "/tmp/nlpl-dap.log",
+          "description": "Path to log file for debugger output"
         }
       }
-    }
+    },
+    "breakpoints": [
+      {
+        "language": "nlpl"
+      }
+    ],
+    "debuggers": [
+      {
+        "type": "nlpl",
+        "label": "NLPL Debug",
+        "program": "./out/debugAdapter.js",
+        "runtime": "node",
+        "configurationAttributes": {
+          "launch": {
+            "required": [
+              "program"
+            ],
+            "properties": {
+              "program": {
+                "type": "string",
+                "description": "Absolute path to the NLPL program to debug",
+                "default": "${file}"
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "Automatically stop after launch",
+                "default": false
+              },
+              "args": {
+                "type": "array",
+                "description": "Command line arguments passed to the program",
+                "default": []
+              },
+              "cwd": {
+                "type": "string",
+                "description": "Working directory for the program",
+                "default": "${workspaceFolder}"
+              },
+              "pythonPath": {
+                "type": "string",
+                "description": "Path to Python interpreter",
+                "default": "python3"
+              },
+              "debugServerPath": {
+                "type": "string",
+                "description": "Path to NLPL debug adapter server",
+                "default": ""
+              }
+            }
+          },
+          "attach": {
+            "required": [
+              "program"
+            ],
+            "properties": {
+              "program": {
+                "type": "string",
+                "description": "Absolute path to the NLPL program to attach to"
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "nlpl",
+            "request": "launch",
+            "name": "Debug NLPL Program",
+            "program": "${file}",
+            "stopOnEntry": false
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "NLPL: Launch",
+            "description": "A new configuration for debugging NLPL programs",
+            "body": {
+              "type": "nlpl",
+              "request": "launch",
+              "name": "Debug NLPL Program",
+              "program": "^\"\\${file}\"",
+              "stopOnEntry": false
+            }
+          }
+        ]
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

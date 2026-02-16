@@ -80,6 +80,7 @@ class NLPLLanguageServer:
     def __init__(self):
         self.documents: Dict[str, str] = {}  # URI -> content
         self.initialization_options = {}
+        self.workspace_index = None  # Will be initialized after workspace root is known
         
         # Import providers
         from ..lsp.completions import CompletionProvider
@@ -225,6 +226,18 @@ class NLPLLanguageServer:
         elif method == 'workspace/symbol':
             return self._handle_workspace_symbol(msg_id, params)
         
+        elif method == 'textDocument/documentSymbol':
+            return self._handle_document_symbol(msg_id, params)
+        
+        elif method == 'textDocument/prepareCallHierarchy':
+            return self._handle_prepare_call_hierarchy(msg_id, params)
+        
+        elif method == 'callHierarchy/incomingCalls':
+            return self._handle_incoming_calls(msg_id, params)
+        
+        elif method == 'callHierarchy/outgoingCalls':
+            return self._handle_outgoing_calls(msg_id, params)
+        
         elif method == 'textDocument/semanticTokens/full':
             return self._handle_semantic_tokens_full(msg_id, params)
         
@@ -243,6 +256,47 @@ class NLPLLanguageServer:
     def _handle_initialize(self, msg_id: int, params: Dict) -> Dict:
         """Handle initialize request."""
         self.initialization_options = params.get('initializationOptions', {})
+        
+        # Extract workspace root and initialize workspace index
+        workspace_folders = params.get('workspaceFolders', [])
+        if workspace_folders:
+            workspace_root = workspace_folders[0]['uri'].replace('file://', '')
+            logger.info(f"Initializing workspace index for: {workspace_root}")
+            
+            from ..lsp.workspace_index import WorkspaceIndex
+            self.workspace_index = WorkspaceIndex(workspace_root)
+            
+            # Index workspace in background (don't block initialization)
+            import threading
+            def index_workspace():
+                try:
+                    logger.info("Starting workspace indexing...")
+                    self.workspace_index.scan_workspace()
+                    stats = self.workspace_index.get_statistics()
+                    logger.info(f"Workspace indexed: {stats['files_indexed']} files, {stats['total_symbols']} symbols")
+                except Exception as e:
+                    logger.error(f"Error indexing workspace: {e}", exc_info=True)
+            
+            threading.Thread(target=index_workspace, daemon=True).start()
+        else:
+            # Try rootPath or rootUri as fallback
+            workspace_root = params.get('rootPath') or params.get('rootUri', '').replace('file://', '')
+            if workspace_root:
+                logger.info(f"Initializing workspace index for: {workspace_root}")
+                from ..lsp.workspace_index import WorkspaceIndex
+                self.workspace_index = WorkspaceIndex(workspace_root)
+                
+                import threading
+                def index_workspace():
+                    try:
+                        logger.info("Starting workspace indexing...")
+                        self.workspace_index.scan_workspace()
+                        stats = self.workspace_index.get_statistics()
+                        logger.info(f"Workspace indexed: {stats['files_indexed']} files, {stats['total_symbols']} symbols")
+                    except Exception as e:
+                        logger.error(f"Error indexing workspace: {e}", exc_info=True)
+                
+                threading.Thread(target=index_workspace, daemon=True).start()
         
         capabilities = {
             "textDocumentSync": {
@@ -271,6 +325,8 @@ class NLPLLanguageServer:
             "referencesProvider": True,
             "documentFormattingProvider": True,
             "workspaceSymbolProvider": True,
+            "documentSymbolProvider": True,
+            "callHierarchyProvider": True,
             "renameProvider": {
                 "prepareProvider": True
             },
@@ -314,6 +370,14 @@ class NLPLLanguageServer:
         # Full sync - take the full text
         if changes:
             self.documents[uri] = changes[0]['text']
+            
+            # Re-index this file for workspace index
+            if self.workspace_index and uri.endswith('.nlpl'):
+                try:
+                    self.workspace_index.index_file(uri)
+                    logger.debug(f"Re-indexed file: {uri}")
+                except Exception as e:
+                    logger.error(f"Error re-indexing file {uri}: {e}")
             
             # Send diagnostics
             diagnostics = self.diagnostics_provider.get_diagnostics(uri, changes[0]['text'])
@@ -508,6 +572,322 @@ class NLPLLanguageServer:
             "result": {
                 "data": tokens
             }
+        }
+    
+    def _handle_document_symbol(self, msg_id: int, params: Dict) -> Dict:
+        """Handle textDocument/documentSymbol request."""
+        uri = params['textDocument']['uri']
+        
+        # Get symbols from workspace index
+        if self.workspace_index:
+            symbols = self.workspace_index.get_symbols_in_file(uri)
+            
+            # Convert to LSP DocumentSymbol format (hierarchical)
+            result = []
+            kind_map = {
+                'function': 12,  # Function
+                'class': 5,      # Class
+                'method': 6,     # Method
+                'struct': 23,    # Struct
+                'variable': 13,  # Variable
+                'field': 8,      # Field
+                'parameter': 13  # Variable
+            }
+            
+            # Group by scope for hierarchy
+            top_level = []
+            children_by_scope = {}
+            
+            for sym in symbols:
+                lsp_symbol = {
+                    'name': sym.name,
+                    'kind': kind_map.get(sym.kind, 13),
+                    'range': {
+                        'start': {'line': sym.line, 'character': sym.column},
+                        'end': {'line': sym.line, 'character': sym.column + len(sym.name)}
+                    },
+                    'selectionRange': {
+                        'start': {'line': sym.line, 'character': sym.column},
+                        'end': {'line': sym.line, 'character': sym.column + len(sym.name)}
+                    }
+                }
+                
+                if sym.signature:
+                    lsp_symbol['detail'] = sym.signature
+                
+                if not sym.scope:
+                    # Top-level symbol
+                    top_level.append(lsp_symbol)
+                    if sym.kind in ('class', 'struct'):
+                        # Initialize children list for this scope
+                        children_by_scope[sym.name] = []
+                else:
+                    # Child symbol - add to parent's children
+                    if sym.scope in children_by_scope:
+                        children_by_scope[sym.scope].append(lsp_symbol)
+            
+            # Attach children to parents
+            for symbol in top_level:
+                if symbol['name'] in children_by_scope:
+                    children = children_by_scope[symbol['name']]
+                    if children:
+                        symbol['children'] = children
+            
+            result = top_level
+        else:
+            result = []
+        
+        return {
+            "jsonrpc": "2.0",
+            "id": msg_id,
+            "result": result
+        }
+    
+    def _handle_prepare_call_hierarchy(self, msg_id: int, params: Dict) -> Dict:
+        """Handle textDocument/prepareCallHierarchy request."""
+        uri = params['textDocument']['uri']
+        position = params['position']
+        text = self.documents.get(uri, '')
+        
+        if not self.workspace_index:
+            return {"jsonrpc": "2.0", "id": msg_id, "result": None}
+        
+        # Get word at position
+        lines = text.split('\n')
+        if position['line'] >= len(lines):
+            return {"jsonrpc": "2.0", "id": msg_id, "result": None}
+        
+        line = lines[position['line']]
+        if position['character'] >= len(line):
+            return {"jsonrpc": "2.0", "id": msg_id, "result": None}
+        
+        # Find word boundaries
+        start = position['character']
+        end = position['character']
+        
+        while start > 0 and (line[start - 1].isalnum() or line[start - 1] == '_'):
+            start -= 1
+        while end < len(line) and (line[end].isalnum() or line[end] == '_'):
+            end += 1
+        
+        word = line[start:end]
+        if not word:
+            return {"jsonrpc": "2.0", "id": msg_id, "result": None}
+        
+        # Find the symbol
+        symbols = self.workspace_index.get_symbol(word)
+        if not symbols:
+            return {"jsonrpc": "2.0", "id": msg_id, "result": None}
+        
+        # Return call hierarchy items
+        items = []
+        for sym in symbols:
+            if sym.kind in ('function', 'method'):
+                kind_map = {'function': 12, 'method': 6}
+                items.append({
+                    'name': sym.name,
+                    'kind': kind_map[sym.kind],
+                    'detail': sym.signature or '',
+                    'uri': sym.file_uri,
+                    'range': {
+                        'start': {'line': sym.line, 'character': sym.column},
+                        'end': {'line': sym.line, 'character': sym.column + len(sym.name)}
+                    },
+                    'selectionRange': {
+                        'start': {'line': sym.line, 'character': sym.column},
+                        'end': {'line': sym.line, 'character': sym.column + len(sym.name)}
+                    }
+                })
+        
+        return {
+            "jsonrpc": "2.0",
+            "id": msg_id,
+            "result": items if items else None
+        }
+    
+    def _handle_incoming_calls(self, msg_id: int, params: Dict) -> Dict:
+        """Handle callHierarchy/incomingCalls request."""
+        item = params['item']
+        target_name = item['name']
+        
+        if not self.workspace_index:
+            return {"jsonrpc": "2.0", "id": msg_id, "result": []}
+        
+        # Find all files that might call this function
+        incoming = []
+        seen_callers = set()  # Track (file_uri, function_name) to avoid duplicates
+        
+        # Search all indexed files for calls to target_name
+        for file_uri in self.workspace_index.indexed_files:
+            # Get file content
+            file_path = self.workspace_index._uri_to_path(file_uri)
+            try:
+                with open(file_path, 'r') as f:
+                    content = f.read()
+                
+                # Simple search for function calls (could be enhanced with AST analysis)
+                lines = content.split('\n')
+                
+                # Build a map of line numbers to function names for accurate containment
+                function_ranges = {}  # {function_name: (start_line, end_line)}
+                current_function = None
+                function_start = None
+                
+                for i, line in enumerate(lines):
+                    stripped = line.strip()
+                    # Detect function start
+                    if stripped.startswith('function '):
+                        if current_function and function_start is not None:
+                            # End previous function
+                            function_ranges[current_function] = (function_start, i - 1)
+                        # Extract function name
+                        parts = stripped.split()
+                        if len(parts) >= 2:
+                            current_function = parts[1]
+                            function_start = i
+                    # Detect function end
+                    elif stripped == 'end' and current_function:
+                        function_ranges[current_function] = (function_start, i)
+                        current_function = None
+                        function_start = None
+                
+                # Close last function if file ends without 'end'
+                if current_function and function_start is not None:
+                    function_ranges[current_function] = (function_start, len(lines) - 1)
+                
+                # Now search for calls
+                for line_num, line in enumerate(lines):
+                    # Look for function calls: "target_name(" or "target_name with"
+                    if f"{target_name}(" in line or f"{target_name} with" in line:
+                        # Skip if this is the function definition line itself
+                        if line.strip().startswith('function ' + target_name):
+                            continue
+                        
+                        # Find which function contains this line
+                        calling_func_name = None
+                        for func_name, (start, end) in function_ranges.items():
+                            if start <= line_num <= end:
+                                calling_func_name = func_name
+                                break
+                        
+                        if calling_func_name and calling_func_name != target_name:
+                            # Avoid duplicates
+                            caller_key = (file_uri, calling_func_name)
+                            if caller_key in seen_callers:
+                                continue
+                            seen_callers.add(caller_key)
+                            
+                            # Find the symbol info for this function
+                            symbols = self.workspace_index.get_symbols_in_file(file_uri)
+                            calling_func = None
+                            for sym in symbols:
+                                if sym.kind in ('function', 'method') and sym.name == calling_func_name:
+                                    calling_func = sym
+                                    break
+                            
+                            if calling_func:
+                                kind_map = {'function': 12, 'method': 6}
+                                incoming.append({
+                                'from': {
+                                    'name': calling_func.name,
+                                    'kind': kind_map.get(calling_func.kind, 12),
+                                    'detail': calling_func.signature or '',
+                                    'uri': calling_func.file_uri,
+                                    'range': {
+                                        'start': {'line': calling_func.line, 'character': calling_func.column},
+                                        'end': {'line': calling_func.line, 'character': calling_func.column + len(calling_func.name)}
+                                    },
+                                    'selectionRange': {
+                                        'start': {'line': calling_func.line, 'character': calling_func.column},
+                                        'end': {'line': calling_func.line, 'character': calling_func.column + len(calling_func.name)}
+                                    }
+                                },
+                                'fromRanges': [{
+                                    'start': {'line': line_num, 'character': line.find(target_name)},
+                                    'end': {'line': line_num, 'character': line.find(target_name) + len(target_name)}
+                                }]
+                            })
+            except Exception as e:
+                logger.error(f"Error analyzing calls in {file_uri}: {e}")
+                continue
+        
+        return {
+            "jsonrpc": "2.0",
+            "id": msg_id,
+            "result": incoming
+        }
+    
+    def _handle_outgoing_calls(self, msg_id: int, params: Dict) -> Dict:
+        """Handle callHierarchy/outgoingCalls request."""
+        item = params['item']
+        uri = item['uri']
+        
+        if not self.workspace_index:
+            return {"jsonrpc": "2.0", "id": msg_id, "result": []}
+        
+        # Get the function's content
+        file_path = self.workspace_index._uri_to_path(uri)
+        try:
+            with open(file_path, 'r') as f:
+                content = f.read()
+        except Exception:
+            return {"jsonrpc": "2.0", "id": msg_id, "result": []}
+        
+        outgoing = []
+        
+        # Find function calls in this function's body
+        # Simple approach: look for identifiers followed by "(" or "with"
+        import re
+        lines = content.split('\n')
+        start_line = item['range']['start']['line']
+        
+        # Find end of function (naive: look for "end" keyword)
+        end_line = start_line + 1
+        while end_line < len(lines) and not lines[end_line].strip().startswith('end'):
+            end_line += 1
+        
+        # Search for function calls in this range
+        for line_num in range(start_line, end_line):
+            if line_num >= len(lines):
+                break
+            line = lines[line_num]
+            
+            # Find function calls
+            matches = re.finditer(r'\b([a-zA-Z_][a-zA-Z0-9_]*)\s*(?:\(|with)', line)
+            for match in matches:
+                func_name = match.group(1)
+                
+                # Look up this function in workspace index
+                symbols = self.workspace_index.get_symbol(func_name)
+                for sym in symbols:
+                    if sym.kind in ('function', 'method'):
+                        kind_map = {'function': 12, 'method': 6}
+                        outgoing.append({
+                            'to': {
+                                'name': sym.name,
+                                'kind': kind_map[sym.kind],
+                                'detail': sym.signature or '',
+                                'uri': sym.file_uri,
+                                'range': {
+                                    'start': {'line': sym.line, 'character': sym.column},
+                                    'end': {'line': sym.line, 'character': sym.column + len(sym.name)}
+                                },
+                                'selectionRange': {
+                                    'start': {'line': sym.line, 'character': sym.column},
+                                    'end': {'line': sym.line, 'character': sym.column + len(sym.name)}
+                                }
+                            },
+                            'fromRanges': [{
+                                'start': {'line': line_num, 'character': match.start()},
+                                'end': {'line': line_num, 'character': match.end() - 1}
+                            }]
+                        })
+                        break  # Only add once per call
+        
+        return {
+            "jsonrpc": "2.0",
+            "id": msg_id,
+            "result": outgoing
         }
     
     def _publish_diagnostics(self, uri: str, diagnostics: List[Dict]):

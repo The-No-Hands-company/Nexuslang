@@ -162,21 +162,6 @@ class CodeActionsProvider:
         start = range_params["start"]
         end = range_params["end"]
         return start["line"] != end["line"] or start["character"] != end["character"]
-            
-            # Remove unused variable
-            if 'Unused variable' in message:
-                var_name = self._extract_variable_name(message)
-                if var_name:
-                    actions.append(self._remove_unused_variable(uri, text, var_name, diag_range))
-            
-            # Add type annotation
-            if 'Type error' in message and 'expected' in message.lower():
-                actions.append(self._add_type_annotation(uri, text, diag_range, message))
-        
-        # General refactoring actions available in range
-        actions.extend(self._get_refactoring_actions(uri, text, range_params))
-        
-        return [a for a in actions if a is not None]
     
     def _fix_unclosed_string(self, uri: str, text: str, diag_range: Dict) -> Optional[Dict]:
         """Fix unclosed string by adding closing quote."""
