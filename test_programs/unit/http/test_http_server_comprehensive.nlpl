@@ -201,7 +201,7 @@ function main
     set payload to create_dictionary
     set payload["user_id"] to 123
     set payload["role"] to "admin"
-    set secret to "my-secret-key"
+    set secret to "TEST_SECRET_KEY_FOR_UNIT_TESTS_ONLY"
     set token to jwt_create with payload: payload and secret: secret
     if length of token is greater than 0
         print text "  ✓ JWT token created successfully"
@@ -230,7 +230,7 @@ function main
     # ===== TEST 17: JWT Token with Wrong Secret =====
     print text "Test 17: Verify JWT token with wrong secret (should fail)"
     set total_tests to total_tests plus 1
-    set wrong_secret to "wrong-secret"
+    set wrong_secret to "INVALID_SECRET_SHOULD_FAIL_VERIFICATION"
     set invalid_verification to jwt_verify with token: token and secret: wrong_secret
     if invalid_verification is equal to nothing
         print text "  ✓ JWT verification correctly rejected invalid secret"

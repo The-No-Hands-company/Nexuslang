@@ -17,8 +17,8 @@ function main
     set users_db to create_dictionary
     set next_user_id to 1
     
-    # JWT secret for authentication
-    set jwt_secret to "your-secret-key-change-in-production"
+    # JWT secret for authentication (use strong random value in production)
+    set jwt_secret to "EXAMPLE_SECRET_KEY_NOT_FOR_PRODUCTION"
     
     print text "Available Routes:"
     print text "  POST   /api/register       - Register new user"
@@ -41,12 +41,12 @@ function main
     print text "  # Register"
     print text "  curl -X POST http://localhost:8000/api/register \\"
     print text "    -H 'Content-Type: application/json' \\"
-    print text "    -d '{\"username\":\"alice\",\"password\":\"secret123\",\"email\":\"alice@example.com\"}'"
+    print text "    -d '{\"username\":\"EXAMPLE_USER\",\"password\":\"PLACEHOLDER_PASS\",\"email\":\"user@example.com\"}'"
     print text ""
     print text "  # Login"
     print text "  curl -X POST http://localhost:8000/api/login \\"
     print text "    -H 'Content-Type: application/json' \\"
-    print text "    -d '{\"username\":\"alice\",\"password\":\"secret123\"}'"
+    print text "    -d '{\"username\":\"EXAMPLE_USER\",\"password\":\"PLACEHOLDER_PASS\"}'"
     print text ""
     print text "  # Get users (with token)"
     print text "  curl http://localhost:8000/api/users \\"
@@ -60,7 +60,7 @@ function main
     print text "  curl -X POST http://localhost:8000/api/users \\"
     print text "    -H 'Authorization: Bearer <your-token-here>' \\"
     print text "    -H 'Content-Type: application/json' \\"
-    print text "    -d '{\"username\":\"bob\",\"email\":\"bob@example.com\"}'"
+    print text "    -d '{\"username\":\"ANOTHER_USER\",\"email\":\"user2@example.com\"}'"
     print text ""
     print text "  # Update user"
     print text "  curl -X PUT http://localhost:8000/api/users/1 \\"
