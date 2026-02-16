@@ -174,3 +174,15 @@ vscode-nlpl/
 # Verification scripts in root (should be in dev_tools/)
 /verify_*.py
 /debug_*.py
+
+# VS Code Extension Build Artifacts
+vscode-extension/out/
+vscode-extension/node_modules/
+vscode-extension/*.vsix
+
+# Workspace-Local Extensions (should not be in repo)
+.vscode/extensions/
+.vscode/nlpl-extension/
+
+# Extension backup archives
+vscode-extension-backup-*.tar.gz
