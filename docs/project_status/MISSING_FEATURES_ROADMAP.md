@@ -73,12 +73,14 @@ While a package manager is essential for long-term ecosystem growth, rushing to 
    - Community standards
 
 **Rationale:**
+
 - Polished features build **trust and demonstrate viability**
 - Real-world demos (benchmarks, apps) **attract contributors**
 - Strong foundation makes package ecosystem **actually useful**
 - Established languages (Go, Rust) prioritized core maturity before heavy ecosystem focus
 
 **This document now tracks BOTH paths:**
+
 - ✅ Part 0-7: Feature parity (the "what NLPL needs" analysis)
 - 🆕 Part 8: Maturity & production readiness (the "how to get there" guide)
 
@@ -187,6 +189,7 @@ While a package manager is essential for long-term ecosystem growth, rushing to 
 **Why This is Critical for NLPL:**
 
 FFI lets users leverage **existing ecosystems** without reimplementation:
+
 - **Graphics**: OpenGL, Vulkan, DirectX (via C libraries)
 - **OS APIs**: POSIX, Win32, system calls
 - **Math**: BLAS, LAPACK, scientific libraries
@@ -196,43 +199,47 @@ FFI lets users leverage **existing ecosystems** without reimplementation:
 **What NLPL Needs:**
 
 ✅ **Complete FFI Implementation** (February 14, 2026)
-  - ✅ Compiled mode FFI (LLVM foreign function calls)
-  - ✅ Automatic C header parsing (nlpl-bindgen tool)
-  - ✅ Type marshalling (NLPL types ↔ C types)
-  - ✅ Struct layout compatibility and ABI matching
-  - ✅ Function pointer callbacks with trampolines
-  - ✅ Variadic C functions support (printf-style)
+
+- ✅ Compiled mode FFI (LLVM foreign function calls)
+- ✅ Automatic C header parsing (nlpl-bindgen tool)
+- ✅ Type marshalling (NLPL types ↔ C types)
+- ✅ Struct layout compatibility and ABI matching
+- ✅ Function pointer callbacks with trampolines
+- ✅ Variadic C functions support (printf-style)
 
 **FFI Safety Features** (57% Complete - 4/7 features)
-  - ✅ Memory ownership tracking (OWNED, BORROWED, TRANSFER, SHARED) - `MemoryOwnershipTracker` class
-  - ✅ Null pointer handling patterns (documented and tested) - 20+ NULL checks in test files
-  - ✅ Type safety at FFI boundary (TypeMapper validation) - 50+ type mappings
-  - ✅ Best practices documentation (memory management, cleanup) - 900+ line guide
-  - ❌ Unsafe FFI blocks (explicit marking) - Parser support needed
-  - ❌ Automatic buffer overflow protection - Compiler instrumentation needed
-  - ❌ Runtime pointer validation - valgrind/asan integration needed
+
+- ✅ Memory ownership tracking (OWNED, BORROWED, TRANSFER, SHARED) - `MemoryOwnershipTracker` class
+- ✅ Null pointer handling patterns (documented and tested) - 20+ NULL checks in test files
+- ✅ Type safety at FFI boundary (TypeMapper validation) - 50+ type mappings
+- ✅ Best practices documentation (memory management, cleanup) - 900+ line guide
+- ❌ Unsafe FFI blocks (explicit marking) - Parser support needed
+- ❌ Automatic buffer overflow protection - Compiler instrumentation needed
+- ❌ Runtime pointer validation - valgrind/asan integration needed
 
 **FFI Tools** (80% Complete - 8/10 features)
-  - ✅ Automatic binding generator (nlpl-bindgen CLI, 150 lines) - Production ready
-  - ✅ C header parser (CHeaderParser, 812 lines) - Regex-based, portable
-  - ✅ Type mapper (bidirectional C↔NLPL, complete) - 50+ mappings
-  - ✅ String converter (automatic marshalling) - 4 LLVM helper functions
-  - ✅ Callback manager (C→NLPL trampolines) - Full implementation
-  - ✅ Function pointer manager - Complete with casting
-  - ✅ Struct marshaller (by-value and by-pointer) - ABI compatible
-  - ✅ FFI documentation (900+ lines complete guide) - Comprehensive
-  - ❌ ABI compatibility checker (automatic validation) - Future tooling
-  - ❌ FFI debugging tools (GDB/LLDB integration, call tracing) - Future enhancement
+
+- ✅ Automatic binding generator (nlpl-bindgen CLI, 150 lines) - Production ready
+- ✅ C header parser (CHeaderParser, 812 lines) - Regex-based, portable
+- ✅ Type mapper (bidirectional C↔NLPL, complete) - 50+ mappings
+- ✅ String converter (automatic marshalling) - 4 LLVM helper functions
+- ✅ Callback manager (C→NLPL trampolines) - Full implementation
+- ✅ Function pointer manager - Complete with casting
+- ✅ Struct marshaller (by-value and by-pointer) - ABI compatible
+- ✅ FFI documentation (900+ lines complete guide) - Comprehensive
+- ❌ ABI compatibility checker (automatic validation) - Future tooling
+- ❌ FFI debugging tools (GDB/LLDB integration, call tracing) - Future enhancement
 
 **C++ Interop** (0% Complete - 0/5 features - Future Work)
-  - ❌ Name mangling support (demangle C++ symbols)
-  - ❌ C++ class wrapping (expose as NLPL classes)
-  - ❌ Template instantiation
-  - ❌ Exception handling across FFI boundary
-  - ❌ RTTI support
-  - **Status:** Not started - C FFI must be validated first
-  - **Priority:** LOW - Most libraries provide C APIs
-  - **Estimated Effort:** 6-9 months after C FFI proven stable
+
+- ❌ Name mangling support (demangle C++ symbols)
+- ❌ C++ class wrapping (expose as NLPL classes)
+- ❌ Template instantiation
+- ❌ Exception handling across FFI boundary
+- ❌ RTTI support
+- **Status:** Not started - C FFI must be validated first
+- **Priority:** LOW - Most libraries provide C APIs
+- **Estimated Effort:** 6-9 months after C FFI proven stable
 
 **Priority:** ✅ COMPLETE  
 **Estimated Effort:** 3-6 months ✅ COMPLETED in 1 session (Feb 14, 2026)
@@ -289,12 +296,14 @@ FFI lets users leverage **existing ecosystems** without reimplementation:
 **What Makes Rust/Cargo Universal:**
 
 Cargo doesn't care if you're building:
+
 - A web service
 - A data processing application
 - A business management system
 - A scientific computing library
 
 **It provides domain-agnostic infrastructure:**
+
 - Project structure
 - Dependency resolution
 - Build configuration
@@ -387,6 +396,7 @@ Cargo doesn't care if you're building:
 **Test Coverage:** 24/24 parser tests, manual integration tests validated
 
 **Files Created:**
+
 - `docs/build_system/NLPL_TOML_SPECIFICATION.md` - Manifest format reference
 - `docs/build_system/BUILD_TOOL_GUIDE.md` - Build tool documentation
 - `docs/build_system/INCREMENTAL_COMPILATION.md` - Incremental compilation guide
@@ -397,6 +407,7 @@ Cargo doesn't care if you're building:
 - `test_programs/build_system/` - Test programs with dependencies
 
 **Next Steps:**
+
 1. **IMMEDIATE**: Continue with Package Manager (Part 1.3) - dependency management foundation
 2. **SHORT TERM**: Add parallel compilation (2-3 weeks) - significant speed improvement
 3. **MEDIUM TERM**: Cross-compilation support (2-3 months) - enables embedded/WASM targets
@@ -418,6 +429,7 @@ Cargo doesn't care if you're building:
 **Why This Enables Universal Adoption:**
 
 A package manager lets the **community** build domain-specific libraries:
+
 - Graphics developers publish rendering engines
 - Systems programmers publish low-level utilities
 - Web developers publish HTTP frameworks
@@ -481,6 +493,7 @@ A package manager lets the **community** build domain-specific libraries:
 **Why This is Universal Infrastructure:**
 
 Good documentation isn't domain-specific - it helps developers in **all fields**:
+
 - API reference for any library
 - Examples for any use case
 - Searchable documentation
@@ -785,7 +798,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
   - Implementation Notes ✅ COMPLETE
     - Control register and MSR operations require compiled mode with inline assembly
     - CPUID operations work in interpreter mode (simulated Intel-like responses)
-    - All functions registered in src/nlpl/stdlib/hardware/__init__.py
+    - All functions registered in src/nlpl/stdlib/hardware/**init**.py
   - Test Coverage ✅ COMPLETE
     - test_cpu_cpuid.nlpl - CPUID instruction testing (vendor, leaves, features)
     - test_cpu_features.nlpl - Comprehensive feature detection (10 test scenarios)
@@ -832,6 +845,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 - ✅ **Parser Support** (COMPLETE)
   - `parse_inline_assembly()` - Full syntax parser (lines 3415-3510 in parser.py)
   - Syntax:
+
     ```nlpl
     asm
         code
@@ -842,6 +856,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
         clobbers "rax", "rbx"
     end
     ```
+
   - Section parsing: code, inputs, outputs, clobbers
   - Helper methods: `_parse_asm_operands()`, `_parse_asm_clobbers()`
 
@@ -889,6 +904,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 - ✅ Test suite: 13 tests total (5 read-write, 5 multiple outputs)
 
 **Week 5-6: Multi-Instruction Blocks & Clobbers**
+
 - Multi-instruction block generation
 - Clobber list processing: registers, "memory", "cc"
 - Instruction ordering preservation
@@ -896,12 +912,14 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 - Jump target handling
 
 **Week 7: Architecture Support**
+
 - Architecture detection (x86/x64/ARM/AArch64)
 - x86-specific features (32-bit/64-bit modes, register translation)
 - Architecture-specific constraint validation
 - Foundation for ARM support
 
 **Week 8: Safety & Validation**
+
 - Assembly syntax validation
 - Dangerous instruction warnings (stack manipulation, privileged instructions)
 - Register usage analysis
@@ -1605,6 +1623,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 - Virtual environments
 
 **What NLPL Needs:**
+
 - [ ] **Package Registry**
   - Central package repository
   - Package search/discovery
@@ -2281,12 +2300,14 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 #### 8.1.1 Complete Language Server Protocol (LSP) ✅ IN PROGRESS
 
 **Current Gaps:**
+
 - Testing incomplete
 - Documentation sparse
 - Performance unoptimized
 - Refactoring support missing
 
 **Required Work:**
+
 - [ ] **Core LSP Features**
   - ✅ Autocompletion (basic exists)
   - [ ] Go-to-definition (cross-file)
@@ -2397,6 +2418,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 #### 8.1.3 Profiler & Performance Tools ❌ MISSING
 
 **Current State:**
+
 - No built-in profiling
 - No memory tracking tools
 - Users must use external profilers (perf, Valgrind)
@@ -2429,6 +2451,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 #### 8.1.4 Build System Battle Testing ⚠️ NEW
 
 **Current State:**
+
 - Build system just completed (February 15, 2026)
 - Core features working: manifest, CLI, incremental compilation
 - No real-world usage yet
@@ -2499,6 +2522,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 #### 8.2.2 Benchmark Suite Development ❌ MISSING
 
 **Current State:**
+
 - Ad-hoc benchmarks exist
 - No systematic comparison suite
 - No CI/CD performance tracking
@@ -2552,6 +2576,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 #### 8.3.1 Critical Missing Modules ❌ PRIORITY
 
 **Cryptography & Security:**
+
 - [ ] Secure hashing (SHA-256, SHA-512, BLAKE3)
 - [ ] Encryption (AES, ChaCha20)
 - [ ] Public key crypto (RSA, Ed25519)
@@ -2559,6 +2584,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 - [ ] Random number generation (cryptographically secure)
 
 **Database Connectivity:**
+
 - [ ] SQLite bindings (via FFI)
 - [ ] PostgreSQL client
 - [ ] MySQL client
@@ -2566,6 +2592,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 - [ ] Connection pooling
 
 **Web & HTTP:**
+
 - [ ] HTTP server framework
 - [ ] HTTP client (async, connection pooling)
 - [ ] WebSocket support
@@ -2573,6 +2600,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 - [ ] Template engine
 
 **Data Formats:**
+
 - [ ] CSV reader/writer (beyond basics)
 - [ ] JSON schema validation
 - [ ] MessagePack, CBOR, Protocol Buffers
@@ -2580,6 +2608,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 - [ ] Audio format handling
 
 **GUI & Graphics:**
+
 - [ ] Cross-platform GUI toolkit (or bindings)
 - [ ] 2D graphics primitives
 - [ ] OpenGL/Vulkan wrappers (beyond raw FFI)
@@ -2587,6 +2616,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 - [ ] Windowing system abstractions
 
 **Scientific Computing:**
+
 - [ ] Linear algebra (matrix operations)
 - [ ] Statistical functions
 - [ ] Numerical integration/differentiation
@@ -2594,6 +2624,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 - [ ] Plotting/visualization
 
 **System & OS:**
+
 - [ ] Process management (spawn, pipes, signals)
 - [ ] Environment variables
 - [ ] File system watching
@@ -2609,6 +2640,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 #### 8.3.2 Module Quality Standards ❌ MISSING
 
 **Current Gaps:**
+
 - No consistent error handling patterns
 - No logging standards
 - No testing conventions
@@ -2649,6 +2681,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 #### 8.3.3 Async I/O Integration ⚠️ PARTIAL
 
 **Current State:**
+
 - Concurrency primitives exist
 - Async/await syntax planned
 - No async stdlib modules yet
@@ -2714,6 +2747,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 #### 8.4.2 Fuzzing Infrastructure ❌ MISSING
 
 **Current State:**
+
 - No fuzzing setup
 - Parser/lexer untested against malformed input at scale
 - FFI boundary not fuzz-tested
@@ -2746,6 +2780,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 #### 8.4.3 Security Hardening ⚠️ BASIC
 
 **Current Concerns:**
+
 - FFI allows arbitrary C code execution
 - Inline assembly allows arbitrary instructions
 - No sandboxing for untrusted code
@@ -2931,6 +2966,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 #### 8.6.3 Marketing & Outreach ❌ MISSING
 
 **Current State:**
+
 - No marketing effort
 - No blog or website
 - No social media presence
@@ -2963,6 +2999,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 ### 8.7 Self-Hosting & Language Maturity ❌ FUTURE
 
 **Current State:**
+
 - Compiler written in Python
 - No NLPL-in-NLPL compiler
 
@@ -2974,6 +3011,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
   - Compile NLPL compiler with NLPL compiler (bootstrapped!)
 
 **Why This Matters:**
+
 - Proves language maturity ("eats its own dog food")
 - Enables language evolution independent of Python
 - Performance improvements (no Python overhead)
@@ -2990,33 +3028,39 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 **Maturity Roadmap (6-9 months with 1-2 developers):**
 
 **Month 1-2: Tooling & Quality**
+
 - Complete LSP implementation (2 months)
 - Set up fuzzing infrastructure (1 month)
 - Establish test coverage tracking (2 weeks)
 - Create contribution guidelines (1 week)
 
 **Month 3-4: Performance & Stdlib**
+
 - LLVM optimization tuning (2 months)
 - Benchmark suite development (1 month)
 - Stdlib module expansion (start critical modules: crypto, HTTP, DB)
 - Module quality standards (1 month)
 
 **Month 5-6: Debugger & Security**
+
 - ✅ Debugger implementation (COMPLETE - Feb 16, 2026) 🆕
 - Security hardening (2 months)
 - Continue stdlib expansion (parallel work)
 
 **Month 7-9: Community & Validation**
+
 - Build showcase projects (2-3 months)
 - Complete documentation (tutorials, guides)
 - Community infrastructure setup (2 weeks)
 - Marketing push (ongoing)
 
 **Post-Maturity (Month 10+): Package Manager**
+
 - Build on solid foundation
 - Ecosystem growth becomes sustainable
 
 **Key Success Metrics:**
+
 - ✅ LSP working in 3+ editors
 - ✅ Debugger supporting breakpoints, stepping, inspection 🆕
 - ⏳ 90%+ test coverage (in progress)
@@ -3120,6 +3164,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 7. **Build System Battle Testing** - Real-world usage validation (1-2 months)
 
 **Success Criteria:**
+
 - LSP working in 3+ editors
 - ✅ Debugger with breakpoints, stepping, inspection 🆕
 - 90%+ test coverage
@@ -3272,6 +3317,7 @@ NLPL is **closer to v1.0 than it appears** - not because features are missing, b
 **Achievement:** Built production-ready debugger in 4 hours with 6000+ lines of code and documentation.
 
 **Components:**
+
 - Core debugger (631 lines, enhanced with thread-safe pause/resume)
 - DAP server (700+ lines, 18+ request handlers)
 - VS Code extension integration (300+ lines TypeScript)
@@ -3283,6 +3329,7 @@ NLPL is **closer to v1.0 than it appears** - not because features are missing, b
 **Impact:** Eliminates critical blocker for professional development workflows. Developers can now debug NLPL programs with full breakpoint, stepping, and variable inspection support in VS Code and any DAP-compatible IDE.
 
 **Next Steps:**
+
 1. Manual end-to-end testing (1-2 hours)
 2. Automated test suite (1-2 days)
 3. **Move to Standard Library Expansion** (crypto, HTTP, database, async_io)
@@ -3302,6 +3349,7 @@ NLPL is **closer to v1.0 than it appears** - not because features are missing, b
 ### 11.1 AI Ambiguity Resolution ⭐ KILLER FEATURE
 
 **Current State:**
+
 - Parser is purely deterministic
 - Ambiguous syntax causes parse errors
 - Requires precise English phrasing
@@ -3465,6 +3513,7 @@ end
   - Natural syntax for metaprogramming
 
 **Use Cases:**
+
 - **Serialization**: Auto-generate JSON/XML serializers
 - **Builders**: Generate builder patterns for structs
 - **Testing**: Auto-generate equality/comparison methods
@@ -3480,10 +3529,12 @@ end
 ### 12.2 Metaprogramming & Macro System
 
 **Current State:**
+
 - No macro system
 - Limited compile-time code generation
 
 **What Lisp/Rust/C++ Have:**
+
 - Macros for code generation
 - Compile-time computation
 - Domain-specific languages
@@ -3514,6 +3565,7 @@ create_builder for User
 ### 13.1 Contract Programming (Design by Contract)
 
 **What C++26 Has:**
+
 - Preconditions: `[[pre: x > 0]]`
 - Postconditions: `[[post: result > 0]]`
 - Runtime contract checking
@@ -3570,6 +3622,7 @@ end
   - Cannot weaken preconditions
 
 **Benefits:**
+
 - **Better error messages**: Contract violations show exact failed condition
 - **Documentation**: Contracts serve as executable specifications
 - **Debugging**: Catch errors at boundary, not deep in call stack
@@ -3583,6 +3636,7 @@ end
 ### 13.2 Built-in Memory Safety Analysis
 
 **What Rust Has:**
+
 - Borrow checker
 - Lifetime annotations
 - Compile-time memory safety
@@ -3616,11 +3670,13 @@ end  # data still valid after function
 ### 14.1 Actor Model (Erlang-style)
 
 **Current State:**
+
 - Thread-based concurrency (Part 4.1 ✅)
 - Sync primitives (Part 4.2 ✅)
 - No actor model
 
 **What Erlang/Akka/Pony Have:**
+
 - Actors as independent processes
 - Message passing (no shared state)
 - Fault tolerance (supervisor trees)
@@ -3680,6 +3736,7 @@ print text "Worker1 count: " plus result
   - Location-independent messaging
 
 **Benefits:**
+
 - **Safer than threads**: No shared state, no locks
 - **Scalable**: Millions of actors on one machine
 - **Distributed**: Same code runs locally or across network
@@ -3697,6 +3754,7 @@ print text "Worker1 count: " plus result
 ### 15.1 Built-in Profiling
 
 **Current State:**
+
 - No built-in profiling
 - Must use external tools (perf, valgrind, etc.)
 
@@ -3750,6 +3808,7 @@ print text "Memory: " plus results.memory plus "bytes"
 ### 15.2 Built-in Debugger Enhancements
 
 **Current State:**
+
 - ✅ DAP-based debugger (Feb 16, 2026)
 - Breakpoints, stepping, variables
 
@@ -3821,25 +3880,31 @@ find all X where parent of "Alice" is X
 ## Summary of New Additions
 
 **Part 11: AI-Enhanced Natural Language** ⭐ UNIQUE
+
 - 11.1 AI Ambiguity Resolution (HIGH priority)
 - 11.2 AI-Enhanced Error Messages (MEDIUM priority)
 
 **Part 12: Metaprogramming & Reflection**
+
 - 12.1 Static Reflection (MEDIUM priority)
 - 12.2 Macro System (MEDIUM priority)
 
 **Part 13: Safety & Correctness**
+
 - 13.1 Contract Programming (MEDIUM priority)
 - 13.2 Memory Safety Analysis (LOW priority)
 
 **Part 14: Advanced Concurrency**
+
 - 14.1 Actor Model (MEDIUM priority)
 
 **Part 15: Developer Tooling**
+
 - 15.1 Built-in Profiling (MEDIUM priority)
 - 15.2 Debugger Enhancements (LOW priority)
 
 **Part 16: Future Research**
+
 - Logic programming (exploratory)
 - Dependent types (exploratory)
 - Quantum primitives (not planned)
@@ -3847,7 +3912,7 @@ find all X where parent of "Alice" is X
 **Total New Features:** 11 actionable, 3 research-only
 
 **Priority Distribution:**
+
 - HIGH: 1 (AI ambiguity resolution)
 - MEDIUM: 7 (contracts, profiling, reflection, actor model, etc.)
 - LOW: 3 (memory safety, debugger enhancements, future research)
-
