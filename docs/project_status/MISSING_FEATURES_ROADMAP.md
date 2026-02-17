@@ -2,8 +2,10 @@
 
 **Document Purpose:** Comprehensive analysis of what NLPL needs to achieve feature parity with industrial-strength general-purpose languages.
 
-**Last Updated:** February 15, 2026  
-**Current NLPL Version:** v1.4+ (Build System Complete, Hardware Access Complete, All Parameter Features, IDE Support)
+**Last Updated:** February 17, 2026  
+**Current NLPL Version:** v1.4-dev (Development build - NOT production-ready)  
+**Target v1.0.0 Release:** Q3 2026 (when 100% feature-complete + production-ready)  
+**Versioning Note:** See [docs/reference/VERSIONING_STRATEGY.md](../reference/VERSIONING_STRATEGY.md) for details
 
 ---
 
@@ -3293,6 +3295,8 @@ NLPL is **closer to v1.0 than it appears** - not because features are missing, b
 
 **Philosophy:** NLPL's core vision is to be "as natural as English." While the current deterministic parser works well for clear syntax, **AI integration can handle ambiguous or unclear natural language**, making NLPL truly revolutionary.
 
+**Timeline:** Post-v1.0.0 (after production-ready release ~Q3 2026), estimated Year 2 (2027-2028)
+
 ---
 
 ### 11.1 AI Ambiguity Resolution ⭐ KILLER FEATURE
@@ -3358,19 +3362,22 @@ when user clicks button show popup with message
 **Why This Is Unique:**
 
 **NO OTHER PROGRAMMING LANGUAGE HAS AI-ASSISTED PARSING**. This would make NLPL:
+
 - **Most natural** language for beginners
 - **Most productive** for experienced developers (write intent, AI handles syntax)
 - **Future-proof** (improves as LLMs improve)
 
-**Priority:** HIGH (Post-v1.0, Year 2)  
+**Priority:** HIGH (Post-v1.0.0, Year 2)  
 **Estimated Effort:** 9-12 months  
-**Dependencies:** Stable v1.0, LSP completion, performance optimization
+**Dependencies:** Stable v1.0.0 production release, LSP completion, performance optimization  
+**Target Release:** v2.0.0 (likely 2027-2028)
 
 ---
 
 ### 11.2 AI-Enhanced Error Messages
 
 **Current State:**
+
 - Error messages are descriptive but technical
 - No suggestions for unclear intent
 
@@ -3391,12 +3398,14 @@ Please clarify or press 1/2/3 to accept suggestion."
 ```
 
 **Implementation:**
+
 - Analyze error context with LLM
 - Generate fix suggestions
 - Auto-apply with user consent
 
-**Priority:** MEDIUM (Post-v1.0)  
-**Estimated Effort:** 2-3 months
+**Priority:** MEDIUM (Post-v1.0.0)  
+**Estimated Effort:** 2-3 months  
+**Target Release:** v1.1.0 or v1.2.0 (2027)
 
 ---
 
@@ -3409,6 +3418,7 @@ Please clarify or press 1/2/3 to accept suggestion."
 ### 12.1 Static Reflection & Compile-Time Introspection
 
 **What C++26/Rust Have:**
+
 - Compile-time type introspection (`meta::info`, `std::reflect`)
 - Query struct fields, methods, properties
 - Generate code based on types
@@ -3460,9 +3470,10 @@ end
 - **Testing**: Auto-generate equality/comparison methods
 - **ORMs**: Generate database mapping code
 
-**Priority:** MEDIUM (Post-v1.0)  
+**Priority:** MEDIUM (Post-v1.0.0)  
 **Estimated Effort:** 6-8 months  
-**Dependencies:** Type system maturity, stable compiler
+**Dependencies:** Type system maturity, stable compiler  
+**Target Release:** v1.3.0 (2027)
 
 ---
 
@@ -3674,9 +3685,10 @@ print text "Worker1 count: " plus result
 - **Distributed**: Same code runs locally or across network
 - **Fault-tolerant**: Actors can crash without bringing down system
 
-**Priority:** MEDIUM (Post-v1.0)  
+**Priority:** MEDIUM (Post-v1.0.0)  
 **Estimated Effort:** 8-10 months  
-**Dependencies:** Message passing infrastructure, networking modules
+**Dependencies:** Message passing infrastructure, networking modules  
+**Target Release:** v1.4.0 (2028)
 
 ---
 
@@ -3758,8 +3770,9 @@ print text "Memory: " plus results.memory plus "bytes"
   - Memory layout views
   - Call graph exploration
 
-**Priority:** LOW (Post-v1.0)  
-**Estimated Effort:** 6-8 months per feature
+**Priority:** LOW (Post-v1.0.0)  
+**Estimated Effort:** 6-8 months per feature  
+**Target Release:** v1.5.0+ (2028-2029)
 
 ---
 

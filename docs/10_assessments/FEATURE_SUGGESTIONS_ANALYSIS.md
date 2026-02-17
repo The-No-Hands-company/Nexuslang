@@ -195,6 +195,87 @@ Analyzed suggestions for "forgotten or rarely used features" in programming lang
 8. **Inline Assembly** → Already complete
 9. **Resizable Arrays** → Already solved (dynamic lists)
 10. **Quantum Primitives** → Too niche/premature
+11. **Literate Programming** → Better solved by external tooling (see detailed explanation below)
+
+---
+
+## Detailed Explanations for Excluded Features
+
+### Why "Literate Programming" is Better as External Tooling
+
+**What is Literate Programming?**
+
+Literate programming (invented by Donald Knuth) is a paradigm where you write **documentation first, code second**, all in the same file. The documentation is the primary artifact, with code blocks embedded within prose.
+
+**Examples:**
+- **Jupyter Notebooks**: Mix markdown explanations with executable code cells
+- **Org-mode** (Emacs): Write articles with embedded code in multiple languages
+- **Knuth's WEB**: LaTeX documentation with Pascal/C code woven in
+- **R Markdown**: Combine text, code, and visualizations
+
+**Why NOT a Language Feature?**
+
+1. **Presentation vs. Language Concern**
+   - Literate programming is about **how you present code**, not how you write it
+   - The language itself doesn't need to understand the documentation format
+   - Example: Python has no "literate programming mode", but Jupyter makes literate Python trivial
+
+2. **Tooling is More Flexible**
+   - External tools can support **multiple documentation formats**:
+     - Generate HTML/PDF documentation from NLPL source
+     - Create interactive notebooks that run NLPL code
+     - Weave NLPL code into LaTeX, Markdown, Sphinx, etc.
+   - Language-level support would **lock you into one format**
+
+3. **Parser Complexity**
+   - Adding literate programming to the language means:
+     - Parser must handle mixed documentation/code files
+     - Ambiguity between natural language documentation and NLPL's natural language syntax
+     - Increased compilation complexity
+   - External tools avoid this entirely (preprocessor extracts code blocks)
+
+4. **Already Solvable with Existing Tools**
+   - **Option 1**: Use Markdown with NLPL code blocks, run with a preprocessor
+   - **Option 2**: Build an NLPL kernel for Jupyter/Observable notebooks
+   - **Option 3**: Use Sphinx/Doxygen-style documentation generators for NLPL
+   - All of these work **today** without language changes
+
+**Example: How External Tooling Works**
+
+```markdown
+# Data Processing Pipeline
+
+This pipeline processes customer data and generates reports.
+
+\```nlpl
+function process_customer_data with file_path as String
+  set data to read csv from file_path
+  set filtered to filter data where age is greater than 18
+  return filtered
+end
+\```
+
+The function reads CSV files and filters by age. Next, we generate reports:
+
+\```nlpl
+function generate_report with data as List of Customer
+  for each customer in data
+    print text customer.name plus ": " plus customer.age
+  end
+end
+\```
+```
+
+**Tooling extracts the code blocks and runs them**, no language-level support needed.
+
+**Conclusion**
+
+Literate programming is a **workflow/tooling decision**, not a language design decision. NLPL should focus on:
+- Being a great **general-purpose language** (it already is)
+- Having excellent **documentation generation** tools (future: nlpl-doc CLI)
+- Supporting **interactive notebooks** via Jupyter kernels (future: nlpl-jupyter-kernel)
+
+But it should **NOT** bake literate programming into the language syntax itself.
 
 ---
 
