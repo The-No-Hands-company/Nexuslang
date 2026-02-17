@@ -1,4 +1,5 @@
 # Basic Programming Concepts in NLPL
+# This example demonstrates basic programming concepts such as variables, data types, functions, control flow, loops, error handling, and file operations in NLPL.
 
 # Function Definition (must be defined before use)
 function calculate_average with numbers as List of Float returns Float
@@ -10,6 +11,8 @@ function calculate_average with numbers as List of Float returns Float
         set total to total plus number
     
     return total divided by length(numbers)
+    
+end
 
 # Variables and Types
 set name to "John Doe"
@@ -68,3 +71,6 @@ if file_exists("data.txt")
 else
     set success to write_file("data.txt", "Hello, World!")
     print text "File created successfully"
+
+function bad 
+

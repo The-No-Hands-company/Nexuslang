@@ -5,6 +5,7 @@ function greet with name as String returns String
     return "Hello, " plus name
 end
 
+# Class definition
 class User
     property name as String
     property age as Integer
