@@ -1,65 +1,98 @@
 """
 Enhanced error reporting for NLPL.
 Provides detailed error messages with source context, suggestions, and formatting.
+Inspired by Rust's error reporting system.
 """
 
 from typing import Optional, List
 import difflib
+from .error_codes import get_error_info, get_error_code_for_type
 
 
 class NLPLError(Exception):
-    """Base class for all NLPL errors."""
+    """Base class for all NLPL errors with enhanced formatting."""
     def __init__(self, message: str, line: Optional[int] = None, column: Optional[int] = None,
-                 source_line: Optional[str] = None, error_type: str = "Error", nlpl_type: str = "Error"):
+                 source_line: Optional[str] = None, error_type: str = "Error", nlpl_type: str = "Error",
+                 error_code: Optional[str] = None, full_source: Optional[str] = None,
+                 context_lines: int = 2):
         self.message = message
         self.line = line
         self.column = column
         self.source_line = source_line
         self.error_type = error_type
         self.nlpl_type = nlpl_type
+        self.error_code = error_code
+        self.full_source = full_source
+        self.context_lines = context_lines
         super().__init__(self._format_error())
     
     def _format_error(self) -> str:
-        """Format the error message with context."""
-        parts = [f"{self.error_type}: {self.message}"]
+        """Format the error message with context (Rust-style)."""
+        parts = []
         
+        # Header with error code
+        if self.error_code:
+            parts.append(f"\n{self.error_type} [{self.error_code}]: {self.message}")
+        else:
+            parts.append(f"\n{self.error_type}: {self.message}")
+        
+        # Location
         if self.line is not None:
-            parts.append(f"\n  at line {self.line}" + (f", column {self.column}" if self.column else ""))
+            parts.append(f"  --> line {self.line}" + (f", column {self.column}" if self.column else ""))
         
-        if self.source_line:
-            # Add source line with line number
+        # Source context (multiple lines like Rust)
+        if self.full_source and self.line:
+            context = format_source_context(self.full_source, self.line, self.column or 1, self.context_lines)
+            parts.append(f"\n{context}")
+        elif self.source_line:
+            # Fallback to single line
             line_str = str(self.line) if self.line else "?"
-            parts.append(f"\n\n  {line_str} | {self.source_line}")
-            
-            # Add caret pointer if we have a column
+            parts.append(f"\n  {line_str} | {self.source_line}")
             if self.column is not None:
-                # Calculate padding (line number + " | " + column offset)
                 padding = len(line_str) + 3 + self.column - 1
-                parts.append(f"\n  {' ' * padding}^")
+                parts.append(f"  {' ' * padding}^")
+        
+        # Error code help
+        if self.error_code:
+            error_info = get_error_info(self.error_code)
+            if error_info and error_info.fixes:
+                parts.append(f"\n\nHow to fix:")
+                for fix in error_info.fixes[:2]:  # Show top 2 fixes
+                    parts.append(f"  • {fix}")
+                parts.append(f"\nFor more help: nlpl --explain {self.error_code}")
         
         return "".join(parts)
 
 
+
 class NLPLSyntaxError(NLPLError):
-    """Syntax error with suggestions."""
+    """Syntax error with suggestions and error codes."""
     def __init__(self, message: str, line: Optional[int] = None, column: Optional[int] = None,
                  source_line: Optional[str] = None, suggestion: Optional[str] = None,
-                 expected: Optional[str] = None, got: Optional[str] = None):
+                 expected: Optional[str] = None, got: Optional[str] = None,
+                 error_type_key: Optional[str] = None, full_source: Optional[str] = None):
         self.suggestion = suggestion
         self.expected = expected
         self.got = got
-        super().__init__(message, line, column, source_line, "Syntax Error", "SyntaxError")
+        
+        # Get error code
+        error_code = None
+        if error_type_key:
+            error_code = get_error_code_for_type(error_type_key)
+        
+        super().__init__(message, line, column, source_line, "Syntax Error", "SyntaxError",
+                        error_code=error_code, full_source=full_source)
     
     def _format_error(self) -> str:
         """Format syntax error with additional context."""
         base = super()._format_error()
         
         if self.expected and self.got:
-            base += f"\n\n  Expected: {self.expected}"
-            base += f"\n  Got: {self.got}"
+            base += f"\n\nExpected: {self.expected}"
+            base += f"\nGot: {self.got}"
         
         if self.suggestion:
-            base += f"\n\n   Suggestion: {self.suggestion}"
+            base += f"\n\nSuggestion: {self.suggestion}"
         
         return base
 
@@ -94,17 +127,22 @@ class NLPLRuntimeError(NLPLError):
 
 
 class NLPLNameError(NLPLError):
-    """Name error with did-you-mean suggestions."""
+    """Name error with did-you-mean suggestions and error codes."""
     def __init__(self, name: str, line: Optional[int] = None, column: Optional[int] = None,
-                 source_line: Optional[str] = None, available_names: Optional[List[str]] = None):
+                 source_line: Optional[str] = None, available_names: Optional[List[str]] = None,
+                 error_type_key: str = "undefined_variable", full_source: Optional[str] = None):
         self.name = name
         self.available_names = available_names or []
         
         # Find similar names
         self.suggestions = get_close_matches(name, self.available_names)
         
+        # Determine specific error code
+        error_code = get_error_code_for_type(error_type_key)
+        
         message = f"Name '{name}' is not defined"
-        super().__init__(message, line, column, source_line, "Name Error", "NameError")
+        super().__init__(message, line, column, source_line, "Name Error", "NameError",
+                        error_code=error_code, full_source=full_source)
     
     def _format_error(self) -> str:
         """Format name error with suggestions."""
@@ -112,31 +150,37 @@ class NLPLNameError(NLPLError):
         
         if self.suggestions:
             if len(self.suggestions) == 1:
-                base += f"\n\n   Did you mean: '{self.suggestions[0]}'?"
+                base += f"\n\nDid you mean: '{self.suggestions[0]}'?"
             else:
-                base += f"\n\n   Did you mean one of these?"
+                base += f"\n\nDid you mean one of these?"
                 for suggestion in self.suggestions[:3]:  # Show top 3
-                    base += f"\n    • {suggestion}"
+                    base += f"\n  • {suggestion}"
         
         return base
 
 
 class NLPLTypeError(NLPLError):
-    """Type error with type information."""
+    """Type error with type information and error codes."""
     def __init__(self, message: str, line: Optional[int] = None, column: Optional[int] = None,
                  source_line: Optional[str] = None, expected_type: Optional[str] = None,
-                 got_type: Optional[str] = None):
+                 got_type: Optional[str] = None, error_type_key: str = "type_mismatch",
+                 full_source: Optional[str] = None):
         self.expected_type = expected_type
         self.got_type = got_type
-        super().__init__(message, line, column, source_line, "Type Error", "TypeError")
+        
+        # Get error code
+        error_code = get_error_code_for_type(error_type_key)
+        
+        super().__init__(message, line, column, source_line, "Type Error", "TypeError",
+                        error_code=error_code, full_source=full_source)
     
     def _format_error(self) -> str:
         """Format type error with type info."""
         base = super()._format_error()
         
         if self.expected_type and self.got_type:
-            base += f"\n\n  Expected type: {self.expected_type}"
-            base += f"\n  Got type: {self.got_type}"
+            base += f"\n\nExpected type: {self.expected_type}"
+            base += f"\nGot type: {self.got_type}"
         
         return base
 
