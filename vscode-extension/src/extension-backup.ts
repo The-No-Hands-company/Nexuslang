@@ -101,29 +101,13 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // Start the client (async)
     console.log('[NLPL] Starting language client...');
-    
-    // Add timeout to prevent hanging forever
-    const startPromise = client.start();
-    const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('LSP server start timeout after 10 seconds')), 10000)
-    );
-    
     try {
-        await Promise.race([startPromise, timeoutPromise]);
+        await client.start();
         console.log('[NLPL] Language server started successfully!');
         vscode.window.showInformationMessage('NLPL Language Server started successfully!');
     } catch (error) {
         console.error('[NLPL] Failed to start language server:', error);
         vscode.window.showErrorMessage(`NLPL Language Server failed to start: ${error}`);
-        
-        // Show detailed diagnostic
-        const diagnose = await vscode.window.showErrorMessage(
-            'NLPL LSP failed to start. Check if Python and src/nlpl/lsp/server.py exist?',
-            'Show Logs'
-        );
-        if (diagnose === 'Show Logs') {
-            vscode.commands.executeCommand('workbench.action.output.show');
-        }
     }
 }
 

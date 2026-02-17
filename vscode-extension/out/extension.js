@@ -40,15 +40,17 @@ const vscode = __importStar(require("vscode"));
 const node_1 = require("vscode-languageclient/node");
 const debugAdapter_1 = require("./debugAdapter");
 let client;
-function activate(context) {
-    console.log('NLPL extension is now active');
+async function activate(context) {
+    console.log('[NLPL] Extension activation started');
+    vscode.window.showInformationMessage('NLPL extension is activating...');
     // Activate debug support
     (0, debugAdapter_1.activateDebugSupport)(context);
     // Get configuration
     const config = vscode.workspace.getConfiguration('nlpl');
     const enabled = config.get('languageServer.enabled', true);
+    console.log('[NLPL] Language server enabled:', enabled);
     if (!enabled) {
-        console.log('NLPL language server is disabled');
+        console.log('[NLPL] Language server is disabled');
         return;
     }
     // Determine server path
@@ -61,12 +63,13 @@ function activate(context) {
             const pythonPath = config.get('languageServer.pythonPath', 'python3');
             const lspServerPath = path.join(workspaceFolder.uri.fsPath, 'src', 'nlpl', 'lsp', 'server.py');
             serverPath = pythonPath;
-            args = [lspServerPath];
+            // Run server.py directly (simpler than -m)
+            args = [lspServerPath, '--stdio'];
         }
         else {
             // Fallback to system installation
             serverPath = 'nlpl-lsp';
-            args = config.get('languageServer.arguments', []);
+            args = config.get('languageServer.arguments', ['--stdio']);
         }
     }
     else {
@@ -80,11 +83,22 @@ function activate(context) {
     if (logFile) {
         args.push('--log-file', logFile);
     }
-    // Server options
+    console.log('[NLPL] Server command:', serverPath);
+    console.log('[NLPL] Server args:', args);
+    // Server options with PYTHONPATH for workspace
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    const pythonPath = workspaceFolder ? path.join(workspaceFolder.uri.fsPath, 'src') : process.env.PYTHONPATH;
+    console.log('[NLPL] PYTHONPATH:', pythonPath);
     const serverOptions = {
         command: serverPath,
         args: args,
-        transport: node_1.TransportKind.stdio
+        transport: node_1.TransportKind.stdio,
+        options: {
+            env: {
+                ...process.env,
+                PYTHONPATH: pythonPath
+            }
+        }
     };
     // Client options
     const clientOptions = {
@@ -94,10 +108,27 @@ function activate(context) {
         }
     };
     // Create the language client
+    console.log('[NLPL] Creating language client...');
     client = new node_1.LanguageClient('nlplLanguageServer', 'NLPL Language Server', serverOptions, clientOptions);
-    // Start the client
-    client.start();
-    console.log('NLPL language server started');
+    // Start the client (async)
+    console.log('[NLPL] Starting language client...');
+    // Add timeout to prevent hanging forever
+    const startPromise = client.start();
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('LSP server start timeout after 10 seconds')), 10000));
+    try {
+        await Promise.race([startPromise, timeoutPromise]);
+        console.log('[NLPL] Language server started successfully!');
+        vscode.window.showInformationMessage('NLPL Language Server started successfully!');
+    }
+    catch (error) {
+        console.error('[NLPL] Failed to start language server:', error);
+        vscode.window.showErrorMessage(`NLPL Language Server failed to start: ${error}`);
+        // Show detailed diagnostic
+        const diagnose = await vscode.window.showErrorMessage('NLPL LSP failed to start. Check if Python and src/nlpl/lsp/server.py exist?', 'Show Logs');
+        if (diagnose === 'Show Logs') {
+            vscode.commands.executeCommand('workbench.action.output.show');
+        }
+    }
 }
 function deactivate() {
     if (!client) {

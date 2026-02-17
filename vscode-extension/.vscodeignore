@@ -3,6 +3,8 @@
 src/**
 .gitignore
 tsconfig.json
-node_modules/**
 *.vsix
 *.map
+# Exclude most node_modules but keep required dependencies
+node_modules/**
+!node_modules/vscode-languageclient/**
