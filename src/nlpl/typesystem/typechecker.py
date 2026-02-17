@@ -125,6 +125,7 @@ class TypeChecker:
         self.errors: List[str] = []
         # Use the type inference engine for improved inference
         self.type_inference = TypeInferenceEngine()
+        self.type_inference_engine = self.type_inference  # Alias for pattern matching
         # Use the user-defined type registry
         self.type_registry = {}
         self.generic_registry = GenericTypeRegistry()
@@ -323,7 +324,7 @@ class TypeChecker:
             # Assembly return type is typically Integer (return value in register)
             return INTEGER_TYPE
         elif statement.__class__.__name__ == 'MatchExpression':
-            # Handle pattern matching expressions
+            # Handle pattern matching expressions with enhanced type inference
             # Check the match expression type
             match_expr_type = self.check_expression(statement.expression, env)
             
@@ -333,20 +334,29 @@ class TypeChecker:
                 # Create a new scope for pattern bindings
                 case_env = TypeEnvironment(parent=env)
                 
-                # Add pattern bindings to scope
-                # For now, we'll assume pattern bindings have type ANY_TYPE
-                # Future: infer types from pattern and match expression
+                # Infer types for pattern bindings using TypeInferenceEngine
                 pattern = case.pattern
-                if hasattr(pattern, 'name'):  # IdentifierPattern
-                    case_env.define_variable(pattern.name, match_expr_type)
-                elif hasattr(pattern, 'binding'):  # OptionPattern, ResultPattern
-                    if pattern.binding:
-                        # For Option/Result, the binding gets the inner type
-                        # For now, use ANY_TYPE (future: unwrap type from Option<T>/Result<T,E>)
-                        case_env.define_variable(pattern.binding, ANY_TYPE)
-                elif hasattr(pattern, 'bindings'):  # VariantPattern
-                    for binding in pattern.bindings:
-                        case_env.define_variable(binding, ANY_TYPE)
+                
+                # Use type inference to get precise pattern binding types
+                if hasattr(self, 'type_inference_engine'):
+                    # Use the inference engine if available
+                    bindings = self.type_inference_engine.infer_pattern_binding_type(pattern, match_expr_type)
+                    for var_name, var_type in bindings.items():
+                        case_env.define_variable(var_name, var_type)
+                else:
+                    # Fall back to basic inference
+                    if hasattr(pattern, 'name'):  # IdentifierPattern
+                        case_env.define_variable(pattern.name, match_expr_type)
+                    elif hasattr(pattern, 'binding'):  # OptionPattern, ResultPattern
+                        if pattern.binding:
+                            # For Option<T>/Result<T,E>, unwrap the type
+                            inner_type = ANY_TYPE
+                            if hasattr(match_expr_type, 'type_parameters') and match_expr_type.type_parameters:
+                                inner_type = match_expr_type.type_parameters[0]
+                            case_env.define_variable(pattern.binding, inner_type)
+                    elif hasattr(pattern, 'bindings'):  # VariantPattern
+                        for binding in pattern.bindings:
+                            case_env.define_variable(binding, ANY_TYPE)
                 
                 # Check guard if present
                 if case.guard:
@@ -364,9 +374,20 @@ class TypeChecker:
                 result_types.append(body_type)
             
             # Match expression type is the union of all case body types
-            # For now, if all types are the same, use that; otherwise ANY_TYPE
-            if result_types and all(t == result_types[0] for t in result_types):
-                return result_types[0]
+            # If all types are the same, use that; otherwise try to unify or use ANY_TYPE
+            if result_types:
+                if all(t == result_types[0] for t in result_types):
+                    return result_types[0]
+                # Try to unify types using type inference engine
+                if hasattr(self, 'type_inference_engine'):
+                    unified_type = result_types[0]
+                    for rt in result_types[1:]:
+                        unified = self.type_inference_engine.unify_types(unified_type, rt)
+                        if unified:
+                            unified_type = unified
+                        else:
+                            return ANY_TYPE  # Can't unify - use ANY
+                    return unified_type
             return ANY_TYPE
         elif isinstance(statement, RaiseStatement):
             # Raise statements don't return a value, but we check the message type

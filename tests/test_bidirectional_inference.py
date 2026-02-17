@@ -22,9 +22,9 @@ def test_bidirectional_inference():
     list_expr = type('ListLiteral', (), {
         'node_type': 'list_literal',
         'elements': [
-            Literal(1),
-            Literal(2),
-            Literal(3)
+            Literal('integer', 1),
+            Literal('integer', 2),
+            Literal('integer', 3)
         ]
     })()
     
@@ -40,8 +40,8 @@ def test_bidirectional_inference():
     # Simulate: let map: Dict<string, i64> = {"a": 1, "b": 2}
     dict_expr = type('DictLiteral', (), {
         'node_type': 'dictionary_literal',
-        'keys': [Literal("a"), Literal("b")],
-        'values': [Literal(1), Literal(2)]
+        'keys': [Literal('string', "a"), Literal('string', "b")],
+        'values': [Literal('integer', 1), Literal('integer', 2)]
     })()
     
     expected_dict_type = DictionaryType(STRING_TYPE, INTEGER_TYPE)
@@ -63,7 +63,7 @@ def test_bidirectional_inference():
     # Try to assign float list to integer list type
     float_list = type('ListLiteral', (), {
         'node_type': 'list_literal',
-        'elements': [Literal(1.5), Literal(2.5)]
+        'elements': [Literal('float', 1.5), Literal('float', 2.5)]
     })()
     
     inferred_mismatch = engine.infer_with_expected_type(float_list, ListType(INTEGER_TYPE), {})
