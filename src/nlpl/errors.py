@@ -110,7 +110,7 @@ class NLPLRuntimeError(NLPLError):
     def __init__(self, message: str, line: Optional[int] = None, column: Optional[int] = None,
                  source_line: Optional[str] = None, stack_trace: Optional[List[str]] = None,
                  variable_context: Optional[dict] = None, nlpl_type: str = "RuntimeError",
-                 error_type_key: Optional[str] = None, full_source: Optional[str] = None):
+                 error_type_key: Optional[str] = "runtime_error", full_source: Optional[str] = None):
         self.stack_trace = stack_trace or []
         self.variable_context = variable_context or {}
         

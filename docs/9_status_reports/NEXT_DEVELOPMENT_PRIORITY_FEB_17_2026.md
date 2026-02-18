@@ -440,3 +440,77 @@ After completing LSP, Performance, and Stdlib work (3-4 months):
 **This aligns with roadmap philosophy:** Polish existing features before expanding. Make NLPL production-ready before building an ecosystem around it.
 
 **Bottom line:** LSP completion is the single most important task. Start there.
+
+---
+
+## LSP Integration Prep Checklist (Error Codes in Diagnostics)
+
+Objective: surface NLPL error intelligence directly in editor diagnostics/hover once `client.start()` is fixed.
+
+### 1) Diagnostic Payload Shape (target)
+
+Use this canonical payload from NLPL server to LSP adapter:
+
+```json
+{
+   "message": "Type mismatch: expected Integer, got String",
+   "severity": 1,
+   "code": "E200",
+   "source": "nlpl",
+   "range": {
+      "start": { "line": 12, "character": 15 },
+      "end": { "line": 12, "character": 20 }
+   },
+   "data": {
+      "title": "Type mismatch",
+      "category": "type",
+      "fixes": [
+         "Convert types explicitly if needed",
+         "Check function parameter types"
+      ],
+      "explainHint": "nlpl --explain E200",
+      "docLink": "https://nlpl.dev/docs/types"
+   }
+}
+```
+
+Required fields:
+- `code`: NLPL error code (`E###`)
+- `message`: concise human-readable message
+- `range`: precise source location
+- `data.fixes`: top 1-3 quick guidance items
+- `data.explainHint`: always include `nlpl --explain EXXX`
+
+### 2) Server-Side Checklist (`src/nlpl/lsp/`)
+
+- [ ] Normalize all parser/interpreter/type errors to `{code, message, line, column, fixes}` before publish.
+- [ ] Add conversion helper: NLPL error -> LSP `Diagnostic`.
+- [ ] Map NLPL categories to LSP severities:
+   - syntax/type/runtime -> Error
+   - advisory/style (future) -> Warning/Information
+- [ ] Ensure diagnostics include `source: "nlpl"` and stable `code` string.
+- [ ] Populate `diagnostic.data` with `fixes`, `explainHint`, `docLink`.
+
+### 3) VS Code Extension Checklist (`vscode-extension/`)
+
+- [ ] Render `code` in Problems panel (ensure string code passes through).
+- [ ] Hover display template includes:
+   - error title + code
+   - short message
+   - first 2 fixes
+   - `nlpl --explain EXXX` hint
+- [ ] Code Action provider reads `diagnostic.data.fixes` for quick fix entries.
+- [ ] Add command `NLPL: Explain Error Code` that opens explain text for selected diagnostic code.
+
+### 4) Validation Checklist
+
+- [ ] Unit: diagnostic conversion for representative codes (`E001`, `E100`, `E200`, `E301`, `E309`).
+- [ ] Integration: open NLPL file with intentional errors and verify Problems shows `code`.
+- [ ] Hover: verify fixes + explain hint are visible.
+- [ ] Regression: diagnostics remain stable for unchanged code.
+
+### 5) Non-Blocking Follow-ups
+
+- [ ] Add docs page generated from `error_codes.py` (single source of truth).
+- [ ] Add telemetry counters (local/dev) for most frequent error codes.
+- [ ] Monthly copy pass for unclear messages/fixes.

@@ -525,6 +525,132 @@ ERROR_CODES: Dict[str, ErrorInfo] = {
         ],
         doc_link="https://nlpl.dev/docs/types/annotations"
     ),
+
+    "E205": ErrorInfo(
+        code="E205",
+        category="type",
+        title="Data schema type mismatch",
+        description="Structured data does not match the expected field or record types.",
+        common_causes=[
+            "CSV/JSON field contains incompatible value",
+            "Record field type differs from declared schema",
+            "Transform step changed type unexpectedly",
+        ],
+        fixes=[
+            "Validate incoming data against schema before processing",
+            "Normalize field types during import/transformation",
+            "Update schema or conversion logic to match actual data",
+        ],
+        doc_link="https://nlpl.dev/docs/data-processing"
+    ),
+
+    "E206": ErrorInfo(
+        code="E206",
+        category="type",
+        title="Numeric domain error",
+        description="A numeric operation used a value outside the valid mathematical domain.",
+        common_causes=[
+            "Square root of a negative value",
+            "Logarithm of a non-positive value",
+            "Invalid numeric parameter range",
+        ],
+        fixes=[
+            "Validate numeric ranges before computation",
+            "Clamp or transform invalid input values",
+            "Use domain-safe formulas or conditional handling",
+        ],
+        doc_link="https://nlpl.dev/docs/scientific"
+    ),
+
+    "E309": ErrorInfo(
+        code="E309",
+        category="runtime",
+        title="General runtime error",
+        description="An operation failed during execution without a more specific runtime category.",
+        common_causes=[
+            "Unexpected runtime state",
+            "Unhandled edge case in operation",
+            "External resource failure",
+        ],
+        fixes=[
+            "Inspect the failing line and nearby operations",
+            "Enable debug mode for additional context",
+            "Add explicit validation before this operation",
+        ],
+        doc_link="https://nlpl.dev/docs/runtime"
+    ),
+
+    "E410": ErrorInfo(
+        code="E410",
+        category="module",
+        title="Network request failed",
+        description="A network call failed before receiving a usable response.",
+        common_causes=[
+            "Target service is unavailable",
+            "Connection timeout",
+            "Invalid endpoint or DNS resolution issue",
+        ],
+        fixes=[
+            "Check endpoint URL and network connectivity",
+            "Retry with timeout/backoff strategy",
+            "Handle transient failures with fallback logic",
+        ],
+        doc_link="https://nlpl.dev/docs/network"
+    ),
+
+    "E411": ErrorInfo(
+        code="E411",
+        category="module",
+        title="Invalid HTTP response",
+        description="An HTTP response was received but could not be processed as expected.",
+        common_causes=[
+            "Unexpected status code",
+            "Malformed response body",
+            "Mismatched content type",
+        ],
+        fixes=[
+            "Validate status code before parsing response",
+            "Check content type and response schema",
+            "Add defensive parsing with clear fallbacks",
+        ],
+        doc_link="https://nlpl.dev/docs/web-services"
+    ),
+
+    "E412": ErrorInfo(
+        code="E412",
+        category="module",
+        title="Database connection failed",
+        description="Could not establish or maintain a database connection.",
+        common_causes=[
+            "Invalid connection string or credentials",
+            "Database server unavailable",
+            "Connection pool exhaustion",
+        ],
+        fixes=[
+            "Verify credentials and connection settings",
+            "Check database server health and network access",
+            "Tune connection pool limits and retry policy",
+        ],
+        doc_link="https://nlpl.dev/docs/business-applications"
+    ),
+
+    "E413": ErrorInfo(
+        code="E413",
+        category="module",
+        title="Transaction conflict",
+        description="Concurrent operations produced a transaction conflict.",
+        common_causes=[
+            "Simultaneous writes to same record",
+            "Isolation level mismatch",
+            "Long-running transaction contention",
+        ],
+        fixes=[
+            "Retry conflicted transaction with backoff",
+            "Reduce transaction scope and duration",
+            "Use appropriate isolation/locking strategy",
+        ],
+        doc_link="https://nlpl.dev/docs/business-applications"
+    ),
 }
 
 
@@ -564,6 +690,8 @@ def get_error_code_for_type(error_type: str, context: dict = None) -> Optional[s
         "wrong_argument_count": "E202",
         "invalid_generic_args": "E203",
         "type_annotation_error": "E204",
+        "data_schema_mismatch": "E205",
+        "numeric_domain_error": "E206",
         
         # Runtime
         "division_by_zero": "E300",
@@ -575,11 +703,16 @@ def get_error_code_for_type(error_type: str, context: dict = None) -> Optional[s
         "invalid_cast": "E306",
         "memory_allocation_failed": "E307",
         "invalid_memory_operation": "E308",
+        "runtime_error": "E309",
         
         # Modules
         "module_not_found": "E400",
         "circular_import": "E401",
         "import_name_not_found": "E402",
+        "network_request_failed": "E410",
+        "invalid_http_response": "E411",
+        "database_connection_failed": "E412",
+        "transaction_conflict": "E413",
     }
     
     return mapping.get(error_type)

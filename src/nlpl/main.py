@@ -14,7 +14,7 @@ from .interpreter.interpreter import Interpreter
 from .runtime.runtime import Runtime
 from .stdlib import register_stdlib
 from .tools import get_profiler, enable_profiling, disable_profiling
-from .errors import NLPLError
+from .errors import NLPLError, NLPLTypeError, NLPLRuntimeError
 
 def run_program(source_code, debug=False, type_check=True, profiler=None):
     """
@@ -64,14 +64,19 @@ def run_program(source_code, debug=False, type_check=True, profiler=None):
         # Re-raise NLPL errors to preserve rich formatting
         raise
     except TypeError as e:
-        print(f"Type Error: {str(e)}")
-        return None
+        raise NLPLTypeError(
+            str(e),
+            error_type_key="type_mismatch",
+            full_source=source_code,
+        )
     except Exception as e:
         if debug:
             traceback.print_exc()
-        else:
-            print(f"Runtime Error: {str(e)}")
-        return None
+        raise NLPLRuntimeError(
+            str(e),
+            error_type_key="runtime_error",
+            full_source=source_code,
+        )
 
 def print_ast(node, indent=0):
     """Print the AST in a readable format for debugging."""

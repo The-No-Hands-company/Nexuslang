@@ -187,7 +187,7 @@ class Interpreter:
             
             lexer = Lexer(ast_or_source)
             tokens = lexer.tokenize()
-            parser = Parser(tokens)
+            parser = Parser(tokens, source=ast_or_source)
             ast = parser.parse()
         else:
             ast = ast_or_source
@@ -201,7 +201,11 @@ class Interpreter:
             errors = self.type_checker.check_program(ast)
             if errors:
                 error_msg = "\n".join(errors)
-                raise NLPLTypeError(f"Type checking failed:\n{error_msg}")
+                raise NLPLTypeError(
+                    f"Type checking failed:\n{error_msg}",
+                    error_type_key="type_mismatch",
+                    full_source=self.source,
+                )
             
         try:
             if isinstance(ast, Program):
@@ -323,7 +327,9 @@ class Interpreter:
             raise NLPLRuntimeError(
                 message=f"Import error: {str(e)}",
                 line=getattr(node, 'line', None),
-                column=getattr(node, 'column', None)
+                column=getattr(node, 'column', None),
+                error_type_key="module_not_found" if isinstance(e, ImportError) else "circular_import",
+                full_source=self.source,
             )
             
     def execute_selective_import(self, node):
@@ -360,7 +366,9 @@ class Interpreter:
             raise NLPLRuntimeError(
                 message=f"Import error: {str(e)}",
                 line=getattr(node, 'line', None),
-                column=getattr(node, 'column', None)
+                column=getattr(node, 'column', None),
+                error_type_key="module_not_found" if isinstance(e, ImportError) else "circular_import",
+                full_source=self.source,
             )
             
     def execute_module_access(self, node):
@@ -485,7 +493,9 @@ class Interpreter:
         if decorator_func is None:
             raise NLPLRuntimeError(
                 f"Unknown decorator: @{decorator_node.name}",
-                line=decorator_node.line
+                line=decorator_node.line,
+                error_type_key="undefined_function",
+                full_source=self.source,
             )
         
         # Apply decorator based on type
@@ -597,13 +607,25 @@ class Interpreter:
         
         # Ensure count is an integer
         if not isinstance(count, (int, float)):
-            raise TypeError(f"Repeat count must be a number, got {type(count).__name__}")
+            raise NLPLTypeError(
+                f"Repeat count must be a number, got {type(count).__name__}",
+                expected_type="Integer or Float",
+                got_type=type(count).__name__,
+                line=getattr(node, 'line', None),
+                error_type_key="type_mismatch",
+                full_source=self.source,
+            )
         
         count = int(count)
         
         # Validate count is non-negative
         if count < 0:
-            raise ValueError(f"Repeat count must be non-negative, got {count}")
+            raise NLPLRuntimeError(
+                f"Repeat count must be non-negative, got {count}",
+                line=getattr(node, 'line', None),
+                error_type_key="invalid_operation",
+                full_source=self.source,
+            )
         
         # Execute the loop body 'count' times
         # DO NOT create a new scope - loops should access outer scope variables
@@ -876,7 +898,9 @@ class Interpreter:
         else:
             raise NLPLRuntimeError(
                 f"Unknown pattern type: {type(pattern).__name__}",
-                line=getattr(pattern, 'line_number', None)
+                line=getattr(pattern, 'line_number', None),
+                error_type_key="invalid_operation",
+                full_source=self.source,
             )
     
     def execute_memory_allocation(self, node):
@@ -1275,7 +1299,9 @@ class Interpreter:
                     # No exception to re-raise
                     raise NLPLRuntimeError(
                         message="Nothing to re-raise",
-                        line=getattr(node, 'line', None)
+                        line=getattr(node, 'line', None),
+                        error_type_key="invalid_operation",
+                        full_source=self.source,
                     )
                 
         raise NLPLUserException(exception_type, message, getattr(node, 'line', None))
@@ -1319,7 +1345,13 @@ class Interpreter:
         import ctypes
         
         if not isinstance(struct_def, RuntimeStructDefinition):
-            raise TypeError(f"Expected RuntimeStructDefinition, got {type(struct_def)}")
+            raise NLPLTypeError(
+                f"Expected RuntimeStructDefinition, got {type(struct_def)}",
+                expected_type="RuntimeStructDefinition",
+                got_type=type(struct_def).__name__,
+                error_type_key="type_mismatch",
+                full_source=self.source,
+            )
         
         # Create fields list for ctypes.Structure
         # Format: [(field_name, ctype), ...]
@@ -1381,7 +1413,13 @@ class Interpreter:
         from nlpl.runtime.structures import StructureInstance
         
         if not isinstance(struct_instance, StructureInstance):
-            raise TypeError(f"Expected StructureInstance, got {type(struct_instance)}")
+            raise NLPLTypeError(
+                f"Expected StructureInstance, got {type(struct_instance)}",
+                expected_type="StructureInstance",
+                got_type=type(struct_instance).__name__,
+                error_type_key="type_mismatch",
+                full_source=self.source,
+            )
         
         # Create C struct instance
         c_struct = cstruct_class()
@@ -1522,7 +1560,9 @@ class Interpreter:
         if not library_name:
             raise NLPLRuntimeError(
                 f"Extern function '{func_name}' must specify a library",
-                line=getattr(node, 'line_number', None)
+                line=getattr(node, 'line_number', None),
+                error_type_key="invalid_operation",
+                full_source=self.source,
             )
         
         try:
@@ -1644,7 +1684,9 @@ class Interpreter:
                 except Exception as e:
                     raise NLPLRuntimeError(
                         f"Error calling C function '{func_name}': {str(e)}",
-                        line=getattr(node, 'line_number', None)
+                        line=getattr(node, 'line_number', None),
+                        error_type_key="function_call_error",
+                        full_source=self.source,
                     )
                 
                 # Convert result back to Python
@@ -1661,12 +1703,16 @@ class Interpreter:
         except OSError as e:
             raise NLPLRuntimeError(
                 f"Failed to load library '{library_name}' for extern function '{func_name}': {str(e)}",
-                line=getattr(node, 'line_number', None)
+                line=getattr(node, 'line_number', None),
+                error_type_key="module_not_found",
+                full_source=self.source,
             )
         except AttributeError as e:
             raise NLPLRuntimeError(
                 f"Function '{func_name}' not found in library '{library_name}': {str(e)}",
-                line=getattr(node, 'line_number', None)
+                line=getattr(node, 'line_number', None),
+                error_type_key="undefined_function",
+                full_source=self.source,
             )
     
     def execute_extern_variable_declaration(self, node):
@@ -1687,7 +1733,9 @@ class Interpreter:
         if not library_name:
             raise NLPLRuntimeError(
                 f"Extern variable '{var_name}' must specify a library",
-                line=getattr(node, 'line_number', None)
+                line=getattr(node, 'line_number', None),
+                error_type_key="invalid_operation",
+                full_source=self.source,
             )
         
         try:
@@ -1728,7 +1776,9 @@ class Interpreter:
         except OSError as e:
             raise NLPLRuntimeError(
                 f"Failed to load library '{library_name}' for extern variable '{var_name}': {str(e)}",
-                line=getattr(node, 'line_number', None)
+                line=getattr(node, 'line_number', None),
+                error_type_key="module_not_found",
+                full_source=self.source,
             )
     
     def execute_inline_assembly(self, node):
@@ -1860,10 +1910,12 @@ class Interpreter:
         else:
             supported = ['+', '-', '*', '/', '//', '%', '**', '==', '!=', '<', '>', '<=', '>=', 
                        'and', 'or', 'in', 'not in', 'is', 'is not', '&', '|', '^', '<<', '>>']
-            raise TypeError(
+            raise NLPLTypeError(
                 f"Unsupported binary operator: '{node.operator}'.\n"
                 f"  Supported operators: {', '.join(supported)}\n"
-                f"  This is a language limitation - operator '{node.operator}' is not available."
+                f"  This is a language limitation - operator '{node.operator}' is not available.",
+                error_type_key="invalid_operation",
+                full_source=self.source,
             )
     
     def execute_unary_operation(self, node):
@@ -1885,10 +1937,12 @@ class Interpreter:
             return ~operand
         else:
             supported = ['not', '-', '+', '~', 'address of', 'dereference']
-            raise TypeError(
+            raise NLPLTypeError(
                 f"Unsupported unary operator: '{node.operator}'.\n"
                 f"  Supported operators: {', '.join(supported)}\n"
-                f"  This is a language limitation - operator '{node.operator}' is not available."
+                f"  This is a language limitation - operator '{node.operator}' is not available.",
+                error_type_key="invalid_operation",
+                full_source=self.source,
             )
             
     def execute_literal(self, node):
@@ -2109,7 +2163,9 @@ class Interpreter:
                 expected_type="list, dict, or string",
                 got_type=type(array).__name__,
                 line=getattr(node, 'line', None),
-                column=getattr(node, 'column', None)
+                column=getattr(node, 'column', None),
+                error_type_key="invalid_operation",
+                full_source=self.source,
             )
         
     def execute_identifier(self, node):
@@ -2170,7 +2226,11 @@ class Interpreter:
             if callable(func_value):
                 return func_value(*positional_args, **named_args)
             else:
-                raise TypeError(f"Cannot call non-function value: {type(func_value).__name__}")
+                raise NLPLTypeError(
+                    f"Cannot call non-function value: {type(func_value).__name__}",
+                    error_type_key="function_call_error",
+                    full_source=self.source,
+                )
         
         # Check if function_name is a variable holding a callable (e.g., closure, function reference)
         # This enables: block() where block is a variable containing a closure
@@ -2196,7 +2256,11 @@ class Interpreter:
                         if callable(func):
                             return func(*positional_args, **named_args)
                         else:
-                            raise TypeError(f"{module_name}.{member_name} is not callable")
+                            raise NLPLTypeError(
+                                f"{module_name}.{member_name} is not callable",
+                                error_type_key="function_call_error",
+                                full_source=self.source,
+                            )
                     else:
                         raise AttributeError(f"Module '{module_name}' has no attribute '{member_name}'")
                 except NameError:
@@ -2291,7 +2355,12 @@ class Interpreter:
         except:
             pass
         
-        raise NameError(f"Function '{function_name}' is not defined")
+        raise NLPLNameError(
+            name=function_name,
+            available_names=list(self.functions.keys()) + list(self.runtime.functions.keys()),
+            error_type_key="undefined_function",
+            full_source=self.source,
+        )
     
     def _resolve_function_arguments(self, function_def, positional_args, named_args, function_name):
         """Resolve positional and named arguments into a single argument list.
@@ -2327,9 +2396,11 @@ class Interpreter:
         if first_keyword_only_index is not None and len(positional_args) > first_keyword_only_index:
             # Count how many non-variadic positional params before keyword-only
             non_kw_count = first_keyword_only_index
-            raise TypeError(
+            raise NLPLTypeError(
                 f"Function '{function_name}' takes at most {non_kw_count} positional arguments "
-                f"but {len(positional_args)} were given. Parameters after '*' must be passed by name."
+                f"but {len(positional_args)} were given. Parameters after '*' must be passed by name.",
+                error_type_key="wrong_argument_count",
+                full_source=self.source,
             )
         
         resolved_args = [None] * len(params)
@@ -2349,10 +2420,18 @@ class Interpreter:
             # No variadic parameter - strict argument count
             for i, arg in enumerate(positional_args):
                 if i >= len(params):
-                    raise TypeError(f"Function '{function_name}' takes {len(params)} parameters but {len(positional_args)} positional arguments were given")
+                    raise NLPLTypeError(
+                        f"Function '{function_name}' takes {len(params)} parameters but {len(positional_args)} positional arguments were given",
+                        error_type_key="wrong_argument_count",
+                        full_source=self.source,
+                    )
                 # Check if this parameter is keyword-only
                 if hasattr(params[i], 'keyword_only') and params[i].keyword_only:
-                    raise TypeError(f"Parameter '{params[i].name}' is keyword-only and cannot be passed positionally in '{function_name}'")
+                    raise NLPLTypeError(
+                        f"Parameter '{params[i].name}' is keyword-only and cannot be passed positionally in '{function_name}'",
+                        error_type_key="wrong_argument_count",
+                        full_source=self.source,
+                    )
                 resolved_args[i] = arg
         
         # Fill in named arguments
@@ -2365,11 +2444,19 @@ class Interpreter:
                     break
             
             if param_index is None:
-                raise TypeError(f"Function '{function_name}' has no parameter named '{param_name}'")
+                raise NLPLTypeError(
+                    f"Function '{function_name}' has no parameter named '{param_name}'",
+                    error_type_key="wrong_argument_count",
+                    full_source=self.source,
+                )
             
             # Check if this parameter was already filled by positional arg
             if resolved_args[param_index] is not None:
-                raise TypeError(f"Function '{function_name}' got multiple values for parameter '{param_name}'")
+                raise NLPLTypeError(
+                    f"Function '{function_name}' got multiple values for parameter '{param_name}'",
+                    error_type_key="wrong_argument_count",
+                    full_source=self.source,
+                )
             
             resolved_args[param_index] = value
         
@@ -2377,7 +2464,11 @@ class Interpreter:
         for i, param in enumerate(params):
             if hasattr(param, 'keyword_only') and param.keyword_only:
                 if resolved_args[i] is None and not (hasattr(param, 'default_value') and param.default_value is not None):
-                    raise TypeError(f"Missing required keyword-only parameter '{param.name}' in call to '{function_name}'")
+                    raise NLPLTypeError(
+                        f"Missing required keyword-only parameter '{param.name}' in call to '{function_name}'",
+                        error_type_key="wrong_argument_count",
+                        full_source=self.source,
+                    )
         
         # Fill in default values for missing parameters
         for i, (arg, param) in enumerate(zip(resolved_args, params)):
@@ -2493,7 +2584,9 @@ class Interpreter:
                 expected_type="Pointer",
                 got_type=type(pointer).__name__,
                 line=getattr(node, 'line', None),
-                column=getattr(node, 'column', None)
+                column=getattr(node, 'column', None),
+                error_type_key="type_mismatch",
+                full_source=self.source,
             )
         
         return self.runtime.memory_manager.dereference(pointer)
@@ -2976,7 +3069,11 @@ class Interpreter:
                 if isinstance(initial, dict):
                     return initial.copy()
                 else:
-                    raise TypeError("Dictionary initial value must be a dictionary")
+                    raise NLPLTypeError(
+                        "Dictionary initial value must be a dictionary",
+                        error_type_key="type_mismatch",
+                        full_source=self.source,
+                    )
             else:
                 return {}
         
@@ -3074,7 +3171,9 @@ class Interpreter:
         if node.name not in self.macros:
             raise NLPLRuntimeError(
                 f"Undefined macro: {node.name}",
-                line=node.line
+                line=node.line,
+                error_type_key="undefined_function",
+                full_source=self.source,
             )
         
         macro_def = self.macros[node.name]
@@ -3094,7 +3193,9 @@ class Interpreter:
             else:
                 raise NLPLRuntimeError(
                     f"Macro {node.name} missing argument: {param_name}",
-                    line=node.line
+                    line=node.line,
+                    error_type_key="wrong_argument_count",
+                    full_source=self.source,
                 )
         
         # Execute macro body
