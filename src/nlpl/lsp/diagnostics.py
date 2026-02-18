@@ -518,6 +518,7 @@ class DiagnosticsProvider:
                         severity=2,
                         message=f"Unused variable '{var_name}'",
                         source="nlpl",
+                        error_type_key="unused_variable",
                     )
                 )
         

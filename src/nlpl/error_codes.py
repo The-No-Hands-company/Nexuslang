@@ -214,7 +214,24 @@ ERROR_CODES: Dict[str, ErrorInfo] = {
         ],
         doc_link="https://nlpl.dev/docs/classes"
     ),
-    
+
+    "E150": ErrorInfo(
+        code="E150",
+        category="name",
+        title="Unused variable",
+        description="Variable was declared but never used.",
+        common_causes=[
+            "Variable declared but program logic never reads it",
+            "Variable intended for later use but forgotten",
+            "Debugging leftover that was not cleaned up",
+        ],
+        fixes=[
+            "Remove the unused variable declaration",
+            "Use the variable in an expression or print statement",
+        ],
+        doc_link="https://nlpl.dev/docs/variables"
+    ),
+
     # Type Errors (E200-E299)
     "E200": ErrorInfo(
         code="E200",
@@ -683,6 +700,7 @@ def get_error_code_for_type(error_type: str, context: dict = None) -> Optional[s
         "undefined_function": "E101",
         "undefined_class": "E102",
         "undefined_attribute": "E103",
+        "unused_variable": "E150",
         
         # Types
         "type_mismatch": "E200",
