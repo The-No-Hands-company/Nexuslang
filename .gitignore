@@ -186,3 +186,4 @@ vscode-extension/*.vsix
 
 # Extension backup archives
 vscode-extension-backup-*.tar.gz
+NLPL.code-workspace
