@@ -137,6 +137,77 @@ def time_c_binary(binary_path: str, runs: int = 20) -> Tuple[float, float]:
 
 
 # ---------------------------------------------------------------------------
+# Python benchmark timing
+# ---------------------------------------------------------------------------
+
+def time_python_file(py_path: str, runs: int = 20) -> Tuple[float, float]:
+    """
+    Time a Python benchmark file by importing and calling its function directly.
+    Extracts the time reported by the script if it outputs
+    'Time: X.XXXXXXXXX seconds', otherwise measures wall clock.
+
+    Returns:
+        (median_ms, stdev_ms)
+    """
+    times = []
+    for _ in range(runs):
+        result = subprocess.run(
+            [sys.executable, py_path],
+            capture_output=True, text=True, timeout=30
+        )
+        m = re.search(r"Time:\s*([\d.]+)\s*seconds", result.stdout)
+        if m:
+            times.append(float(m.group(1)) * 1000)
+        else:
+            # Fallback: measure wall-clock of subprocess
+            t0 = time.perf_counter()
+            subprocess.run([sys.executable, py_path], capture_output=True, timeout=30)
+            t1 = time.perf_counter()
+            times.append((t1 - t0) * 1000)
+    med = statistics.median(times)
+    std = statistics.stdev(times) if len(times) > 1 else 0.0
+    return med, std
+
+
+# ---------------------------------------------------------------------------
+# Rust benchmark compilation and timing
+# ---------------------------------------------------------------------------
+
+def compile_rust(rs_path: str, output_path: str) -> bool:
+    """Compile a Rust file with --release optimizations. Returns True on success."""
+    cmd = ["rustc", "-C", "opt-level=3", "-o", output_path, rs_path]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"  Rust compilation failed: {result.stderr.strip()[:300]}")
+        return False
+    return True
+
+
+def time_rust_binary(binary_path: str, runs: int = 20) -> Tuple[float, float]:
+    """
+    Time a compiled Rust binary.
+    Extracts the time reported by the binary if it outputs
+    'Time: X.XXXXXXXXX seconds', otherwise measures wall clock.
+
+    Returns:
+        (median_ms, stdev_ms)
+    """
+    times = []
+    for _ in range(runs):
+        t0 = time.perf_counter()
+        result = subprocess.run([binary_path], capture_output=True, text=True, timeout=10)
+        t1 = time.perf_counter()
+        m = re.search(r"Time:\s*([\d.]+)\s*seconds", result.stdout)
+        if m:
+            times.append(float(m.group(1)) * 1000)
+        else:
+            times.append((t1 - t0) * 1000)
+    med = statistics.median(times)
+    std = statistics.stdev(times) if len(times) > 1 else 0.0
+    return med, std
+
+
+# ---------------------------------------------------------------------------
 # Dispatch speedup measurement
 # ---------------------------------------------------------------------------
 
@@ -183,13 +254,17 @@ BENCHMARKS = [
         "nlpl_file": str(BENCH_DIR / "bench_fibonacci.nlpl"),
         "c_file": str(BENCH_DIR / "bench_fibonacci_iter.c"),
         "c_opt": "O3",
+        "python_file": str(BENCH_DIR / "bench_fibonacci_iter.py"),
+        "rust_file": str(BENCH_DIR / "bench_fibonacci_iter.rs"),
     },
     {
         "name": "matrix_sum",
-        "description": "Matrix sum (50x50) - nested loops, arithmetic",
+        "description": "Matrix sum (200x200) - nested loops, arithmetic",
         "nlpl_file": str(BENCH_DIR / "bench_matrix.nlpl"),
         "c_file": str(BENCH_DIR / "bench_matrix.c"),
         "c_opt": "O3",
+        "python_file": str(BENCH_DIR / "bench_matrix.py"),
+        "rust_file": str(BENCH_DIR / "bench_matrix.rs"),
     },
     {
         "name": "sieve_of_eratosthenes",
@@ -197,6 +272,8 @@ BENCHMARKS = [
         "nlpl_file": str(BENCH_DIR / "bench_sieve.nlpl"),
         "c_file": str(BENCH_DIR / "bench_sieve.c"),
         "c_opt": "O3",
+        "python_file": str(BENCH_DIR / "bench_sieve.py"),
+        "rust_file": str(BENCH_DIR / "bench_sieve.rs"),
     },
 ]
 
@@ -205,7 +282,9 @@ BENCHMARKS = [
 # Runner
 # ---------------------------------------------------------------------------
 
-def run_benchmark(bench: dict, runs: int, verbose: bool) -> dict:
+def run_benchmark(bench: dict, runs: int, verbose: bool,
+                  args_skip_python: bool = False,
+                  args_skip_rust: bool = False) -> dict:
     """Run a single benchmark and return results dict."""
     name = bench["name"]
     print(f"\n  [{name}] {bench['description']}")
@@ -217,7 +296,11 @@ def run_benchmark(bench: dict, runs: int, verbose: bool) -> dict:
         "nlpl_O2_ms": None,
         "nlpl_O3_ms": None,
         "c_o3_ms": None,
+        "python_ms": None,
+        "rust_release_ms": None,
         "nlpl_vs_c_ratio": None,
+        "nlpl_vs_python_ratio": None,
+        "nlpl_vs_rust_ratio": None,
         "nlpl_O3_vs_O0_speedup": None,
         "errors": [],
     }
@@ -267,6 +350,46 @@ def run_benchmark(bench: dict, runs: int, verbose: bool) -> dict:
         if verbose:
             print(f"    C reference: not available")
 
+    # Time Python reference
+    python_file = bench.get("python_file")
+    if not args_skip_python and python_file and Path(python_file).exists():
+        try:
+            med, std = time_python_file(python_file, runs=max(runs, 5))
+            result["python_ms"] = round(med, 3)
+            if verbose:
+                print(f"    Python:   {med:.3f} ms  (stdev={std:.3f})")
+        except Exception as e:
+            result["errors"].append(f"Python benchmark: {e}")
+            if verbose:
+                print(f"    Python: ERROR - {e}")
+    elif verbose:
+        print(f"    Python reference: not available")
+
+    # Time Rust reference (--release = opt-level=3)
+    rust_file = bench.get("rust_file")
+    if not args_skip_rust and rust_file and Path(rust_file).exists():
+        with tempfile.NamedTemporaryFile(suffix="", delete=False) as f:
+            rust_out = f.name
+        try:
+            if compile_rust(rust_file, rust_out):
+                med, std = time_rust_binary(rust_out, runs=runs * 4)
+                result["rust_release_ms"] = round(med, 6)
+                if verbose:
+                    print(f"    Rust -O3: {med:.6f} ms  (stdev={std:.6f})")
+            else:
+                result["errors"].append("Rust compilation failed")
+        except Exception as e:
+            result["errors"].append(f"Rust benchmark: {e}")
+            if verbose:
+                print(f"    Rust: ERROR - {e}")
+        finally:
+            try:
+                os.unlink(rust_out)
+            except Exception:
+                pass
+    elif verbose:
+        print(f"    Rust reference: not available")
+
     # Compute ratios
     nlpl_best = result.get("nlpl_O3_ms") or result.get("nlpl_O2_ms") or result.get("nlpl_O0_ms")
     nlpl_o0 = result.get("nlpl_O0_ms")
@@ -275,12 +398,22 @@ def run_benchmark(bench: dict, runs: int, verbose: bool) -> dict:
     if nlpl_best and result["c_o3_ms"] and result["c_o3_ms"] > 0:
         result["nlpl_vs_c_ratio"] = round(nlpl_best / result["c_o3_ms"], 1)
         if verbose:
-            print(f"    NLPL/C ratio: {result['nlpl_vs_c_ratio']}x slower")
+            print(f"    NLPL/C ratio:      {result['nlpl_vs_c_ratio']}x slower")
+
+    if nlpl_best and result["python_ms"] and result["python_ms"] > 0:
+        result["nlpl_vs_python_ratio"] = round(nlpl_best / result["python_ms"], 3)
+        if verbose:
+            print(f"    NLPL/Python ratio: {result['nlpl_vs_python_ratio']}x")
+
+    if nlpl_best and result["rust_release_ms"] and result["rust_release_ms"] > 0:
+        result["nlpl_vs_rust_ratio"] = round(nlpl_best / result["rust_release_ms"], 1)
+        if verbose:
+            print(f"    NLPL/Rust ratio:   {result['nlpl_vs_rust_ratio']}x slower")
 
     if nlpl_o0 and nlpl_o3 and nlpl_o0 > 0:
         result["nlpl_O3_vs_O0_speedup"] = round(nlpl_o0 / nlpl_o3, 3)
         if verbose:
-            print(f"    O3 vs O0 speedup: {result['nlpl_O3_vs_O0_speedup']}x")
+            print(f"    O3 vs O0 speedup:  {result['nlpl_O3_vs_O0_speedup']}x")
 
     return result
 
@@ -304,7 +437,11 @@ def main():
     parser.add_argument("--verbose", "-v", action="store_true",
                         help="Print detailed timing for each benchmark")
     parser.add_argument("--skip-c", action="store_true",
-                        help="Skip C compilation/benchmarks (faster)")
+                        help="Skip C compilation/benchmarks")
+    parser.add_argument("--skip-python", action="store_true",
+                        help="Skip Python benchmarks")
+    parser.add_argument("--skip-rust", action="store_true",
+                        help="Skip Rust compilation/benchmarks")
     args = parser.parse_args()
 
     print("NLPL Performance Baseline")
@@ -320,21 +457,46 @@ def main():
     # Run benchmarks
     bench_results = {}
     for bench in BENCHMARKS:
-        # Honor --skip-c
+        # Honor --skip-c, --skip-python, --skip-rust
+        bench = dict(bench)
         if args.skip_c:
-            bench = dict(bench)
             bench["c_file"] = None
-        bench_results[bench["name"]] = run_benchmark(bench, args.runs, args.verbose)
+        if args.skip_python:
+            bench["python_file"] = None
+        if args.skip_rust:
+            bench["rust_file"] = None
+        bench_results[bench["name"]] = run_benchmark(
+            bench, args.runs, args.verbose,
+            args_skip_python=args.skip_python,
+            args_skip_rust=args.skip_rust,
+        )
 
     # Build output
     from datetime import datetime
+
+    # Collect language availability
+    languages_available = ["nlpl", "c"]
+    if not args.skip_python:
+        languages_available.append("python")
+    if not args.skip_rust:
+        languages_available.append("rust")
+
+    def _compiler_version(cmd: list) -> str:
+        try:
+            return subprocess.check_output(cmd, stderr=subprocess.STDOUT, text=True).splitlines()[0]
+        except Exception:
+            return "unavailable"
+
     output = {
         "meta": {
             "date": datetime.now().isoformat(),
             "git_commit": get_git_commit(),
             "runs_per_measurement": args.runs,
             "python_version": sys.version.split()[0],
+            "gcc_version": _compiler_version(["gcc", "--version"]) if not args.skip_c else "skipped",
+            "rustc_version": _compiler_version(["rustc", "--version"]) if not args.skip_rust else "skipped",
             "platform": sys.platform,
+            "languages_compared": languages_available,
             "optimization_description": {
                 "O0": "No AST optimization",
                 "O1": "Basic: constant folding + DCE",
@@ -363,7 +525,11 @@ def main():
         o0 = r.get("nlpl_O0_ms")
         o3 = r.get("nlpl_O3_ms")
         c = r.get("c_o3_ms")
-        ratio = r.get("nlpl_vs_c_ratio")
+        py = r.get("python_ms")
+        rs = r.get("rust_release_ms")
+        ratio_c = r.get("nlpl_vs_c_ratio")
+        ratio_py = r.get("nlpl_vs_python_ratio")
+        ratio_rs = r.get("nlpl_vs_rust_ratio")
         speedup = r.get("nlpl_O3_vs_O0_speedup")
         if o0:
             print(f"  NLPL O0:        {o0:.3f} ms")
@@ -374,8 +540,17 @@ def main():
             print()
         if c:
             print(f"  C -O3:          {c:.6f} ms")
-        if ratio:
-            print(f"  NLPL/C ratio:   {ratio}x slower than C")
+        if py:
+            print(f"  Python:         {py:.3f} ms")
+        if rs:
+            print(f"  Rust --release: {rs:.6f} ms")
+        if ratio_c:
+            print(f"  NLPL/C ratio:   {ratio_c}x slower than C")
+        if ratio_py:
+            direction = "faster" if ratio_py < 1 else "slower"
+            print(f"  NLPL/Python:    {ratio_py}x {direction} than Python")
+        if ratio_rs:
+            print(f"  NLPL/Rust:      {ratio_rs}x slower than Rust")
         if r.get("errors"):
             for e in r["errors"]:
                 print(f"  WARNING: {e}")
