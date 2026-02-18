@@ -26,6 +26,10 @@ class NLPLError(Exception):
         self.context_lines = context_lines
         super().__init__(self._format_error())
     
+    def format_error(self) -> str:
+        """Public method to get formatted error (for catching in main)."""
+        return self._format_error()
+    
     def _format_error(self) -> str:
         """Format the error message with context (Rust-style)."""
         parts = []

@@ -14,6 +14,7 @@ from .interpreter.interpreter import Interpreter
 from .runtime.runtime import Runtime
 from .stdlib import register_stdlib
 from .tools import get_profiler, enable_profiling, disable_profiling
+from .errors import NLPLError
 
 def run_program(source_code, debug=False, type_check=True, profiler=None):
     """
@@ -43,14 +44,14 @@ def run_program(source_code, debug=False, type_check=True, profiler=None):
         for token in tokens:
             print(f"  {token}")
     
-    parser = Parser(tokens)
+    parser = Parser(tokens, source=source_code)
     ast = parser.parse()
     
     if debug:
         print("\nAST:")
         print_ast(ast)
     
-    interpreter = Interpreter(runtime, enable_type_checking=type_check)
+    interpreter = Interpreter(runtime, enable_type_checking=type_check, source=source_code)
     
     # Attach profiler if provided
     if profiler:
@@ -59,6 +60,9 @@ def run_program(source_code, debug=False, type_check=True, profiler=None):
     try:
         result = interpreter.interpret(ast)
         return result
+    except NLPLError:
+        # Re-raise NLPL errors to preserve rich formatting
+        raise
     except TypeError as e:
         print(f"Type Error: {str(e)}")
         return None
@@ -185,7 +189,11 @@ def main():
             debugger.print_statistics()
         
         except Exception as e:
-            print(f"\nError: {e}")
+            # Check if this is one of our NLPL errors with rich formatting
+            if hasattr(e, 'format_error'):
+                print(f"\n{e.format_error()}")
+            else:
+                print(f"\nError: {e}")
             if args.debug:
                 import traceback
                 traceback.print_exc()
@@ -213,7 +221,11 @@ def main():
                 profiler.export_flamegraph(args.profile_flamegraph)
                 print(f"Flamegraph data saved to: {args.profile_flamegraph}")
     except Exception as e:
-        print(f"Error: {e}")
+        # Check if this is one of our NLPL errors with rich formatting
+        if hasattr(e, 'format_error'):
+            print(e.format_error())
+        else:
+            print(f"Error: {e}")
         if args.debug:
             import traceback
             traceback.print_exc()

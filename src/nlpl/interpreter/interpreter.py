@@ -74,8 +74,9 @@ class NLPLUserException(Exception):
 
 class Interpreter:
     """Interprets and executes the AST."""
-    def __init__(self, runtime, enable_type_checking=False):
+    def __init__(self, runtime, enable_type_checking=False, source=None):
         self.runtime = runtime
+        self.source = source  # Store full source for error context
         self.global_scope = {}
         self.current_scope = [self.global_scope]
         self.functions = {}
@@ -270,7 +271,9 @@ class Interpreter:
         
         raise NLPLNameError(
             name,
-            available_names=available_names
+            available_names=available_names,
+            error_type_key="undefined_variable",
+            full_source=self.source
         )
         
     def set_variable(self, name, value):

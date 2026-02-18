@@ -46,13 +46,14 @@ from nlpl.parser.ast import (
 
 class Parser:
     """Parses a stream of tokens into an AST."""
-    def __init__(self, tokens):
+    def __init__(self, tokens, source=None):
         self.tokens = tokens
+        self.source = source  # Store full source for error context
         self.current_token_index = 0
         self.current_token = tokens[0] if tokens else None
         self._in_argument_context = False  # Prevents parsing trailing blocks in function arguments
         
-    def error(self, message):
+    def error(self, message, error_type_key=None):
         """Raise a syntax error with enhanced context and suggestions."""
         if self.current_token:
             line = self.current_token.line
@@ -69,6 +70,15 @@ class Parser:
                 expected_part = message.split("Expected")[1].split(",")[0].strip()
                 expected = expected_part
             
+            # Determine error type key from context if not provided
+            if not error_type_key:
+                if "Unexpected end" in message or "Expected" in message:
+                    error_type_key = "unexpected_token"
+                elif "missing" in message.lower():
+                    error_type_key = "missing_end"
+                elif "Invalid" in message:
+                    error_type_key = "invalid_syntax"
+            
             # Get suggestion based on context
             suggestion = self._get_error_suggestion(message, token_value)
             
@@ -79,10 +89,12 @@ class Parser:
                 source_line=source_line,
                 suggestion=suggestion,
                 expected=expected,
-                got=got
+                got=got,
+                error_type_key=error_type_key,
+                full_source=self.source
             )
         else:
-            raise NLPLSyntaxError(message)
+            raise NLPLSyntaxError(message, full_source=self.source)
     
     def _get_error_suggestion(self, message, token_value):
         """Get a helpful suggestion based on the error message."""
@@ -4580,7 +4592,7 @@ class Parser:
             # Dict literal: {key: value}
             return self.parse_dict_expression()
             
-        self.error(f"Unexpected token: {token.type}")
+        self.error(f"Unexpected token: {token.type}", error_type_key="unexpected_token")
     
     def convert_expression(self):
         """Parse a convert expression: convert expression to type."""
