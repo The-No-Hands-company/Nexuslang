@@ -500,13 +500,12 @@ Required fields:
 
 ### 4) Validation Checklist
 
-- [ ] Unit: diagnostic conversion for representative codes (`E001`, `E100`, `E200`, `E301`, `E309`).
-- [ ] Integration: open NLPL file with intentional errors and verify Problems shows `code`.
-- [ ] Hover: verify fixes + explain hint are visible.
+- [x] Unit: diagnostic conversion for representative codes (`E001`, `E100`, `E200`, `E301`, `E309`). _(done Feb 18 — `tests/test_lsp_diagnostic_payload.py`, 42 tests passing)_
+- [ ] Integration: open NLPL file with intentional errors and verify Problems shows `code`. _(manual VS Code smoke-test pending)_
+- [ ] Hover: verify fixes + explain hint are visible. _(manual VS Code smoke-test pending)_
 - [ ] Regression: diagnostics remain stable for unchanged code.
 
-> **Progress (Feb 18):** Server-side pipeline complete. Extension hover + explain command wired.
-> Remaining: manual VS Code smoke-test to verify Problems panel shows `code` field, then unit validation checklist.
+> **Progress (Feb 18):** All automated checklist items complete. Only manual VS Code smoke-tests remain.
 
 ### 5) Non-Blocking Follow-ups
 
