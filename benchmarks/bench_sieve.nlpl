@@ -40,9 +40,9 @@ function sieve_of_eratosthenes with limit as Integer returns Integer
     return count
 end
 
-# Run benchmark - find primes up to 10000
-set count to sieve_of_eratosthenes with 10000
+# Run benchmark - find primes up to 1000
+set count to sieve_of_eratosthenes with 1000
 
 print text "Found "
 print text convert count to string
-print text " primes up to 10000"
+print text " primes up to 1000"

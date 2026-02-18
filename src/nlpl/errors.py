@@ -221,10 +221,20 @@ def get_close_matches(word: str, possibilities: List[str], n: int = 3, cutoff: f
     """
     Get close matches to a word from a list of possibilities.
     Uses difflib for fuzzy string matching.
+
+    Caps the candidate list at 256 entries (sorted by length similarity) to
+    prevent O(n^2) difflib performance when the scope contains hundreds of
+    stdlib names.
     """
     if not word or not possibilities:
         return []
-    
+
+    # Cap candidates to avoid difflib O(n^2) blow-up on large scopes.
+    # Prefer candidates whose length is close to the target word.
+    if len(possibilities) > 256:
+        wlen = len(word)
+        possibilities = sorted(possibilities, key=lambda p: abs(len(p) - wlen))[:256]
+
     # Use difflib to find similar strings
     matches = difflib.get_close_matches(word, possibilities, n=n, cutoff=cutoff)
     return matches

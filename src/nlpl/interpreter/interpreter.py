@@ -4,6 +4,7 @@ Executes AST nodes and manages program state.
 """
 
 import os
+import re
 import struct
 from typing import Any, Dict, List, Optional
 
@@ -72,8 +73,20 @@ class NLPLUserException(Exception):
         super().__init__(f"{exception_type}: {message}" if message else exception_type)
 
 
+def _camel_to_snake(name: str) -> str:
+    """Convert CamelCase to snake_case for dispatch table building."""
+    return re.sub(r'(?<!^)(?=[A-Z])', '_', name).lower()
+
+
 class Interpreter:
     """Interprets and executes the AST."""
+
+    # Class-level dispatch cache: maps node_type string -> bound method.
+    # Built lazily on first Interpreter instantiation and shared across instances
+    # (methods are looked up on self at call time via getattr, then cached per-instance).
+    # This eliminates the per-call regex + hasattr + getattr chain in execute().
+    _DISPATCH_TABLE: Dict[str, str] = {}  # node_type -> method_name (str)
+
     def __init__(self, runtime, enable_type_checking=False, source=None):
         self.runtime = runtime
         self.source = source  # Store full source for error context
@@ -99,7 +112,37 @@ class Interpreter:
         self.debugger = None
         self.current_file = None
         self.current_line = None
+
+        # Per-instance dispatch cache: node_type -> bound method (avoids repeated getattr).
+        # Built lazily on first call to execute() so that subclasses that override
+        # execute_* methods are also picked up correctly.
+        self._dispatch_cache: Dict[str, Any] = {}
+
+        # Build the class-level string dispatch table once (shared, maps type name -> method name)
+        if not Interpreter._DISPATCH_TABLE:
+            Interpreter._build_dispatch_table()
     
+    @staticmethod
+    def _build_dispatch_table():
+        """Build the class-level node_type -> method_name mapping.
+
+        Iterates over Interpreter's own execute_* methods once at class-init time
+        and stores the camelCase node-type key alongside the method name string.
+        This avoids the per-dispatch regex overhead at runtime.
+        """
+        table = {}
+        for attr in dir(Interpreter):
+            if not attr.startswith("execute_"):
+                continue
+            snake = attr[len("execute_"):]  # e.g. "binary_operation"
+            # Derive CamelCase key (e.g. "BinaryOperation")
+            camel = "".join(w.title() for w in snake.split("_"))
+            table[camel] = attr
+            # Also store the snake_case key directly for nodes that use
+            # node_type in snake_case (rare, but keep backward compat)
+            table[snake] = attr
+        Interpreter._DISPATCH_TABLE = table
+
     def sync_runtime_functions_to_type_checker(self):
         """
         Sync runtime-registered functions to the type checker.
@@ -171,12 +214,13 @@ class Interpreter:
             self.module_loader = ModuleLoader(self.runtime, [os.getcwd()])
         return self.module_loader
         
-    def interpret(self, ast_or_source):
+    def interpret(self, ast_or_source, optimization_level=0):
         """Interpret the AST and execute the program.
-        
+
         Args:
             ast_or_source: Either an AST Program node or a source code string
-            
+            optimization_level: AST optimization level (0=none, 1=basic, 2=standard, 3=aggressive)
+
         Returns:
             The result of program execution
         """
@@ -184,14 +228,26 @@ class Interpreter:
         if isinstance(ast_or_source, str):
             from ..parser.lexer import Lexer
             from ..parser.parser import Parser
-            
+
             lexer = Lexer(ast_or_source)
             tokens = lexer.tokenize()
             parser = Parser(tokens, source=ast_or_source)
             ast = parser.parse()
         else:
             ast = ast_or_source
-        
+
+        # Apply AST-level optimizations when level > 0
+        if optimization_level > 0 and isinstance(ast, Program):
+            from ..optimizer import create_optimization_pipeline, OptimizationLevel
+            _level_map = {
+                1: OptimizationLevel.O1,
+                2: OptimizationLevel.O2,
+                3: OptimizationLevel.O3,
+            }
+            opt_level = _level_map.get(optimization_level, OptimizationLevel.O1)
+            pipeline = create_optimization_pipeline(opt_level)
+            ast = pipeline.run(ast)
+
         # Run type checking if enabled
         if self.enable_type_checking and isinstance(ast, Program):
             # CRITICAL: Sync runtime functions to type checker first
@@ -230,22 +286,32 @@ class Interpreter:
             self.current_file = file
             self.current_line = line
             self.debugger.trace_line(file, line)
-        
-        # Get node type from either node_type attribute or class name
+
+        # Get node type key (prefer node_type attr; fall back to class name)
         if hasattr(node, 'node_type'):
             node_type = node.node_type
         else:
             node_type = node.__class__.__name__
-        
-        # Dispatch to the appropriate method based on node type
-        # Convert CamelCase to snake_case for method names
-        import re
-        method_name = f"execute_{re.sub(r'(?<!^)(?=[A-Z])', '_', node_type).lower()}"
-        
-        if hasattr(self, method_name):
-            return getattr(self, method_name)(node)
-        else:
-            raise NotImplementedError(f"Execution of {node_type} nodes is not implemented (looked for method: {method_name})")
+
+        # Fast path: check per-instance cache first (bound method lookup is O(1))
+        handler = self._dispatch_cache.get(node_type)
+        if handler is None:
+            # Look up method name in the class-level table
+            method_name = Interpreter._DISPATCH_TABLE.get(node_type)
+            if method_name is None:
+                # Fall back to on-the-fly camel->snake conversion (handles
+                # subclasses or newly added node types not yet in the table)
+                method_name = "execute_" + _camel_to_snake(node_type)
+            if hasattr(self, method_name):
+                handler = getattr(self, method_name)
+                self._dispatch_cache[node_type] = handler
+            else:
+                raise NotImplementedError(
+                    f"Execution of {node_type} nodes is not implemented "
+                    f"(looked for method: {method_name})"
+                )
+
+        return handler(node)
             
     def get_variable(self, name):
         """Get a variable from the current scope with enhanced error reporting."""

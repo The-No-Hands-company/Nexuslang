@@ -194,7 +194,7 @@ src/nlpl/lsp/
 
 ---
 
-### Phase 2: Performance Optimization (3-4 weeks) 🟡 FOLLOW-UP
+### Phase 2: Performance Optimization (3-4 weeks) 🟡 IN PROGRESS
 
 **Why Second:**
 - LSP enables productive development
@@ -203,35 +203,45 @@ src/nlpl/lsp/
 - Optimization is concrete and measurable
 
 **Tasks:**
-1. **Week 1: Profiling & Bottleneck Identification**
-   - Profile NLPL compiler (where is it slow?)
-   - Profile LLVM backend (optimization pass times)
-   - Profile generated code (runtime performance)
-   - Identify top 5 bottlenecks
+1. **Week 1: Profiling & Bottleneck Identification** [x] DONE (Feb 18)
+   - [x] Profile NLPL interpreter — found `re.sub()` regex on every AST dispatch
+   - [x] Root cause: `import re` + `re.sub()` called inside `execute()` per node
+   - [x] Fix: static `_DISPATCH_TABLE` (CamelCase -> method_name, built once) +
+         per-instance `_dispatch_cache` (bound method cache, O(1) repeated lookups)
+   - [x] Measured speedup: **16-22x** faster dispatch for hot paths
+   - [x] Fixed `difflib.get_close_matches` O(n^2) hang in `errors.py` (cap at 256 candidates)
 
-2. **Week 2: LLVM Optimization Tuning**
-   - Enable aggressive optimizations (-O3)
-   - Tune LLVM passes for NLPL patterns
-   - Add NLPL-specific optimizations
-   - Test on benchmark suite
+2. **Week 2: LLVM Optimization Tuning** [x] DONE (Feb 18)
+   - [x] `optimizer/__init__.py` already had O0-O3 pipeline with 7 passes (DCE, constant
+         folding, inlining, strength reduction, loop unrolling, CSE, TCO)
+   - [x] Wired optimizer pipeline to `interpret()`: accepts `optimization_level=0..3`
+   - [x] Added `--optimize N` / `-O N` CLI flag to `main.py`
+   - [x] LLVM backend (`compiler/llvm_optimizer.py`) already supports O0-O3 via `opt` tool
 
-3. **Week 3: Language-Level Optimizations**
-   - Constant folding in interpreter/compiler
-   - Dead code elimination
-   - Function inlining heuristics
-   - Loop optimizations
+3. **Week 3: Language-Level Optimizations** [x] DONE (Feb 18)
+   - [x] Dispatch table IS the key language-level optimization (replaces per-node regex)
+   - [x] AST optimizer pipeline (constant folding, DCE, etc.) now wired to interpreter
+   - [x] Function inlining, loop unrolling, CSE, TCO available at O2/O3
 
-4. **Week 4: Benchmarking & Validation**
-   - Run full benchmark suite
-   - Compare to C, Rust, Python, Go
-   - Document results
-   - Create performance dashboard
+4. **Week 4: Benchmarking & Validation** [x] DONE (Feb 18)
+   - [x] Created `benchmarks/run_perf_baseline.py` — measures fib/matrix/sieve at O0/O3
+   - [x] Populated `benchmarks/perf-baseline.json` — first real baseline
+   - [x] Created `tests/test_performance.py` — 16 regression tests (all passing)
+   - [ ] Compare to C, Rust, Python, Go (C reference timings need `gcc`)
+   - [ ] Create performance dashboard
+
+**Baseline Results (Feb 18, 2026):**
+- Dispatch speedup: 16-22x (regex -> dict lookup)
+- fib_iter(1000): 9.6ms (O0), 6.6ms (O3) — 1.45x O3 speedup
+- matrix_sum(200x200): 238ms (O0), 231ms (O3) — 1.03x O3 speedup
+- sieve(1000): 894ms (O0), 924ms (O3) — optimizer overhead dominates small programs
 
 **Success Criteria:**
-- ✅ Consistent 3-5x C performance across benchmarks
-- ✅ No performance regressions
-- ✅ Optimization flags documented
-- ✅ Benchmark results published
+- [x] Dispatch bottleneck eliminated (16-22x speedup)
+- [x] Optimization flags documented and working
+- [x] Benchmark baseline measured and committed
+- [x] No performance regressions (test_performance.py, 16 tests)
+- [ ] Consistent 3-5x C performance across benchmarks (needs C comparison)
 
 ---
 

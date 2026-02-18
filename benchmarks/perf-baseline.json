@@ -1,9 +1,51 @@
 {
-  "threshold_ms": 2000.0,
-  "tolerance": 0.15,
-  "baseline": {},
-  "results": {
-    "/run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NLPL/test_programs/unit/basic/test_hello.nlpl": 18.57,
-    "/run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NLPL/test_programs/unit/basic/test_simple.nlpl": 2.24
+  "meta": {
+    "date": "2026-02-18T15:19:08.116403",
+    "git_commit": "10d0781",
+    "runs_per_measurement": 3,
+    "python_version": "3.14.2",
+    "platform": "linux",
+    "optimization_description": {
+      "O0": "No AST optimization",
+      "O1": "Basic: constant folding + DCE",
+      "O2": "Standard: O1 + strength reduction + loop unrolling + inlining",
+      "O3": "Aggressive: O2 + CSE + TCO + aggressive inlining"
+    }
+  },
+  "dispatch_speedup_x": 15.9,
+  "baseline": {
+    "fibonacci_iterative": {
+      "description": "Iterative Fibonacci(1000) - loop + integer arithmetic",
+      "nlpl_O0_ms": 9.562,
+      "nlpl_O1_ms": 11.102,
+      "nlpl_O2_ms": 11.999,
+      "nlpl_O3_ms": 6.591,
+      "c_o3_ms": null,
+      "nlpl_vs_c_ratio": null,
+      "nlpl_O3_vs_O0_speedup": 1.451,
+      "errors": []
+    },
+    "matrix_sum": {
+      "description": "Matrix sum (50x50) - nested loops, arithmetic",
+      "nlpl_O0_ms": 238.476,
+      "nlpl_O1_ms": 234.083,
+      "nlpl_O2_ms": 235.032,
+      "nlpl_O3_ms": 231.048,
+      "c_o3_ms": null,
+      "nlpl_vs_c_ratio": null,
+      "nlpl_O3_vs_O0_speedup": 1.032,
+      "errors": []
+    },
+    "sieve_of_eratosthenes": {
+      "description": "Prime sieve up to 1000 - array access, conditional branching",
+      "nlpl_O0_ms": 893.582,
+      "nlpl_O1_ms": 922.425,
+      "nlpl_O2_ms": 900.327,
+      "nlpl_O3_ms": 924.494,
+      "c_o3_ms": null,
+      "nlpl_vs_c_ratio": null,
+      "nlpl_O3_vs_O0_speedup": 0.967,
+      "errors": []
+    }
   }
 }

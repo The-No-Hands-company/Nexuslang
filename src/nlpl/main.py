@@ -16,16 +16,17 @@ from .stdlib import register_stdlib
 from .tools import get_profiler, enable_profiling, disable_profiling
 from .errors import NLPLError, NLPLTypeError, NLPLRuntimeError
 
-def run_program(source_code, debug=False, type_check=True, profiler=None):
+def run_program(source_code, debug=False, type_check=True, profiler=None, optimize=0):
     """
     Run an NLPL program from source code.
-    
+
     Args:
         source_code (str): The source code of the NLPL program
         debug (bool): Whether to enable debug mode
         type_check (bool): Whether to enable type checking
         profiler: Optional profiler instance for performance tracking
-    
+        optimize (int): AST optimization level (0=none, 1=basic, 2=standard, 3=aggressive)
+
     Returns:
         The result of the program execution
     """
@@ -58,7 +59,7 @@ def run_program(source_code, debug=False, type_check=True, profiler=None):
         interpreter.profiler = profiler
     
     try:
-        result = interpreter.interpret(ast)
+        result = interpreter.interpret(ast, optimization_level=optimize)
         return result
     except NLPLError:
         # Re-raise NLPL errors to preserve rich formatting
@@ -107,7 +108,13 @@ def main():
     parser.add_argument('--profile-flamegraph', help='Export flamegraph format to file')
     parser.add_argument('--explain', metavar='CODE', help='Explain error code (e.g., E001)')
     parser.add_argument('--list-errors', action='store_true', help='List all error codes')
-    
+    parser.add_argument(
+        '--optimize', '-O',
+        type=int, choices=[0, 1, 2, 3], default=0,
+        metavar='LEVEL',
+        help='AST optimization level: 0=none (default), 1=basic, 2=standard, 3=aggressive'
+    )
+
     args = parser.parse_args()
     
     # Handle --explain command
@@ -220,7 +227,7 @@ def main():
                 print_ast(ast)
             
             # Execute with debugger
-            result = interpreter.interpret(ast)
+            result = interpreter.interpret(ast, optimization_level=getattr(args, 'optimize', 0))
             
             if result is not None:
                 print(f"\nProgram result: {result}")
@@ -243,7 +250,7 @@ def main():
     
     # Run normally without debugger
     try:
-        result = run_program(source_code, args.debug, not args.no_type_check, profiler)
+        result = run_program(source_code, args.debug, not args.no_type_check, profiler, optimize=args.optimize)
         if result is not None:
             print(f"Program result: {result}")
         
