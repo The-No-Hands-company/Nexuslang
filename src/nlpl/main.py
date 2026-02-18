@@ -100,8 +100,43 @@ def main():
     parser.add_argument('--profile', action='store_true', help='Enable runtime profiling')
     parser.add_argument('--profile-output', help='Save profile results to JSON file')
     parser.add_argument('--profile-flamegraph', help='Export flamegraph format to file')
+    parser.add_argument('--explain', metavar='CODE', help='Explain error code (e.g., E001)')
+    parser.add_argument('--list-errors', action='store_true', help='List all error codes')
     
     args = parser.parse_args()
+    
+    # Handle --explain command
+    if args.explain:
+        from .error_codes import get_error_info
+        error_info = get_error_info(args.explain.upper())
+        if error_info:
+            print(error_info.format_help())
+        else:
+            print(f"Error code '{args.explain}' not found.")
+            print("Use --list-errors to see all available error codes.")
+        return
+    
+    # Handle --list-errors command
+    if args.list_errors:
+        from .error_codes import ERROR_CODES
+        print("NLPL Error Codes")
+        print("=" * 60)
+        
+        # Group by category
+        categories = {}
+        for code, info in sorted(ERROR_CODES.items()):
+            if info.category not in categories:
+                categories[info.category] = []
+            categories[info.category].append((code, info.title))
+        
+        for category, errors in sorted(categories.items()):
+            print(f"\n{category.upper()} ERRORS:")
+            for code, title in errors:
+                print(f"  {code}: {title}")
+        
+        print(f"\nTotal: {len(ERROR_CODES)} error codes")
+        print("Use 'nlpl --explain CODE' for details on a specific error.")
+        return
     
     # Initialize profiler if requested
     profiler = None

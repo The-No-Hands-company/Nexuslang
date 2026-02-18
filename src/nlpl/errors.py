@@ -7,6 +7,7 @@ Inspired by Rust's error reporting system.
 from typing import Optional, List
 import difflib
 from .error_codes import get_error_info, get_error_code_for_type
+from .colors import red, yellow, green, cyan, magenta, bold, dim
 
 
 class NLPLError(Exception):
@@ -31,18 +32,21 @@ class NLPLError(Exception):
         return self._format_error()
     
     def _format_error(self) -> str:
-        """Format the error message with context (Rust-style)."""
+        """Format the error message with context (Rust-style with colors)."""
         parts = []
         
-        # Header with error code
+        # Header with error code (red and bold)
         if self.error_code:
-            parts.append(f"\n{self.error_type} [{self.error_code}]: {self.message}")
+            header = f"{self.error_type} [{self.error_code}]: {self.message}"
+            parts.append(f"\n{red(bold(header))}")
         else:
-            parts.append(f"\n{self.error_type}: {self.message}")
+            header = f"{self.error_type}: {self.message}"
+            parts.append(f"\n{red(bold(header))}")
         
-        # Location
+        # Location (cyan)
         if self.line is not None:
-            parts.append(f"  --> line {self.line}" + (f", column {self.column}" if self.column else ""))
+            location = f"  --> line {self.line}" + (f", column {self.column}" if self.column else "")
+            parts.append(cyan(location))
         
         # Source context (multiple lines like Rust)
         if self.full_source and self.line:
@@ -51,19 +55,19 @@ class NLPLError(Exception):
         elif self.source_line:
             # Fallback to single line
             line_str = str(self.line) if self.line else "?"
-            parts.append(f"\n  {line_str} | {self.source_line}")
+            parts.append(f"\n  {dim(line_str + ' |')} {self.source_line}")
             if self.column is not None:
                 padding = len(line_str) + 3 + self.column - 1
-                parts.append(f"  {' ' * padding}^")
+                parts.append(f"  {' ' * padding}{red('^')}")
         
-        # Error code help
+        # Error code help (green for suggestions)
         if self.error_code:
             error_info = get_error_info(self.error_code)
             if error_info and error_info.fixes:
-                parts.append(f"\n\nHow to fix:")
+                parts.append(f"\n\n{bold('How to fix:')}")
                 for fix in error_info.fixes[:2]:  # Show top 2 fixes
-                    parts.append(f"  • {fix}")
-                parts.append(f"\nFor more help: nlpl --explain {self.error_code}")
+                    parts.append(f"  {green('•')} {fix}")
+                parts.append(f"\n{dim(f'For more help: nlpl --explain {self.error_code}')}")
         
         return "".join(parts)
 
@@ -105,10 +109,16 @@ class NLPLRuntimeError(NLPLError):
     """Runtime error with stack trace."""
     def __init__(self, message: str, line: Optional[int] = None, column: Optional[int] = None,
                  source_line: Optional[str] = None, stack_trace: Optional[List[str]] = None,
-                 variable_context: Optional[dict] = None, nlpl_type: str = "RuntimeError"):
+                 variable_context: Optional[dict] = None, nlpl_type: str = "RuntimeError",
+                 error_type_key: Optional[str] = None, full_source: Optional[str] = None):
         self.stack_trace = stack_trace or []
         self.variable_context = variable_context or {}
-        super().__init__(message, line, column, source_line, "Runtime Error", nlpl_type)
+        
+        # Get error code if type key provided
+        error_code = get_error_code_for_type(error_type_key) if error_type_key else None
+        
+        super().__init__(message, line, column, source_line, "Runtime Error", nlpl_type,
+                        error_code=error_code, full_source=full_source)
     
     def _format_error(self) -> str:
         """Format runtime error with stack trace."""
@@ -132,20 +142,38 @@ class NLPLRuntimeError(NLPLError):
 
 class NLPLNameError(NLPLError):
     """Name error with did-you-mean suggestions and error codes."""
-    def __init__(self, name: str, line: Optional[int] = None, column: Optional[int] = None,
+    def __init__(self, name: str = None, line: Optional[int] = None, column: Optional[int] = None,
                  source_line: Optional[str] = None, available_names: Optional[List[str]] = None,
-                 error_type_key: str = "undefined_variable", full_source: Optional[str] = None):
+                 error_type_key: str = "undefined_variable", full_source: Optional[str] = None,
+                 message: Optional[str] = None, suggestions: Optional[List[str]] = None):
+        # Support both calling styles: new (name=) and old (message=)
+        if message:
+            # Old style: explicit message provided
+            error_message = message
+            # Try to extract name from message if not provided
+            if not name and "'" in message:
+                parts = message.split("'")
+                if len(parts) >= 2:
+                    name = parts[1]
+        else:
+            # New style: build message from name
+            if not name:
+                name = "unknown"
+            error_message = f"Name '{name}' is not defined"
+        
         self.name = name
         self.available_names = available_names or []
         
-        # Find similar names
-        self.suggestions = get_close_matches(name, self.available_names)
+        # Find similar names if not explicitly provided
+        if suggestions:
+            self.suggestions = suggestions
+        else:
+            self.suggestions = get_close_matches(name, self.available_names) if name else []
         
         # Determine specific error code
         error_code = get_error_code_for_type(error_type_key)
         
-        message = f"Name '{name}' is not defined"
-        super().__init__(message, line, column, source_line, "Name Error", "NameError",
+        super().__init__(error_message, line, column, source_line, "Name Error", "NameError",
                         error_code=error_code, full_source=full_source)
     
     def _format_error(self) -> str:
@@ -154,11 +182,11 @@ class NLPLNameError(NLPLError):
         
         if self.suggestions:
             if len(self.suggestions) == 1:
-                base += f"\n\nDid you mean: '{self.suggestions[0]}'?"
+                base += f"\n\n{bold('Did you mean:')} {cyan(repr(self.suggestions[0]))}?"
             else:
-                base += f"\n\nDid you mean one of these?"
+                base += f"\n\n{bold('Did you mean one of these?')}"
                 for suggestion in self.suggestions[:3]:  # Show top 3
-                    base += f"\n  • {suggestion}"
+                    base += f"\n  {green('•')} {cyan(suggestion)}"
         
         return base
 
@@ -183,8 +211,8 @@ class NLPLTypeError(NLPLError):
         base = super()._format_error()
         
         if self.expected_type and self.got_type:
-            base += f"\n\nExpected type: {self.expected_type}"
-            base += f"\nGot type: {self.got_type}"
+            base += f"\n\n{bold('Expected type:')} {magenta(self.expected_type)}"
+            base += f"\n{bold('Got type:')} {magenta(self.got_type)}"
         
         return base
 
@@ -235,13 +263,13 @@ def format_source_context(source: str, line: int, column: int, context_lines: in
         
         if i == error_line_idx:
             # Error line - highlight it
-            result.append(f"{prefix}{lines[i]}")
-            # Add caret pointer
+            result.append(f"{dim(prefix)}{lines[i]}")
+            # Add caret pointer (red)
             padding = len(prefix) + column - 1
-            result.append(f"  {' ' * padding}^")
+            result.append(f"  {' ' * padding}{red('^')}")
         else:
-            # Context line
-            result.append(f"{prefix}{lines[i]}")
+            # Context line (dimmed)
+            result.append(f"{dim(prefix + lines[i])}")
     
     return '\n'.join(result)
 

@@ -397,6 +397,134 @@ ERROR_CODES: Dict[str, ErrorInfo] = {
         ],
         doc_link="https://nlpl.dev/docs/modules/imports"
     ),
+    
+    # Additional Runtime Errors (E304-E320)
+    "E304": ErrorInfo(
+        code="E304",
+        category="runtime",
+        title="Object has no attribute",
+        description="Attempted to access an attribute that doesn't exist on the object.",
+        common_causes=[
+            "Typo in attribute name",
+            "Attribute not defined in class",
+            "Wrong object type",
+        ],
+        fixes=[
+            "Check spelling of attribute name",
+            "Verify the attribute is defined in the class",
+            "Use hasattr() to check if attribute exists",
+        ],
+        doc_link="https://nlpl.dev/docs/objects/attributes"
+    ),
+    
+    "E305": ErrorInfo(
+        code="E305",
+        category="runtime",
+        title="Function call error",
+        description="Error occurred while calling a function.",
+        common_causes=[
+            "Wrong number of arguments",
+            "Argument type mismatch",
+            "Function not callable",
+        ],
+        fixes=[
+            "Check function signature for required parameters",
+            "Verify argument types match function definition",
+            "Ensure the object is actually a function",
+        ],
+        doc_link="https://nlpl.dev/docs/functions"
+    ),
+    
+    "E306": ErrorInfo(
+        code="E306",
+        category="runtime",
+        title="Invalid cast",
+        description="Type conversion/cast failed.",
+        common_causes=[
+            "Incompatible types for conversion",
+            "Value out of range for target type",
+            "Invalid format for parsing",
+        ],
+        fixes=[
+            "Check if conversion is valid for these types",
+            "Validate value before conversion",
+            "Use try-catch for risky conversions",
+        ],
+        doc_link="https://nlpl.dev/docs/types/conversion"
+    ),
+    
+    "E307": ErrorInfo(
+        code="E307",
+        category="runtime",
+        title="Memory allocation failed",
+        description="Failed to allocate memory.",
+        common_causes=[
+            "Requested size too large",
+            "System out of memory",
+            "Invalid size parameter",
+        ],
+        fixes=[
+            "Check available memory",
+            "Reduce allocation size",
+            "Free unused memory first",
+        ],
+        doc_link="https://nlpl.dev/docs/memory"
+    ),
+    
+    "E308": ErrorInfo(
+        code="E308",
+        category="runtime",
+        title="Invalid memory operation",
+        description="Memory operation is invalid (accessing freed memory, invalid pointer, etc.).",
+        common_causes=[
+            "Using freed memory",
+            "Null pointer dereference",
+            "Invalid pointer arithmetic",
+        ],
+        fixes=[
+            "Check pointer is not null before use",
+            "Don't use memory after freeing",
+            "Validate pointer operations",
+        ],
+        doc_link="https://nlpl.dev/docs/memory/safety"
+    ),
+    
+    # Additional Type Errors (E203-E210)
+    "E203": ErrorInfo(
+        code="E203",
+        category="type",
+        title="Invalid generic type arguments",
+        description="Generic type arguments are invalid.",
+        common_causes=[
+            "Wrong number of type arguments",
+            "Type constraints not satisfied",
+            "Invalid type parameter",
+        ],
+        fixes=[
+            "Check the number of type parameters required",
+            "Verify type constraints are met",
+            "Use valid concrete types for generics",
+        ],
+        doc_link="https://nlpl.dev/docs/generics"
+    ),
+    
+    "E204": ErrorInfo(
+        code="E204",
+        category="type",
+        title="Type annotation error",
+        description="Type annotation is invalid or inconsistent.",
+        common_causes=[
+            "Undefined type in annotation",
+            "Inconsistent type annotations",
+            "Invalid type syntax",
+        ],
+        fixes=[
+            "Check type name is defined",
+            "Ensure annotations are consistent",
+            "Use correct type annotation syntax",
+        ],
+        doc_link="https://nlpl.dev/docs/types/annotations"
+    ),
 }
 
 
@@ -434,12 +562,19 @@ def get_error_code_for_type(error_type: str, context: dict = None) -> Optional[s
         "type_mismatch": "E200",
         "invalid_operation": "E201",
         "wrong_argument_count": "E202",
+        "invalid_generic_args": "E203",
+        "type_annotation_error": "E204",
         
         # Runtime
         "division_by_zero": "E300",
         "index_out_of_range": "E301",
         "key_not_found": "E302",
         "null_pointer": "E303",
+        "no_attribute": "E304",
+        "function_call_error": "E305",
+        "invalid_cast": "E306",
+        "memory_allocation_failed": "E307",
+        "invalid_memory_operation": "E308",
         
         # Modules
         "module_not_found": "E400",

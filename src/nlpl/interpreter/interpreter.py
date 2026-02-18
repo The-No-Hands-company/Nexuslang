@@ -350,7 +350,9 @@ class Interpreter:
                         name=name,
                         suggestions=suggestions,
                         line=getattr(node, 'line', None),
-                        column=getattr(node, 'column', None)
+                        column=getattr(node, 'column', None),
+                        error_type_key="undefined_attribute",
+                        full_source=self.source
                     )
                     
             return None
@@ -382,7 +384,9 @@ class Interpreter:
                 name=node.member_name,
                 suggestions=suggestions,
                 line=getattr(node, 'line', None),
-                column=getattr(node, 'column', None)
+                column=getattr(node, 'column', None),
+                error_type_key="undefined_attribute",
+                full_source=self.source
             )
             
     def execute_private_declaration(self, node):
@@ -423,21 +427,27 @@ class Interpreter:
                 raise NLPLRuntimeError(
                     message=f"Index {index} is out of range for assignment",
                     line=getattr(node, 'line', None),
-                    column=getattr(node, 'column', None)
+                    column=getattr(node, 'column', None),
+                    error_type_key="index_out_of_range",
+                    full_source=self.source
                 )
             elif isinstance(e, TypeError):
                 raise NLPLTypeError(
                     message=f"Cannot assign to index on type {type(container).__name__}",
-                    expected="list or dict",
-                    got=type(container).__name__,
+                    expected_type="list or dict",
+                    got_type=type(container).__name__,
                     line=getattr(node, 'line', None),
-                    column=getattr(node, 'column', None)
+                    column=getattr(node, 'column', None),
+                    error_type_key="invalid_operation",
+                    full_source=self.source
                 )
             else:
                 raise NLPLRuntimeError(
                     message=f"Failed to assign to index {index}: {e}",
                     line=getattr(node, 'line', None),
-                    column=getattr(node, 'column', None)
+                    column=getattr(node, 'column', None),
+                    error_type_key="key_not_found",
+                    full_source=self.source
                 )
         
     def execute_function_definition(self, node):
@@ -735,7 +745,9 @@ class Interpreter:
         # No pattern matched
         raise NLPLRuntimeError(
             f"Non-exhaustive pattern match: no pattern matched the value {match_value!r}",
-            line=node.line_number
+            line=node.line_number,
+            error_type_key="invalid_operation",
+            full_source=self.source
         )
     
     def _match_pattern(self, pattern, value):
