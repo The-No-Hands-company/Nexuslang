@@ -97,7 +97,7 @@ class HoverProvider:
         if not symbol:
             return None
         
-        # Check documentation database
+        # Check documentation database (stdlib/keywords)
         if symbol in self.docs:
             return {
                 "contents": {
@@ -106,7 +106,7 @@ class HoverProvider:
                 }
             }
         
-        # Try to infer type/signature from code
+        # Try to infer type/signature from current document
         info = self._infer_symbol_info(text, symbol)
         if info:
             return {
@@ -115,8 +115,43 @@ class HoverProvider:
                     "value": info
                 }
             }
-        
+
+        # Try workspace index for user-defined symbols from other files
+        info = self._get_info_from_workspace_index(symbol)
+        if info:
+            return {
+                "contents": {
+                    "kind": "markdown",
+                    "value": info
+                }
+            }
+
         return None
+
+    def _get_info_from_workspace_index(self, symbol: str) -> Optional[str]:
+        """Get hover info for a user-defined symbol via the workspace index."""
+        if not (hasattr(self.server, 'workspace_index') and self.server.workspace_index):
+            return None
+        symbols = self.server.workspace_index.get_symbol(symbol)
+        if not symbols:
+            return None
+        sym = symbols[0]
+        kind_label = {
+            'function': 'Function', 'class': 'Class', 'method': 'Method',
+            'struct': 'Struct', 'variable': 'Variable', 'field': 'Field',
+            'parameter': 'Parameter',
+        }.get(sym.kind, 'Symbol')
+        info = f"**{sym.name}** \u2014 {kind_label}"
+        if sym.signature:
+            info += f"\n\n```nlpl\n{sym.kind} {sym.name} {sym.signature}\n```"
+        if sym.type_annotation:
+            info += f"\n\n**Type**: `{sym.type_annotation}`"
+        if sym.doc:
+            info += f"\n\n{sym.doc}"
+        import os
+        file_name = os.path.basename(sym.file_uri.replace('file://', ''))
+        info += f"\n\n*Defined in: `{file_name}`*"
+        return info
     
     def _get_symbol_at_position(self, text: str, position) -> Optional[str]:
         """Extract symbol at cursor position."""

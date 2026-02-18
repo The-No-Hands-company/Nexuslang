@@ -29,6 +29,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set
 from pathlib import Path
 import os
+import re
 import logging
 
 from ..parser.lexer import Lexer
@@ -204,6 +205,12 @@ class WorkspaceIndex:
                 if file_uri not in self.files:
                     self.files[file_uri] = []
                 self.files[file_uri].append(symbol)
+
+            # Post-process: resolve column=0 placeholders to real columns
+            source_lines = content.split('\n')
+            for symbol in symbols:
+                if symbol.column == 0:
+                    symbol.column = self._find_symbol_column(source_lines, symbol.line, symbol.name)
             
             # Mark as indexed
             self.indexed_files.add(file_uri)
@@ -501,6 +508,18 @@ class WorkspaceIndex:
         # Remove from indexed set
         self.indexed_files.discard(file_uri)
     
+    def _find_symbol_column(self, lines: List[str], line_idx: int, symbol_name: str) -> int:
+        """
+        Scan a source line to find the 0-indexed column of a symbol name.
+
+        Uses a whole-word regex so keywords and partial matches are skipped.
+        Returns 0 if the symbol cannot be found on the given line.
+        """
+        if line_idx >= len(lines):
+            return 0
+        match = re.search(r'\b' + re.escape(symbol_name) + r'\b', lines[line_idx])
+        return match.start() if match else 0
+
     def _find_nlpl_files(self) -> List[str]:
         """
         Recursively find all .nlpl files in workspace.

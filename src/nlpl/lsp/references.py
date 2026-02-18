@@ -45,58 +45,85 @@ class ReferencesProvider:
             return self.symbol_tables.get(uri, None)
     
     def find_references(
-        self, 
-        text: str, 
-        position: 'Position', 
+        self,
+        text: str,
+        position: 'Position',
         uri: str,
         include_declaration: bool = True
     ) -> List[Dict]:
         """
         Find all references to symbol at position using AST-based resolution.
-        
+
+        Searches open documents first, then all indexed workspace files not
+        already open, so cross-file references are always returned.
+
         Args:
             text: Document text
             position: Cursor position
             uri: Document URI
             include_declaration: Whether to include the declaration/definition
-            
+
         Returns:
             List of locations where symbol is referenced
         """
-        # Build symbol table
+        # Try AST-based symbol table for the current file
         symbol_table = self._get_or_build_symbol_table(text, uri)
-        if not symbol_table:
-            return self._fallback_find_references(text, position, uri, include_declaration)
-        
-        # Get symbol at position
-        symbol = symbol_table.get_symbol_at_position(uri, position.line, position.character)
-        if not symbol:
-            return self._fallback_find_references(text, position, uri, include_declaration)
-        
-        # Collect references from symbol table
-        references = []
-        
-        # Add declaration if requested
-        if include_declaration and symbol.location:
-            references.append({
-                "uri": symbol.location.uri,
-                "range": {
-                    "start": {"line": symbol.location.line, "character": symbol.location.column},
-                    "end": {"line": symbol.location.line, "character": symbol.location.column + len(symbol.name)}
-                }
-            })
-        
-        # Add all references
-        for ref in symbol.references:
-            references.append({
-                "uri": ref.uri,
-                "range": {
-                    "start": {"line": ref.line, "character": ref.column},
-                    "end": {"line": ref.line, "character": ref.column + len(symbol.name)}
-                }
-            })
-        
+        if symbol_table:
+            symbol = symbol_table.get_symbol_at_position(uri, position.line, position.character)
+        else:
+            symbol = None
+
+        if symbol:
+            # AST path: use symbol table references (within this file)
+            references: List[Dict] = []
+            if include_declaration and symbol.location:
+                references.append({
+                    "uri": symbol.location.uri,
+                    "range": {
+                        "start": {"line": symbol.location.line, "character": symbol.location.column},
+                        "end": {"line": symbol.location.line, "character": symbol.location.column + len(symbol.name)}
+                    }
+                })
+            for ref in symbol.references:
+                references.append({
+                    "uri": ref.uri,
+                    "range": {
+                        "start": {"line": ref.line, "character": ref.column},
+                        "end": {"line": ref.line, "character": ref.column + len(symbol.name)}
+                    }
+                })
+        else:
+            # Fallback: regex search across all open documents
+            references = self._fallback_find_references(text, position, uri, include_declaration)
+
+        # Extend with cross-file results from workspace files not currently open
+        self._add_workspace_references(references, text, position)
         return references
+
+    def _add_workspace_references(
+        self,
+        references: List[Dict],
+        text: str,
+        position: 'Position'
+    ) -> None:
+        """Append references found in workspace files not already in server.documents."""
+        if not (hasattr(self.server, 'workspace_index') and self.server.workspace_index):
+            return
+        symbol = self._get_symbol_at_position(text, position)
+        if not symbol:
+            return
+        symbol_type = self._get_symbol_type(text, position, symbol)
+        for file_uri in self.server.workspace_index.indexed_files:
+            if file_uri in self.server.documents:
+                continue  # Already covered by open-document search
+            file_path = self.server.workspace_index._uri_to_path(file_uri)
+            try:
+                with open(file_path, 'r', encoding='utf-8') as fh:
+                    file_text = fh.read()
+                doc_refs = self._find_in_document(file_text, symbol, symbol_type, file_uri)
+                references.extend(doc_refs)
+            except Exception:
+                pass
     
     def _fallback_find_references(
         self, 
@@ -403,14 +430,19 @@ class ReferencesProvider:
             
             # Check for all references
             for match in re.finditer(ref_pattern, line):
-                # Avoid duplicating the assignment we already found
-                if i < len(refs) and refs[-1]["range"]["start"]["line"] == i:
+                # Skip positions already captured (e.g. the assignment itself)
+                already_covered = any(
+                    e["range"]["start"]["line"] == i
+                    and e["range"]["start"]["character"] == match.start()
+                    for e in refs
+                )
+                if already_covered:
                     continue
-                
+
                 # Avoid matching inside keywords
                 if self._is_inside_keyword(line, match.start()):
                     continue
-                
+
                 refs.append({
                     "uri": uri,
                     "range": {

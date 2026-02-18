@@ -81,6 +81,7 @@ class NLPLLanguageServer:
         self.documents: Dict[str, str] = {}  # URI -> content
         self.initialization_options = {}
         self.workspace_index = None  # Will be initialized after workspace root is known
+        self._parse_cache: Dict[str, tuple] = {}  # uri -> (text_hash, ast)
         
         # Import providers
         from ..lsp.completions import CompletionProvider
@@ -388,6 +389,7 @@ class NLPLLanguageServer:
         uri = params['textDocument']['uri']
         if uri in self.documents:
             del self.documents[uri]
+        self.invalidate_parse_cache(uri)
         logger.info(f"Closed document: {uri}")
     
     def _handle_completion(self, msg_id: int, params: Dict) -> Dict:
@@ -901,6 +903,34 @@ class NLPLLanguageServer:
             }
         }
         self._write_message(notification)
+
+    def get_or_parse(self, uri: str, text: str):
+        """
+        Return a cached AST for the given document, or parse and cache it.
+
+        The cache key is a short MD5 hash of the text; the AST is invalidated
+        automatically whenever the text changes.  Returns None if parsing fails.
+        """
+        import hashlib
+        text_hash = hashlib.md5(text.encode('utf-8')).hexdigest()[:12]
+        cached = self._parse_cache.get(uri)
+        if cached and cached[0] == text_hash:
+            return cached[1]
+        try:
+            from ..parser.lexer import Lexer
+            from ..parser.parser import Parser
+            lexer = Lexer(text)
+            tokens = lexer.tokenize()
+            parser = Parser(tokens)
+            ast = parser.parse()
+            self._parse_cache[uri] = (text_hash, ast)
+            return ast
+        except Exception:
+            return None
+
+    def invalidate_parse_cache(self, uri: str) -> None:
+        """Remove the cached AST for a document (call on close or delete)."""
+        self._parse_cache.pop(uri, None)
 
 
 __all__ = ['NLPLLanguageServer', 'Position', 'Range', 'Location']

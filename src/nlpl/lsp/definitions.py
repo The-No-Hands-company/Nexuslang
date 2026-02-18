@@ -87,15 +87,14 @@ class DefinitionProvider:
                 if symbols:
                     # Return first matching symbol (could enhance to handle multiple)
                     sym = symbols[0]
-                    from lsprotocol.types import Location, Range, Position as LSPPosition
+                    from ..lsp.server import Location, Range, Position
                     return Location(
                         uri=sym.file_uri,
                         range=Range(
-                            start=LSPPosition(line=sym.line, character=sym.column),
-                            end=LSPPosition(line=sym.line, character=sym.column + len(sym.name))
+                            start=Position(line=sym.line, character=sym.column),
+                            end=Position(line=sym.line, character=sym.column + len(sym.name))
                         )
                     )
-        
         # Fallback to AST-based symbol table
         symbol_table = self._get_or_build_symbol_table(text, uri)
         if not symbol_table:
@@ -106,12 +105,12 @@ class DefinitionProvider:
         symbol = symbol_table.get_symbol_at_position(uri, position.line, position.character)
         if symbol:
             # Found symbol - return its definition location
-            from lsprotocol.types import Location, Range, Position as LSPPosition
+            from ..lsp.server import Location, Range, Position
             return Location(
                 uri=symbol.location.uri,
                 range=Range(
-                    start=LSPPosition(line=symbol.location.line, character=symbol.location.column),
-                    end=LSPPosition(line=symbol.location.line, character=symbol.location.column + len(symbol.name))
+                    start=Position(line=symbol.location.line, character=symbol.location.column),
+                    end=Position(line=symbol.location.line, character=symbol.location.column + len(symbol.name))
                 )
             )
         

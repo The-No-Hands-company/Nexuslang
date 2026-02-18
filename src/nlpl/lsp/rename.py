@@ -168,10 +168,27 @@ class RenameProvider:
             )
             if doc_changes:
                 changes[doc_uri] = doc_changes
-        
+
+        # Also rename in workspace files that are not currently open in memory
+        if hasattr(self.server, 'workspace_index') and self.server.workspace_index:
+            for file_uri in self.server.workspace_index.indexed_files:
+                if file_uri in self.server.documents:
+                    continue  # Already handled in the loop above
+                file_path = self.server.workspace_index._uri_to_path(file_uri)
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as fh:
+                        file_text = fh.read()
+                    doc_changes = self._find_and_replace_in_document(
+                        file_text, old_name, new_name, symbol_type, file_uri
+                    )
+                    if doc_changes:
+                        changes[file_uri] = doc_changes
+                except Exception:
+                    pass
+
         if not changes:
             return None
-        
+
         return {
             "changes": changes
         }
