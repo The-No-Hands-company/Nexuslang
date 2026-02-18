@@ -2078,7 +2078,9 @@ class Interpreter:
                 message=f"Index {index} is out of range for array of length {len(array)}",
                 line=getattr(node, 'line', None),
                 column=getattr(node, 'column', None),
-                nlpl_type="IndexError"
+                nlpl_type="IndexError",
+                error_type_key="index_out_of_range",
+                full_source=self.source
             )
         except KeyError as e:
             # For dictionaries, suggest similar keys
@@ -2089,19 +2091,23 @@ class Interpreter:
                     available_names=available_keys,
                     line=getattr(node, 'line', None),
                     column=getattr(node, 'column', None),
-                    source_line=getattr(node, 'source_line', None)
+                    source_line=getattr(node, 'source_line', None),
+                    error_type_key="undefined_variable",
+                    full_source=self.source
                 )
             raise NLPLRuntimeError(
                 message=f"Key '{index}' not found",
                 line=getattr(node, 'line', None),
                 column=getattr(node, 'column', None),
-                nlpl_type="IndexError" # Dictionaries also use IndexError-like catch in many cases or can be general
+                nlpl_type="IndexError",
+                error_type_key="key_not_found",
+                full_source=self.source
             )
         except TypeError as e:
             raise NLPLTypeError(
                 message=f"Cannot use index on type {type(array).__name__}",
-                expected="list, dict, or string",
-                got=type(array).__name__,
+                expected_type="list, dict, or string",
+                got_type=type(array).__name__,
                 line=getattr(node, 'line', None),
                 column=getattr(node, 'column', None)
             )
@@ -2532,12 +2538,22 @@ class Interpreter:
         
         # Get struct definition
         if struct_name not in self.classes:
-            raise RuntimeError(f"Unknown struct/union type: {struct_name}")
+            raise NLPLRuntimeError(
+                f"Unknown struct/union type: {struct_name}",
+                line=getattr(node, 'line', None),
+                error_type_key="undefined_class",
+                full_source=self.source
+            )
         
         struct_def = self.classes[struct_name]
         
         if field_name not in struct_def.fields:
-            raise RuntimeError(f"Field '{field_name}' not found in {struct_name}")
+            raise NLPLRuntimeError(
+                f"Field '{field_name}' not found in {struct_name}",
+                line=getattr(node, 'line', None),
+                error_type_key="undefined_attribute",
+                full_source=self.source
+            )
             
         return struct_def.fields[field_name].offset
     
@@ -2614,9 +2630,13 @@ class Interpreter:
         class_def = self.classes.get(class_name)
         if not class_def:
             from ..errors import NLPLNameError
-            raise NLPLNameError(f"Undefined class, struct, or union: '{class_name}'", 
-                               line_number=node.line_number,
-                               available_names=list(self.classes.keys()))
+            raise NLPLNameError(
+                name=class_name,
+                line=node.line_number,
+                available_names=list(self.classes.keys()),
+                error_type_key="undefined_class",
+                full_source=self.source
+            )
             
         # Handle Generics: Check if this is a generic class instantiation
         # Node has type_arguments: Box<Integer> -> type_arguments=['Integer']
@@ -2624,14 +2644,22 @@ class Interpreter:
         if hasattr(node, 'type_arguments') and node.type_arguments:
             from ..errors import NLPLTypeError
             if not hasattr(class_def, 'generic_parameters') or not class_def.generic_parameters:
-                raise NLPLTypeError(f"Class '{class_name}' is not generic but was given type arguments",
-                                    line=getattr(node, 'line', None),
-                                    column=getattr(node, 'column', None))
+                raise NLPLTypeError(
+                    f"Class '{class_name}' is not generic but was given type arguments",
+                    line=getattr(node, 'line', None),
+                    column=getattr(node, 'column', None),
+                    error_type_key="invalid_generic_args",
+                    full_source=self.source
+                )
             
             if len(node.type_arguments) != len(class_def.generic_parameters):
-                raise NLPLTypeError(f"Class '{class_name}' expects {len(class_def.generic_parameters)} type arguments, got {len(node.type_arguments)}",
-                                    line=getattr(node, 'line', None),
-                                    column=getattr(node, 'column', None))
+                raise NLPLTypeError(
+                    f"Class '{class_name}' expects {len(class_def.generic_parameters)} type arguments, got {len(node.type_arguments)}",
+                    line=getattr(node, 'line', None),
+                    column=getattr(node, 'column', None),
+                    error_type_key="invalid_generic_args",
+                    full_source=self.source
+                )
             
             # Map parameters T to arguments Integer
             # class_def.generic_parameters is a list of TypeParameter nodes OR strings
@@ -2763,7 +2791,9 @@ class Interpreter:
                     raise NLPLNameError(
                         message=f"Object of type '{obj.class_name}' has no method '{member_name}'",
                         name=member_name,
-                        line=getattr(node, 'line', None)
+                        line=getattr(node, 'line', None),
+                        error_type_key="undefined_function",
+                        full_source=self.source
                     )
             else:
                 # Property access
@@ -2773,7 +2803,9 @@ class Interpreter:
                     raise NLPLNameError(
                         message=f"Object of type '{obj.class_name}' has no property '{member_name}'",
                         name=member_name,
-                        line=getattr(node, 'line', None)
+                        line=getattr(node, 'line', None),
+                        error_type_key="undefined_attribute",
+                        full_source=self.source
                     )
 
         # Handle dict-based objects (legacy/fallback)
@@ -2834,13 +2866,23 @@ class Interpreter:
                     finally:
                         self.exit_scope()
                 else:
-                    raise RuntimeError(f"Unknown method: {member_name}")
+                    raise NLPLRuntimeError(
+                        f"Unknown method: {member_name}",
+                        line=getattr(node, 'line', None),
+                        error_type_key="undefined_function",
+                        full_source=self.source
+                    )
             else:
                 # Property/field access
                 if member_name in obj:
                     return obj[member_name]
                 else:
-                    raise RuntimeError(f"Unknown field: {member_name}")
+                    raise NLPLRuntimeError(
+                        f"Unknown field: {member_name}",
+                        line=getattr(node, 'line', None),
+                        error_type_key="undefined_attribute",
+                        full_source=self.source
+                    )
         
         # Handle regular Python objects
         elif hasattr(obj, member_name):
@@ -2852,7 +2894,12 @@ class Interpreter:
             else:
                 return attr
         else:
-            raise RuntimeError(f"Object has no member: {member_name}")
+            raise NLPLRuntimeError(
+                f"Object has no member: {member_name}",
+                line=getattr(node, 'line', None),
+                error_type_key="undefined_attribute",
+                full_source=self.source
+            )
     
     def execute_member_assignment(self, node):
         """
@@ -2889,7 +2936,12 @@ class Interpreter:
             setattr(target_obj, member_name, value)
             return value
             
-        raise RuntimeError(f"Cannot assign to member '{member_name}' on object of type {type(target_obj)}")
+        raise NLPLRuntimeError(
+            f"Cannot assign to member '{member_name}' on object of type {type(target_obj)}",
+            line=getattr(node, 'line', None),
+            error_type_key="invalid_operation",
+            full_source=self.source
+        )
     
     def execute_generic_type_instantiation(self, node):
         """
@@ -2982,10 +3034,13 @@ class Interpreter:
         else:
             # Unknown generic type - provide helpful error message
             supported = ["List", "Dict", "Set", "Queue", "Stack", "Tuple", "Optional", "Map"]
-            raise TypeError(
+            raise NLPLTypeError(
                 f"Unsupported generic type: '{generic_name}'.\n"
                 f"  Supported generic types: {', '.join(supported)}\n"
-                f"  Note: This is a language limitation, not incomplete implementation."
+                f"  Note: This is a language limitation, not incomplete implementation.",
+                line=getattr(node, 'line', None),
+                error_type_key="invalid_generic_args",
+                full_source=self.source
             )
 
     def execute_TryExpression(self, node):
@@ -2995,7 +3050,12 @@ class Interpreter:
         result = self.execute(node.expression)
         
         if not isinstance(result, Result):
-            raise RuntimeError(f'? operator requires Result type, got {type(result).__name__}')
+            raise NLPLRuntimeError(
+                f'? operator requires Result type, got {type(result).__name__}',
+                line=getattr(node, 'line', None),
+                error_type_key="type_mismatch",
+                full_source=self.source
+            )
         
         if result.is_ok():
             return result.unwrap()
