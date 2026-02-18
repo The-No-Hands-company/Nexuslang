@@ -483,24 +483,20 @@ Required fields:
 
 ### 2) Server-Side Checklist (`src/nlpl/lsp/`)
 
-- [ ] Normalize all parser/interpreter/type errors to `{code, message, line, column, fixes}` before publish.
-- [ ] Add conversion helper: NLPL error -> LSP `Diagnostic`.
-- [ ] Map NLPL categories to LSP severities:
+- [x] Normalize all parser/interpreter/type errors to `{code, message, line, column, fixes}` before publish. _(done Feb 18 — `_build_diagnostic` adapter in `diagnostics.py`)_
+- [x] Add conversion helper: NLPL error -> LSP `Diagnostic`. _(done Feb 18 — `_build_diagnostic` in `diagnostics.py`)_
+- [x] Map NLPL categories to LSP severities:
    - syntax/type/runtime -> Error
    - advisory/style (future) -> Warning/Information
-- [ ] Ensure diagnostics include `source: "nlpl"` and stable `code` string.
-- [ ] Populate `diagnostic.data` with `fixes`, `explainHint`, `docLink`.
+- [x] Ensure diagnostics include `source: "nlpl"` and stable `code` string. _(done Feb 18)_
+- [x] Populate `diagnostic.data` with `fixes`, `explainHint`, `docLink`. _(done Feb 18)_
 
 ### 3) VS Code Extension Checklist (`vscode-extension/`)
 
-- [ ] Render `code` in Problems panel (ensure string code passes through).
-- [ ] Hover display template includes:
-   - error title + code
-   - short message
-   - first 2 fixes
-   - `nlpl --explain EXXX` hint
-- [ ] Code Action provider reads `diagnostic.data.fixes` for quick fix entries.
-- [ ] Add command `NLPL: Explain Error Code` that opens explain text for selected diagnostic code.
+- [ ] Render `code` in Problems panel (ensure string code passes through). _(LSP client forwards `code` automatically; manual verify needed in VS Code)_
+- [x] Hover display template includes error title + code, first 2-3 fixes, `nlpl --explain EXXX` hint. _(done Feb 18 — `NLPLDiagnosticHoverProvider` in `extension.ts`)_
+- [x] Code Action provider reads `diagnostic.data.fixes` for quick fix entries. _(done Feb 18 — `_actions_from_structured_fixes` in `code_actions.py`, integration tests passing)_
+- [x] Add command `NLPL: Explain Error Code` that opens explain text for selected diagnostic code. _(done Feb 18 — registered in `extension.ts` + `package.json`)_
 
 ### 4) Validation Checklist
 
@@ -508,6 +504,9 @@ Required fields:
 - [ ] Integration: open NLPL file with intentional errors and verify Problems shows `code`.
 - [ ] Hover: verify fixes + explain hint are visible.
 - [ ] Regression: diagnostics remain stable for unchanged code.
+
+> **Progress (Feb 18):** Server-side pipeline complete. Extension hover + explain command wired.
+> Remaining: manual VS Code smoke-test to verify Problems panel shows `code` field, then unit validation checklist.
 
 ### 5) Non-Blocking Follow-ups
 

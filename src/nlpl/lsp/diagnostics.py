@@ -5,8 +5,10 @@ Diagnostics Provider
 Provides real-time error checking and warnings.
 """
 
-from typing import List, Dict
+from typing import List, Dict, Optional
 import re
+
+from nlpl.error_codes import get_error_info, get_error_code_for_type
 
 
 class DiagnosticsProvider:
@@ -25,6 +27,58 @@ class DiagnosticsProvider:
         self.server = server
         self.file_diagnostics_cache = {}  # Cache diagnostics per file
         self.workspace_files = set()  # Track all files in workspace
+
+    def _build_diagnostic(
+        self,
+        line: int,
+        start_char: int,
+        end_char: int,
+        severity: int,
+        message: str,
+        source: str = "nlpl",
+        error_code: Optional[str] = None,
+        error_type_key: Optional[str] = None,
+        title: Optional[str] = None,
+        category: Optional[str] = None,
+        fixes: Optional[List[str]] = None,
+        doc_link: Optional[str] = None,
+    ) -> Dict:
+        """Build normalized LSP diagnostic payload with NLPL error metadata."""
+        resolved_code = error_code or (get_error_code_for_type(error_type_key) if error_type_key else None)
+        error_info = get_error_info(resolved_code) if resolved_code else None
+
+        resolved_title = title or (error_info.title if error_info else None)
+        resolved_category = category or (error_info.category if error_info else None)
+        resolved_fixes = fixes if fixes is not None else (error_info.fixes[:3] if error_info and error_info.fixes else [])
+        resolved_doc_link = doc_link or (error_info.doc_link if error_info else None)
+
+        diagnostic = {
+            "range": {
+                "start": {"line": max(0, line), "character": max(0, start_char)},
+                "end": {"line": max(0, line), "character": max(max(0, start_char), end_char)}
+            },
+            "severity": severity,
+            "message": message,
+            "source": source,
+        }
+
+        if resolved_code:
+            diagnostic["code"] = resolved_code
+
+        # Enriched payload for hover/code-actions/explain
+        payload_data = {
+            "title": resolved_title,
+            "category": resolved_category,
+            "fixes": resolved_fixes,
+            "explainHint": f"nlpl --explain {resolved_code}" if resolved_code else None,
+            "docLink": resolved_doc_link,
+        }
+        # Remove empty keys
+        payload_data = {k: v for k, v in payload_data.items() if v not in (None, [], "")}
+        if payload_data:
+            diagnostic["data"] = payload_data
+
+        return diagnostic
     
     def get_diagnostics(self, uri: str, text: str, check_imports: bool = True) -> List[Dict]:
         """
@@ -135,13 +189,16 @@ class DiagnosticsProvider:
                 end_col = col + 1
             
             diagnostics.append({
-                "range": {
-                    "start": {"line": line, "character": col},
-                    "end": {"line": line, "character": end_col}
-                },
-                "severity": 1,  # Error
-                "message": f"Syntax error: {error_msg}",
-                "source": "nlpl-parser"
+                **self._build_diagnostic(
+                    line=line,
+                    start_char=col,
+                    end_char=end_col,
+                    severity=1,
+                    message=f"Syntax error: {error_msg}",
+                    source="nlpl",
+                    error_code=getattr(e, 'error_code', None),
+                    error_type_key="unexpected_token",
+                )
             })
         
         return diagnostics
@@ -187,15 +244,17 @@ class DiagnosticsProvider:
             else:
                 end_col = col + 1
             
-            diagnostics.append({
-                "range": {
-                    "start": {"line": line, "character": col},
-                    "end": {"line": line, "character": end_col}
-                },
-                "severity": 1,  # Error
-                "message": f"Syntax error: {error_msg}",
-                "source": "nlpl-parser"
-            })
+            diagnostics.append(
+                self._build_diagnostic(
+                    line=line,
+                    start_char=col,
+                    end_char=end_col,
+                    severity=1,
+                    message=f"Syntax error: {error_msg}",
+                    source="nlpl",
+                    error_type_key="unexpected_token",
+                )
+            )
         
         return diagnostics
     
@@ -232,15 +291,17 @@ class DiagnosticsProvider:
                 # Try to find the AST node related to this error
                 line, col, end_col = self._find_error_position(text, error, ast)
                 
-                diagnostics.append({
-                    "range": {
-                        "start": {"line": line, "character": col},
-                        "end": {"line": line, "character": end_col}
-                    },
-                    "severity": 1,  # Error
-                    "message": f"Type error: {error}",
-                    "source": "nlpl-typechecker"
-                })
+                diagnostics.append(
+                    self._build_diagnostic(
+                        line=line,
+                        start_char=col,
+                        end_char=end_col,
+                        severity=1,
+                        message=f"Type error: {error}",
+                        source="nlpl",
+                        error_type_key="type_mismatch",
+                    )
+                )
         
         except Exception:
             # If parsing fails, syntax errors will be caught by _check_parser_syntax_enhanced
@@ -319,15 +380,17 @@ class DiagnosticsProvider:
                         line = i
                         break
                 
-                diagnostics.append({
-                    "range": {
-                        "start": {"line": line, "character": 0},
-                        "end": {"line": line, "character": 100}
-                    },
-                    "severity": 1,  # Error
-                    "message": f"Type error: {error}",
-                    "source": "nlpl-typechecker"
-                })
+                diagnostics.append(
+                    self._build_diagnostic(
+                        line=line,
+                        start_char=0,
+                        end_char=100,
+                        severity=1,
+                        message=f"Type error: {error}",
+                        source="nlpl",
+                        error_type_key="type_mismatch",
+                    )
+                )
         
         except Exception:
             # If parsing fails, syntax errors will be caught by _check_parser_syntax
@@ -343,29 +406,33 @@ class DiagnosticsProvider:
         for i, line in enumerate(lines):
             # Check for unclosed strings
             if line.count('"') % 2 != 0:
-                diagnostics.append({
-                    "range": {
-                        "start": {"line": i, "character": 0},
-                        "end": {"line": i, "character": len(line)}
-                    },
-                    "severity": 1,  # Error
-                    "message": "Unclosed string",
-                    "source": "nlpl"
-                })
+                diagnostics.append(
+                    self._build_diagnostic(
+                        line=i,
+                        start_char=0,
+                        end_char=len(line),
+                        severity=1,
+                        message="Unclosed string",
+                        source="nlpl",
+                        error_type_key="invalid_expression",
+                    )
+                )
             
             # Check for invalid characters in identifiers
             match = re.search(r'\bset\s+(\d\w*)', line, re.IGNORECASE)
             if match:
                 var_name = match.group(1)
-                diagnostics.append({
-                    "range": {
-                        "start": {"line": i, "character": match.start(1)},
-                        "end": {"line": i, "character": match.end(1)}
-                    },
-                    "severity": 1,  # Error
-                    "message": f"Variable name '{var_name}' cannot start with a digit",
-                    "source": "nlpl"
-                })
+                diagnostics.append(
+                    self._build_diagnostic(
+                        line=i,
+                        start_char=match.start(1),
+                        end_char=match.end(1),
+                        severity=1,
+                        message=f"Variable name '{var_name}' cannot start with a digit",
+                        source="nlpl",
+                        error_type_key="invalid_expression",
+                    )
+                )
         
         return diagnostics
     
@@ -443,15 +510,16 @@ class DiagnosticsProvider:
         # Report unused variables
         for var_name, (line_num, col) in defined_vars.items():
             if var_name not in used_vars:
-                diagnostics.append({
-                    "range": {
-                        "start": {"line": line_num, "character": col},
-                        "end": {"line": line_num, "character": col + len(var_name)}
-                    },
-                    "severity": 2,  # Warning
-                    "message": f"Unused variable '{var_name}'",
-                    "source": "nlpl"
-                })
+                diagnostics.append(
+                    self._build_diagnostic(
+                        line=line_num,
+                        start_char=col,
+                        end_char=col + len(var_name),
+                        severity=2,
+                        message=f"Unused variable '{var_name}'",
+                        source="nlpl",
+                    )
+                )
         
         return diagnostics
     
@@ -482,28 +550,32 @@ class DiagnosticsProvider:
                     full_path = os.path.join(base_dir, file_path)
                     
                     if not os.path.exists(full_path) and not os.path.exists(full_path + '.nlpl'):
-                        diagnostics.append({
-                            "range": {
-                                "start": {"line": i, "character": 0},
-                                "end": {"line": i, "character": len(line)}
-                            },
-                            "severity": 1,  # Error
-                            "message": f"Cannot find module '{file_path}'",
-                            "source": "nlpl-imports"
-                        })
+                        diagnostics.append(
+                            self._build_diagnostic(
+                                line=i,
+                                start_char=0,
+                                end_char=len(line),
+                                severity=1,
+                                message=f"Cannot find module '{file_path}'",
+                                source="nlpl",
+                                error_type_key="module_not_found",
+                            )
+                        )
                 else:
                     # Check stdlib modules
                     stdlib_modules = ['math', 'string', 'io', 'system', 'collections', 'network']
                     if module_name.lower() not in stdlib_modules:
-                        diagnostics.append({
-                            "range": {
-                                "start": {"line": i, "character": 0},
-                                "end": {"line": i, "character": len(line)}
-                            },
-                            "severity": 2,  # Warning
-                            "message": f"Unknown module '{module_name}' (not in stdlib)",
-                            "source": "nlpl-imports"
-                        })
+                        diagnostics.append(
+                            self._build_diagnostic(
+                                line=i,
+                                start_char=0,
+                                end_char=len(line),
+                                severity=2,
+                                message=f"Unknown module '{module_name}' (not in stdlib)",
+                                source="nlpl",
+                                error_type_key="import_name_not_found",
+                            )
+                        )
         
         return diagnostics
     

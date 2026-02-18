@@ -248,5 +248,92 @@ end
             assert 'helper2' in callee_names
 
 
+class TestCodeActionsIntegration:
+    """Test code actions integration through NLPLLanguageServer handlers."""
+
+    def test_code_actions_use_structured_diagnostic_fixes(self):
+        """Diagnostics with data.fixes should yield non-empty code actions."""
+        server = NLPLLanguageServer()
+
+        uri = "file:///tmp/test_structured_fixes.nlpl"
+        text = 'print text "hello\n'
+        server.documents[uri] = text
+
+        params = {
+            "textDocument": {"uri": uri},
+            "range": {
+                "start": {"line": 0, "character": 0},
+                "end": {"line": 0, "character": len(text)}
+            },
+            "context": {
+                "diagnostics": [
+                    {
+                        "range": {
+                            "start": {"line": 0, "character": 0},
+                            "end": {"line": 0, "character": len(text)}
+                        },
+                        "severity": 1,
+                        "message": "Unclosed string",
+                        "source": "nlpl",
+                        "code": "E102",
+                        "data": {
+                            "fixes": ["Add closing quote"]
+                        }
+                    }
+                ]
+            }
+        }
+
+        response = server._handle_code_action(1, params)
+
+        assert response["jsonrpc"] == "2.0"
+        assert response["id"] == 1
+        assert isinstance(response["result"], list)
+        assert len(response["result"]) > 0
+
+        quickfix_titles = [action.get("title", "") for action in response["result"]]
+        assert any("quote" in title.lower() for title in quickfix_titles)
+
+    def test_code_actions_fallback_without_structured_fixes(self):
+        """Without data.fixes, message-based heuristics should still return actions."""
+        server = NLPLLanguageServer()
+
+        uri = "file:///tmp/test_fallback_fixes.nlpl"
+        text = 'print text "hello\n'
+        server.documents[uri] = text
+
+        params = {
+            "textDocument": {"uri": uri},
+            "range": {
+                "start": {"line": 0, "character": 0},
+                "end": {"line": 0, "character": len(text)}
+            },
+            "context": {
+                "diagnostics": [
+                    {
+                        "range": {
+                            "start": {"line": 0, "character": 0},
+                            "end": {"line": 0, "character": len(text)}
+                        },
+                        "severity": 1,
+                        "message": "Unclosed string",
+                        "source": "nlpl",
+                        "code": "E102"
+                    }
+                ]
+            }
+        }
+
+        response = server._handle_code_action(1, params)
+
+        assert response["jsonrpc"] == "2.0"
+        assert response["id"] == 1
+        assert isinstance(response["result"], list)
+        assert len(response["result"]) > 0
+
+        quickfix_titles = [action.get("title", "") for action in response["result"]]
+        assert any("quote" in title.lower() for title in quickfix_titles)
+
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])

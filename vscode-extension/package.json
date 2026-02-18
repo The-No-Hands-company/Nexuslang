@@ -107,6 +107,13 @@
         }
       }
     },
+    "commands": [
+      {
+        "command": "nlpl.explainErrorCode",
+        "title": "NLPL: Explain Error Code",
+        "category": "NLPL"
+      }
+    ],
     "breakpoints": [
       {
         "language": "nlpl"

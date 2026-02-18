@@ -125,12 +125,20 @@ class CodeActionsProvider:
         # Actions for specific diagnostics
         for diagnostic in diagnostics:
             message = diagnostic.get('message', '')
-            source = diagnostic.get('source', '')
             diag_range = diagnostic.get('range', {})
+
+            # Prefer structured fixes from diagnostic payload
+            structured_actions = self._actions_from_structured_fixes(uri, text, diagnostic)
+            if structured_actions:
+                actions.extend(structured_actions)
+                continue
             
             # Fix unclosed string
             if 'Unclosed string' in message or 'Unterminated string' in message:
-                actions.append(self._fix_unclosed_string(uri, text, diag_range))
+                fix = self._fix_unclosed_string(uri, text, diag_range)
+                if fix:
+                    fix["diagnostics"] = [diagnostic]
+                    actions.append(fix)
             
             # Fix undefined variable
             if 'undefined' in message.lower():
@@ -138,22 +146,9 @@ class CodeActionsProvider:
                 match = re.search(r"'(\w+)'", message)
                 if match:
                     var_name = match.group(1)
-                    actions.append({
-                        "title": f"Declare '{var_name}'",
-                        "kind": self.KIND_QUICKFIX,
-                        "edit": {
-                            "changes": {
-                                uri: [{
-                                    "range": {
-                                        "start": {"line": diag_range["start"]["line"], "character": 0},
-                                        "end": {"line": diag_range["start"]["line"], "character": 0}
-                                    },
-                                    "newText": f"set {var_name} to Nothing\n"
-                                }]
-                            }
-                        },
-                        "diagnostics": [diagnostic]
-                    })
+                    declare_action = self._declare_variable_action(uri, diag_range, var_name, diagnostic)
+                    if declare_action:
+                        actions.append(declare_action)
         
         return actions
     
@@ -194,6 +189,84 @@ class CodeActionsProvider:
             }
         
         return None
+
+    def _declare_variable_action(self, uri: str, diag_range: Dict, var_name: str, diagnostic: Optional[Dict] = None) -> Optional[Dict]:
+        """Create quick fix action to declare a missing variable."""
+        start_line = diag_range.get("start", {}).get("line")
+        if start_line is None:
+            return None
+
+        action = {
+            "title": f"Declare '{var_name}'",
+            "kind": self.KIND_QUICKFIX,
+            "edit": {
+                "changes": {
+                    uri: [{
+                        "range": {
+                            "start": {"line": start_line, "character": 0},
+                            "end": {"line": start_line, "character": 0}
+                        },
+                        "newText": f"set {var_name} to Nothing\n"
+                    }]
+                }
+            },
+        }
+        if diagnostic:
+            action["diagnostics"] = [diagnostic]
+        return action
+
+    def _actions_from_structured_fixes(self, uri: str, text: str, diagnostic: Dict) -> List[Dict]:
+        """Build code actions from structured diagnostic.data.fixes payload."""
+        actions: List[Dict] = []
+        data = diagnostic.get("data", {})
+        if not isinstance(data, dict):
+            return actions
+
+        fixes = data.get("fixes", [])
+        if not isinstance(fixes, list) or not fixes:
+            return actions
+
+        message = diagnostic.get("message", "")
+        message_lower = message.lower()
+        diag_range = diagnostic.get("range", {})
+
+        for fix_text in fixes:
+            if not isinstance(fix_text, str):
+                continue
+            fix_lower = fix_text.lower()
+
+            if "quote" in fix_lower and ("unclosed string" in message_lower or "unterminated string" in message_lower):
+                fix = self._fix_unclosed_string(uri, text, diag_range)
+                if fix:
+                    fix["diagnostics"] = [diagnostic]
+                    actions.append(fix)
+                continue
+
+            if "undefined" in message_lower and ("declare" in fix_lower or "define" in fix_lower or "initialize" in fix_lower):
+                import re
+                match = re.search(r"'(\w+)'", message)
+                if match:
+                    action = self._declare_variable_action(uri, diag_range, match.group(1), diagnostic)
+                    if action:
+                        actions.append(action)
+                continue
+
+            if "unused variable" in message_lower and ("remove" in fix_lower or "delete" in fix_lower):
+                var_name = self._extract_variable_name(message)
+                if var_name:
+                    action = self._remove_unused_variable(uri, text, var_name, diag_range)
+                    if action:
+                        action["diagnostics"] = [diagnostic]
+                        actions.append(action)
+                continue
+
+            if "type" in message_lower and ("annotation" in fix_lower or "add type" in fix_lower):
+                action = self._add_type_annotation(uri, text, diag_range, message)
+                if action:
+                    action["diagnostics"] = [diagnostic]
+                    actions.append(action)
+
+        return actions
     
     def _remove_unused_variable(self, uri: str, text: str, var_name: str, diag_range: Dict) -> Optional[Dict]:
         """Remove unused variable declaration."""

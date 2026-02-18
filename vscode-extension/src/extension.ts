@@ -10,12 +10,178 @@ import { activateDebugSupport } from './debugAdapter';
 
 let client: LanguageClient;
 
+// ---------------------------------------------------------------------------
+// Diagnostic hover enrichment
+// ---------------------------------------------------------------------------
+
+/**
+ * Structured data payload attached to NLPL diagnostics by the LSP server.
+ * Mirrors diagnostic.data shape defined in diagnostics.py _build_diagnostic().
+ */
+interface NLPLDiagnosticData {
+    title?: string;
+    category?: string;
+    fixes?: string[];
+    explainHint?: string;
+    docLink?: string;
+}
+
+/**
+ * Hover provider that enriches error-squiggle hover with NLPL-specific detail:
+ * error title, category, top fixes, and the --explain CLI hint.
+ * Registered for all .nlpl files; silently skips diagnostics without data.
+ */
+class NLPLDiagnosticHoverProvider implements vscode.HoverProvider {
+    provideHover(
+        document: vscode.TextDocument,
+        position: vscode.Position,
+        _token: vscode.CancellationToken
+    ): vscode.Hover | undefined {
+        const diagnostics = vscode.languages
+            .getDiagnostics(document.uri)
+            .filter(d => d.source === 'nlpl' && d.range.contains(position));
+
+        if (diagnostics.length === 0) {
+            return undefined;
+        }
+
+        const parts: vscode.MarkdownString[] = [];
+
+        for (const diag of diagnostics) {
+            const data = (diag as unknown as { data?: NLPLDiagnosticData }).data;
+            if (!data) {
+                continue;
+            }
+
+            const md = new vscode.MarkdownString('', true);
+            md.isTrusted = true;
+
+            const codeLabel = diag.code ? ` \`${diag.code}\`` : '';
+            const titleText = data.title ?? diag.message;
+            md.appendMarkdown(`**${titleText}**${codeLabel}`);
+
+            if (data.category) {
+                md.appendMarkdown(` — _${data.category}_`);
+            }
+            md.appendMarkdown('\n\n');
+
+            if (data.fixes && data.fixes.length > 0) {
+                md.appendMarkdown('**How to fix:**\n');
+                for (const fix of data.fixes.slice(0, 3)) {
+                    md.appendMarkdown(`- ${fix}\n`);
+                }
+                md.appendMarkdown('\n');
+            }
+
+            if (data.explainHint) {
+                md.appendMarkdown(`_Run \`${data.explainHint}\` for full details_\n`);
+            }
+
+            if (data.docLink) {
+                md.appendMarkdown(`[Documentation](${data.docLink})\n`);
+            }
+
+            parts.push(md);
+        }
+
+        if (parts.length === 0) {
+            return undefined;
+        }
+
+        // Merge all hover sections into one Hover
+        const combined = new vscode.MarkdownString('', true);
+        combined.isTrusted = true;
+        for (let i = 0; i < parts.length; i++) {
+            if (i > 0) {
+                combined.appendMarkdown('\n\n---\n\n');
+            }
+            combined.appendMarkdown(parts[i].value);
+        }
+
+        return new vscode.Hover(combined);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Explain Error Code command
+// ---------------------------------------------------------------------------
+
+/**
+ * Show the explain output for the NLPL error code on the diagnostic under the
+ * cursor, or prompt the user to enter a code manually.
+ */
+async function explainErrorCode(context: vscode.ExtensionContext): Promise<void> {
+    // Try to pick up code from the active editor cursor position first
+    const editor = vscode.window.activeTextEditor;
+    let code: string | undefined;
+
+    if (editor) {
+        const diags = vscode.languages
+            .getDiagnostics(editor.document.uri)
+            .filter(d =>
+                d.source === 'nlpl' &&
+                d.range.contains(editor.selection.active) &&
+                d.code
+            );
+
+        if (diags.length > 0) {
+            code = String(diags[0].code);
+        }
+    }
+
+    if (!code) {
+        code = await vscode.window.showInputBox({
+            prompt: 'Enter NLPL error code (e.g. E200)',
+            placeHolder: 'E200',
+            validateInput: v => /^E\d{3}$/.test(v.trim()) ? undefined : 'Format must be E followed by 3 digits'
+        });
+    }
+
+    if (!code) {
+        return;
+    }
+
+    code = code.trim().toUpperCase();
+
+    // Run `python -m nlpl --explain <CODE>` from workspace root
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) {
+        vscode.window.showErrorMessage('No workspace folder open.');
+        return;
+    }
+
+    const config = vscode.workspace.getConfiguration('nlpl');
+    const pythonPath = config.get<string>('languageServer.pythonPath', 'python3');
+    const srcPath = path.join(workspaceFolder.uri.fsPath, 'src');
+
+    const terminal = vscode.window.createTerminal({
+        name: `NLPL Explain ${code}`,
+        cwd: workspaceFolder.uri.fsPath,
+        env: { ...process.env, PYTHONPATH: srcPath }
+    });
+    terminal.sendText(`${pythonPath} -m nlpl --explain ${code}`);
+    terminal.show();
+}
+
 export async function activate(context: vscode.ExtensionContext) {
     console.log('[NLPL] Extension activation started');
     vscode.window.showInformationMessage('NLPL extension is activating...');
 
     // Activate debug support
     activateDebugSupport(context);
+
+    // Register diagnostic hover enrichment
+    context.subscriptions.push(
+        vscode.languages.registerHoverProvider(
+            { scheme: 'file', language: 'nlpl' },
+            new NLPLDiagnosticHoverProvider()
+        )
+    );
+
+    // Register "NLPL: Explain Error Code" command
+    context.subscriptions.push(
+        vscode.commands.registerCommand('nlpl.explainErrorCode', () => explainErrorCode(context))
+    );
 
     // Get configuration
     const config = vscode.workspace.getConfiguration('nlpl');
