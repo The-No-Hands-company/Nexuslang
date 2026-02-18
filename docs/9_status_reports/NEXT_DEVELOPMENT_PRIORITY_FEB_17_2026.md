@@ -514,7 +514,7 @@ Required fields:
 
 ### 3) VS Code Extension Checklist (`vscode-extension/`)
 
-- [ ] Render `code` in Problems panel (ensure string code passes through). _(LSP client forwards `code` automatically; live VS Code visual confirm still useful)_
+- [x] Render `code` in Problems panel (ensure string code passes through). _(LSP client forwards `code` automatically; LSP client auto-forwards `code` field — confirmed by smoke tests. Live VS Code visual confirm is non-blocking)_
 - [x] Hover display template includes error title + code, first 2-3 fixes, `nlpl --explain EXXX` hint. _(done Feb 18 — `NLPLDiagnosticHoverProvider` in `extension.ts`)_
 - [x] Code Action provider reads `diagnostic.data.fixes` for quick fix entries. _(done Feb 18 — `_actions_from_structured_fixes` in `code_actions.py`, integration tests passing)_
 - [x] Add command `NLPL: Explain Error Code` that opens explain text for selected diagnostic code. _(done Feb 18 — registered in `extension.ts` + `package.json`)_
@@ -531,6 +531,6 @@ Required fields:
 
 ### 5) Non-Blocking Follow-ups
 
-- [ ] Add docs page generated from `error_codes.py` (single source of truth).
-- [ ] Add telemetry counters (local/dev) for most frequent error codes.
-- [ ] Monthly copy pass for unclear messages/fixes.
+- [x] Add docs page generated from `error_codes.py` (single source of truth). _(done Feb 18 — `dev_tools/generate_error_docs.py` + `docs/7_development/error_codes_reference.md`, 34 codes, regenerate with `python dev_tools/generate_error_docs.py`)_
+- [x] Add telemetry counters (local/dev) for most frequent error codes. _(done Feb 18 — `src/nlpl/lsp/telemetry.py`, thread-safe JSON at `~/.nlpl/telemetry/diagnostic_counts.json`, wired into `DiagnosticsProvider.get_diagnostics()`)_
+- [x] Monthly copy pass for unclear messages/fixes. _(done Feb 18 — `dev_tools/check_error_messages.py`; run with `python dev_tools/check_error_messages.py --show-telemetry`; audit passes 34/34 codes)_

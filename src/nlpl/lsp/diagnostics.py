@@ -9,6 +9,7 @@ from typing import List, Dict, Optional
 import re
 
 from nlpl.error_codes import get_error_info, get_error_code_for_type
+from nlpl.lsp.telemetry import DiagnosticTelemetry
 
 
 class DiagnosticsProvider:
@@ -27,6 +28,7 @@ class DiagnosticsProvider:
         self.server = server
         self.file_diagnostics_cache = {}  # Cache diagnostics per file
         self.workspace_files = set()  # Track all files in workspace
+        self._telemetry = DiagnosticTelemetry()  # Local dev telemetry (opt-in)
 
     def _build_diagnostic(
         self,
@@ -120,7 +122,10 @@ class DiagnosticsProvider:
         
         # Cache diagnostics for this file
         self.file_diagnostics_cache[uri] = diagnostics
-        
+
+        # Record telemetry for every emitted code (local/dev only, best-effort)
+        self._telemetry.record(diagnostics)
+
         return diagnostics
     
     def _check_parser_syntax_enhanced(self, text: str, uri: str) -> List[Dict]:
