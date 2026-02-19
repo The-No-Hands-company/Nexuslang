@@ -129,13 +129,14 @@ class CompletionProvider:
         word_match = re.search(r'(\w+)$', prefix)
         current_word = word_match.group(1) if word_match else ''
         
-        # Context-aware completions
+        # Context-aware completions -----------------------------------------------
+
         # After "set X to" - suggest values/functions
         if re.search(r'\bset\s+\w+\s+to\s*$', prefix, re.IGNORECASE):
             completions.extend(self._get_value_completions(text, current_word))
         
-        # After "function X that takes" - suggest parameter patterns
-        elif re.search(r'\bfunction\s+\w+\s+that\s+takes\s*$', prefix, re.IGNORECASE):
+        # After "function X with" or "function X that takes" - parameter patterns
+        elif re.search(r'\bfunction\s+\w+\s+(?:with|that\s+takes)\s*$', prefix, re.IGNORECASE):
             completions.append({
                 "label": "param as Type",
                 "kind": 15,
@@ -182,69 +183,125 @@ class CompletionProvider:
                     "insertText": f"{coll_type}",
                     "documentation": f"Create a {coll_type}"
                 })
-        
+
+        # After "<funcname> with " — suggest named parameters from function definition
+        elif re.search(r'\b(\w+)\s+with\s+$', prefix, re.IGNORECASE):
+            func_match = re.search(r'\b(\w+)\s+with\s+$', prefix, re.IGNORECASE)
+            if func_match:
+                func_name = func_match.group(1)
+                named_params = self._get_named_param_completions(text, func_name)
+                if named_params:
+                    completions.extend(named_params)
+                else:
+                    # Fall through to general completions below
+                    completions.extend(self._get_general_completions(text, current_word))
+
+        # After "<funcname> with param: val and " — suggest more named parameters
+        elif re.search(r'\b(\w+)\s+with\s+.+\s+and\s+$', prefix, re.IGNORECASE):
+            func_match = re.search(r'\b(\w+)\s+with\s+', prefix, re.IGNORECASE)
+            if func_match:
+                func_name = func_match.group(1)
+                named_params = self._get_named_param_completions(text, func_name)
+                if named_params:
+                    completions.extend(named_params)
+                else:
+                    completions.extend(self._get_general_completions(text, current_word))
+
         # General completions
         else:
-            # Add keyword completions
-            for keyword in self.keywords:
-                if keyword.lower().startswith(current_word.lower()):
-                    completions.append({
-                        "label": keyword,
-                        "kind": 14,  # Keyword
-                        "detail": "NLPL keyword",
-                        "insertText": keyword
-                    })
-            
-            # Add snippet completions
-            for name, snippet in self.snippets.items():
-                if name.startswith(current_word.lower()):
-                    completions.append(snippet)
-            
-            # Add standard library completions
-            for module, functions in self.stdlib_modules.items():
-                for func in functions:
-                    if func.startswith(current_word.lower()):
-                        completions.append({
-                            "label": func,
-                            "kind": 3,  # Function
-                            "detail": f"from {module}",
-                            "documentation": f"Standard library function from {module} module",
-                            "insertText": func
-                        })
-            
-            # Add variable completions from current document
-            variables = self._extract_variables(text)
-            for var in variables:
-                if var.lower().startswith(current_word.lower()):
-                    completions.append({
-                        "label": var,
-                        "kind": 6,  # Variable
-                        "detail": "Variable",
-                        "insertText": var
-                    })
-            
-            # Add function completions from current document
-            functions = self._extract_functions(text)
+            completions.extend(self._get_general_completions(text, current_word))
+        
+        return completions
+
+    def _get_general_completions(self, text: str, current_word: str) -> List[Dict]:
+        """Return general (keyword + user symbol) completions filtered by current_word."""
+        completions = []
+
+        # Add keyword completions
+        for keyword in self.keywords:
+            if keyword.lower().startswith(current_word.lower()):
+                completions.append({
+                    "label": keyword,
+                    "kind": 14,  # Keyword
+                    "detail": "NLPL keyword",
+                    "insertText": keyword
+                })
+
+        # Add snippet completions
+        for name, snippet in self.snippets.items():
+            if name.startswith(current_word.lower()):
+                completions.append(snippet)
+
+        # Add standard library completions
+        for module, functions in self.stdlib_modules.items():
             for func in functions:
-                if func.lower().startswith(current_word.lower()):
+                if func.startswith(current_word.lower()):
                     completions.append({
                         "label": func,
                         "kind": 3,  # Function
-                        "detail": "Function",
+                        "detail": f"from {module}",
+                        "documentation": f"Standard library function from {module} module",
                         "insertText": func
                     })
-            
-            # Add class completions from current document
-            classes = self._extract_classes(text)
-            for cls in classes:
-                if cls.lower().startswith(current_word.lower()):
-                    completions.append({
-                        "label": cls,
-                        "kind": 7,  # Class
-                        "detail": "Class",
-                        "insertText": cls
-                    })
-        
+
+        # Add variable completions from current document
+        variables = self._extract_variables(text)
+        for var in variables:
+            if var.lower().startswith(current_word.lower()):
+                completions.append({
+                    "label": var,
+                    "kind": 6,  # Variable
+                    "detail": "Variable",
+                    "insertText": var
+                })
+
+        # Add function completions from current document
+        functions = self._extract_functions(text)
+        for func in functions:
+            if func.lower().startswith(current_word.lower()):
+                completions.append({
+                    "label": func,
+                    "kind": 3,  # Function
+                    "detail": "Function",
+                    "insertText": func
+                })
+
+        # Add class completions from current document
+        classes = self._extract_classes(text)
+        for cls in classes:
+            if cls.lower().startswith(current_word.lower()):
+                completions.append({
+                    "label": cls,
+                    "kind": 7,  # Class
+                    "detail": "Class",
+                    "insertText": cls
+                })
+
+        return completions
+
+    def _get_named_param_completions(self, text: str, func_name: str) -> List[Dict]:
+        """Suggest named parameters for a specific function call."""
+        completions = []
+        # Try to find the function definition and extract its parameters
+        # Support both "function X with param as Type" and "function X that takes param as Type"
+        func_pattern = rf'\bfunction\s+{re.escape(func_name)}\s+(?:with|that\s+takes)\s+(.+?)(?:\s+returns|\s*$)'
+        match = re.search(func_pattern, text, re.IGNORECASE | re.MULTILINE)
+        if not match:
+            return completions
+        param_str = match.group(1)
+        # Extract "paramname as Type" pairs
+        param_matches = re.finditer(r'(\w+)\s+as\s+\w+', param_str, re.IGNORECASE)
+        for m in param_matches:
+            param_name = m.group(1)
+            # Skip non-param tokens like "and"
+            if param_name.lower() in ('and', 'with', 'returns', 'default', 'to'):
+                continue
+            completions.append({
+                "label": f"{param_name}:",
+                "kind": 14,  # Keyword (represents a named arg label)
+                "detail": "named parameter",
+                "insertText": f"{param_name}: ${{1:value}}"
+            })
         return completions
     
     def _get_type_completions(self, current_word: str) -> List[Dict]:

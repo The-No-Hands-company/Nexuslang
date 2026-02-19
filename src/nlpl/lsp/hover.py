@@ -258,26 +258,27 @@ class HoverProvider:
                 return info
         
         # Look for variable with type annotation
+        # Finds the first (definition-site) occurrence of this variable name.
         var_pattern = rf'set\s+{re.escape(symbol)}\s+(?:as\s+(\w+)\s+)?to\s+(.+)'
         for line in lines:
             match = re.search(var_pattern, line, re.IGNORECASE)
             if match:
                 var_type = match.group(1)
                 value = match.group(2).strip()
-                
+
                 info = f"**{symbol}** - Variable"
-                
+
                 if var_type:
                     info += f"\n\n**Type**: {var_type}"
-                
+
                 # Infer type from value if not explicitly typed
                 if not var_type:
                     inferred_type = self._infer_type_from_value(value)
                     if inferred_type:
                         info += f"\n\n**Type**: {inferred_type} (inferred)"
-                
+
                 info += f"\n\n**Value**: `{value}`"
-                
+
                 return info
         
         return None

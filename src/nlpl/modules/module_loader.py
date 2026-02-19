@@ -110,6 +110,8 @@ class ModuleLoader:
         
         # Save the previous module path and set the current one
         previous_module_path = self.current_module_path
+        # Also save the runtime's module_path so nested imports don't corrupt it
+        previous_runtime_module_path = getattr(self.runtime, 'module_path', None)
         
         try:
             # Find the module file
@@ -134,8 +136,10 @@ class ModuleLoader:
             
             return module
         finally:
-            # Restore the previous module path
+            # Restore the previous module path (both loader and runtime)
             self.current_module_path = previous_module_path
+            if previous_runtime_module_path is not None:
+                self.runtime.module_path = previous_runtime_module_path
     
     def _normalize_module_name(self, module_name: str) -> Tuple[str, bool]:
         """

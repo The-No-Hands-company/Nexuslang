@@ -133,9 +133,14 @@ class NLPLLanguageServer:
             # Read headers
             headers = {}
             while True:
-                line = sys.stdin.buffer.readline().decode('utf-8')
-                if line == '\r\n':
+                raw = sys.stdin.buffer.readline()
+                if not raw:  # EOF
+                    return None
+                line = raw.decode('utf-8')
+                if line in ('\r\n', '\n', ''):
                     break
+                if ': ' not in line:
+                    continue  # skip malformed header lines
                 key, value = line.strip().split(': ', 1)
                 headers[key] = value
             
@@ -281,7 +286,7 @@ class NLPLLanguageServer:
             threading.Thread(target=index_workspace, daemon=True).start()
         else:
             # Try rootPath or rootUri as fallback
-            workspace_root = params.get('rootPath') or params.get('rootUri', '').replace('file://', '')
+            workspace_root = params.get('rootPath') or (params.get('rootUri') or '').replace('file://', '')
             if workspace_root:
                 logger.info(f"Initializing workspace index for: {workspace_root}")
                 from ..lsp.workspace_index import WorkspaceIndex
@@ -637,8 +642,57 @@ class NLPLLanguageServer:
             
             result = top_level
         else:
+            # No workspace index: use regex-based fallback directly on the document text
+            text = self.documents.get(uri, '')
             result = []
-        
+            if text:
+                import re as _re
+                lines = text.split('\n')
+                for i, line in enumerate(lines):
+                    # Functions
+                    m = _re.search(r'\bfunction\s+(\w+)', line, _re.IGNORECASE)
+                    if m:
+                        name = m.group(1)
+                        col = m.start(1)
+                        result.append({
+                            'name': name, 'kind': 12,
+                            'range': {'start': {'line': i, 'character': col}, 'end': {'line': i, 'character': col + len(name)}},
+                            'selectionRange': {'start': {'line': i, 'character': col}, 'end': {'line': i, 'character': col + len(name)}}
+                        })
+                        continue
+                    # Classes
+                    m = _re.search(r'\bclass\s+(\w+)', line, _re.IGNORECASE)
+                    if m:
+                        name = m.group(1)
+                        col = m.start(1)
+                        result.append({
+                            'name': name, 'kind': 5,
+                            'range': {'start': {'line': i, 'character': col}, 'end': {'line': i, 'character': col + len(name)}},
+                            'selectionRange': {'start': {'line': i, 'character': col}, 'end': {'line': i, 'character': col + len(name)}}
+                        })
+                        continue
+                    # Structs
+                    m = _re.search(r'\bstruct\s+(\w+)', line, _re.IGNORECASE)
+                    if m:
+                        name = m.group(1)
+                        col = m.start(1)
+                        result.append({
+                            'name': name, 'kind': 23,
+                            'range': {'start': {'line': i, 'character': col}, 'end': {'line': i, 'character': col + len(name)}},
+                            'selectionRange': {'start': {'line': i, 'character': col}, 'end': {'line': i, 'character': col + len(name)}}
+                        })
+                        continue
+                    # Variables (top-level only: not indented)
+                    m = _re.match(r'^set\s+(\w+)\s+to', line, _re.IGNORECASE)
+                    if m:
+                        name = m.group(1)
+                        col = m.start(1)
+                        result.append({
+                            'name': name, 'kind': 13,
+                            'range': {'start': {'line': i, 'character': col}, 'end': {'line': i, 'character': col + len(name)}},
+                            'selectionRange': {'start': {'line': i, 'character': col}, 'end': {'line': i, 'character': col + len(name)}}
+                        })
+
         return {
             "jsonrpc": "2.0",
             "id": msg_id,

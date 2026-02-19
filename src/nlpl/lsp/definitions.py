@@ -306,57 +306,64 @@ class DefinitionProvider:
         """
         Find definition line and column.
         
+        Searches the full file for the most appropriate definition of the symbol.
+        For functions/classes/structs: first non-current-line match wins.
+        For variables: closest definition at or before the cursor wins; falls back
+        to first occurrence anywhere in the file.
+
         Returns:
             (line, column) or (None, None)
         """
         lines = text.split('\n')
-        
-        # Look for function definition
+        current_line = current_position.line if current_position else len(lines)
+
+        # Look for function definition (whole file, skip current line)
         func_pattern = rf'\bfunction\s+{re.escape(symbol)}\b'
         for i, line in enumerate(lines):
-            # Skip current line to avoid self-reference
-            if current_position and i == current_position.line:
+            if current_position and i == current_line:
                 continue
             match = re.search(func_pattern, line, re.IGNORECASE)
             if match:
                 return (i, match.start() + len('function '))
-        
+
         # Look for class definition
         class_pattern = rf'\bclass\s+{re.escape(symbol)}\b'
         for i, line in enumerate(lines):
-            if current_position and i == current_position.line:
+            if current_position and i == current_line:
                 continue
             match = re.search(class_pattern, line, re.IGNORECASE)
             if match:
                 return (i, match.start() + len('class '))
-        
+
         # Look for method definition
         method_pattern = rf'\bmethod\s+{re.escape(symbol)}\b'
         for i, line in enumerate(lines):
-            if current_position and i == current_position.line:
+            if current_position and i == current_line:
                 continue
             match = re.search(method_pattern, line, re.IGNORECASE)
             if match:
                 return (i, match.start() + len('method '))
-        
-        # Look for variable assignment (closest before current position)
+
+        # Look for variable assignment — prefer closest definition at or before
+        # the cursor, but fall back to the first occurrence in the file.
         var_pattern = rf'\bset\s+{re.escape(symbol)}\s+to\b'
-        best_match = (None, None)
-        search_limit = current_position.line if current_position else len(lines)
-        
+        best_before = (None, None)   # closest definition <= current_line
+        first_any = (None, None)     # first definition anywhere
+
         for i, line in enumerate(lines):
-            # Only look at lines before current position
-            if i >= search_limit:
-                break
-            
             match = re.search(var_pattern, line, re.IGNORECASE)
             if match:
-                # Keep updating to find the closest one
-                best_match = (i, match.start() + len('set '))
-        
-        if best_match[0] is not None:
-            return best_match
-        
+                col = match.start() + len('set ')
+                if first_any[0] is None:
+                    first_any = (i, col)
+                if i <= current_line:
+                    best_before = (i, col)
+
+        if best_before[0] is not None:
+            return best_before
+        if first_any[0] is not None:
+            return first_any
+
         return (None, None)
 
 
