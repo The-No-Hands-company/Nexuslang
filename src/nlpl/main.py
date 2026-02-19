@@ -16,7 +16,7 @@ from .stdlib import register_stdlib
 from .tools import get_profiler, enable_profiling, disable_profiling
 from .errors import NLPLError, NLPLTypeError, NLPLRuntimeError
 
-def run_program(source_code, debug=False, type_check=True, profiler=None, optimize=0):
+def run_program(source_code, debug=False, type_check=True, profiler=None, optimize=0, file_path=None):
     """
     Run an NLPL program from source code.
 
@@ -26,12 +26,17 @@ def run_program(source_code, debug=False, type_check=True, profiler=None, optimi
         type_check (bool): Whether to enable type checking
         profiler: Optional profiler instance for performance tracking
         optimize (int): AST optimization level (0=none, 1=basic, 2=standard, 3=aggressive)
+        file_path (str): Absolute or relative path of the source file (enables relative imports)
 
     Returns:
         The result of the program execution
     """
     # Initialize the runtime
     runtime = Runtime()
+    
+    # Record the source file path so the module loader can resolve relative imports
+    if file_path:
+        runtime.module_path = os.path.abspath(file_path)
     
     # Register standard library functions
     register_stdlib(runtime)
@@ -187,6 +192,7 @@ def main():
         
         # Setup runtime and interpreter
         runtime = Runtime()
+        runtime.module_path = os.path.abspath(args.file)
         register_stdlib(runtime)
         interpreter = Interpreter(runtime, enable_type_checking=not args.no_type_check)
         
@@ -250,7 +256,7 @@ def main():
     
     # Run normally without debugger
     try:
-        result = run_program(source_code, args.debug, not args.no_type_check, profiler, optimize=args.optimize)
+        result = run_program(source_code, args.debug, not args.no_type_check, profiler, optimize=args.optimize, file_path=args.file)
         if result is not None:
             print(f"Program result: {result}")
         

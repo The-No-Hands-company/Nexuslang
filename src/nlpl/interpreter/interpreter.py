@@ -211,7 +211,16 @@ class Interpreter:
         if self.module_loader is None:
             # Import here to avoid circular imports
             from ..modules.module_loader import ModuleLoader
-            self.module_loader = ModuleLoader(self.runtime, [os.getcwd()])
+            search_paths = [os.getcwd()]
+            # If the runtime knows the current file, add its directory to search
+            # paths so bare-name imports like 'import utils' resolve from the
+            # script's directory in addition to cwd.
+            file_path = getattr(self.runtime, 'module_path', None)
+            if file_path:
+                file_dir = os.path.dirname(os.path.abspath(file_path))
+                if file_dir not in search_paths:
+                    search_paths.insert(0, file_dir)
+            self.module_loader = ModuleLoader(self.runtime, search_paths)
         return self.module_loader
         
     def interpret(self, ast_or_source, optimization_level=0):

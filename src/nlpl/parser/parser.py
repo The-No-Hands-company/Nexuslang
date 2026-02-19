@@ -5957,13 +5957,18 @@ class Parser:
     def import_statement(self):
         """Parse an import statement."""
         # Syntax: Import <module_name> [as <alias>]
+        # Also supports quoted paths: import "./mymodule" or import "../utils/helper"
         line_number = self.current_token.line
         
         # Eat 'import'
         self.eat(TokenType.IMPORT)
         
-        # Get module name
-        if self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
+        # Get module name - accepts a quoted string path or a bare identifier
+        if self.current_token.type == TokenType.STRING_LITERAL:
+            # Quoted path, e.g. import "./mymodule" or import "../utils/helper"
+            module_name = self.current_token.literal
+            self.advance()
+        elif self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
             module_name = self.current_token.lexeme
             self.advance()
             
@@ -5977,7 +5982,7 @@ class Parser:
                 else:
                     self.error("Expected module name after '.'")
         else:
-            self.error("Expected a module name")
+            self.error("Expected a module name or a quoted path (e.g. \"./mymodule\")")
             
         # Check for optional alias
         alias = None
@@ -5999,8 +6004,12 @@ class Parser:
         # Eat 'from'
         self.eat(TokenType.FROM)
         
-        # Get module name
-        if self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
+        # Get module name - accepts a quoted string path or a bare identifier
+        if self.current_token.type == TokenType.STRING_LITERAL:
+            # Quoted path, e.g. from "./helpers" import format_date
+            module_name = self.current_token.literal
+            self.advance()
+        elif self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
             module_name = self.current_token.lexeme
             self.advance()
             
@@ -6014,7 +6023,7 @@ class Parser:
                 else:
                     self.error("Expected module name after '.'")
         else:
-            self.error("Expected a module name after 'from'")
+            self.error("Expected a module name or a quoted path after 'from' (e.g. \"./mymodule\")")
         
         # Eat 'import'
         self.eat(TokenType.IMPORT)
