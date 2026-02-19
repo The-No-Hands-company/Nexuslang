@@ -43,19 +43,27 @@ class LSPTestClient:
         self.process.stdin.flush()
         
     def read_message(self):
-        """Read a JSON-RPC message."""
+        """Read the next JSON-RPC message (may be a notification or a response)."""
         headers = {}
         while True:
             line = self.process.stdout.readline().decode('utf-8')
-            if line == '\r\n':
+            if line in ('\r\n', '\n'):
                 break
             if ':' in line:
                 key, value = line.split(':', 1)
                 headers[key.strip()] = value.strip()
-        
+
         content_length = int(headers.get('Content-Length', 0))
         content = self.process.stdout.read(content_length).decode('utf-8')
         return json.loads(content)
+
+    def read_response(self):
+        """Read messages until a JSON-RPC response is found (skips notifications)."""
+        while True:
+            msg = self.read_message()
+            # Responses have an 'id' field; notifications only have 'method'
+            if 'id' in msg:
+                return msg
         
     def initialize(self, root_path):
         """Initialize the LSP server."""
@@ -75,7 +83,7 @@ class LSPTestClient:
             }
         }
         self.send_message(request)
-        return self.read_message()
+        return self.read_response()
         
     def initialized(self):
         """Send initialized notification."""
@@ -115,7 +123,7 @@ class LSPTestClient:
             }
         }
         self.send_message(request)
-        return self.read_message()
+        return self.read_response()
         
     def shutdown(self):
         """Shutdown the server."""
@@ -127,7 +135,7 @@ class LSPTestClient:
             "params": None
         })
         try:
-            self.read_message()
+            self.read_response()
         except:
             pass
         self.send_message({
@@ -237,9 +245,10 @@ def test_goto_definition_cross_file():
     client.open_document(uri_b, module_b_content)
     
     # Test 1: Go to function definition from module B
-    # In module_b.nlpl, line 5 (0-indexed = 4), "greet" function call
+    # module_b line 6 (0-indexed): "set message to greet with 'World'"
+    # 'greet' starts at character 15
     print("\n1. Testing: Go to imported function definition...")
-    response = client.goto_definition(uri_b, 5, 15)
+    response = client.goto_definition(uri_b, 6, 15)
     
     if 'result' in response and response['result']:
         location = response['result']
@@ -265,8 +274,9 @@ def test_goto_definition_cross_file():
         
     # Test 2: Go to class definition
     print("\n2. Testing: Go to imported class definition...")
-    # In module_b.nlpl, line 9, "User" class
-    response = client.goto_definition(uri_b, 9, 15)
+    # module_b line 10 (0-indexed): "set user to new User"
+    # 'User' starts at character 16
+    response = client.goto_definition(uri_b, 10, 16)
     
     if 'result' in response and response['result']:
         location = response['result']

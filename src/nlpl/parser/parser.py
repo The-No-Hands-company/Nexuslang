@@ -1152,7 +1152,7 @@ class Parser:
             if (self.current_token and self.current_token.type == TokenType.DOT):
                 self.advance()
             
-        return FunctionDefinition(function_name, parameters, body, return_type, [], None, variadic, line_number)
+        return FunctionDefinition(function_name, parameters, body, return_type, [], None, variadic, line_number=line_number)
     
     def function_definition_short(self):
         """
@@ -1378,7 +1378,7 @@ class Parser:
                 (self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() == 'end')):
                 self.advance()
         
-        return FunctionDefinition(function_name, parameters, body, return_type, type_parameters, type_constraints, variadic, line_number)
+        return FunctionDefinition(function_name, parameters, body, return_type, type_parameters, type_constraints, variadic, line_number=line_number)
     
     def async_function_definition(self):
         """
