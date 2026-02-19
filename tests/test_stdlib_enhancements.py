@@ -317,13 +317,13 @@ class TestIOEnhancements:
     def test_read_write_lines(self):
         """Test reading and writing lines."""
         test_file = os.path.join(self.temp_dir, "lines.txt")
-        lines = ["line1\n", "line2\n", "line3\n"]
+        lines = ["line1", "line2", "line3"]
 
-        # Write lines
+        # Write lines (write_lines adds \n automatically)
         result = self.runtime.invoke_function("write_lines", test_file, lines)
         assert result is True
 
-        # Read lines
+        # Read lines (read_lines strips \n)
         read_lines = self.runtime.invoke_function("read_lines", test_file)
         assert read_lines == lines
 

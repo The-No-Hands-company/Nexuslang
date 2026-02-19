@@ -892,7 +892,7 @@ ANY_TYPE = AnyType()
 #   Returns: -1 if self < other, 0 if equal, 1 if self > other
 COMPARABLE_TRAIT = TraitType("Comparable", {
     "compare": FunctionType(
-        param_types=[],  # self is implicit
+        param_types=[ANY_TYPE],  # other: Self (self is implicit)
         return_type=INTEGER_TYPE
     )
 })
@@ -901,7 +901,7 @@ COMPARABLE_TRAIT = TraitType("Comparable", {
 # Required method: equals(self, other: Self) -> Boolean
 EQUATABLE_TRAIT = TraitType("Equatable", {
     "equals": FunctionType(
-        param_types=[],  # self is implicit
+        param_types=[ANY_TYPE],  # other: Self (self is implicit)
         return_type=BOOLEAN_TYPE
     )
 })

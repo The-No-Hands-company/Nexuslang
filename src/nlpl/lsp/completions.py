@@ -92,6 +92,18 @@ class CompletionProvider:
             },
         }
     
+    def get_keyword_completions(self) -> List[Dict]:
+        """Return completion items for all known NLPL keywords."""
+        return [
+            {
+                "label": kw,
+                "kind": 14,  # Keyword
+                "detail": "keyword",
+                "insertText": kw
+            }
+            for kw in self.keywords
+        ]
+
     def get_completions(self, text: str, position) -> List[Dict]:
         """
         Get completion items at position.

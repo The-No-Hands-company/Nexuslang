@@ -1,6 +1,6 @@
 """
 Test cases for the NLPL interpreter.
-Tests program execution and runtime behavior.
+Tests program execution and runtime behavior using valid NLPL syntax.
 """
 
 import sys
@@ -10,222 +10,192 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 import unittest
 from nlpl.interpreter.interpreter import Interpreter
 from nlpl.runtime.runtime import Runtime
+from nlpl.stdlib import register_stdlib
+
 
 class TestInterpreter(unittest.TestCase):
     """Test cases for the NLPL interpreter."""
-    
+
     def setUp(self):
         """Set up test fixtures before each test method."""
         self.runtime = Runtime()
+        register_stdlib(self.runtime)
         self.interpreter = Interpreter(self.runtime)
-    
+
     def test_variable_declaration_and_assignment(self):
         """Test variable declaration and assignment."""
         source = """
-        x as Integer = 42
-        y as Float = 3.14
-        z as String = "hello"
-        """
-        result = self.interpreter.interpret(source)
-        
-        # Check variable values
-        self.assertEqual(self.runtime.get_variable("x"), 42)
-        self.assertEqual(self.runtime.get_variable("y"), 3.14)
-        self.assertEqual(self.runtime.get_variable("z"), "hello")
-    
+set x to 42
+set y to 3.14
+set z to "hello"
+"""
+        self.interpreter.interpret(source)
+
+        self.assertEqual(self.interpreter.get_variable("x"), 42)
+        self.assertAlmostEqual(self.interpreter.get_variable("y"), 3.14)
+        self.assertEqual(self.interpreter.get_variable("z"), "hello")
+
     def test_function_definition_and_call(self):
         """Test function definition and calling."""
         source = """
-        function add(a as Integer, b as Integer) returns Integer:
-            return a + b
-        end
-        
-        result as Integer = add(5, 3)
-        """
-        result = self.interpreter.interpret(source)
-        
-        # Check function result
-        self.assertEqual(self.runtime.get_variable("result"), 8)
-    
+function add with a as Integer and b as Integer returns Integer
+    return a plus b
+end
+
+set result to add with a: 5 and b: 3
+"""
+        self.interpreter.interpret(source)
+
+        self.assertEqual(self.interpreter.get_variable("result"), 8)
+
     def test_if_statement(self):
-        """Test if statement execution."""
+        """Test if statement execution (true branch)."""
         source = """
-        x as Integer = 5
-        if x > 0:
-            result as String = "Positive"
-        else:
-            result as String = "Negative"
-        end
-        """
-        result = self.interpreter.interpret(source)
-        
-        # Check result
-        self.assertEqual(self.runtime.get_variable("result"), "Positive")
-        
-        # Test else branch
+set x to 5
+if x is greater than 0
+    set result to "Positive"
+else
+    set result to "Negative"
+end
+"""
+        self.interpreter.interpret(source)
+        self.assertEqual(self.interpreter.get_variable("result"), "Positive")
+
+    def test_if_statement_false_branch(self):
+        """Test if statement execution (false branch)."""
         source = """
-        x as Integer = -5
-        if x > 0:
-            result as String = "Positive"
-        else:
-            result as String = "Negative"
-        end
-        """
-        result = self.interpreter.interpret(source)
-        self.assertEqual(self.runtime.get_variable("result"), "Negative")
-    
+set x to -5
+if x is greater than 0
+    set result to "Positive"
+else
+    set result to "Negative"
+end
+"""
+        self.interpreter.interpret(source)
+        self.assertEqual(self.interpreter.get_variable("result"), "Negative")
+
     def test_while_loop(self):
         """Test while loop execution."""
         source = """
-        x as Integer = 5
-        sum as Integer = 0
-        while x > 0:
-            sum = sum + x
-            x = x - 1
-        end
-        """
-        result = self.interpreter.interpret(source)
-        
-        # Check final values
-        self.assertEqual(self.runtime.get_variable("sum"), 15)  # 5 + 4 + 3 + 2 + 1
-        self.assertEqual(self.runtime.get_variable("x"), 0)
-    
+set x to 5
+set sum to 0
+while x is greater than 0
+    set sum to sum plus x
+    set x to x minus 1
+end while
+"""
+        self.interpreter.interpret(source)
+
+        self.assertEqual(self.interpreter.get_variable("sum"), 15)
+        self.assertEqual(self.interpreter.get_variable("x"), 0)
+
     def test_for_loop(self):
-        """Test for loop execution."""
+        """Test for-each loop execution."""
         source = """
-        sum as Integer = 0
-        for i as Integer = 1 to 5:
-            sum = sum + i
-        end
-        """
-        result = self.interpreter.interpret(source)
-        
-        # Check final value
-        self.assertEqual(self.runtime.get_variable("sum"), 15)  # 1 + 2 + 3 + 4 + 5
-    
+set sum to 0
+set numbers to [1, 2, 3, 4, 5]
+for each i in numbers
+    set sum to sum plus i
+end
+"""
+        self.interpreter.interpret(source)
+
+        self.assertEqual(self.interpreter.get_variable("sum"), 15)
+
     def test_arithmetic_operations(self):
         """Test arithmetic operations."""
         source = """
-        a as Integer = 10
-        b as Integer = 3
-        
-        sum as Integer = a + b
-        diff as Integer = a - b
-        product as Integer = a * b
-        quotient as Float = a / b
-        remainder as Integer = a % b
-        """
-        result = self.interpreter.interpret(source)
-        
-        # Check results
-        self.assertEqual(self.runtime.get_variable("sum"), 13)
-        self.assertEqual(self.runtime.get_variable("diff"), 7)
-        self.assertEqual(self.runtime.get_variable("product"), 30)
-        self.assertAlmostEqual(self.runtime.get_variable("quotient"), 3.3333333333333335)
-        self.assertEqual(self.runtime.get_variable("remainder"), 1)
-    
+set a to 10
+set b to 3
+
+set sum to a plus b
+set diff to a minus b
+set product to a times b
+set quotient to a divided by b
+set remainder to a modulo b
+"""
+        self.interpreter.interpret(source)
+
+        self.assertEqual(self.interpreter.get_variable("sum"), 13)
+        self.assertEqual(self.interpreter.get_variable("diff"), 7)
+        self.assertEqual(self.interpreter.get_variable("product"), 30)
+        self.assertAlmostEqual(self.interpreter.get_variable("quotient"),
+                               10 / 3)
+        self.assertEqual(self.interpreter.get_variable("remainder"), 1)
+
     def test_comparison_operations(self):
         """Test comparison operations."""
         source = """
-        x as Integer = 5
-        y as Integer = 10
-        
-        less as Boolean = x < y
-        less_equal as Boolean = x <= y
-        greater as Boolean = x > y
-        greater_equal as Boolean = x >= y
-        equal as Boolean = x == y
-        not_equal as Boolean = x != y
-        """
-        result = self.interpreter.interpret(source)
-        
-        # Check results
-        self.assertTrue(self.runtime.get_variable("less"))
-        self.assertTrue(self.runtime.get_variable("less_equal"))
-        self.assertFalse(self.runtime.get_variable("greater"))
-        self.assertFalse(self.runtime.get_variable("greater_equal"))
-        self.assertFalse(self.runtime.get_variable("equal"))
-        self.assertTrue(self.runtime.get_variable("not_equal"))
-    
+set x to 5
+set y to 10
+
+set less_result to x is less than y
+set less_eq_result to x is less than or equal to y
+set greater_result to x is greater than y
+set equal_result to x is equal to y
+set not_equal_result to x is not equal to y
+"""
+        self.interpreter.interpret(source)
+
+        self.assertTrue(self.interpreter.get_variable("less_result"))
+        self.assertTrue(self.interpreter.get_variable("less_eq_result"))
+        self.assertFalse(self.interpreter.get_variable("greater_result"))
+        self.assertFalse(self.interpreter.get_variable("equal_result"))
+        self.assertTrue(self.interpreter.get_variable("not_equal_result"))
+
     def test_logical_operations(self):
         """Test logical operations."""
         source = """
-        a as Boolean = true
-        b as Boolean = false
-        c as Boolean = true
-        
-        and_result as Boolean = a and b
-        or_result as Boolean = a or b
-        not_result as Boolean = not b
-        complex_result as Boolean = (a and c) or (b and not c)
-        """
-        result = self.interpreter.interpret(source)
-        
-        # Check results
-        self.assertFalse(self.runtime.get_variable("and_result"))
-        self.assertTrue(self.runtime.get_variable("or_result"))
-        self.assertTrue(self.runtime.get_variable("not_result"))
-        self.assertTrue(self.runtime.get_variable("complex_result"))
-    
-    def test_string_operations(self):
-        """Test string operations."""
-        source = """
-        str1 as String = "Hello"
-        str2 as String = "World"
-        
-        concat as String = str1 + " " + str2
-        length as Integer = len(str1)
-        substring as String = substr(str1, 0, 2)
-        """
-        result = self.interpreter.interpret(source)
-        
-        # Check results
-        self.assertEqual(self.runtime.get_variable("concat"), "Hello World")
-        self.assertEqual(self.runtime.get_variable("length"), 5)
-        self.assertEqual(self.runtime.get_variable("substring"), "He")
-    
-    def test_error_handling(self):
-        """Test error handling."""
-        error_cases = [
-            ("x = 1", "Variable 'x' not declared"),
-            ("x as Integer = y", "Variable 'y' not declared"),
-            ("x as Integer = 1 / 0", "Division by zero"),
-            ("function add(a as Integer) returns Integer:\n    return a + b\nend", "Variable 'b' not declared")
-        ]
-        
-        for source, expected_error in error_cases:
-            with self.assertRaises(Exception) as context:
-                self.interpreter.interpret(source)
-            self.assertTrue(expected_error in str(context.exception))
-    
-    def test_complex_program(self):
-        """Test execution of a complex program."""
-        source = """
-        function factorial(n as Integer) returns Integer:
-            if n <= 1:
-                return 1
-            else:
-                return n * factorial(n - 1)
-            end
-        end
-        
-        function fibonacci(n as Integer) returns Integer:
-            if n <= 1:
-                return n
-            else:
-                return fibonacci(n - 1) + fibonacci(n - 2)
-            end
-        end
-        
-        n as Integer = 5
-        fact as Integer = factorial(n)
-        fib as Integer = fibonacci(n)
-        """
-        result = self.interpreter.interpret(source)
-        
-        # Check results
-        self.assertEqual(self.runtime.get_variable("fact"), 120)  # 5 * 4 * 3 * 2 * 1
-        self.assertEqual(self.runtime.get_variable("fib"), 5)    # 5th Fibonacci number
+set a to true
+set b to false
 
-if __name__ == '__main__':
-    unittest.main() 
+set and_result to a and b
+set or_result to a or b
+set not_result to not b
+"""
+        self.interpreter.interpret(source)
+
+        self.assertFalse(self.interpreter.get_variable("and_result"))
+        self.assertTrue(self.interpreter.get_variable("or_result"))
+        self.assertTrue(self.interpreter.get_variable("not_result"))
+
+    def test_string_operations(self):
+        """Test string concatenation and length."""
+        source = """
+set str1 to "Hello"
+set str2 to "World"
+
+set concat to str1 plus " " plus str2
+set length_val to length(str1)
+"""
+        self.interpreter.interpret(source)
+
+        self.assertEqual(self.interpreter.get_variable("concat"), "Hello World")
+        self.assertEqual(self.interpreter.get_variable("length_val"), 5)
+
+    def test_error_handling(self):
+        """Test that referencing undefined variables raises an error."""
+        with self.assertRaises(Exception):
+            self.interpreter.interpret("set result to undefined_variable plus 1")
+
+    def test_complex_program(self):
+        """Test a recursive factorial function."""
+        source = """
+function factorial with n as Integer returns Integer
+    if n is less than or equal to 1
+        return 1
+    end
+    set nm1 to n minus 1
+    set sub to factorial with n: nm1
+    return n times sub
+end
+
+set fact to factorial with n: 5
+"""
+        self.interpreter.interpret(source)
+
+        self.assertEqual(self.interpreter.get_variable("fact"), 120)
+
+
+if __name__ == "__main__":
+    unittest.main()

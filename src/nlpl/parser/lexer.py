@@ -282,6 +282,22 @@ class TokenType(Enum):
     # Variadic functions
     ELLIPSIS = auto()  # ... for variadic parameters
 
+    # Backward-compatibility aliases (used by older tests / external code)
+    INTEGER_TYPE = INTEGER        # type: ignore[assignment]
+    FLOAT_TYPE = FLOAT            # type: ignore[assignment]
+    STRING_TYPE = STRING          # type: ignore[assignment]
+    BOOLEAN_TYPE = BOOLEAN        # type: ignore[assignment]
+    NULL_TYPE = NULL              # type: ignore[assignment]
+    LIST_TYPE = LIST              # type: ignore[assignment]
+    DICTIONARY_TYPE = DICTIONARY  # type: ignore[assignment]
+    MULTIPLY = TIMES              # type: ignore[assignment]
+    EQUALS_EQUALS = EQUAL_TO      # type: ignore[assignment]
+    NOT_EQUALS = NOT_EQUAL_TO     # type: ignore[assignment]
+    LESS_THAN_EQUALS = LESS_THAN_OR_EQUAL_TO     # type: ignore[assignment]
+    GREATER_THAN_EQUALS = GREATER_THAN_OR_EQUAL_TO  # type: ignore[assignment]
+    LPAREN = LEFT_PAREN          # type: ignore[assignment]
+    RPAREN = RIGHT_PAREN         # type: ignore[assignment]
+
 @dataclass
 class Token:
     """Represents a token in the source code."""
@@ -291,6 +307,11 @@ class Token:
     line: int
     column: int
     source_line: Optional[str] = None  # Store the full source line for error reporting
+
+    @property
+    def value(self) -> Any:
+        """Return the meaningful value: literal for literal tokens, lexeme otherwise."""
+        return self.literal if self.literal is not None else self.lexeme
 
 class Lexer:
     """Lexer for NLPL that recognizes natural English-like patterns."""
@@ -397,6 +418,7 @@ class Lexer:
             # Natural language operators
             "plus": TokenType.PLUS,
             "minus": TokenType.MINUS,
+            "negative": TokenType.MINUS,  # natural language unary minus alias
             "times": TokenType.TIMES,
             "divided by": TokenType.DIVIDED_BY,
             "modulo": TokenType.MODULO,
@@ -580,7 +602,33 @@ class Lexer:
     def tokenize(self) -> List[Token]:
         """Alias for scan_tokens to maintain compatibility with tests."""
         return self.scan_tokens()
-    
+
+    def get_next_token(self) -> 'Token':
+        """Return the next meaningful token (skips INDENT/DEDENT), for streaming API.
+
+        On first call, tokenizes the entire source. Subsequent calls return
+        successive tokens. Returns EOF when exhausted.
+        """
+        # Tokenize lazily on first call
+        if not self.tokens:
+            self.scan_tokens()
+
+        # Initialise streaming index if not present
+        if not hasattr(self, '_stream_idx'):
+            self._stream_idx = 0
+
+        # Skip INDENT / DEDENT tokens
+        skip_types = {TokenType.INDENT, TokenType.DEDENT}
+        while self._stream_idx < len(self.tokens) and self.tokens[self._stream_idx].type in skip_types:
+            self._stream_idx += 1
+
+        if self._stream_idx >= len(self.tokens):
+            return self.tokens[-1]  # Return EOF
+
+        token = self.tokens[self._stream_idx]
+        self._stream_idx += 1
+        return token
+
     def scan_token(self) -> None:
         """Scan a single token with indentation tracking."""
         # Handle indentation at the start of a line
@@ -633,6 +681,10 @@ class Lexer:
         
         if c == '"':
             self.string()
+            return
+
+        if c == "'":
+            self.single_quote_string()
             return
         
         # Handle operators and punctuation
@@ -860,6 +912,32 @@ class Lexer:
         else:
             self.add_token(TokenType.INTEGER_LITERAL, int(self.source[self.start:self.current]))
     
+    def single_quote_string(self) -> None:
+        """Scan a single-quoted string literal."""
+        chars = []
+        while not self.is_at_end() and self.peek() != "'":
+            if self.peek() == '\\':
+                self.advance()  # consume backslash
+                if self.is_at_end():
+                    break
+                escape_char = self.peek()
+                escape_map = {'n': '\n', 't': '\t', 'r': '\r', "'": "'", '\\': '\\'}
+                chars.append(escape_map.get(escape_char, escape_char))
+            elif self.peek() == '\n':
+                self.line += 1
+                self.column = 1
+                chars.append(self.peek())
+            else:
+                chars.append(self.peek())
+            self.advance()
+
+        if self.is_at_end():
+            self.error("Unterminated string")
+            return
+
+        self.advance()  # consume closing "'"
+        self.add_token(TokenType.STRING_LITERAL, ''.join(chars))
+
     def string(self) -> None:
         """Scan a string literal with escape sequence support."""
         chars = []

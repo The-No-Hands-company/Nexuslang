@@ -1245,20 +1245,15 @@ class Interpreter:
                     matches = False
             
             if matches:
-                self.enter_scope()
-                
                 # Store for re-raising
                 self.last_exception = e
-                
-                # Store exception info in the exception variable if specified
-                # In NLPL, the exception variable usually contains the message string
+
+                # Bind exception variable in the current scope (no inner scope, so
+                # assignments inside the catch body update variables in the outer scope)
                 exc_value = e.message if e.message else e.exception_type
-                
-                if node.exception_var:
-                    self.set_variable(node.exception_var, exc_value)
-                else:
-                    self.set_variable("error", exc_value)
-                
+                exc_var = node.exception_var if node.exception_var else "error"
+                self.set_variable(exc_var, exc_value)
+
                 # Bind exception properties if specified (e.g., "catch error with message")
                 if hasattr(node, 'exception_properties') and node.exception_properties:
                     for prop in node.exception_properties:
@@ -1269,14 +1264,11 @@ class Interpreter:
                         elif prop == 'code':
                             self.set_variable(prop, getattr(e, 'code', None))
                         else:
-                            # Try to get the property from the exception object
                             self.set_variable(prop, getattr(e, prop, None))
-                
+
                 result = None
                 for statement in node.catch_block:
                     result = self.execute(statement)
-                    
-                self.exit_scope()
                 return result
             else:
                 # Re-raise NLPLUserException if type doesn't match
@@ -1290,13 +1282,10 @@ class Interpreter:
                     matches = False
             
             if matches:
-                self.enter_scope()
                 exc_message = str(e)
-                if node.exception_var:
-                    self.set_variable(node.exception_var, exc_message)
-                else:
-                    self.set_variable("error", exc_message)
-                
+                exc_var = node.exception_var if node.exception_var else "error"
+                self.set_variable(exc_var, exc_message)
+
                 # Bind exception properties if specified
                 if hasattr(node, 'exception_properties') and node.exception_properties:
                     for prop in node.exception_properties:
@@ -1306,12 +1295,10 @@ class Interpreter:
                             self.set_variable(prop, getattr(e, 'nlpl_type', type(e).__name__))
                         else:
                             self.set_variable(prop, getattr(e, prop, None))
-                    
+
                 result = None
                 for statement in node.catch_block:
                     result = self.execute(statement)
-                    
-                self.exit_scope()
                 return result
             else:
                 raise e
@@ -1319,14 +1306,11 @@ class Interpreter:
             # Handle other Python exceptions (e.g., ZeroDivisionError)
             if node.exception_type and node.exception_type != "Error":
                 raise e
-                
-            self.enter_scope()
+
             exc_message = str(e)
-            if node.exception_var:
-                self.set_variable(node.exception_var, exc_message)
-            else:
-                self.set_variable("error", exc_message)
-            
+            exc_var = node.exception_var if node.exception_var else "error"
+            self.set_variable(exc_var, exc_message)
+
             # Bind exception properties if specified (e.g., "catch error with message")
             if hasattr(node, 'exception_properties') and node.exception_properties:
                 for prop in node.exception_properties:
@@ -1335,14 +1319,11 @@ class Interpreter:
                     elif prop == 'type':
                         self.set_variable(prop, type(e).__name__)
                     else:
-                        # Try to get the property from the exception object
                         self.set_variable(prop, getattr(e, prop, None))
-                
+
             result = None
             for statement in node.catch_block:
                 result = self.execute(statement)
-                
-            self.exit_scope()
             return result
 
     def execute_raise_statement(self, node):
@@ -2233,7 +2214,25 @@ class Interpreter:
                 error_type_key="invalid_operation",
                 full_source=self.source,
             )
-        
+
+    def execute_slice_expression(self, node):
+        """Execute a slice expression (e.g., s[0:5] or s[1:10:2])."""
+        seq = self.execute(node.expr)
+        start = self.execute(node.start) if node.start is not None else None
+        end = self.execute(node.end) if node.end is not None else None
+        step = self.execute(node.step) if node.step is not None else None
+        try:
+            return seq[slice(start, end, step)]
+        except (TypeError, AttributeError) as e:
+            raise NLPLRuntimeError(
+                message=f"Cannot slice value of type {type(seq).__name__}",
+                line=getattr(node, 'line', None),
+                column=getattr(node, 'column', None),
+                nlpl_type="TypeError",
+                error_type_key="invalid_operation",
+                full_source=self.source,
+            )
+
     def execute_identifier(self, node):
         """Execute an identifier (variable reference)."""
         try:

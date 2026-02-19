@@ -168,17 +168,17 @@ class SkipIterator:
 
 
 def iterator_map(iterable, func):
-    """Map function over iterable lazily."""
+    """Map function over iterable, returning a list."""
     if not callable(func):
         raise TypeError(f"map() requires a callable, got {type(func).__name__}")
-    return MapIterator(iterable, func)
+    return list(MapIterator(iterable, func))
 
 
 def iterator_filter(iterable, predicate):
-    """Filter iterable by predicate lazily."""
+    """Filter iterable by predicate, returning a list."""
     if not callable(predicate):
         raise TypeError(f"filter() requires a callable, got {type(predicate).__name__}")
-    return FilterIterator(iterable, predicate)
+    return list(FilterIterator(iterable, predicate))
 
 
 def iterator_reduce(iterable, initial, func):
@@ -207,17 +207,17 @@ def iterator_collect(iterable):
 
 
 def iterator_take(iterable, n: int):
-    """Take first n elements lazily."""
+    """Take first n elements, returning a list."""
     if not isinstance(n, int) or n < 0:
         raise ValueError(f"take() requires non-negative integer, got {n}")
-    return TakeIterator(iterable, n)
+    return list(TakeIterator(iterable, n))
 
 
 def iterator_skip(iterable, n: int):
-    """Skip first n elements lazily."""
+    """Skip first n elements, returning a list."""
     if not isinstance(n, int) or n < 0:
         raise ValueError(f"skip() requires non-negative integer, got {n}")
-    return SkipIterator(iterable, n)
+    return list(SkipIterator(iterable, n))
 
 
 def register_iterator_functions(runtime: Runtime) -> None:

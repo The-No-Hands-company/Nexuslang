@@ -120,14 +120,19 @@ def http_head(url: str, headers: Optional[Dict] = None, timeout: int = 30) -> HT
     return http_request("HEAD", url, headers=headers, timeout=timeout)
 
 
-def url_encode(params: Dict[str, str]) -> str:
-    """URL encode parameters."""
+def url_encode(params) -> str:
+    """URL encode parameters or a plain string."""
+    if isinstance(params, str):
+        return urllib.parse.quote_plus(params)
     return urllib.parse.urlencode(params)
 
 
-def url_decode(query_string: str) -> Dict[str, str]:
-    """Decode URL query string."""
-    return dict(urllib.parse.parse_qsl(query_string))
+def url_decode(query_string: str):
+    """Decode URL query string or plain encoded string."""
+    if '=' not in query_string:
+        return urllib.parse.unquote_plus(query_string)
+    result = dict(urllib.parse.parse_qsl(query_string))
+    return result if result else urllib.parse.unquote_plus(query_string)
 
 
 def url_parse(url: str) -> dict:

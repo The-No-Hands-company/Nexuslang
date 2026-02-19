@@ -14,6 +14,13 @@ def register_math_functions(runtime: Runtime) -> None:
     runtime.register_constant("TAU", 2 * math.pi)
     runtime.register_constant("INF", math.inf)
     runtime.register_constant("NAN", math.nan)
+
+    # Also register constants as zero-arg functions so invoke_function() can access them
+    runtime.register_function("PI", lambda: math.pi)
+    runtime.register_function("E", lambda: math.e)
+    runtime.register_function("TAU", lambda: 2 * math.pi)
+    runtime.register_function("INF", lambda: math.inf)
+    runtime.register_function("NAN", lambda: math.nan)
     
     # Register basic arithmetic functions
     runtime.register_function("absolute", absolute)
@@ -169,10 +176,20 @@ def sum_numbers(*args):
     return sum(args)
 
 def average(*args):
-    """Return the average of the arguments."""
+    """Return the average of the arguments.
+
+    Accepts either a single list/tuple or multiple numeric arguments.
+    """
     if not args:
         raise ValueError("average() requires at least one argument")
-    return sum(args) / len(args)
+    # Handle single list/tuple argument: average([1, 2, 3])
+    if len(args) == 1 and isinstance(args[0], (list, tuple)):
+        vals = list(args[0])
+    else:
+        vals = list(args)
+    if not vals:
+        raise ValueError("average() requires at least one element")
+    return sum(vals) / len(vals)
 
 # Additional math functions
 

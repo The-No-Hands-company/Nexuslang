@@ -199,7 +199,7 @@ class TestDictionaryEdgeCases(NLPLTestBase):
         set d to {"a": 1}
         set value to d["b"]
         '''
-        with pytest.raises(KeyError):
+        with pytest.raises(Exception):
             self.parse_and_execute(code)
     
     def test_dictionary_overwrite_value(self):

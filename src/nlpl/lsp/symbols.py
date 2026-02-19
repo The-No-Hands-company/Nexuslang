@@ -129,6 +129,11 @@ class SymbolProvider:
             # Find matching symbols using fuzzy match
             matching_symbols = symbol_table.find_symbols_by_name(query, fuzzy=True)
             
+            if not matching_symbols:
+                # AST-based search returned nothing; fall back to regex
+                symbols.extend(self._fallback_find_symbols(text, uri, query))
+                continue
+            
             for symbol in matching_symbols:
                 symbols.append({
                     "name": symbol.name,

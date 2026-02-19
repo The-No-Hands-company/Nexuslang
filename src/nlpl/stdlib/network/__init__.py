@@ -121,18 +121,33 @@ def http_request(method, url, data=None, headers=None, timeout=30):
 
 # URL operations
 def url_encode(data):
-    """Encode a dictionary as URL parameters."""
-    if not isinstance(data, dict):
-        raise TypeError("Expected a dictionary")
-    
-    return urllib.parse.urlencode(data)
+    """Encode data for use in a URL.
+
+    Accepts a string (percent-encodes it) or a dict (encodes as query string).
+    """
+    if isinstance(data, str):
+        return urllib.parse.quote_plus(data)
+    if isinstance(data, dict):
+        return urllib.parse.urlencode(data)
+    raise TypeError("url_encode() expects a string or dictionary")
 
 def url_decode(query_string):
-    """Decode URL parameters into a dictionary."""
+    """Decode a URL-encoded string or query string.
+
+    If the input contains '=' it is treated as a query string and decoded into
+    a dictionary.  Otherwise it is treated as a percent-encoded string and the
+    decoded plain string is returned.
+    """
     if not isinstance(query_string, str):
         raise TypeError("Expected a string")
-    
-    return dict(urllib.parse.parse_qsl(query_string))
+    # Plain percent-encoded string (no key=value pairs)
+    if '=' not in query_string:
+        return urllib.parse.unquote_plus(query_string)
+    result = dict(urllib.parse.parse_qsl(query_string))
+    if result:
+        return result
+    # Fallback: plain string decode
+    return urllib.parse.unquote_plus(query_string)
 
 def url_parse(url):
     """Parse a URL into its components."""

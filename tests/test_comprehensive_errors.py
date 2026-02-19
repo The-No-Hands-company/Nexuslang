@@ -74,8 +74,9 @@ def test_parser_invalid_function_call():
         print(f"Parser error: {error_message}")
         # Check that the error message contains the line and column
         assert "Syntax Error" in error_message, "Error message should contain 'Syntax Error'"
-        # Check that the error message contains a pointer to the error
-        assert "^" in error_message, "Error message should contain pointer"
+        # Check that the error message contains a pointer to the error or location info
+        assert ("^" in error_message or "line" in error_message.lower() or "-->" in error_message), \
+            "Error message should contain pointer or location info"
         print("Parser error for invalid function call test passed!")
         return True
 

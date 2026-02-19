@@ -599,46 +599,387 @@ class Parser:
     
     def create_statement(self):
         """Parse a create statement for variable initialization.
-        
-        Grammar:
+
+        Handles both the classic form and advanced type definition forms:
             CREATE identifier AS expression
             CREATE member_access AS expression
-            
-        Example:
-            create this.grades as empty List of Float
-            create count as 0
+            CREATE (A|AN) abstract CLASS CALLED name WITH: body
+            CREATE (A|AN) CLASS CALLED name WITH A GENERIC TYPE PARAMETER T THAT EXTENDS bound
+            CREATE (A|AN) TRAIT CALLED name WITH: body
+            CREATE (A|AN) TYPE alias CALLED name THAT IS A ...
+            CREATE (A|AN) <type_keyword> CALLED name [AND SET it TO expr]
         """
         line_number = self.current_token.line
         self.advance()  # consume CREATE
-        
-        # Parse the target (variable name or member access like "this.x")
-        # This could be a simple identifier or a member access expression
-        target = self.comparison()  # Use comparison to handle "this.x" syntax
-        
-        # Expect AS keyword
+
+        # Detect advanced constructs when next token is A or AN
+        if self.current_token and self.current_token.type in (TokenType.A, TokenType.AN):
+            self.advance()  # consume A/AN
+            tok = self.current_token
+
+            # CREATE (A|AN) IDENTIFIER("abstract") CLASS CALLED name WITH: body
+            if tok and tok.type == TokenType.IDENTIFIER and tok.lexeme.lower() == 'abstract':
+                self.advance()  # consume "abstract"
+                if self.current_token and self.current_token.type == TokenType.CLASS:
+                    self.advance()  # consume CLASS
+                    return self._parse_abstract_class_def(line_number)
+                self.error(f"Expected CLASS after 'abstract', got {self.current_token.type if self.current_token else 'EOF'}")
+
+            # CREATE (A|AN) CLASS CALLED name WITH A GENERIC TYPE PARAMETER T THAT EXTENDS bound
+            elif tok and tok.type == TokenType.CLASS:
+                self.advance()  # consume CLASS
+                return self._parse_generic_class_def(line_number)
+
+            # CREATE (A|AN) TRAIT CALLED name WITH: body
+            elif tok and tok.type == TokenType.TRAIT:
+                self.advance()  # consume TRAIT
+                return self._parse_trait_def(line_number)
+
+            # CREATE (A|AN) TYPE [alias] CALLED name THAT IS ...
+            elif tok and tok.type == TokenType.TYPE:
+                self.advance()  # consume TYPE
+                if self.current_token and self.current_token.type == TokenType.IDENTIFIER and \
+                        self.current_token.lexeme.lower() == 'alias':
+                    self.advance()  # consume "alias"
+                return self._parse_type_alias_def(line_number)
+
+            # CREATE (A|AN) <type_keyword> CALLED name [AND SET it TO expr]
+            # e.g., "Create an integer called length and set it to the length of x."
+            elif tok and tok.type in (TokenType.INTEGER, TokenType.FLOAT, TokenType.STRING,
+                                       TokenType.BOOLEAN, TokenType.LIST, TokenType.DICTIONARY,
+                                       TokenType.NUMBER, TokenType.OBJECT, TokenType.LENGTH,
+                                       TokenType.IDENTIFIER):
+                type_name = tok.lexeme.lower() if tok else None
+                self.advance()  # consume type keyword
+
+                # Consume optional CALLED
+                if self.current_token and self.current_token.type == TokenType.CALLED:
+                    self.advance()
+
+                # Get variable name (any token type - e.g. LENGTH keyword as "length")
+                var_name = self.current_token.lexeme if self.current_token else "unknown"
+                self.advance()
+
+                # Parse optional "and set it/varname to expression"
+                init_value = None
+                if self.current_token and self.current_token.type == TokenType.AND:
+                    self.advance()  # consume AND
+                    if self.current_token and self.current_token.type == TokenType.SET:
+                        self.advance()  # consume SET
+                        # Skip "it" or the variable reference (anything that isn't TO)
+                        if self.current_token and self.current_token.type != TokenType.TO:
+                            self.advance()
+                        # Consume TO
+                        if self.current_token and self.current_token.type == TokenType.TO:
+                            self.advance()
+                        try:
+                            init_value = self.expression()
+                        except Exception:
+                            init_value = None
+                            # Skip to end of statement
+                            while self.current_token and self.current_token.type not in (
+                                    TokenType.DOT, TokenType.EOF, TokenType.DEDENT):
+                                self.advance()
+
+                # Consume optional DOT
+                if self.current_token and self.current_token.type == TokenType.DOT:
+                    self.advance()
+
+                return VariableDeclaration(var_name, init_value, type_name)
+
+            else:
+                self.error(
+                    f"Unexpected token in create statement after 'a/an': "
+                    f"{tok.type if tok else 'EOF'}"
+                )
+
+        # Original logic: CREATE target AS expression
+        target = self.comparison()
         if not self.current_token or self.current_token.type != TokenType.AS:
-            self.error(f"Expected AS in create statement, got {self.current_token.type if self.current_token else 'EOF'}")
+            self.error(
+                f"Expected AS in create statement, got "
+                f"{self.current_token.type if self.current_token else 'EOF'}"
+            )
         self.advance()  # consume AS
-        
-        # Parse the value/expression to initialize with
+
         value = self.expression()
         if value is None:
             self.error("Expected an expression after AS")
-        
-        # Create an assignment node (SET target TO value)
-        # For simple identifiers, this becomes VariableDeclaration
-        # For member access, this becomes MemberAssignment
+
         if target.__class__.__name__ == 'Identifier':
             return VariableDeclaration(target.name, value, None)
         elif target.__class__.__name__ == 'MemberAccess':
-            # Member access like "this.grades" - use MemberAssignment
             from ..parser.ast import MemberAssignment
             return MemberAssignment(target, value)
         else:
-            # Other complex expressions - fallback to VariableDeclaration
-            # This might not be perfect but handles most cases
             return VariableDeclaration(str(target), value, None)
-    
+
+    # ------------------------------------------------------------------
+    # Helper parsers for advanced type constructs
+    # ------------------------------------------------------------------
+
+    def _parse_abstract_class_def(self, line_number):
+        """Parse: CALLED name WITH: [INDENT methods DEDENT]"""
+        if self.current_token and self.current_token.type == TokenType.CALLED:
+            self.advance()
+        class_name = self.current_token.lexeme if self.current_token else "Unknown"
+        self.advance()
+
+        if self.current_token and self.current_token.type == TokenType.WITH:
+            self.advance()
+        if self.current_token and self.current_token.type == TokenType.COLON:
+            self.advance()
+        if self.current_token and self.current_token.type == TokenType.INDENT:
+            self.advance()
+
+        abstract_methods = []
+        concrete_methods = []
+
+        while self.current_token and self.current_token.type not in (TokenType.DEDENT, TokenType.EOF):
+            # Skip A/AN
+            if self.current_token.type in (TokenType.A, TokenType.AN):
+                self.advance()
+            if not self.current_token or self.current_token.type in (TokenType.DEDENT, TokenType.EOF):
+                break
+
+            # Read modifier: "abstract" or "concrete"
+            modifier = None
+            if self.current_token and self.current_token.type == TokenType.IDENTIFIER:
+                modifier = self.current_token.lexeme.lower()
+                self.advance()
+
+            # Eat METHOD
+            if self.current_token and self.current_token.type == TokenType.METHOD:
+                self.advance()
+
+            # Eat CALLED
+            if self.current_token and self.current_token.type == TokenType.CALLED:
+                self.advance()
+
+            # Get method name (any token, e.g. EQUAL_TO for "equals")
+            method_name = self.current_token.lexeme if self.current_token else "unknown"
+            self.advance()
+
+            # Skip until RETURNS or DOT
+            while self.current_token and self.current_token.type not in (
+                    TokenType.RETURNS, TokenType.DOT, TokenType.EOF, TokenType.DEDENT):
+                self.advance()
+
+            return_type = None
+            if self.current_token and self.current_token.type == TokenType.RETURNS:
+                self.advance()
+                if self.current_token and self.current_token.type in (TokenType.A, TokenType.AN):
+                    self.advance()
+                return_type = self.current_token.lexeme.lower() if self.current_token else None
+                if self.current_token and self.current_token.type != TokenType.DOT:
+                    self.advance()
+
+            if self.current_token and self.current_token.type == TokenType.DOT:
+                self.advance()
+
+            if modifier == 'abstract':
+                abstract_methods.append(
+                    AbstractMethodDefinition(method_name, [], return_type, line_number))
+            else:
+                concrete_methods.append(
+                    MethodDefinition(method_name, [], return_type=return_type, line_number=line_number))
+
+        if self.current_token and self.current_token.type == TokenType.DEDENT:
+            self.advance()
+        if self.current_token and self.current_token.type == TokenType.DEDENT:
+            self.advance()
+
+        return AbstractClassDefinition(
+            class_name, abstract_methods, concrete_methods, line_number=line_number)
+
+    def _parse_generic_class_def(self, line_number):
+        """Parse: CALLED name WITH A GENERIC TYPE PARAMETER T THAT EXTENDS bound DOT"""
+        if self.current_token and self.current_token.type == TokenType.CALLED:
+            self.advance()
+        class_name = self.current_token.lexeme if self.current_token else "Unknown"
+        self.advance()
+
+        generic_params = []
+        if self.current_token and self.current_token.type == TokenType.WITH:
+            self.advance()
+            # Consume A/AN
+            if self.current_token and self.current_token.type in (TokenType.A, TokenType.AN):
+                self.advance()
+            # Consume GENERIC
+            if self.current_token and self.current_token.type == TokenType.GENERIC:
+                self.advance()
+            # Consume TYPE
+            if self.current_token and self.current_token.type == TokenType.TYPE:
+                self.advance()
+            # Skip IDENTIFIER("parameter")
+            if self.current_token and self.current_token.type == TokenType.IDENTIFIER and \
+                    self.current_token.lexeme.lower() == 'parameter':
+                self.advance()
+            # Get type parameter name (e.g., T or N)
+            param_name = self.current_token.lexeme if self.current_token else "T"
+            self.advance()
+
+            bounds = []
+            if self.current_token and self.current_token.type == TokenType.THAT:
+                self.advance()
+                if self.current_token and self.current_token.type == TokenType.EXTENDS:
+                    self.advance()
+                    bound_name = self.current_token.lexeme if self.current_token else "Object"
+                    self.advance()
+                    bounds.append(bound_name)
+
+            generic_params.append(TypeParameter(param_name, bounds=bounds, line_number=line_number))
+
+        if self.current_token and self.current_token.type == TokenType.DOT:
+            self.advance()
+
+        return ClassDefinition(class_name, generic_parameters=generic_params, line_number=line_number)
+
+    def _parse_trait_def(self, line_number):
+        """Parse: CALLED name WITH: [INDENT required/provided methods DEDENT]"""
+        if self.current_token and self.current_token.type == TokenType.CALLED:
+            self.advance()
+        trait_name = self.current_token.lexeme if self.current_token else "Unknown"
+        self.advance()
+
+        if self.current_token and self.current_token.type == TokenType.WITH:
+            self.advance()
+        if self.current_token and self.current_token.type == TokenType.COLON:
+            self.advance()
+        if self.current_token and self.current_token.type == TokenType.INDENT:
+            self.advance()
+
+        required_methods = []
+        provided_methods = []
+
+        while self.current_token and self.current_token.type not in (TokenType.DEDENT, TokenType.EOF):
+            # Skip A/AN
+            if self.current_token.type in (TokenType.A, TokenType.AN):
+                self.advance()
+            if not self.current_token or self.current_token.type in (TokenType.DEDENT, TokenType.EOF):
+                break
+
+            # Read modifier: "required" or "provided"
+            modifier = None
+            if self.current_token and self.current_token.type == TokenType.IDENTIFIER:
+                modifier = self.current_token.lexeme.lower()
+                self.advance()
+
+            # Eat METHOD
+            if self.current_token and self.current_token.type == TokenType.METHOD:
+                self.advance()
+
+            # Eat CALLED
+            if self.current_token and self.current_token.type == TokenType.CALLED:
+                self.advance()
+
+            # Get method name (any token, e.g. EQUAL_TO has lexeme "equals")
+            method_name = self.current_token.lexeme if self.current_token else "unknown"
+            self.advance()
+
+            # Parse optional "THAT TAKES <params> AND RETURNS <type>"
+            params = []
+            if self.current_token and self.current_token.type == TokenType.THAT:
+                self.advance()
+                if self.current_token and self.current_token.type == TokenType.TAKES:
+                    self.advance()
+                    # Collect parameter types until AND or RETURNS or DOT
+                    while self.current_token and self.current_token.type not in (
+                            TokenType.AND, TokenType.RETURNS, TokenType.DOT, TokenType.EOF,
+                            TokenType.DEDENT):
+                        plex = self.current_token.lexeme
+                        self.advance()
+                        if plex.lower() != 'another':
+                            params.append(
+                                Parameter(f"param_{len(params)}", plex, line_number))
+
+            if self.current_token and self.current_token.type == TokenType.AND:
+                self.advance()
+
+            return_type = None
+            if self.current_token and self.current_token.type == TokenType.RETURNS:
+                self.advance()
+                if self.current_token and self.current_token.type in (TokenType.A, TokenType.AN):
+                    self.advance()
+                return_type = self.current_token.lexeme.lower() if self.current_token else None
+                if self.current_token and self.current_token.type not in (
+                        TokenType.DOT, TokenType.EOF, TokenType.DEDENT):
+                    self.advance()
+
+            if self.current_token and self.current_token.type == TokenType.DOT:
+                self.advance()
+
+            mdef = AbstractMethodDefinition(method_name, params, return_type, line_number)
+            if modifier == 'required':
+                required_methods.append(mdef)
+            else:
+                provided_methods.append(mdef)
+
+        if self.current_token and self.current_token.type == TokenType.DEDENT:
+            self.advance()
+
+        return TraitDefinition(
+            trait_name,
+            required_methods=required_methods,
+            provided_methods=provided_methods,
+            line_number=line_number)
+
+    def _parse_type_alias_def(self, line_number):
+        """Parse: CALLED name THAT IS A DICTIONARY/LIST ..."""
+        if self.current_token and self.current_token.type == TokenType.CALLED:
+            self.advance()
+        alias_name = self.current_token.lexeme if self.current_token else "Unknown"
+        self.advance()
+
+        target_type = None
+
+        if self.current_token and self.current_token.type == TokenType.THAT:
+            self.advance()
+        if self.current_token and self.current_token.type == TokenType.IS:
+            self.advance()
+        if self.current_token and self.current_token.type in (TokenType.A, TokenType.AN):
+            self.advance()
+
+        if self.current_token and self.current_token.type == TokenType.DICTIONARY:
+            self.advance()
+            key_type = "string"
+            value_type = "string"
+            if self.current_token and self.current_token.type == TokenType.WITH:
+                self.advance()
+                if self.current_token and self.current_token.type in (
+                        TokenType.STRING, TokenType.INTEGER, TokenType.FLOAT, TokenType.BOOLEAN):
+                    key_type = self.current_token.lexeme.lower()
+                    self.advance()
+                if self.current_token and self.current_token.type == TokenType.IDENTIFIER:
+                    self.advance()  # skip "keys"
+                if self.current_token and self.current_token.type == TokenType.AND:
+                    self.advance()
+                if self.current_token and self.current_token.type in (
+                        TokenType.STRING, TokenType.INTEGER, TokenType.FLOAT, TokenType.BOOLEAN):
+                    value_type = self.current_token.lexeme.lower()
+                    self.advance()
+                if self.current_token and self.current_token.type == TokenType.IDENTIFIER:
+                    self.advance()  # skip "values"
+            target_type = f"dictionary<{key_type}, {value_type}>"
+
+        elif self.current_token and self.current_token.type == TokenType.LIST:
+            self.advance()
+            elem_type = "object"
+            if self.current_token and self.current_token.type == TokenType.OF:
+                self.advance()
+                elem_lex = self.current_token.lexeme.lower() if self.current_token else "object"
+                # Normalize obvious plural forms: "integers" -> "integer"
+                if elem_lex.endswith('s') and not elem_lex.endswith('ss'):
+                    elem_lex = elem_lex[:-1]
+                elem_type = elem_lex
+                self.advance()
+            target_type = f"list<{elem_type}>"
+
+        if self.current_token and self.current_token.type == TokenType.DOT:
+            self.advance()
+
+        return TypeAliasDefinition(alias_name, target_type, line_number=line_number)
+
     def print_statement(self):
         """Parse a print statement.
         
@@ -2484,7 +2825,45 @@ class Parser:
         
         # Eat 'if'
         self.eat(TokenType.IF)
-        
+
+        # Check for TypeGuard pattern: IDENTIFIER IS A/AN <type_keyword> [then]
+        # e.g.  If x is a string then ... End if.
+        _type_kws = (
+            TokenType.STRING, TokenType.INTEGER, TokenType.FLOAT, TokenType.BOOLEAN,
+            TokenType.LIST, TokenType.DICTIONARY, TokenType.NUMBER, TokenType.OBJECT,
+        )
+        if (self.current_token and self.current_token.type == TokenType.IDENTIFIER and
+                self.current_token_index + 3 < len(self.tokens) and
+                self.tokens[self.current_token_index + 1].type == TokenType.IS and
+                self.tokens[self.current_token_index + 2].type in (TokenType.A, TokenType.AN) and
+                self.tokens[self.current_token_index + 3].type in _type_kws):
+            condition_name = self.current_token.lexeme
+            tg_condition = Identifier(condition_name, line_number)
+            self.advance()   # consume IDENTIFIER
+            self.advance()   # consume IS
+            self.advance()   # consume A/AN
+            type_name = self.current_token.lexeme.lower()
+            self.advance()   # consume type keyword
+            # Skip optional IDENTIFIER("then")
+            if (self.current_token and self.current_token.type == TokenType.IDENTIFIER and
+                    self.current_token.lexeme.lower() == 'then'):
+                self.advance()
+            # Skip optional INDENT
+            if self.current_token and self.current_token.type == TokenType.INDENT:
+                self.advance()
+            # Consume body tokens until END_IF (skip everything - body not validated)
+            body = []
+            while self.current_token and self.current_token.type not in (
+                    TokenType.END_IF, TokenType.EOF):
+                self.advance()
+            # Consume END_IF
+            if self.current_token and self.current_token.type == TokenType.END_IF:
+                self.advance()
+            # Consume optional DOT
+            if self.current_token and self.current_token.type == TokenType.DOT:
+                self.advance()
+            return TypeGuard(tg_condition, type_name, body, line_number)
+
         # Parse condition
         condition = self.expression()
         
@@ -4404,10 +4783,14 @@ class Parser:
         elif token.type == TokenType.TRUE:
             self.advance()
             return Literal("boolean", True)
-            
+
         elif token.type == TokenType.FALSE:
             self.advance()
             return Literal("boolean", False)
+
+        elif token.type == TokenType.NULL:
+            self.advance()
+            return Literal('null', None)
             
         elif token.type == TokenType.IDENTIFIER or self._can_be_identifier(token):
             # Accept IDENTIFIER or keywords that can be used as variable names
@@ -4430,9 +4813,9 @@ class Parser:
                 
                 # Allow chaining with member access (e.g., "length of myObj.name")
                 target_expr = self._parse_member_access(target_expr)
-                
-                # Return as member access: target_expr.length
-                return MemberAccess(target_expr, 'length', is_method_call=False, line_number=line_num)
+
+                # Return as a function call: length(target_expr)
+                return FunctionCall("length", [target_expr], line_number=line_num)
             
             # Check for generic type arguments early (before other patterns)
             type_arguments = []
@@ -4633,16 +5016,35 @@ class Parser:
                                       self.current_token.type == TokenType.LEFT_BRACKET):
             
             if self.current_token.type == TokenType.LEFT_BRACKET:
-                # Array indexing: array[index]
+                # Array indexing: array[index] or slice: array[start:end]
                 line_num = self.current_token.line if hasattr(self.current_token, 'line') else 0
                 self.advance()  # consume [
-                
-                index_expr = self.expression()
-                if not index_expr:
-                    self.error("Expected index expression after '['")
-                
-                self.eat(TokenType.RIGHT_BRACKET)
-                base_expr = IndexExpression(base_expr, index_expr, line_num)
+
+                # Parse optional start expression (may be absent for [:end] syntax)
+                start_expr = None
+                if self.current_token and self.current_token.type != TokenType.COLON:
+                    start_expr = self.expression()
+
+                if self.current_token and self.current_token.type == TokenType.COLON:
+                    # Slice syntax: [start:end] or [start:end:step]
+                    self.advance()  # consume :
+                    end_expr = None
+                    if self.current_token and self.current_token.type != TokenType.COLON and \
+                            self.current_token.type != TokenType.RIGHT_BRACKET:
+                        end_expr = self.expression()
+                    step_expr = None
+                    if self.current_token and self.current_token.type == TokenType.COLON:
+                        self.advance()  # consume second :
+                        if self.current_token and self.current_token.type != TokenType.RIGHT_BRACKET:
+                            step_expr = self.expression()
+                    self.eat(TokenType.RIGHT_BRACKET)
+                    base_expr = SliceExpression(base_expr, start_expr, end_expr, step_expr, line_num)
+                else:
+                    # Normal index access
+                    if not start_expr:
+                        self.error("Expected index expression after '['")
+                    self.eat(TokenType.RIGHT_BRACKET)
+                    base_expr = IndexExpression(base_expr, start_expr, line_num)
                 
             elif self.current_token.type == TokenType.DOT:
                 # Member access: object.property or object.method()

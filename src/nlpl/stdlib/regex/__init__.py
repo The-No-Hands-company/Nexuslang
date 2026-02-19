@@ -113,8 +113,8 @@ def register_regex_functions(runtime: Runtime) -> None:
     runtime.constants["REGEX_VERBOSE"] = REGEX_VERBOSE
     runtime.constants["REGEX_ASCII"] = REGEX_ASCII
     
-    # Short aliases
+    # Short aliases (not overriding string stdlib's replace)
     runtime.register_function("match", regex_match)
     runtime.register_function("find", regex_find)
     runtime.register_function("find_all", regex_find_all)
-    runtime.register_function("replace", regex_replace)
+    runtime.register_function("regex_replace", regex_replace)

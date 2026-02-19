@@ -25,11 +25,11 @@ def test_fstring_parser():
     
     assert isinstance(ast, FStringExpression), f"Expected FStringExpression, got {type(ast)}"
     assert len(ast.parts) == 3
-    assert ast.parts[0] == (True, 'Hello, ')
+    assert ast.parts[0] == (True, 'Hello, ', None)
     assert ast.parts[0][0] == True  # is_literal
     assert isinstance(ast.parts[1][1], Identifier)  # expression
     assert ast.parts[1][1].name == 'name'
-    assert ast.parts[2] == (True, '!')
+    assert ast.parts[2] == (True, '!', None)
     print("    Simple f-string parsed correctly")
     
     # Test 2: Expression in f-string

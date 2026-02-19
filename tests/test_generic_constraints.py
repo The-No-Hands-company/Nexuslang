@@ -3,7 +3,7 @@ Test enhanced generic constraints with multiple trait bounds.
 """
 
 from nlpl.typesystem.types import (
-    ClassType, FunctionType, INTEGER_TYPE, BOOLEAN_TYPE,
+    ClassType, FunctionType, INTEGER_TYPE, BOOLEAN_TYPE, STRING_TYPE,
     COMPARABLE_TRAIT, EQUATABLE_TRAIT, PRINTABLE_TRAIT
 )
 from nlpl.typesystem.generic_types import GenericTypeConstraint, GenericTypeContext

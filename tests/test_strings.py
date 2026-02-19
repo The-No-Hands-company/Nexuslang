@@ -226,12 +226,12 @@ class TestStringEdgeCases(NLPLTestBase):
         set s1 to "hello"
         set s2 to "hello"
         set s3 to "world"
-        set equal to s1 == s2
-        set not_equal to s1 == s3
+        set result_eq to s1 == s2
+        set result_ne to s1 == s3
         '''
         self.parse_and_execute(code)
-        assert self.interpreter.get_variable("equal") == True
-        assert self.interpreter.get_variable("not_equal") == False
+        assert self.interpreter.get_variable("result_eq") == True
+        assert self.interpreter.get_variable("result_ne") == False
 
 
 if __name__ == "__main__":

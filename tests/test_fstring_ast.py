@@ -4,7 +4,7 @@ Test string interpolation (f-strings).
 
 from src.nlpl.parser.ast import FStringExpression, Literal, Identifier
 from src.nlpl.parser.parser import Parser
-from src.nlpl.parser.lexer import Lexer
+from src.nlpl.parser.lexer import Lexer, TokenType
 
 def test_fstring_parsing():
     """Test parsing f-strings."""
@@ -15,7 +15,7 @@ def test_fstring_parsing():
     code = 'f"Hello, {name}!"'
     
     lexer = Lexer(code)
-    parser = Parser(lexer)
+    parser = Parser(lexer.scan_tokens())
     
     # For now, just test that we can create the AST node manually
     parts = [
@@ -33,7 +33,7 @@ def test_fstring_parsing():
     print("\n2. Testing expression interpolation:")
     parts2 = [
         (True, "Result: "),
-        (False, Literal(42)),
+        (False, Literal(TokenType.INTEGER_LITERAL, 42)),
     ]
     fstring2 = FStringExpression(parts2)
     assert len(fstring2.parts) == 2

@@ -16,18 +16,54 @@ def register_string_functions(runtime: Runtime) -> None:
     # Basic string operations
     runtime.register_function("length", length)
     runtime.register_function("len", length)  # Short alias
-    
+    runtime.register_function("substring", substring)
+    runtime.register_function("concatenate", concatenate)
+    runtime.register_function("str_concat", concatenate)  # Alias (concatenate is a reserved token)
+    runtime.register_function("str_contains", contains)    # Alias (contains is a reserved token)
+    runtime.register_function("str_starts_with", starts_with)  # Alias (starts_with/starts with are reserved)
+    runtime.register_function("str_ends_with", ends_with)      # Alias (ends_with/ends with are reserved)
+    runtime.register_function("str_split", split)  # Alias (split is a reserved token)
+    runtime.register_function("str_join", join)    # Alias (join is a reserved token)
+
+    # Case conversion
+    runtime.register_function("uppercase", uppercase)
+    runtime.register_function("lowercase", lowercase)
+    runtime.register_function("capitalize", capitalize)
+    runtime.register_function("title_case", title_case)
+
+    # Trimming
+    runtime.register_function("strip", strip)
+    runtime.register_function("lstrip", lstrip)
+    runtime.register_function("rstrip", rstrip)
+    runtime.register_function("trim", trim)
+
+    # Searching
+    runtime.register_function("contains", contains)
+    runtime.register_function("starts_with", starts_with)
+    runtime.register_function("ends_with", ends_with)
+    runtime.register_function("find", find)
+    runtime.register_function("index_of", index_of)
+    runtime.register_function("count_occurrences", count_occurrences)
+
+    # Manipulation
+    runtime.register_function("replace", replace)
+    runtime.register_function("reverse", reverse)
+    runtime.register_function("repeat", repeat)
+    runtime.register_function("split", split)
+    runtime.register_function("split_lines", split_lines)
+    runtime.register_function("join", join)
+
     # String validation
     runtime.register_function("is_numeric", is_numeric)
     runtime.register_function("is_alphabetic", is_alphabetic)
     runtime.register_function("is_alphanumeric", is_alphanumeric)
     runtime.register_function("is_lowercase", is_lowercase)
     runtime.register_function("is_uppercase", is_uppercase)
-    
+
     # Conversion
     runtime.register_function("to_string", to_string)
     runtime.register_function("str", to_string)  # Short alias
-    
+
     # Regular expressions
     runtime.register_function("match", match)
     runtime.register_function("replace_regex", replace_regex)

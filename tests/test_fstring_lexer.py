@@ -24,9 +24,9 @@ def test_fstring_lexer():
     parts = fstring_tokens[0].literal
     print(f"   Parts: {parts}")
     assert len(parts) == 3, f"Expected 3 parts, got {len(parts)}"
-    assert parts[0] == ('literal', 'Hello, ')
-    assert parts[1] == ('expr', 'name')
-    assert parts[2] == ('literal', '!')
+    assert parts[0] == ('literal', 'Hello, ', None)
+    assert parts[1] == ('expr', 'name', None)
+    assert parts[2] == ('literal', '!', None)
     print("    Simple f-string lexed correctly")
     
     # Test 2: Expression in f-string
@@ -38,7 +38,7 @@ def test_fstring_lexer():
     fstring_tokens2 = [t for t in tokens2 if t.type == TokenType.FSTRING_LITERAL]
     parts2 = fstring_tokens2[0].literal
     print(f"   Parts: {parts2}")
-    assert parts2[1] == ('expr', 'x + y')
+    assert parts2[1] == ('expr', 'x + y', None)
     print("    Expression f-string lexed correctly")
     
     # Test 3: Multiple interpolations

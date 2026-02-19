@@ -267,14 +267,16 @@ def list_directory(dirpath: str) -> List[str]:
 def walk_directory(dirpath: str) -> List[Dict[str, Any]]:
     """
     Walk directory tree recursively.
-    Returns list of dicts with 'root', 'dirs', 'files' keys.
+    Returns list of dicts with 'path', 'root', 'dirs', 'files' keys.
     """
     try:
         result = []
         for root, dirs, files in os.walk(dirpath):
             result.append({
+                'path': root,
                 'root': root,
                 'dirs': dirs,
+                'directories': dirs,
                 'files': files
             })
         return result
@@ -283,14 +285,12 @@ def walk_directory(dirpath: str) -> List[Dict[str, Any]]:
 
 
 def delete_directory(dirpath: str) -> bool:
-    """Delete empty directory."""
+    """Delete a directory (including non-empty directories)."""
     try:
-        os.rmdir(dirpath)
+        shutil.rmtree(dirpath)
         return True
     except FileNotFoundError:
         return False
-    except OSError:
-        raise RuntimeError(f"Directory not empty: {dirpath}")
     except Exception as e:
         raise RuntimeError(f"Error deleting directory {dirpath}: {e}")
 
