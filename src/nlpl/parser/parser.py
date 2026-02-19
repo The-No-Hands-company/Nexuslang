@@ -5057,35 +5057,41 @@ class Parser:
                     self.error("Expected member name after '.'")
                 
                 member_name_parts = []
-                while (self.current_token and 
-                       (self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token))):
-                    
-                    # CRITICAL: Check for stop conditions BEFORE consuming the token
-                    if self.current_token.type in (TokenType.WITH, TokenType.LEFT_PAREN, TokenType.DOT, TokenType.LEFT_BRACKET):
-                        break
-                    
-                    # Also stop at comparison/arithmetic operators or structural tokens
+                _first_member_token = True  # After '.', first token is always treated as contextual identifier
+                while self.current_token:
+
+                    # These structural tokens always stop member-name parsing.
                     if self.current_token.type in (
+                        TokenType.WITH, TokenType.LEFT_PAREN, TokenType.DOT, TokenType.LEFT_BRACKET,
                         TokenType.PLUS, TokenType.MINUS, TokenType.TIMES, TokenType.DIVIDED_BY,
                         TokenType.EQUAL_TO, TokenType.NOT_EQUAL_TO, TokenType.LESS_THAN, TokenType.GREATER_THAN,
                         TokenType.AND, TokenType.OR, TokenType.NEWLINE, TokenType.DEDENT, TokenType.COMMA,
-                        TokenType.RIGHT_PAREN, TokenType.RIGHT_BRACKET, TokenType.TO, TokenType.SET,
-                        TokenType.END, TokenType.RETURN, TokenType.IF, TokenType.WHILE, TokenType.FOR
+                        TokenType.RIGHT_PAREN, TokenType.RIGHT_BRACKET,
+                        TokenType.END, TokenType.RETURN, TokenType.IF, TokenType.WHILE, TokenType.FOR,
+                        TokenType.EOF,
                     ):
                         break
-                    
-                    # For single-word member names (most common case), stop after first identifier
-                    # Multi-word names must be explicitly joined with existing keywords
+
+                    # For subsequent tokens in a multi-word name, require a plain identifier
+                    # or an established contextual keyword (e.g. 'to' in 'to_string').
+                    if not _first_member_token and not (
+                        self.current_token.type == TokenType.IDENTIFIER or
+                        self._can_be_identifier(self.current_token)
+                    ):
+                        break
+
+                    # Consume this token as part of the member name.
+                    # On the FIRST token after '.', any keyword is accepted as a contextual
+                    # identifier — obj.set(), obj.has(), obj.add(), obj.contains(), etc.
                     member_name_parts.append(self.current_token.lexeme)
                     self.advance()
-                    
-                    # CRITICAL FIX: In call context, only consume ONE identifier (the method name)
-                    # This prevents consuming tokens from subsequent statements
-                    # Example: "call obj.get\ncall obj.set" where lexer doesn't emit NEWLINE
+                    _first_member_token = False
+
+                    # CRITICAL FIX: In call context, only consume ONE identifier (the method name).
                     if is_call_context:
                         break
-                    
-                    # Peek at next token - if it's not another identifier that could be part of name, stop
+
+                    # After the first token, continue only if followed by a plain identifier.
                     if self.current_token and self.current_token.type not in (TokenType.IDENTIFIER,):
                         break
                 
@@ -5162,14 +5168,18 @@ class Parser:
             # I/O contextual keywords
             TokenType.FILE, TokenType.OPEN, TokenType.CLOSE, TokenType.READ,
             TokenType.WRITE, TokenType.APPEND, TokenType.EXISTS,
-            TokenType.DIRECTORY, TokenType.PATH,  # Contextual keywords
+            TokenType.DIRECTORY, TokenType.PATH,
             TokenType.LIST, TokenType.DICTIONARY,  # Collection types
             TokenType.LENGTH, TokenType.SET, TokenType.CONTAINS,
-            TokenType.STRING, TokenType.INTEGER, TokenType.FLOAT, TokenType.BOOLEAN, TokenType.NUMBER,  # Primitive types
+            TokenType.STRING, TokenType.INTEGER, TokenType.FLOAT, TokenType.BOOLEAN, TokenType.NUMBER,
             TokenType.EQUALS,  # Allow 'equals' as method name
             TokenType.EMPTY,
             TokenType.ADD,
-            TokenType.TO  # Allow 'to' in function names like "to string"
+            TokenType.TO,   # Allow 'to' in function names like "to string"
+            # Common method-name keywords that must remain usable after '.'
+            TokenType.HAS,      # obj.has(key)
+            TokenType.INSERT,   # obj.insert(key, val)
+            TokenType.UPDATE,   # obj.update(other)
         }
         return token.type in contextual_keywords
         

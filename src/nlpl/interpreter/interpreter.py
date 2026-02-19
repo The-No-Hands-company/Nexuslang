@@ -2978,7 +2978,79 @@ class Interpreter:
         # Handle dict-based objects (legacy/fallback)
         if isinstance(obj, dict):
             if node.is_method_call:
-                # Method call
+                # Evaluate arguments once for reuse below
+                args = [self.execute(arg) for arg in node.arguments] if hasattr(node, 'arguments') and node.arguments else []
+
+                # ── Native Python dict operations ────────────────────────────
+                # These are mapped from natural NLPL method names so that
+                # keywords like 'has', 'set', 'add', 'contains', 'insert',
+                # 'update' work correctly as method calls on dict objects.
+                if member_name == 'has' or member_name == 'contains':
+                    # dict.has(key)  /  dict.contains(key) → key in dict
+                    if not args:
+                        raise NLPLRuntimeError("has() requires a key argument",
+                                               line=getattr(node, 'line', None), full_source=self.source)
+                    return args[0] in obj
+
+                elif member_name == 'get':
+                    # dict.get(key)  /  dict.get(key, default)
+                    if not args:
+                        raise NLPLRuntimeError("get() requires a key argument",
+                                               line=getattr(node, 'line', None), full_source=self.source)
+                    return obj.get(args[0], args[1] if len(args) > 1 else None)
+
+                elif member_name == 'set' or member_name == 'insert' or member_name == 'put':
+                    # dict.set(key, value)  /  dict.insert(key, value)  /  dict.put(key, value)
+                    if len(args) < 2:
+                        raise NLPLRuntimeError(f"{member_name}() requires key and value arguments",
+                                               line=getattr(node, 'line', None), full_source=self.source)
+                    obj[args[0]] = args[1]
+                    return None
+
+                elif member_name == 'remove' or member_name == 'delete':
+                    # dict.remove(key)  /  dict.delete(key)
+                    if not args:
+                        raise NLPLRuntimeError("remove() requires a key argument",
+                                               line=getattr(node, 'line', None), full_source=self.source)
+                    obj.pop(args[0], None)
+                    return None
+
+                elif member_name == 'pop':
+                    # dict.pop(key)  /  dict.pop(key, default)
+                    if not args:
+                        raise NLPLRuntimeError("pop() requires a key argument",
+                                               line=getattr(node, 'line', None), full_source=self.source)
+                    return obj.pop(args[0]) if len(args) == 1 else obj.pop(args[0], args[1])
+
+                elif member_name == 'keys':
+                    return list(obj.keys())
+
+                elif member_name == 'values':
+                    return list(obj.values())
+
+                elif member_name == 'items':
+                    return list(obj.items())
+
+                elif member_name == 'update' or member_name == 'merge':
+                    # dict.update(other_dict)
+                    if args and isinstance(args[0], dict):
+                        obj.update(args[0])
+                    return None
+
+                elif member_name == 'clear':
+                    obj.clear()
+                    return None
+
+                elif member_name == 'copy':
+                    return dict(obj)
+
+                elif member_name == 'size' or member_name == 'length':
+                    return len(obj)
+
+                elif member_name == 'is_empty':
+                    return len(obj) == 0
+
+                # ── User-defined methods via __method_*__ ────────────────────
                 method_key = f"__method_{member_name}__"
                 if method_key in obj:
                     # Execute the method with the instance as context
