@@ -322,6 +322,22 @@ class Interpreter:
 
         return handler(node)
             
+    def get_variable_or_none(self, name):
+        """
+        Cheap speculative variable lookup — returns None on miss instead of raising.
+
+        Use this for hot-path checks (e.g. 'is this name a callable variable?')
+        where the absence of the name is expected and normal.  This avoids the
+        expensive NLPLNameError construction (difflib.get_close_matches over all
+        known names) that get_variable() incurs on every miss.
+        """
+        for scope in reversed(self.current_scope):
+            if name in scope:
+                return scope[name]
+        if hasattr(self.runtime, 'constants') and name in self.runtime.constants:
+            return self.runtime.constants[name]
+        return None
+
     def get_variable(self, name):
         """Get a variable from the current scope with enhanced error reporting."""
         # Search from innermost to outermost scope
@@ -2308,23 +2324,22 @@ class Interpreter:
         
         # Check if function_name is a variable holding a callable (e.g., closure, function reference)
         # This enables: block() where block is a variable containing a closure
-        try:
-            var_value = self.get_variable(function_name)
-            if callable(var_value):
-                # It's a callable stored in a variable - call it
-                return var_value(*positional_args, **named_args)
-            # If it's not callable, fall through to check if it's a function name
-        except (NameError, NLPLNameError):
-            # Variable not found, continue to check if it's a function name
-            pass
+        # Use get_variable_or_none to avoid expensive NLPLNameError + difflib on every miss;
+        # the name-not-found case is normal here (most calls go to functions, not variables).
+        _var_value = self.get_variable_or_none(function_name)
+        if _var_value is not None and callable(_var_value):
+            return _var_value(*positional_args, **named_args)
+        # If _var_value is not None but not callable, fall through (e.g. int stored under same name)
         
         # Handle module.function calls (function_name contains a dot)
         if '.' in function_name:
             parts = function_name.split('.')
             if len(parts) == 2:
                 module_name, member_name = parts
-                try:
-                    module = self.get_variable(module_name)
+                # Use get_variable_or_none: module might not be a local variable at all
+                # (e.g. it could be a runtime-registered module name) — no error construction on miss.
+                module = self.get_variable_or_none(module_name)
+                if module is not None:
                     if hasattr(module, member_name):
                         func = getattr(module, member_name)
                         if callable(func):
@@ -2337,9 +2352,6 @@ class Interpreter:
                             )
                     else:
                         raise AttributeError(f"Module '{module_name}' has no attribute '{member_name}'")
-                except NameError:
-                    # Module not found, continue to other lookups
-                    pass
         
         # Check for built-in functions in the runtime
         if function_name in self.runtime.functions:
@@ -2421,13 +2433,11 @@ class Interpreter:
             
             return result
         
-        # Try to get it as a variable (might be a function value)
-        try:
-            func_value = self.get_variable(function_name)
-            if callable(func_value):
-                return func_value(*positional_args, **named_args)
-        except:
-            pass
+        # Try to get it as a variable (might be a function value stored after definition)
+        # Use get_variable_or_none to avoid NLPLNameError + difflib construction on miss.
+        _func_value = self.get_variable_or_none(function_name)
+        if _func_value is not None and callable(_func_value):
+            return _func_value(*positional_args, **named_args)
         
         raise NLPLNameError(
             name=function_name,
