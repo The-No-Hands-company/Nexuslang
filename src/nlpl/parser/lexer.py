@@ -625,8 +625,8 @@ class Lexer:
         if not hasattr(self, '_stream_idx'):
             self._stream_idx = 0
 
-        # Skip INDENT / DEDENT tokens
-        skip_types = {TokenType.INDENT, TokenType.DEDENT}
+        # Skip INDENT / DEDENT / NEWLINE tokens (structural, not content)
+        skip_types = {TokenType.INDENT, TokenType.DEDENT, TokenType.NEWLINE}
         while self._stream_idx < len(self.tokens) and self.tokens[self._stream_idx].type in skip_types:
             self._stream_idx += 1
 
@@ -655,11 +655,17 @@ class Lexer:
         
         # Handle newlines
         if c == '\n':
+            # Emit NEWLINE with the line number of the line that just ended,
+            # i.e. BEFORE incrementing self.line to the next line.  Skip when
+            # the last token was already NEWLINE/INDENT/DEDENT to avoid
+            # duplicate boundary tokens that would confuse the member-name parser.
+            if self.tokens and self.tokens[-1].type not in (
+                TokenType.NEWLINE, TokenType.INDENT, TokenType.DEDENT
+            ):
+                self.add_token(TokenType.NEWLINE)
             self.line += 1
             self.column = 1
             self.at_line_start = True
-            # Emit NEWLINE token for significant newlines (not inside expressions)
-            # For now, we'll just track line starts
             return
         
         # Skip other whitespace (spaces, tabs handled by handle_indentation)

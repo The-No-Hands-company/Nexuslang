@@ -117,6 +117,56 @@ class TypeEnvironment:
         
         return None
 
+class TypeRegistry(dict):
+    """Registry for user-defined types (classes, interfaces, traits, aliases).
+
+    Extends ``dict`` so callers can use the standard ``reg[name]``,
+    ``name in reg``, and ``reg[name] = t`` patterns while also providing
+    the domain-specific helpers expected by TypeChecker.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        # Map interface name -> frozenset of required method names.
+        self._interfaces: Dict[str, Set[str]] = {}
+
+    # ------------------------------------------------------------------
+    # Helpers used by TypeChecker
+    # ------------------------------------------------------------------
+
+    def create_class_type(
+        self,
+        name: str,
+        properties: Dict[str, Any],
+        methods: Dict[str, Any],
+        parent_classes: Optional[List[str]] = None,
+    ) -> "ClassType":
+        """Create a ClassType, register it, and return it."""
+        class_type = ClassType(name, properties, methods, parent_classes)
+        self[name] = class_type
+        return class_type
+
+    def register_interface(self, name: str, required_methods: List[str]) -> None:
+        """Record which methods an interface mandates."""
+        self._interfaces[name] = set(required_methods)
+
+    def check_interface_implementation(
+        self, class_name: str, interface_name: str
+    ) -> List[str]:
+        """Return the list of methods required by *interface_name* that
+        *class_name* has not yet implemented.  Returns ``[]`` when the
+        interface is unknown (forward reference) or fully satisfied.
+        """
+        required = self._interfaces.get(interface_name, set())
+        if not required:
+            return []
+        class_type = self.get(class_name)
+        implemented: Set[str] = set()
+        if class_type is not None and hasattr(class_type, "methods"):
+            implemented = set(class_type.methods.keys())
+        return sorted(required - implemented)
+
+
 class TypeChecker:
     """Type checker for NLPL programs."""
     
@@ -127,7 +177,7 @@ class TypeChecker:
         self.type_inference = TypeInferenceEngine()
         self.type_inference_engine = self.type_inference  # Alias for pattern matching
         # Use the user-defined type registry
-        self.type_registry = {}
+        self.type_registry = TypeRegistry()
         self.generic_registry = GenericTypeRegistry()
         self.current_class: Optional[str] = None
         self.current_trait: Optional[str] = None

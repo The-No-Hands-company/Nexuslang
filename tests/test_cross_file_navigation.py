@@ -53,7 +53,7 @@ end
             calc_symbol = [s for s in symbols if s.kind == 'function'][0]
             assert calc_symbol.name == "calculate"
             assert "module_a.nlpl" in calc_symbol.file_uri
-            assert calc_symbol.line == 0  # 0-indexed, line 1 is blank
+            assert calc_symbol.line == 1  # 0-indexed: line 0 is blank, function is on line 1
             
             # Test: Find "Calculator" class
             symbols = index.get_symbol("Calculator")

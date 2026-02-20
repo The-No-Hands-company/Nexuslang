@@ -204,7 +204,10 @@ class Parser:
         statements = []
         
         while self.current_token and self.current_token.type != TokenType.EOF:
-            # Skip empty lines and whitespace
+            # Skip NEWLINE/INDENT/DEDENT boundary tokens and empty-lexeme identifiers
+            if self.current_token.type in (TokenType.NEWLINE, TokenType.INDENT, TokenType.DEDENT):
+                self.advance()
+                continue
             if self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.strip() == '':
                 self.advance()
                 continue
@@ -366,9 +369,9 @@ class Parser:
                 # End of file - return None to stop parsing
                 return None
             
-            elif token.type == TokenType.INDENT or token.type == TokenType.DEDENT:
-                # INDENT/DEDENT tokens are handled by block-level constructs (if, while, etc.)
-                # If we see them here, they're unexpected - skip them
+            elif token.type in (TokenType.INDENT, TokenType.DEDENT, TokenType.NEWLINE):
+                # INDENT/DEDENT/NEWLINE tokens are handled by block-level constructs.
+                # If we encounter them here at statement level, skip them.
                 self.advance()
                 return None
             
@@ -734,6 +737,9 @@ class Parser:
             self.advance()
         if self.current_token and self.current_token.type == TokenType.COLON:
             self.advance()
+        # Skip NEWLINE before INDENT
+        while self.current_token and self.current_token.type == TokenType.NEWLINE:
+            self.advance()
         if self.current_token and self.current_token.type == TokenType.INDENT:
             self.advance()
 
@@ -741,6 +747,10 @@ class Parser:
         concrete_methods = []
 
         while self.current_token and self.current_token.type not in (TokenType.DEDENT, TokenType.EOF):
+            # Skip NEWLINE tokens between method definitions
+            if self.current_token.type == TokenType.NEWLINE:
+                self.advance()
+                continue
             # Skip A/AN
             if self.current_token.type in (TokenType.A, TokenType.AN):
                 self.advance()
@@ -851,6 +861,9 @@ class Parser:
             self.advance()
         if self.current_token and self.current_token.type == TokenType.COLON:
             self.advance()
+        # Skip NEWLINE before INDENT
+        while self.current_token and self.current_token.type == TokenType.NEWLINE:
+            self.advance()
         if self.current_token and self.current_token.type == TokenType.INDENT:
             self.advance()
 
@@ -858,6 +871,10 @@ class Parser:
         provided_methods = []
 
         while self.current_token and self.current_token.type not in (TokenType.DEDENT, TokenType.EOF):
+            # Skip NEWLINE tokens between method definitions
+            if self.current_token.type == TokenType.NEWLINE:
+                self.advance()
+                continue
             # Skip A/AN
             if self.current_token.type in (TokenType.A, TokenType.AN):
                 self.advance()
@@ -1740,6 +1757,10 @@ class Parser:
             properties = []
             methods = []
             
+            # Skip NEWLINE before INDENT (emitted after class header line)
+            while self.current_token and self.current_token.type == TokenType.NEWLINE:
+                self.advance()
+            
             # Expect INDENT
             if self.current_token and self.current_token.type == TokenType.INDENT:
                 self.advance()
@@ -1888,6 +1909,9 @@ class Parser:
                     else:
                         self.error("Expected interface name after 'implements'")
                 
+                # Skip NEWLINE before INDENT (emitted after class header line)
+                while self.current_token and self.current_token.type == TokenType.NEWLINE:
+                    self.advance()
                 # Expect INDENT for class body
                 if self.current_token and self.current_token.type == TokenType.INDENT:
                     self.advance()  # consume INDENT
@@ -2531,6 +2555,8 @@ class Parser:
             return_type = self.parse_type()
         
         # Expect INDENT for method body
+        while self.current_token and self.current_token.type == TokenType.NEWLINE:
+            self.advance()
         if self.current_token and self.current_token.type == TokenType.INDENT:
             self.advance()  # consume INDENT
             
@@ -2674,6 +2700,8 @@ class Parser:
         body = []
         
         # Check for INDENT (method body)
+        while self.current_token and self.current_token.type == TokenType.NEWLINE:
+            self.advance()
         if self.current_token and self.current_token.type == TokenType.INDENT:
             self.advance()  # consume INDENT
             
@@ -2749,6 +2777,9 @@ class Parser:
             if self.current_token and self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() == 'then':
                 self.advance()
             
+            # Skip NEWLINE before INDENT
+            while self.current_token and self.current_token.type == TokenType.NEWLINE:
+                self.advance()
             # Expect INDENT for block-based syntax
             if self.current_token and self.current_token.type == TokenType.INDENT:
                 self.advance()  # Consume INDENT
@@ -2791,6 +2822,9 @@ class Parser:
         elif self.current_token.type == TokenType.ELSE:
             self.advance()  # Consume ELSE
             
+            # Skip NEWLINE before INDENT
+            while self.current_token and self.current_token.type == TokenType.NEWLINE:
+                self.advance()
             # Expect INDENT for block-based syntax
             if self.current_token and self.current_token.type == TokenType.INDENT:
                 self.advance()  # Consume INDENT
@@ -2885,6 +2919,9 @@ class Parser:
         if self.current_token and self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() == 'then':
             self.advance()
         
+        # Skip NEWLINE before INDENT (emitted after if-condition line)
+        while self.current_token and self.current_token.type == TokenType.NEWLINE:
+            self.advance()
         # Expect INDENT for block-based syntax
         if self.current_token and self.current_token.type == TokenType.INDENT:
             self.advance()  # Consume INDENT
@@ -5277,6 +5314,7 @@ class Parser:
     def identifier_or_function_call(self):
         """Parse an identifier or function call."""
         identifier = self.current_token.lexeme
+        line_num = self.current_token.line
         self.advance()
         
         # Module access (e.g., module.function)
@@ -5296,13 +5334,26 @@ class Parser:
             else:
                 self.error("Expected an identifier after '.'")
         
-        # Function call
+        # Zero-arg (or paren-delimited) function call: func() or func(a, b)
+        # This is the canonical syntax for calling a function with no 'with' keyword.
+        if self.current_token and self.current_token.type == TokenType.LEFT_PAREN:
+            self.advance()  # consume (
+            args = []
+            while self.current_token and self.current_token.type != TokenType.RIGHT_PAREN:
+                if args:
+                    if self.current_token.type == TokenType.COMMA:
+                        self.advance()  # consume ,
+                args.append(self.expression())
+            self.eat(TokenType.RIGHT_PAREN)
+            return FunctionCall(identifier, args, None, None, None, line_num)
+
+        # Function call with 'with' syntax
         if self.current_token and (self.current_token.type == TokenType.WITH or 
                                    (self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() == 'with')):
             return self.function_call(identifier, self.current_token.line)
         
         # Simple identifier
-        return Identifier(identifier, self.current_token.line)
+        return Identifier(identifier, line_num)
         
     def function_call(self, function_name, line_number):
         """Parse a function call with positional and/or named arguments.
