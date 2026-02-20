@@ -1005,7 +1005,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 
 ---
 
-### 1.3 OS Kernel Primitives ❌ MISSING
+### 2.5 OS Kernel Primitives ❌ MISSING
 
 **What C/C++/Rust Have:**
 
@@ -1047,9 +1047,9 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 
 ---
 
-## PART 2: Advanced Memory Management
+## Advanced Memory Management
 
-### 2.1 Memory Safety Features ⚠️ PARTIAL
+### Memory Safety Features ⚠️ PARTIAL
 
 **Current State:**
 
@@ -1114,7 +1114,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 
 ---
 
-### 2.2 Memory Allocator Control ⚠️ PARTIAL
+### Memory Allocator Control ⚠️ PARTIAL
 
 **Current State:**
 
@@ -1164,7 +1164,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 
 ---
 
-### 2.3 Memory Ordering & Atomics ✅ COMPLETE
+### Memory Ordering & Atomics ✅ COMPLETE
 
 **What C/C++/Rust Have:**
 
