@@ -582,7 +582,11 @@ class TypeChecker:
         # Check the condition
         condition_type = self.check_statement(statement.condition, env)
         
-        if not condition_type.is_compatible_with(BOOLEAN_TYPE):
+        # Allow ANY_TYPE (unknown) and FunctionType (likely a method call whose
+        # return type could not be statically resolved) to pass through without
+        # an error. Only hard-fail on concrete non-boolean types.
+        if (not isinstance(condition_type, (AnyType, FunctionType))
+                and not condition_type.is_compatible_with(BOOLEAN_TYPE)):
             self.errors.append(
                 f"Type error: If condition must be a boolean, got '{condition_type}'"
             )
@@ -608,7 +612,11 @@ class TypeChecker:
         # Check the condition
         condition_type = self.check_statement(loop.condition, env)
         
-        if not condition_type.is_compatible_with(BOOLEAN_TYPE):
+        # Allow ANY_TYPE (unknown) and FunctionType (likely a method call whose
+        # return type could not be statically resolved) to pass through without
+        # an error. Only hard-fail on concrete non-boolean types.
+        if (not isinstance(condition_type, (AnyType, FunctionType))
+                and not condition_type.is_compatible_with(BOOLEAN_TYPE)):
             self.errors.append(
                 f"Type error: While condition must be a boolean, got '{condition_type}'"
             )
@@ -1460,6 +1468,13 @@ class TypeChecker:
         
         # If inference succeeded, return the inferred type
         if inferred_type != ANY_TYPE:
+            # When this is a method call (has arguments) and inference returned
+            # FunctionType, we should return the function's return type, not the
+            # FunctionType itself. This handles native dict/list method calls such
+            # as d.has("key"), d.size(), d.get("k") used directly in if-conditions.
+            if isinstance(inferred_type, FunctionType) and getattr(expr, 'is_method_call', False):
+                rt = getattr(inferred_type, 'return_type', None)
+                return rt if rt is not None else ANY_TYPE
             return inferred_type
         
         # Fallback: Check the object expression directly
