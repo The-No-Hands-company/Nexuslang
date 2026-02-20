@@ -57,6 +57,34 @@ def run_program(source_code, debug=False, type_check=True, profiler=None, optimi
         print("\nAST:")
         print_ast(ast)
     
+    # Compile-time borrow checker (ownership / borrow safety)
+    from .typesystem.borrow_checker import BorrowChecker
+    from .typesystem.lifetime_checker import LifetimeChecker
+
+    borrow_errors = BorrowChecker().check(ast)
+    if borrow_errors:
+        messages = "\n".join(str(e) for e in borrow_errors)
+        raise NLPLRuntimeError(
+            f"Borrow checker failed:\n{messages}",
+            error_type_key="runtime_error",
+            full_source=source_code,
+        )
+
+    lifetime_errors = LifetimeChecker().check(ast)
+    # Separate errors from warnings
+    hard_lt_errors = [e for e in lifetime_errors if not e.is_warning]
+    lt_warnings = [e for e in lifetime_errors if e.is_warning]
+    if lt_warnings and debug:
+        for w in lt_warnings:
+            print(f"[lifetime warning] {w}")
+    if hard_lt_errors:
+        messages = "\n".join(str(e) for e in hard_lt_errors)
+        raise NLPLRuntimeError(
+            f"Lifetime checker failed:\n{messages}",
+            error_type_key="runtime_error",
+            full_source=source_code,
+        )
+
     interpreter = Interpreter(runtime, enable_type_checking=type_check, source=source_code)
     
     # Attach profiler if provided

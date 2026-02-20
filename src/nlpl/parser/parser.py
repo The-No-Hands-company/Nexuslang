@@ -29,6 +29,8 @@ from nlpl.parser.ast import (
     DowngradeExpression, UpgradeExpression,
     # Ownership / borrow operations
     MoveExpression, BorrowExpression, DropBorrowStatement,
+    # Lifetime annotations
+    LifetimeAnnotation, BorrowExpressionWithLifetime, ParameterWithLifetime, ReturnTypeWithLifetime,
     # Struct and union types
     StructDefinition, StructField, UnionDefinition, EnumDefinition, EnumMember, OffsetofExpression, TypeCastExpression,
     # Inline assembly
@@ -4613,7 +4615,7 @@ class Parser:
             else:
                 self.error("Expected variable name after 'move'")
 
-        # Handle borrow operator: borrow x / borrow mutable x
+        # Handle borrow operator: borrow x / borrow mutable x [with lifetime label]
         if self.current_token and self.current_token.type == TokenType.BORROW:
             from ..parser.ast import BorrowExpression
             line_num = self.current_token.line if hasattr(self.current_token, 'line') else 0
@@ -4629,6 +4631,10 @@ class Parser:
                                         self._can_be_identifier(self.current_token)):
                 var_name = self.current_token.lexeme
                 self.advance()
+                # Optionally parse 'with lifetime <label>'
+                lt = self._parse_lifetime_annotation()
+                if lt is not None:
+                    return BorrowExpressionWithLifetime(var_name, mutable, lt, line_num)
                 return BorrowExpression(var_name, mutable, line_num)
             else:
                 self.error("Expected variable name after 'borrow'")
@@ -5916,6 +5922,32 @@ class Parser:
         
         return RcCreation(rc_kind, inner_type, value, line_number)
     
+    def _parse_lifetime_annotation(self):
+        """Parse ``with lifetime <label>`` and return a :class:`LifetimeAnnotation`.
+
+        Called when the caller already detected the WITH token followed by the
+        LIFETIME token.  Consumes both tokens plus the following identifier and
+        returns a :class:`~nlpl.parser.ast.LifetimeAnnotation` node.
+
+        If the pattern does not match (no WITH/LIFETIME) returns ``None``
+        without consuming any tokens.
+        """
+        if not (self.current_token and self.current_token.type == TokenType.WITH):
+            return None
+        # Peek ahead: only consume if the following token is LIFETIME
+        if not (self.peek() and self.peek().type == TokenType.LIFETIME):
+            return None
+        line = self.current_token.line
+        self.advance()  # consume 'with'
+        self.advance()  # consume 'lifetime'
+        if self.current_token and (self.current_token.type == TokenType.IDENTIFIER or
+                                   self._can_be_identifier(self.current_token)):
+            label = self.current_token.lexeme
+            self.advance()  # consume the lifetime label identifier
+            return LifetimeAnnotation(label, line_number=line)
+        else:
+            self.error("Expected a lifetime name (identifier) after 'lifetime'")
+
     def parse_type(self):
         """Parse a type annotation."""
         # Check for smart pointer types first: Rc, Weak, Arc
@@ -5925,6 +5957,29 @@ class Parser:
             return self.parse_weak_type()
         elif self.current_token.type == TokenType.ARC:
             return self.parse_arc_type()
+
+        # Borrow type annotation: borrow [mutable] <type> [with lifetime <label>]
+        # Used in parameter and return-type positions to indicate a borrowed value.
+        #   x as borrow String
+        #   x as borrow mutable String with lifetime outer
+        if self.current_token and self.current_token.type == TokenType.BORROW:
+            line = self.current_token.line
+            self.advance()  # consume 'borrow'
+            mutable = False
+            if (self.current_token and self.current_token.type == TokenType.IDENTIFIER and
+                    self.current_token.lexeme.lower() == "mutable"):
+                mutable = True
+                self.advance()  # consume 'mutable'
+            # Parse the base type
+            base_type = self.parse_type()
+            # Optionally parse 'with lifetime <label>'
+            lt = self._parse_lifetime_annotation()
+            if lt is not None:
+                # Return a ReturnTypeWithLifetime node so the lifetime checker can use it.
+                return ReturnTypeWithLifetime(base_type, borrow_mutable=mutable, lifetime=lt,
+                                             line_number=line)
+            mut_prefix = "mutable " if mutable else ""
+            return f"borrow {mut_prefix}{base_type}"
         
         # Accept both IDENTIFIER and built-in type keywords
         if self.current_token.type == TokenType.IDENTIFIER or self.current_token.type == TokenType.FUNCTION or self._can_be_identifier(self.current_token):

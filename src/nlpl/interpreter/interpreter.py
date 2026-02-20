@@ -3546,6 +3546,24 @@ class Interpreter:
 
         return None
 
+    def execute_borrow_expression_with_lifetime(self, node):
+        """Execute a borrow expression that carries a lifetime annotation.
+
+        At runtime the lifetime label is purely a static analysis artifact and
+        has no effect on program execution.  This handler therefore delegates
+        directly to the standard borrow logic, which enforces the runtime borrow
+        rules (no double-mutable borrow, no borrow while moved, etc.).
+
+        Syntax::
+
+            set ref to borrow x with lifetime outer
+            set mut_ref to borrow mutable y with lifetime inner
+        """
+        # Delegate to the standard borrow handler.  The BorrowExpressionWithLifetime
+        # node has the same var_name / mutable attributes, so it is duck-type
+        # compatible here.
+        return self.execute_borrow_expression(node)
+
     # ------------------------------------------------------------------
     # Smart pointer execution methods
     # ------------------------------------------------------------------

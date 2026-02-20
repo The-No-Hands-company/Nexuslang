@@ -993,6 +993,120 @@ class DropBorrowStatement(ASTNode):
         self.var_name = var_name    # name of the variable whose borrow is released
         self.mutable = mutable      # True = releasing a mutable borrow
 
+class LifetimeAnnotation(ASTNode):
+    """A named lifetime label used in borrow / function-signature annotations.
+
+    Syntax::
+
+        borrow x with lifetime outer
+        borrow mutable x with lifetime inner
+
+        function first with x as borrow String with lifetime a
+                         and y as borrow String with lifetime b
+                         returns borrow String with lifetime a
+            return borrow x
+        end
+
+    The ``label`` is a plain identifier chosen by the programmer.  Lifetime
+    labels on borrow expressions inside a function body must match the labels
+    declared on the function parameters or return type so the
+    :class:`~nlpl.typesystem.lifetime_checker.LifetimeChecker` can verify that
+    returned references actually outlive the call.
+    """
+
+    def __init__(self, label: str, line_number=None):
+        super().__init__("lifetime_annotation", line_number)
+        self.label = label  # The programmer-chosen identifier (e.g. 'a', 'outer')
+
+    def __repr__(self) -> str:
+        return f"LifetimeAnnotation(label={self.label!r})"
+
+
+class BorrowExpressionWithLifetime(ASTNode):
+    """A borrow expression that carries an explicit lifetime annotation.
+
+    This is produced by the parser when a ``borrow`` expression is followed by
+    ``with lifetime <label>``.  The :class:`~nlpl.typesystem.borrow_checker.BorrowChecker`
+    and :class:`~nlpl.typesystem.lifetime_checker.LifetimeChecker` both inspect
+    this node.
+
+    Syntax::
+
+        set ref to borrow x with lifetime outer
+        set mut_ref to borrow mutable y with lifetime inner
+    """
+
+    def __init__(self, var_name: str, mutable: bool = False,
+                 lifetime: "LifetimeAnnotation | None" = None,
+                 line_number=None):
+        super().__init__("borrow_expression_with_lifetime", line_number)
+        self.var_name = var_name
+        self.mutable = mutable
+        self.lifetime = lifetime  # LifetimeAnnotation or None
+
+    def __repr__(self) -> str:
+        mut = " mutable" if self.mutable else ""
+        lt = f" with lifetime {self.lifetime.label}" if self.lifetime else ""
+        return f"BorrowExpressionWithLifetime(borrow{mut} {self.var_name}{lt})"
+
+
+class ParameterWithLifetime(ASTNode):
+    """A function parameter with an explicit borrow-lifetime annotation.
+
+    Produced by the parser when a parameter type is ``borrow <Type> with lifetime <label>``.
+
+    Syntax::
+
+        function f with x as borrow String with lifetime a returns borrow String with lifetime a
+    """
+
+    def __init__(self, name: str, type_annotation=None,
+                 borrow_mutable: bool = False,
+                 lifetime: "LifetimeAnnotation | None" = None,
+                 default_value=None,
+                 is_variadic: bool = False,
+                 keyword_only: bool = False,
+                 line_number=None):
+        super().__init__("parameter_with_lifetime", line_number)
+        self.name = name
+        self.type_annotation = type_annotation
+        self.borrow_mutable = borrow_mutable   # True if the parameter is a mutable borrow
+        self.lifetime = lifetime               # LifetimeAnnotation or None
+        self.default_value = default_value
+        self.is_variadic = is_variadic
+        self.keyword_only = keyword_only
+
+    def __repr__(self) -> str:
+        lt = f" lifetime {self.lifetime.label}" if self.lifetime else ""
+        mut = " mutable" if self.borrow_mutable else ""
+        return f"ParameterWithLifetime({self.name}: borrow{mut} {self.type_annotation}{lt})"
+
+
+class ReturnTypeWithLifetime(ASTNode):
+    """A function return type annotated with a borrow lifetime.
+
+    Produced by the parser when a ``returns borrow <Type> with lifetime <label>``
+    clause appears in a function definition.
+
+    Syntax::
+
+        returns borrow String with lifetime a
+    """
+
+    def __init__(self, base_type, borrow_mutable: bool = False,
+                 lifetime: "LifetimeAnnotation | None" = None,
+                 line_number=None):
+        super().__init__("return_type_with_lifetime", line_number)
+        self.base_type = base_type          # The plain type (e.g. 'String')
+        self.borrow_mutable = borrow_mutable
+        self.lifetime = lifetime            # LifetimeAnnotation or None
+
+    def __repr__(self) -> str:
+        lt = f" lifetime {self.lifetime.label}" if self.lifetime else ""
+        mut = " mutable" if self.borrow_mutable else ""
+        return f"ReturnTypeWithLifetime(borrow{mut} {self.base_type}{lt})"
+
+
 class OffsetofExpression(Expression):
     """Represents offsetof operator: offset of field in StructName."""
     def __init__(self, struct_type, field_name, line_number=None):

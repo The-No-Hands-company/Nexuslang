@@ -128,6 +128,7 @@ class TokenType(Enum):
     MOVE = auto()         # move semantics: transfer ownership
     BORROW = auto()       # borrow semantics: temporary reference
     DROP = auto()         # drop a borrow or value explicitly
+    LIFETIME = auto()     # lifetime annotation keyword ('with lifetime <name>')
 
     # Control flow
     IF = auto()
@@ -464,6 +465,7 @@ class Lexer:
             "move": TokenType.MOVE,
             "borrow": TokenType.BORROW,
             "drop": TokenType.DROP,
+            "lifetime": TokenType.LIFETIME,
 
             # Control flow
             "if": TokenType.IF,

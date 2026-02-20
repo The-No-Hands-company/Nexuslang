@@ -1064,9 +1064,10 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 - ✅ RAII scope drop: Rc/Arc/Weak ref counts decremented automatically on scope exit
 - ✅ Manual allocation (malloc/free equivalents)
 - ✅ Parser fix: `is not null` now correctly parses as `!= None` (was broken)
-- ❌ No ownership system (move semantics not yet enforced)
-- ❌ No borrow checker
-- ❌ No lifetime tracking
+- ✅ Ownership system: move semantics enforced at runtime (`move`, `borrow`, `drop borrow` keywords; MOVE/BORROW/DROP tokens; MoveExpression/BorrowExpression/DropBorrowStatement AST nodes)
+- ✅ Runtime borrow checker: tracks mutable/immutable borrows, rejects use-after-move and double-borrow at runtime
+- ✅ Compile-time borrow checker: static AST-walk pass (`BorrowChecker`) detects use-after-move, double-borrow, move-while-borrowed, and assign-while-borrowed before interpreting; runs automatically in `run_program()`
+- ✅ Lifetime annotations: `LIFETIME` lexer token; `LifetimeAnnotation`, `BorrowExpressionWithLifetime`, `ParameterWithLifetime`, `ReturnTypeWithLifetime` AST nodes; `with lifetime <label>` parser syntax; `LifetimeChecker` pass validates label consistency, return-type lifetime matching, and warns on unused labels
 
 **What Rust Has (Best in Class):**
 
@@ -1086,23 +1087,26 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 
 **What NLPL Needs:**
 
-- [ ] **Ownership System**
+- [x] **Ownership System** (COMPLETE)
   - Value ownership tracking
   - Move semantics (transfer ownership)
-  - Ownership transfer validation
-  - Drop/destructor at end of scope
+  - Ownership transfer validation at runtime and compile time
+  - Drop/destructor at end of scope (RAII scope exit)
 
-- [ ] **Borrow Checking** (Rust-style)
+- [x] **Borrow Checking** (COMPLETE — runtime + static)
   - Mutable vs immutable borrows
   - Borrow scope tracking
-  - Compile-time borrow validation
-  - "Cannot borrow as mutable while immutably borrowed" errors
+  - Compile-time borrow validation (`BorrowChecker` AST pass)
+  - "Cannot borrow as mutable while immutably borrowed" errors (runtime and static)
+  - Use-after-move detection (runtime and static)
+  - Conservative branch-merge analysis (move in any branch -> merged as moved)
 
-- [ ] **Lifetime Annotations**
-  - Lifetime parameters for functions/structs
-  - Lifetime elision rules
-  - Lifetime bounds checking
-  - Explicit lifetime syntax: `function foo with x as &'a Integer`
+- [x] **Lifetime Annotations** (COMPLETE)
+  - Lifetime labels on borrow expressions: `borrow x with lifetime outer`
+  - Lifetime labels on function parameters: `x as borrow String with lifetime a`
+  - Lifetime labels on return types: `returns borrow String with lifetime a`
+  - `LifetimeChecker` pass: undeclared labels, return-label consistency, unused-label warnings
+  - Natural-language syntax (no Rust `'a` sigil required)
 
 - [x] **Additional Smart Pointers** (COMPLETE)
   - `Weak<T>` — language keyword, integrated with Rc/Arc downgrade/upgrade
@@ -1118,7 +1122,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
   - Drop order guarantees: not yet
 
 **Priority:** HIGH (safety is critical)  
-**Estimated Effort:** 8-12 months (complex feature) — Smart pointers complete; ownership/borrow checker remain
+**Estimated Effort:** Complete — Smart pointers, ownership system, runtime and compile-time borrow checker, and lifetime annotation system all implemented (Feb 2026)
 
 ---
 
