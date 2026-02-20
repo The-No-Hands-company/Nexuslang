@@ -957,6 +957,42 @@ class UpgradeExpression(Expression):
         super().__init__("upgrade_expression", line_number)
         self.weak_expr = weak_expr  # Weak expression to upgrade to Rc
 
+class MoveExpression(Expression):
+    """Transfer ownership: move x — evaluates x, marks x as moved (inaccessible after this).
+
+    Syntax:  move <identifier>
+    """
+    def __init__(self, var_name, line_number=None):
+        super().__init__("move_expression", line_number)
+        self.var_name = var_name  # name of the variable being moved
+
+class BorrowExpression(Expression):
+    """Temporarily borrow a variable: borrow x / borrow mutable x.
+
+    An immutable borrow prevents the variable from being written while borrowed.
+    A mutable borrow additionally prevents other borrows of the variable.
+
+    Syntax:
+        borrow <identifier>           # immutable borrow
+        borrow mutable <identifier>   # mutable borrow
+    """
+    def __init__(self, var_name, mutable=False, line_number=None):
+        super().__init__("borrow_expression", line_number)
+        self.var_name = var_name    # name of the variable being borrowed
+        self.mutable = mutable      # True = mutable borrow
+
+class DropBorrowStatement(ASTNode):
+    """Release a previously registered borrow: drop borrow x / drop borrow mutable x.
+
+    Syntax:
+        drop borrow <identifier>          # release one immutable borrow
+        drop borrow mutable <identifier>  # release the mutable borrow
+    """
+    def __init__(self, var_name, mutable=False, line_number=None):
+        super().__init__("drop_borrow_statement", line_number)
+        self.var_name = var_name    # name of the variable whose borrow is released
+        self.mutable = mutable      # True = releasing a mutable borrow
+
 class OffsetofExpression(Expression):
     """Represents offsetof operator: offset of field in StructName."""
     def __init__(self, struct_type, field_name, line_number=None):

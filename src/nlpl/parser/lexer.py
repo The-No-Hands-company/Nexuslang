@@ -125,7 +125,10 @@ class TokenType(Enum):
     SIZEOF = auto()       # sizeof operator for memory size
     DOWNGRADE = auto()    # downgrade Rc to Weak (break cycles)
     UPGRADE = auto()      # upgrade Weak to Rc (safe access)
-    
+    MOVE = auto()         # move semantics: transfer ownership
+    BORROW = auto()       # borrow semantics: temporary reference
+    DROP = auto()         # drop a borrow or value explicitly
+
     # Control flow
     IF = auto()
     ELSE = auto()
@@ -456,7 +459,12 @@ class Lexer:
             # Smart pointer operations (Rc/Weak)
             "downgrade": TokenType.DOWNGRADE,
             "upgrade": TokenType.UPGRADE,
-            
+
+            # Ownership / borrow keywords
+            "move": TokenType.MOVE,
+            "borrow": TokenType.BORROW,
+            "drop": TokenType.DROP,
+
             # Control flow
             "if": TokenType.IF,
             "else": TokenType.ELSE,

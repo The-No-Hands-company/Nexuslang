@@ -33,6 +33,7 @@ from nlpl.parser.ast import (
     OptionPattern, ResultPattern, VariantPattern,
     # Smart pointer / ownership AST nodes
     RcCreation, DowngradeExpression, UpgradeExpression,
+    MoveExpression, BorrowExpression, DropBorrowStatement,
 )
 from nlpl.runtime import Runtime
 # Import CircularImportError for module loading
@@ -99,6 +100,10 @@ class Interpreter:
         self.macros = {}  # Registry for macro definitions
         self.last_exception = None  # To support re-raising
         self.module_loader = None  # Will be initialized lazily
+
+        # Ownership / borrow tracking
+        # Structure: { var_name: {"immutable_count": int, "is_mutable": bool} }
+        self._borrow_tracker: dict = {}
         
         # Type system components (lazy initialization)
         self.enable_type_checking = enable_type_checking
@@ -345,7 +350,19 @@ class Interpreter:
         # Search from innermost to outermost scope
         for scope in reversed(self.current_scope):
             if name in scope:
-                return scope[name]
+                value = scope[name]
+                # Moved value: accessing a moved variable is a hard error
+                try:
+                    from ..stdlib.smart_pointers import MovedValue
+                    if isinstance(value, MovedValue):
+                        raise NLPLRuntimeError(
+                            f"use of moved value: '{name}' was moved out and cannot be accessed",
+                            error_type_key="runtime_error",
+                            full_source=self.source,
+                        )
+                except ImportError:
+                    pass
+                return value
         
         # Check runtime constants (PI, E, TAU, etc.)
         if hasattr(self.runtime, 'constants') and name in self.runtime.constants:
@@ -374,8 +391,20 @@ class Interpreter:
         )
         
     def set_variable(self, name, value):
-        """Set a variable in the current scope."""
-        # Set in the innermost scope
+        """Set a variable in the current scope.
+
+        Raises if the variable is currently borrowed (immutably or mutably),
+        since mutation of a borrowed variable violates the borrow contract.
+        """
+        borrow = self._borrow_tracker.get(name)
+        if borrow and (borrow["immutable_count"] > 0 or borrow["is_mutable"]):
+            kind = "mutably" if borrow["is_mutable"] else "immutably"
+            raise NLPLRuntimeError(
+                f"cannot assign to '{name}': it is currently borrowed {kind}; "
+                f"call 'drop borrow {name}' first",
+                error_type_key="runtime_error",
+                full_source=self.source,
+            )
         self.current_scope[-1][name] = value
         return value
         
@@ -391,10 +420,15 @@ class Interpreter:
         count reaches zero after decrement we record the drop (value is freed).
         """
         if len(self.current_scope) > 1:
+            # Clean up: release any borrows registered for variables in the scope
+            # being popped so outer code is not left with stale borrow records.
+            scope = self.current_scope[-1]
+            for var_name in scope:
+                if var_name in self._borrow_tracker:
+                    del self._borrow_tracker[var_name]
             # RAII: decrement ref-counts for smart pointer values in this scope.
             try:
                 from ..stdlib.smart_pointers import RcValue, ArcValue, WeakValue
-                scope = self.current_scope[-1]
                 for val in scope.values():
                     if isinstance(val, (RcValue, ArcValue, WeakValue)):
                         val.drop()
@@ -3379,6 +3413,138 @@ class Interpreter:
         self.current_scope = old_scope
         
         return result
+
+    # ------------------------------------------------------------------
+    # Ownership / borrow execution methods
+    # ------------------------------------------------------------------
+
+    def execute_move_expression(self, node):
+        """Execute 'move x' — transfer ownership, leaving source as MovedValue.
+
+        After a move:
+        - The moved-to binding holds the original value.
+        - Accessing the source variable raises a 'use of moved value' error.
+
+        Syntax:  set dest to move source
+        """
+        from ..stdlib.smart_pointers import MovedValue
+
+        var_name = node.var_name
+        # Check the variable is not currently borrowed
+        borrow = self._borrow_tracker.get(var_name)
+        if borrow and (borrow["immutable_count"] > 0 or borrow["is_mutable"]):
+            kind = "mutably" if borrow["is_mutable"] else "immutably"
+            raise NLPLRuntimeError(
+                f"cannot move '{var_name}': it is currently borrowed {kind}; "
+                f"call 'drop borrow {var_name}' before moving",
+                line=getattr(node, 'line_number', None),
+                error_type_key="runtime_error",
+                full_source=self.source,
+            )
+
+        # Read the current value (will raise on MovedValue automatically)
+        value = self.get_variable(var_name)
+
+        # Invalidate the source by replacing with a MovedValue sentinel
+        for scope in reversed(self.current_scope):
+            if var_name in scope:
+                scope[var_name] = MovedValue(var_name)
+                break
+
+        return value
+
+    def execute_borrow_expression(self, node):
+        """Execute 'borrow x' / 'borrow mutable x' — register a borrow.
+
+        Immutable borrow:  multiple simultaneous immutable borrows are allowed;
+                           the variable cannot be written while any borrow holds.
+        Mutable borrow:    only one mutable borrow at a time;
+                           no other borrow (immutable or mutable) may exist;
+                           the variable cannot be written or read-borrowed while
+                           the mutable borrow holds.
+
+        Returns the current value of the variable (a snapshot, not a reference).
+
+        Syntax:
+            set b to borrow x
+            set m to borrow mutable x
+        """
+        var_name = node.var_name
+        mutable = node.mutable
+        line = getattr(node, 'line_number', None)
+
+        borrow = self._borrow_tracker.get(var_name, {"immutable_count": 0, "is_mutable": False})
+
+        if mutable:
+            # Mutable borrow: nothing else may be borrowed
+            if borrow["immutable_count"] > 0:
+                raise NLPLRuntimeError(
+                    f"cannot borrow '{var_name}' as mutable: it is already borrowed "
+                    f"immutably ({borrow['immutable_count']} active borrow(s))",
+                    line=line,
+                    error_type_key="runtime_error",
+                    full_source=self.source,
+                )
+            if borrow["is_mutable"]:
+                raise NLPLRuntimeError(
+                    f"cannot borrow '{var_name}' as mutable: already mutably borrowed",
+                    line=line,
+                    error_type_key="runtime_error",
+                    full_source=self.source,
+                )
+            self._borrow_tracker[var_name] = {"immutable_count": 0, "is_mutable": True}
+        else:
+            # Immutable borrow: not allowed if mutably borrowed
+            if borrow["is_mutable"]:
+                raise NLPLRuntimeError(
+                    f"cannot borrow '{var_name}' immutably: it is already mutably borrowed",
+                    line=line,
+                    error_type_key="runtime_error",
+                    full_source=self.source,
+                )
+            self._borrow_tracker[var_name] = {
+                "immutable_count": borrow["immutable_count"] + 1,
+                "is_mutable": False,
+            }
+
+        return self.get_variable(var_name)
+
+    def execute_drop_borrow_statement(self, node):
+        """Execute 'drop borrow x' / 'drop borrow mutable x' — release a borrow.
+
+        Decrements the borrow count.  The variable becomes writable again once
+        all borrows have been dropped.
+        """
+        var_name = node.var_name
+        mutable = node.mutable
+        line = getattr(node, 'line_number', None)
+
+        borrow = self._borrow_tracker.get(var_name)
+
+        if mutable:
+            if not borrow or not borrow["is_mutable"]:
+                raise NLPLRuntimeError(
+                    f"no active mutable borrow of '{var_name}' to drop",
+                    line=line,
+                    error_type_key="runtime_error",
+                    full_source=self.source,
+                )
+            self._borrow_tracker[var_name] = {"immutable_count": 0, "is_mutable": False}
+        else:
+            if not borrow or borrow["immutable_count"] <= 0:
+                raise NLPLRuntimeError(
+                    f"no active immutable borrow of '{var_name}' to drop",
+                    line=line,
+                    error_type_key="runtime_error",
+                    full_source=self.source,
+                )
+            new_count = borrow["immutable_count"] - 1
+            if new_count == 0 and not borrow["is_mutable"]:
+                del self._borrow_tracker[var_name]
+            else:
+                self._borrow_tracker[var_name] = {"immutable_count": new_count, "is_mutable": borrow["is_mutable"]}
+
+        return None
 
     # ------------------------------------------------------------------
     # Smart pointer execution methods

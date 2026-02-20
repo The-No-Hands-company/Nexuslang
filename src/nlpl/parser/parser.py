@@ -27,6 +27,8 @@ from nlpl.parser.ast import (
     AddressOfExpression, DereferenceExpression, SizeofExpression, PointerType,
     # Smart pointer operations
     DowngradeExpression, UpgradeExpression,
+    # Ownership / borrow operations
+    MoveExpression, BorrowExpression, DropBorrowStatement,
     # Struct and union types
     StructDefinition, StructField, UnionDefinition, EnumDefinition, EnumMember, OffsetofExpression, TypeCastExpression,
     # Inline assembly
@@ -344,7 +346,10 @@ class Parser:
             
             elif token.type == TokenType.FREE:
                 return self.memory_deallocation()
-            
+
+            elif token.type == TokenType.DROP:
+                return self.drop_borrow_statement()
+
             elif token.type == TokenType.ASM:
                 return self.parse_inline_assembly()
             
@@ -3802,7 +3807,39 @@ class Parser:
             self.error("Expected an identifier")
             
         return MemoryDeallocation(identifier, line_number)
-    
+
+    def drop_borrow_statement(self):
+        """Parse a drop borrow statement: drop borrow [mutable] <identifier>.
+
+        Syntax:
+            drop borrow x              # release one immutable borrow of x
+            drop borrow mutable x      # release the mutable borrow of x
+        """
+        from ..parser.ast import DropBorrowStatement
+        line_number = self.current_token.line
+        self.eat(TokenType.DROP)  # consume 'drop'
+
+        # Expect 'borrow'
+        if not (self.current_token and self.current_token.type == TokenType.BORROW):
+            self.error("Expected 'borrow' after 'drop'")
+        self.advance()  # consume 'borrow'
+
+        # Optional 'mutable' qualifier
+        mutable = False
+        if (self.current_token and self.current_token.type == TokenType.IDENTIFIER and
+                self.current_token.lexeme.lower() == "mutable"):
+            mutable = True
+            self.advance()  # consume 'mutable'
+
+        # Expect variable name
+        if self.current_token and (self.current_token.type == TokenType.IDENTIFIER or
+                                    self._can_be_identifier(self.current_token)):
+            var_name = self.current_token.lexeme
+            self.advance()
+            return DropBorrowStatement(var_name, mutable, line_number)
+        else:
+            self.error("Expected variable name after 'drop borrow'")
+
     def parse_inline_assembly(self):
         """Parse inline assembly block.
         
@@ -4524,6 +4561,40 @@ class Parser:
             self.advance()  # consume 'upgrade'
             weak_expr = self.unary()  # Get the Weak expression
             return UpgradeExpression(weak_expr, line_num)
+
+        # Handle move operator: move x  (transfer ownership, invalidate source)
+        if self.current_token and self.current_token.type == TokenType.MOVE:
+            from ..parser.ast import MoveExpression
+            line_num = self.current_token.line if hasattr(self.current_token, 'line') else 0
+            self.advance()  # consume 'move'
+            # Expect an identifier (the variable being moved)
+            if self.current_token and (self.current_token.type == TokenType.IDENTIFIER or
+                                        self._can_be_identifier(self.current_token)):
+                var_name = self.current_token.lexeme
+                self.advance()
+                return MoveExpression(var_name, line_num)
+            else:
+                self.error("Expected variable name after 'move'")
+
+        # Handle borrow operator: borrow x / borrow mutable x
+        if self.current_token and self.current_token.type == TokenType.BORROW:
+            from ..parser.ast import BorrowExpression
+            line_num = self.current_token.line if hasattr(self.current_token, 'line') else 0
+            self.advance()  # consume 'borrow'
+            # Check for optional 'mutable' qualifier
+            mutable = False
+            if (self.current_token and self.current_token.type == TokenType.IDENTIFIER and
+                    self.current_token.lexeme.lower() == "mutable"):
+                mutable = True
+                self.advance()  # consume 'mutable'
+            # Expect an identifier (the variable being borrowed)
+            if self.current_token and (self.current_token.type == TokenType.IDENTIFIER or
+                                        self._can_be_identifier(self.current_token)):
+                var_name = self.current_token.lexeme
+                self.advance()
+                return BorrowExpression(var_name, mutable, line_num)
+            else:
+                self.error("Expected variable name after 'borrow'")
         
         # Handle offsetof operator: offsetof StructName.field_name OR offset of field in StructName
         if self.current_token and self.current_token.type == TokenType.OFFSETOF:
