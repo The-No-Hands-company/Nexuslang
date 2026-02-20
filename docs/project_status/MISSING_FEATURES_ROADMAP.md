@@ -1054,9 +1054,17 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 **Current State:**
 
 - ✅ Basic pointers (address-of, dereference)
-- ✅ Rc<T> smart pointers with reference counting
+- ✅ Rc<T> smart pointers (AST + interpreter, language keywords: `Rc of T with val`, `downgrade`, `upgrade`)
+- ✅ Arc<T> atomic reference counting (thread-safe, same syntax)
+- ✅ Weak<T> non-owning pointers with upgrade
+- ✅ Box<T> unique ownership heap allocation (stdlib: `box_new`, `box_get`, `box_set`, `box_into_inner`)
+- ✅ RefCell<T> interior mutability (stdlib: `refcell_new`, `refcell_borrow`, `refcell_borrow_mut`, etc.)
+- ✅ Mutex<T> thread-safe value wrapper (stdlib: `mutex_value_new`, `mutex_value_lock`, etc.)
+- ✅ RwLock<T> reader-writer lock (stdlib: `rwlock_value_new`, `rwlock_value_read`, `rwlock_value_write`)
+- ✅ RAII scope drop: Rc/Arc/Weak ref counts decremented automatically on scope exit
 - ✅ Manual allocation (malloc/free equivalents)
-- ❌ No ownership system
+- ✅ Parser fix: `is not null` now correctly parses as `!= None` (was broken)
+- ❌ No ownership system (move semantics not yet enforced)
 - ❌ No borrow checker
 - ❌ No lifetime tracking
 
@@ -1096,21 +1104,21 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
   - Lifetime bounds checking
   - Explicit lifetime syntax: `function foo with x as &'a Integer`
 
-- [ ] **Additional Smart Pointers**
-  - `Weak<T>` (already exists but needs integration)
-  - `Arc<T>` (atomic reference counting for threads)
-  - `Box<T>` (unique ownership heap allocation)
-  - `RefCell<T>` (runtime borrow checking)
-  - `Mutex<T>`, `RwLock<T>` (thread-safe smart pointers)
+- [x] **Additional Smart Pointers** (COMPLETE)
+  - `Weak<T>` — language keyword, integrated with Rc/Arc downgrade/upgrade
+  - `Arc<T>` — atomic reference counting for threads, language keyword
+  - `Box<T>` — unique ownership heap allocation (stdlib functions)
+  - `RefCell<T>` — runtime borrow checking (stdlib functions)
+  - `Mutex<T>`, `RwLock<T>` — thread-safe smart pointers (stdlib functions)
 
-- [ ] **Automatic Drop/Destructors**
-  - RAII pattern support
-  - Deterministic destruction at scope exit
-  - Custom drop implementations
-  - Drop order guarantees
+- [x] **Automatic Drop/Destructors** (PARTIAL — scope-level only)
+  - RAII pattern: Rc/Arc/Weak ref counts drop on scope exit
+  - Deterministic destruction at scope exit (function / match / try scopes)
+  - Custom drop implementations: not yet
+  - Drop order guarantees: not yet
 
 **Priority:** HIGH (safety is critical)  
-**Estimated Effort:** 8-12 months (complex feature)
+**Estimated Effort:** 8-12 months (complex feature) — Smart pointers complete; ownership/borrow checker remain
 
 ---
 

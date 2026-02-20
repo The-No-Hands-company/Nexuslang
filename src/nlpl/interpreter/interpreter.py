@@ -30,7 +30,9 @@ from nlpl.parser.ast import (
     # Pattern matching AST nodes
     MatchExpression, MatchCase,
     LiteralPattern, IdentifierPattern, WildcardPattern,
-    OptionPattern, ResultPattern, VariantPattern
+    OptionPattern, ResultPattern, VariantPattern,
+    # Smart pointer / ownership AST nodes
+    RcCreation, DowngradeExpression, UpgradeExpression,
 )
 from nlpl.runtime import Runtime
 # Import CircularImportError for module loading
@@ -382,8 +384,22 @@ class Interpreter:
         self.current_scope.append({})
         
     def exit_scope(self):
-        """Exit the current scope."""
+        """Exit the current scope.
+
+        Performs RAII-style reference-count decrement for any Rc / Arc / Weak
+        values that are bound in the scope being popped.  If an Rc/Arc strong
+        count reaches zero after decrement we record the drop (value is freed).
+        """
         if len(self.current_scope) > 1:
+            # RAII: decrement ref-counts for smart pointer values in this scope.
+            try:
+                from ..stdlib.smart_pointers import RcValue, ArcValue, WeakValue
+                scope = self.current_scope[-1]
+                for val in scope.values():
+                    if isinstance(val, (RcValue, ArcValue, WeakValue)):
+                        val.drop()
+            except Exception:
+                pass  # Never let RAII errors abort program cleanup
             self.current_scope.pop()
             
     # Module-related execution methods
@@ -3363,4 +3379,74 @@ class Interpreter:
         self.current_scope = old_scope
         
         return result
+
+    # ------------------------------------------------------------------
+    # Smart pointer execution methods
+    # ------------------------------------------------------------------
+
+    def execute_rc_creation(self, node):
+        """Execute Rc/Arc/Weak creation.
+
+        Syntax (NLPL):
+            set ptr to Rc of Integer with 42
+            set shared to Arc of String with "hello"
+            set w to Weak of Integer with 0   # rarely used directly; prefer downgrade
+        """
+        from ..stdlib.smart_pointers import RcValue, ArcValue, WeakValue
+
+        value = self.execute(node.value) if node.value is not None else None
+        kind = getattr(node, 'rc_kind', 'rc')
+
+        if kind == 'rc':
+            return RcValue(value)
+        elif kind == 'arc':
+            return ArcValue(value)
+        elif kind == 'weak':
+            # A standalone Weak creation wraps a freshly-allocated inner that
+            # immediately has strong_count=0 (the Weak is the only reference).
+            # The idiomatic way to create a Weak is via 'downgrade ptr', not
+            # via 'Weak of T with val'.  Support the literal form anyway.
+            rc_temp = RcValue(value)   # strong=1
+            weak = rc_temp.downgrade() # weak=1
+            rc_temp.drop()             # strong -> 0 (data kept alive by weak ref)
+            return weak
+        else:
+            raise NLPLRuntimeError(
+                f"Unknown smart pointer kind: {kind!r}",
+                line=getattr(node, 'line_number', None),
+                error_type_key="internal_error",
+                full_source=self.source,
+            )
+
+    def execute_downgrade_expression(self, node):
+        """Execute 'downgrade rc_value' — convert Rc<T>/Arc<T> to Weak<T>."""
+        from ..stdlib.smart_pointers import RcValue, ArcValue
+
+        rc = self.execute(node.rc_expr)
+        if isinstance(rc, (RcValue, ArcValue)):
+            return rc.downgrade()
+        raise NLPLRuntimeError(
+            f"downgrade requires an Rc or Arc value, got {type(rc).__name__}",
+            line=getattr(node, 'line_number', None),
+            error_type_key="type_error",
+            full_source=self.source,
+        )
+
+    def execute_upgrade_expression(self, node):
+        """Execute 'upgrade weak_value' — attempt to recover a strong Rc/Arc.
+
+        Returns the Rc/Arc value on success, or None if the data has been
+        dropped (all strong counts reached zero).
+        """
+        from ..stdlib.smart_pointers import WeakValue
+
+        weak = self.execute(node.weak_expr)
+        if isinstance(weak, WeakValue):
+            return weak.upgrade()   # returns RcValue / ArcValue or None
+        raise NLPLRuntimeError(
+            f"upgrade requires a Weak value, got {type(weak).__name__}",
+            line=getattr(node, 'line_number', None),
+            error_type_key="type_error",
+            full_source=self.source,
+        )
 

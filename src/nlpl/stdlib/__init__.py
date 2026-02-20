@@ -67,6 +67,7 @@ from ..stdlib.type_traits import register_type_trait_functions
 from ..stdlib.hardware import register_stdlib as register_hardware_functions
 from ..stdlib.atomics import register_stdlib as register_atomics_functions
 from ..stdlib.allocators import register_stdlib as register_allocator_functions
+from ..stdlib.smart_pointers import register_stdlib as register_smart_pointer_functions
 from ..stdlib.threading import register_stdlib as register_native_threading_functions
 from ..stdlib.sync import register_stdlib as register_sync_functions
 from ..stdlib.business import register_business_functions
@@ -280,6 +281,9 @@ def register_stdlib(runtime: Runtime) -> None:
     # Register custom allocator control
     register_allocator_functions(runtime)
 
+    # Register smart pointer functions (Rc, Arc, Weak, Box, RefCell, Mutex<T>, RwLock<T>)
+    register_smart_pointer_functions(runtime)
+
     # Register native threading API
     register_native_threading_functions(runtime)
     
@@ -336,6 +340,8 @@ def register_stdlib(runtime: Runtime) -> None:
     runtime.register_module("atomic")
     runtime.register_module("allocators")
     runtime.register_module("allocator")
+    runtime.register_module("smart_pointers")
+    runtime.register_module("smart_pointer")
     runtime.register_module("threading")
     runtime.register_module("threads")
     runtime.register_module("sync")

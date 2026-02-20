@@ -4275,8 +4275,28 @@ class Parser:
         if self.current_token and self.current_token.type == TokenType.IS:
             self.advance()  # Eat 'is'
             
+            # Handle "is not ..." (negation patterns)
+            # Covers: "is not null", "is not equal to x", "is not x"
+            if self.current_token and self.current_token.type == TokenType.NOT:
+                not_line = self.current_token.line
+                not_col = self.current_token.column
+                self.advance()  # Consume 'not'
+                
+                # Skip optional "equal to" for "is not equal to ..."
+                if self.current_token and self.current_token.type == TokenType.EQUAL_TO:
+                    self.advance()  # compound "equal to" token
+                elif (self.current_token and self.current_token.type == TokenType.IDENTIFIER and
+                      self.current_token.lexeme.lower() == "equal"):
+                    self.advance()  # 'equal'
+                    if self.current_token and self.current_token.type == TokenType.TO:
+                        self.advance()  # 'to'
+                
+                op = Token(TokenType.NOT_EQUAL_TO, "is not", None, not_line, not_col)
+                right = self.term()
+                expr = BinaryOperation(expr, op, right)
+            
             # Now expect a comparison operator
-            if self.current_token and self.current_token.type in [
+            elif self.current_token and self.current_token.type in [
                 TokenType.LESS_THAN, TokenType.LESS_THAN_OR_EQUAL_TO,
                 TokenType.GREATER_THAN, TokenType.GREATER_THAN_OR_EQUAL_TO,
                 TokenType.EQUAL_TO, TokenType.NOT_EQUAL_TO
