@@ -66,6 +66,7 @@ from ..stdlib.interrupts import register_interrupt_functions
 from ..stdlib.type_traits import register_type_trait_functions
 from ..stdlib.hardware import register_stdlib as register_hardware_functions
 from ..stdlib.atomics import register_stdlib as register_atomics_functions
+from ..stdlib.allocators import register_stdlib as register_allocator_functions
 from ..stdlib.threading import register_stdlib as register_native_threading_functions
 from ..stdlib.sync import register_stdlib as register_sync_functions
 from ..stdlib.business import register_business_functions
@@ -275,7 +276,10 @@ def register_stdlib(runtime: Runtime) -> None:
     
     # Register atomic operations and memory ordering
     register_atomics_functions(runtime)
-    
+
+    # Register custom allocator control
+    register_allocator_functions(runtime)
+
     # Register native threading API
     register_native_threading_functions(runtime)
     
@@ -330,6 +334,8 @@ def register_stdlib(runtime: Runtime) -> None:
     runtime.register_module("port_io")
     runtime.register_module("atomics")
     runtime.register_module("atomic")
+    runtime.register_module("allocators")
+    runtime.register_module("allocator")
     runtime.register_module("threading")
     runtime.register_module("threads")
     runtime.register_module("sync")

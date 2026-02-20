@@ -1114,13 +1114,19 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 
 ---
 
-### Memory Allocator Control ⚠️ PARTIAL
+### Memory Allocator Control ✅ COMPLETE
 
 **Current State:**
 
 - ✅ Basic allocate/free
-- ❌ No custom allocators
-- ❌ No allocator selection per type
+- ✅ Custom allocator API (`src/nlpl/stdlib/allocators/__init__.py`)
+- ✅ SystemAllocator, ArenaAllocator, PoolAllocator, SlabAllocator
+- ✅ Per-type allocator assignment (`set_type_allocator`, `get_type_allocator`, `clear_type_allocator`)
+- ✅ Global allocator override (`set_global_allocator`, `get_global_allocator`)
+- ✅ Statistics tracking (`get_allocator_stats` - total_allocated, peak_bytes, etc.)
+- ✅ Block introspection (`allocator_block_size`, `allocator_block_type`, `allocator_read_byte`, `allocator_write_byte`)
+- ✅ Tested: `test_programs/unit/basic/test_allocators.nlpl`
+- ❌ Compiler-level allocator syntax (`List of Integer with allocator arena_alloc`) - requires type system integration (future work)
 
 **What C/C++ Have:**
 
@@ -1135,32 +1141,35 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 - Per-type allocators
 - Allocator API (#[global_allocator])
 
-**What NLPL Needs:**
+**What NLPL Has:**
 
-- [ ] **Custom Allocator API**
-  - Allocator trait/interface
-  - `allocate`, `deallocate`, `reallocate` methods
-  - Alignment specification
-  - Error handling for OOM
+- [x] **Custom Allocator API**
+  - Abstract `Allocator` base class with `allocate`, `deallocate`, `reallocate`, `reset`
+  - Alignment specification on every allocation
+  - OOM returns `None` (error safe, no crash)
+  - `AllocatorStats` with full counters
 
-- [ ] **Built-in Allocators**
-  - System allocator (malloc/free wrapper)
-  - Arena allocator (bump allocator)
-  - Pool allocator (fixed-size blocks)
-  - Slab allocator (kernel-style)
+- [x] **Built-in Allocators**
+  - `SystemAllocator` - default heap wrapper
+  - `ArenaAllocator` - bump allocator with O(1) bulk reset
+  - `PoolAllocator` - fixed-size block recycler, O(1) alloc/free
+  - `SlabAllocator` - kernel-style slab cache with unlimited slabs
 
-- [ ] **Per-Type Allocators**
-  - Specify allocator for structs/classes
-  - Collection allocators (List with custom allocator)
-  - Syntax: `set list to List of Integer with allocator arena_alloc`
+- [x] **Per-Type Allocators**
+  - `set_type_allocator with "TypeName" and alloc`
+  - `get_type_allocator with "TypeName"` (falls back to global)
+  - `clear_type_allocator with "TypeName"`
 
-- [ ] **Global Allocator Override**
-  - `set_global_allocator with custom_allocator`
-  - Statistics tracking (bytes allocated, peak usage)
-  - Memory profiling hooks
+- [x] **Global Allocator Override**
+  - `set_global_allocator with alloc`
+  - `get_global_allocator with 0`
+  - Statistics via `get_allocator_stats with alloc`
+
+- [ ] **Compiler-level collection allocator syntax**
+  - `set list to List of Integer with allocator arena_alloc` (requires type system integration)
 
 **Priority:** MEDIUM (useful but not critical)  
-**Estimated Effort:** 2-4 months
+**Estimated Effort:** DONE (core API complete; collection-syntax integration future)
 
 ---
 
