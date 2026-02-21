@@ -73,6 +73,8 @@ from ..stdlib.sync import register_stdlib as register_sync_functions
 from ..stdlib.business import register_business_functions
 from ..stdlib.data import register_data_functions
 from ..stdlib.scientific import register_scientific_functions
+from ..stdlib.parallel import register_parallel_functions
+from ..stdlib.kernel import register_kernel_functions
 
 def register_stdlib(runtime: Runtime) -> None:
     """Register all standard library functions with the runtime."""
@@ -289,6 +291,12 @@ def register_stdlib(runtime: Runtime) -> None:
     
     # Register synchronization primitives
     register_sync_functions(runtime)
+
+    # Register parallel computing functions
+    register_parallel_functions(runtime)
+
+    # Register OS kernel primitives
+    register_kernel_functions(runtime)
     
     # Register module names for importing
     runtime.register_module("math")

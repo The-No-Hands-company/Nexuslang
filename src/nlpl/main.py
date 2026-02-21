@@ -16,7 +16,8 @@ from .stdlib import register_stdlib
 from .tools import get_profiler, enable_profiling, disable_profiling
 from .errors import NLPLError, NLPLTypeError, NLPLRuntimeError
 
-def run_program(source_code, debug=False, type_check=True, profiler=None, optimize=0, file_path=None):
+def run_program(source_code, debug=False, type_check=True, profiler=None, optimize=0,
+               file_path=None, freestanding_config=None):
     """
     Run an NLPL program from source code.
 
@@ -27,6 +28,7 @@ def run_program(source_code, debug=False, type_check=True, profiler=None, optimi
         profiler: Optional profiler instance for performance tracking
         optimize (int): AST optimization level (0=none, 1=basic, 2=standard, 3=aggressive)
         file_path (str): Absolute or relative path of the source file (enables relative imports)
+        freestanding_config: Optional FreestandingConfig for bare-metal builds
 
     Returns:
         The result of the program execution
@@ -40,6 +42,11 @@ def run_program(source_code, debug=False, type_check=True, profiler=None, optimi
     
     # Register standard library functions
     register_stdlib(runtime)
+
+    # Apply freestanding (bare-metal) configuration if provided
+    if freestanding_config is not None:
+        from .compiler.freestanding import apply_freestanding_config
+        apply_freestanding_config(runtime, freestanding_config)
     
     # Initialize components
     lexer = Lexer(source_code)
@@ -126,6 +133,21 @@ def print_ast(node, indent=0):
     else:
         print(f"{indent_str}{node}")
 
+def _apply_freestanding(args: argparse.Namespace, runtime: "Runtime"):
+    """Apply freestanding mode configuration to runtime if --freestanding was given.
+
+    When runtime is None, only builds and returns the config (no application).
+    Returns the FreestandingConfig if freestanding mode is active, else None.
+    """
+    if not getattr(args, 'freestanding', False):
+        return None
+    from .compiler.freestanding import parse_freestanding_args, apply_freestanding_config
+    config = parse_freestanding_args(args)
+    if config is not None and runtime is not None:
+        apply_freestanding_config(runtime, config)
+    return config
+
+
 def main():
     """Main entry point for the NLPL interpreter."""
     parser = argparse.ArgumentParser(description='Natural Language Programming Language Interpreter')
@@ -148,7 +170,90 @@ def main():
         help='AST optimization level: 0=none (default), 1=basic, 2=standard, 3=aggressive'
     )
 
+    # Freestanding / bare-metal build options
+    parser.add_argument(
+        '--freestanding',
+        action='store_true',
+        help='Enable freestanding (bare-metal) mode: strips OS-dependent stdlib modules'
+    )
+    parser.add_argument(
+        '--linker-script',
+        metavar='FILE',
+        help='Path to a custom linker script (.ld) for bare-metal builds'
+    )
+    parser.add_argument(
+        '--arch',
+        default='x86_64',
+        metavar='ARCH',
+        help='Target architecture for freestanding mode (x86_64, arm, cortex-m, riscv, riscv32, riscv64)'
+    )
+    parser.add_argument(
+        '--entry-symbol',
+        default='nlpl_main',
+        metavar='SYMBOL',
+        help='Entry point symbol name for freestanding builds (default: nlpl_main)'
+    )
+    parser.add_argument(
+        '--stack-size',
+        type=int,
+        default=65536,
+        metavar='BYTES',
+        help='Stack size in bytes for freestanding builds (default: 65536)'
+    )
+    parser.add_argument(
+        '--heap-size',
+        type=int,
+        default=131072,
+        metavar='BYTES',
+        help='Heap size in bytes for freestanding builds (default: 131072)'
+    )
+    parser.add_argument(
+        '--emit-entry-stub',
+        metavar='FILE',
+        help='Write the assembly entry stub for --arch to FILE and exit'
+    )
+    parser.add_argument(
+        '--emit-linker-script',
+        metavar='FILE',
+        help='Write a template linker script for --arch to FILE and exit'
+    )
+    parser.add_argument(
+        '--no-float',
+        action='store_true',
+        help='Disable floating-point support in freestanding mode (soft-float targets)'
+    )
+    parser.add_argument(
+        '--no-exceptions',
+        action='store_true',
+        help='Disable exception-handling runtime in freestanding mode'
+    )
+    parser.add_argument(
+        '--bare-metal-threads',
+        action='store_true',
+        help='Allow threading primitives in freestanding mode (requires RTOS)'
+    )
+
     args = parser.parse_args()
+
+    # Handle --emit-entry-stub (write stub and exit)
+    if args.emit_entry_stub:
+        from .compiler.freestanding import generate_entry_stub
+        arch = getattr(args, 'arch', 'x86_64') or 'x86_64'
+        stub = generate_entry_stub(arch)
+        with open(args.emit_entry_stub, 'w') as _f:
+            _f.write(stub)
+        print(f"Entry stub for '{arch}' written to: {args.emit_entry_stub}")
+        return
+
+    # Handle --emit-linker-script (write script and exit)
+    if args.emit_linker_script:
+        from .compiler.linker import get_linker_script_for_arch
+        arch = getattr(args, 'arch', 'x86_64') or 'x86_64'
+        script = get_linker_script_for_arch(arch)
+        with open(args.emit_linker_script, 'w') as _f:
+            _f.write(script)
+        print(f"Linker script for '{arch}' written to: {args.emit_linker_script}")
+        return
     
     # Handle --explain command
     if args.explain:
@@ -222,6 +327,7 @@ def main():
         runtime = Runtime()
         runtime.module_path = os.path.abspath(args.file)
         register_stdlib(runtime)
+        _fs_config = _apply_freestanding(args, runtime)
         interpreter = Interpreter(runtime, enable_type_checking=not args.no_type_check)
         
         # Create and attach debugger
@@ -284,7 +390,10 @@ def main():
     
     # Run normally without debugger
     try:
-        result = run_program(source_code, args.debug, not args.no_type_check, profiler, optimize=args.optimize, file_path=args.file)
+        _fs_cfg = _apply_freestanding(args, None)
+        result = run_program(source_code, args.debug, not args.no_type_check, profiler,
+                             optimize=args.optimize, file_path=args.file,
+                             freestanding_config=_fs_cfg)
         if result is not None:
             print(f"Program result: {result}")
         

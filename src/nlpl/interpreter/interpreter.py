@@ -34,7 +34,12 @@ from nlpl.parser.ast import (
     # Smart pointer / ownership AST nodes
     RcCreation, DowngradeExpression, UpgradeExpression,
     MoveExpression, BorrowExpression, DropBorrowStatement,
+    # Allocator hints and parallel execution
+    AllocatorHint, ParallelForLoop,
+    # Lifetime-annotated borrow expressions
+    BorrowExpressionWithLifetime,
 )
+import concurrent.futures as _cf
 from nlpl.runtime import Runtime
 # Import CircularImportError for module loading
 from nlpl.modules.module_loader import CircularImportError
@@ -551,22 +556,44 @@ class Interpreter:
         value = None
         if node.value:
             value = self.execute(node.value)
-        return self.set_variable(node.name, value)
-    
+
+        # Handle allocator hints on collection types:
+        #   set items to List of Integer with allocator arena_alloc
+        # The AllocatorHint tells us to route collection construction through the
+        # specified allocator so that the backing memory is tracked by it.
+        if hasattr(node, 'type_annotation') and isinstance(node.type_annotation, AllocatorHint):
+            alloc_name = node.type_annotation.allocator_name
+            try:
+                allocator = self.get_variable(alloc_name)
+            except NLPLNameError:
+                raise NLPLRuntimeError(
+                    f"Allocator '{alloc_name}' is not defined in the current scope",
+                    line=getattr(node, 'line_number', None),
+                    error_type_key="undefined_variable",
+                    full_source=self.source,
+                )
+            # Record the allocation with the allocator (for stats and tracking)
+            if allocator is not None and hasattr(allocator, 'allocate'):
+                element_count = len(value) if hasattr(value, '__len__') else 1
+                # Estimate 8 bytes per element (conservative pointer-sized approximation)
+                allocator.allocate(element_count * 8, alignment=8)
+
+        self.set_variable(node.name, value)
+        return value
+
     def execute_index_assignment(self, node):
         """Execute an index assignment: set array[index] to value."""
-        # Execute the target to get the IndexExpression
         target = node.target
-        
+
         # Get the container (array, dict, etc.)
         container = self.execute(target.array_expr)
-        
+
         # Get the index
         index = self.execute(target.index_expr)
-        
+
         # Get the value to assign
         value = self.execute(node.value)
-        
+
         # Perform the assignment
         try:
             container[index] = value
@@ -738,6 +765,86 @@ class Interpreter:
             pass
             
         return result
+
+    def execute_parallel_for_loop(self, node):
+        """Execute a parallel for-each loop.
+
+        Each iteration runs in its own thread from a thread pool.
+        Iterations are isolated: each one receives a snapshot of the enclosing
+        scope and any variables written inside an iteration are local to that
+        iteration only (preventing data races by construction).
+
+        Break/continue are not supported inside parallel loops.
+
+        Example NLPL::
+
+            parallel for each item in data
+                set result to process item
+                print text result
+            end
+        """
+        # Use self.__class__ to avoid a circular import of interpreter.py
+        _Interp = self.__class__
+        import copy
+
+        iterable = self.execute(node.iterable)
+        if not hasattr(iterable, '__iter__'):
+            raise NLPLRuntimeError(
+                f"'parallel for each' requires an iterable collection, got {type(iterable).__name__}",
+                line=getattr(node, 'line_number', None),
+                error_type_key="type_mismatch",
+                full_source=self.source,
+            )
+        items = list(iterable)
+        if not items:
+            return None
+
+        # Build a shallow snapshot of the current scope for read-only access
+        scope_snapshot = {}
+        for scope_level in self.current_scope:
+            scope_snapshot.update(scope_level)
+
+        errors = []
+        errors_lock = __import__("threading").Lock()
+
+        cpu_count = __import__("multiprocessing").cpu_count()
+        max_workers = max(1, min(cpu_count, len(items)))
+
+        def run_iteration(item):
+            """Execute the loop body for one item in its own interpreter child."""
+            child = _Interp(self.runtime)
+            # Populate child scope with parent snapshot (read-only bindings)
+            child.enter_scope()
+            for name, val in scope_snapshot.items():
+                child.set_variable(name, val)
+            # Set the loop variable for this iteration
+            child.set_variable(node.var_name, item)
+            # Copy function definitions so the body can call functions
+            child.functions.update(self.functions)
+            child.classes.update(self.classes)
+            child.source = self.source
+            try:
+                for stmt in node.body:
+                    child.execute(stmt)
+            except Exception as exc:
+                with errors_lock:
+                    errors.append(exc)
+            finally:
+                child.exit_scope()
+
+        with _cf.ThreadPoolExecutor(max_workers=max_workers) as pool:
+            futures = [pool.submit(run_iteration, item) for item in items]
+            _cf.wait(futures)
+
+        if errors:
+            raise NLPLRuntimeError(
+                f"Error in parallel for each iteration: {errors[0]}",
+                line=getattr(node, 'line_number', None),
+                error_type_key="runtime_error",
+                full_source=self.source,
+            )
+        return None
+
     
     def execute_repeat_n_times_loop(self, node):
         """Execute a repeat-n-times loop."""

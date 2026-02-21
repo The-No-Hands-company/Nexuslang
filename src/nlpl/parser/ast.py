@@ -1254,3 +1254,56 @@ class CallbackReference(Expression):
     def __str__(self):
         return f"Callback({self.function_name})"
 
+
+class AllocatorHint(ASTNode):
+    """
+    Wraps a type annotation with an allocator hint.
+
+    Produced when the programmer writes:
+        set items to List of Integer with allocator arena_alloc
+
+    At declaration time the interpreter will route the initial collection
+    creation through the named allocator so that the backing memory comes from
+    the specified source.
+
+    Fields:
+        base_type  - the inner type string, e.g. 'List of Integer'
+        allocator_name - identifier naming the allocator variable
+    """
+    def __init__(self, base_type, allocator_name, line_number=None):
+        super().__init__("allocator_hint", line_number)
+        self.base_type = base_type
+        self.allocator_name = allocator_name
+
+    def __str__(self):
+        return f"AllocatorHint({self.base_type} with allocator {self.allocator_name})"
+
+
+class ParallelForLoop(ASTNode):
+    """
+    Parallel for-each loop.
+
+    Produced when the programmer writes:
+        parallel for each item in collection
+            ...body...
+        end
+
+    The interpreter executes the body concurrently for each element using
+    a thread pool.  Each iteration runs in its own scope and sees the
+    enclosing scope's variables as read-only bindings; writes are
+    iteration-local (safe by construction).
+
+    Fields:
+        var_name   - loop variable identifier string
+        iterable   - expression that yields the collection
+        body       - list of statement AST nodes
+    """
+    def __init__(self, var_name, iterable, body, line_number=None):
+        super().__init__("parallel_for_loop", line_number)
+        self.var_name = var_name
+        self.iterable = iterable
+        self.body = body
+
+    def __str__(self):
+        return f"ParallelForLoop({self.var_name} in {self.iterable})"
+

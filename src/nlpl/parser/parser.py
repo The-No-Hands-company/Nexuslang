@@ -31,6 +31,8 @@ from nlpl.parser.ast import (
     MoveExpression, BorrowExpression, DropBorrowStatement,
     # Lifetime annotations
     LifetimeAnnotation, BorrowExpressionWithLifetime, ParameterWithLifetime, ReturnTypeWithLifetime,
+    # Allocator hints and parallel execution
+    AllocatorHint, ParallelForLoop,
     # Struct and union types
     StructDefinition, StructField, UnionDefinition, EnumDefinition, EnumMember, OffsetofExpression, TypeCastExpression,
     # Inline assembly
@@ -262,6 +264,10 @@ class Parser:
             elif token.type == TokenType.FOR_EACH:
                 # Handle "for each" as a single token
                 return self.for_loop()
+            
+            elif token.type == TokenType.PARALLEL:
+                # Handle "parallel for each item in collection ... end"
+                return self.parse_parallel_for()
             
             elif token.type == TokenType.REPEAT:
                 # Could be "repeat N times" or "repeat for each"
@@ -3100,6 +3106,69 @@ class Parser:
             
         return WhileLoop(condition, body, line_number, else_body, label)
         
+    def parse_parallel_for(self):
+        """Parse a parallel for-each loop.
+
+        Syntax::
+
+            parallel for each item in collection
+                ...body...
+            end
+
+        The ``parallel`` keyword must be followed by ``for`` or ``for each``.
+        Each iteration of the loop body is dispatched to a thread-pool worker
+        and all iterations run concurrently.
+
+        Returns a :class:`~nlpl.parser.ast.ParallelForLoop` node.
+        """
+        line_number = self.current_token.line
+        self.advance()  # consume 'parallel'
+
+        # Expect 'for' or 'for each'
+        if self.current_token and self.current_token.type in (TokenType.FOR, TokenType.FOR_EACH):
+            self.advance()  # consume 'for' or 'for each'
+        else:
+            self.error("Expected 'for' or 'for each' after 'parallel'")
+
+        # If we consumed bare 'for', optionally consume separate 'each' identifier
+        if self.current_token and (
+            self.current_token.type == TokenType.IDENTIFIER and
+            self.current_token.lexeme.lower() == "each"
+        ):
+            self.advance()  # consume standalone 'each'
+
+        # Parse loop variable name
+        if self.current_token and (self.current_token.type == TokenType.IDENTIFIER or
+                                   self._can_be_identifier(self.current_token)):
+            var_name = self.current_token.lexeme
+            self.advance()
+        else:
+            self.error("Expected a loop variable name after 'parallel for each'")
+
+        # Expect 'in'
+        if self.current_token and self.current_token.type == TokenType.IN:
+            self.advance()
+        else:
+            self.error("Expected 'in' after loop variable in 'parallel for each'")
+
+        # Parse the iterable expression
+        iterable = self.expression()
+
+        # Parse the loop body
+        body = []
+        while self.current_token and self.current_token.type not in (TokenType.END, TokenType.EOF):
+            stmt = self.statement()
+            if stmt:
+                body.append(stmt)
+
+        # Consume 'end'
+        if self.current_token and self.current_token.type == TokenType.END:
+            self.advance()
+        else:
+            self.error("Expected 'end' to close 'parallel for each' loop")
+
+        return ParallelForLoop(var_name, iterable, body, line_number=line_number)
+
     def for_loop(self):
         """Parse a for loop.
         
@@ -5948,6 +6017,29 @@ class Parser:
         else:
             self.error("Expected a lifetime name (identifier) after 'lifetime'")
 
+    def _try_parse_allocator_hint(self, base_type, line=None):
+        """Optionally consume ``with allocator <name>`` after a collection type.
+
+        Returns an :class:`AllocatorHint` node if the pattern is found,
+        otherwise returns *base_type* unchanged.  Never consumes tokens that
+        do not match the pattern.
+        """
+        if not (self.current_token and self.current_token.type == TokenType.WITH):
+            return base_type
+        # Only consume if the very next token is ALLOCATOR
+        if not (self.peek() and self.peek().type == TokenType.ALLOCATOR):
+            return base_type
+        hint_line = self.current_token.line
+        self.advance()  # consume 'with'
+        self.advance()  # consume 'allocator'
+        if self.current_token and (self.current_token.type == TokenType.IDENTIFIER or
+                                   self._can_be_identifier(self.current_token)):
+            alloc_name = self.current_token.lexeme
+            self.advance()  # consume the allocator name identifier
+            return AllocatorHint(base_type, alloc_name, line_number=hint_line)
+        else:
+            self.error("Expected an allocator name (identifier) after 'allocator'")
+
     def parse_type(self):
         """Parse a type annotation."""
         # Check for smart pointer types first: Rc, Weak, Arc
@@ -6049,7 +6141,7 @@ class Parser:
                         else:
                              type_name = f"Dictionary of {element_type}"
                     
-                    return type_name
+                    return self._try_parse_allocator_hint(type_name)
             
             return type_name
             
@@ -6157,7 +6249,7 @@ class Parser:
                         else:
                             type_name = f"Dictionary of {element_type}"
             
-            return type_name
+            return self._try_parse_allocator_hint(type_name)
         else:
             self.error("Expected a type name")
             

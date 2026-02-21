@@ -129,6 +129,8 @@ class TokenType(Enum):
     BORROW = auto()       # borrow semantics: temporary reference
     DROP = auto()         # drop a borrow or value explicitly
     LIFETIME = auto()     # lifetime annotation keyword ('with lifetime <name>')
+    ALLOCATOR = auto()    # allocator hint keyword ('with allocator <name>')
+    PARALLEL = auto()     # parallel execution keyword ('parallel for each ...')
 
     # Control flow
     IF = auto()
@@ -466,6 +468,8 @@ class Lexer:
             "borrow": TokenType.BORROW,
             "drop": TokenType.DROP,
             "lifetime": TokenType.LIFETIME,
+            "allocator": TokenType.ALLOCATOR,
+            "parallel": TokenType.PARALLEL,
 
             # Control flow
             "if": TokenType.IF,

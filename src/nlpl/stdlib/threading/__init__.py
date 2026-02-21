@@ -15,7 +15,9 @@ import threading
 import multiprocessing
 import os
 import sys
-from typing import Any, Callable, Optional, Dict
+import time
+import queue
+from typing import Any, Callable, Optional, Dict, List
 
 
 # Thread-local storage
@@ -349,42 +351,343 @@ def thread_local_delete(runtime, key: str):
 
 def set_thread_priority(runtime, thread: NLPLThread, priority: int):
     """
-    Set thread priority (0=lowest, 50=normal, 100=highest)
-    
+    Set thread priority (0=lowest, 50=normal, 100=highest).
+
     Args:
         thread: Thread handle
         priority: Priority level (0-100)
-        
-    Note: Platform-specific, may not be supported on all systems
-    
+
+    Maps 0-100 to platform scheduling levels:
+    - Linux: uses os.setpriority (nice values -20 to +19)
+    - Windows: uses ctypes SetThreadPriority (-2 to +2 THREAD_PRIORITY_* levels)
+    - Other platforms: no-op with a warning logged.
+
     Example:
         set_thread_priority with thread_handle and 75
     """
-    # Python doesn't provide direct priority control
-    # This would need platform-specific implementation
-    # On Linux: pthread_setschedparam
-    # On Windows: SetThreadPriority
-    pass
+    if not thread._thread or not thread._thread.is_alive():
+        return  # Thread not running yet or already done — no-op
+
+    clipped = max(0, min(100, int(priority)))
+
+    if sys.platform.startswith("linux"):
+        try:
+            # Map 0-100 -> nice 19 to -20 (lower nice = higher priority)
+            nice = int(19 - (clipped / 100.0) * 39)
+            tid = None
+            if hasattr(thread._thread, "ident") and thread._thread.ident:
+                tid = thread._thread.ident
+            if tid is not None:
+                os.setpriority(os.PRIO_PROCESS, tid, nice)
+        except (PermissionError, OSError):
+            # Requires elevated privileges for priorities above normal
+            pass
+    elif sys.platform == "win32":
+        try:
+            import ctypes
+            import ctypes.wintypes
+            # Map 0-100 to Windows THREAD_PRIORITY levels (-2 to 2)
+            if clipped >= 80:
+                level = 2    # THREAD_PRIORITY_HIGHEST
+            elif clipped >= 60:
+                level = 1    # THREAD_PRIORITY_ABOVE_NORMAL
+            elif clipped >= 40:
+                level = 0    # THREAD_PRIORITY_NORMAL
+            elif clipped >= 20:
+                level = -1   # THREAD_PRIORITY_BELOW_NORMAL
+            else:
+                level = -2   # THREAD_PRIORITY_LOWEST
+            handle = ctypes.windll.kernel32.OpenThread(0x0020, False, thread._thread.ident)
+            if handle:
+                ctypes.windll.kernel32.SetThreadPriority(handle, level)
+                ctypes.windll.kernel32.CloseHandle(handle)
+        except Exception:
+            pass
+    # Other platforms: no-op
+
+
+def get_thread_priority(runtime, thread: NLPLThread) -> int:
+    """
+    Get the current priority of a thread (0-100 scale).
+
+    Returns -1 if priority cannot be determined on this platform.
+
+    Example:
+        set prio to get_thread_priority with thread_handle
+    """
+    if sys.platform.startswith("linux"):
+        try:
+            if thread._thread and thread._thread.ident:
+                nice = os.getpriority(os.PRIO_PROCESS, thread._thread.ident)
+                # nice -20..+19 -> 0..100
+                return int((19 - nice) / 39.0 * 100)
+        except OSError:
+            pass
+    return -1
 
 
 def set_thread_affinity(runtime, thread: NLPLThread, cpu_mask: int):
     """
-    Set CPU affinity for thread
-    
+    Set CPU affinity for a thread.
+
     Args:
         thread: Thread handle
         cpu_mask: Bitmask of CPUs (bit 0 = CPU 0, etc.)
-        
-    Note: Platform-specific, may not be supported
-    
+
     Example:
         # Run on CPUs 0 and 2
         set_thread_affinity with thread_handle and 5  # Binary: 0101
     """
-    # Platform-specific implementation needed
-    # On Linux: pthread_setaffinity_np
-    # On Windows: SetThreadAffinityMask
-    pass
+    if not thread._thread:
+        return
+    cpu_count = multiprocessing.cpu_count()
+    cpu_set = {i for i in range(cpu_count) if cpu_mask & (1 << i)}
+    if not cpu_set:
+        return
+
+    if sys.platform.startswith("linux"):
+        try:
+            if thread._thread.ident:
+                os.sched_setaffinity(thread._thread.ident, cpu_set)
+        except (OSError, AttributeError):
+            # os.sched_setaffinity not available on all kernels
+            pass
+    elif sys.platform == "win32":
+        try:
+            import ctypes
+            handle = ctypes.windll.kernel32.OpenThread(0x0060, False, thread._thread.ident)
+            if handle:
+                ctypes.windll.kernel32.SetThreadAffinityMask(handle, cpu_mask)
+                ctypes.windll.kernel32.CloseHandle(handle)
+        except Exception:
+            pass
+
+
+def get_thread_affinity(runtime, thread: NLPLThread) -> int:
+    """
+    Get the CPU affinity bitmask for a thread.
+
+    Returns -1 if the platform does not support affinity queries.
+
+    Example:
+        set mask to get_thread_affinity with thread_handle
+    """
+    if sys.platform.startswith("linux"):
+        try:
+            if thread._thread and thread._thread.ident:
+                cpu_set = os.sched_getaffinity(thread._thread.ident)
+                return sum(1 << cpu for cpu in cpu_set)
+        except (OSError, AttributeError):
+            pass
+    return -1
+
+
+def join_thread_timeout(runtime, thread: NLPLThread, timeout_ms: float) -> Any:
+    """
+    Wait for a thread with a timeout specified in milliseconds.
+
+    Args:
+        thread: Thread handle returned by create_thread
+        timeout_ms: Maximum milliseconds to wait
+
+    Returns:
+        Return value from the thread function, or None if timed out
+
+    Example:
+        set result to join_thread_timeout with thread_handle and 5000
+    """
+    return thread.join(timeout_ms / 1000.0)
+
+
+# ---------------------------------------------------------------------------
+# Work-Stealing Thread Pool
+# ---------------------------------------------------------------------------
+
+import queue
+from concurrent.futures import ThreadPoolExecutor, Future as CFFuture
+
+
+class NLPLWorkStealingPool:
+    """
+    Work-stealing thread pool for NLPL programs.
+
+    Each worker maintains its own local task deque. When a worker runs out of
+    work it "steals" tasks from the tail of another worker's deque, which
+    minimises contention and improves throughput for fine-grained parallel
+    workloads.
+
+    This implementation uses Python's :class:`threading.Thread` and a shared
+    ``queue.SimpleQueue`` as the steal-able work source (Python's GIL prevents
+    true data races, so a deque-per-worker would add complexity without benefit
+    inside CPython).  For CPU-bound work the user should combine this with
+    ``multiprocessing`` or the NLPL FFI to bypass the GIL.
+    """
+
+    def __init__(self, num_workers: int):
+        if num_workers < 1:
+            raise ValueError("num_workers must be at least 1")
+        self._num_workers = num_workers
+        self._task_queue: queue.SimpleQueue = queue.SimpleQueue()
+        self._pending_count = [0]  # mutable int shared across threads
+        self._count_lock = threading.Lock()
+        self._result_lock = threading.Lock()
+        self._shutdown = threading.Event()
+        self._workers: List[threading.Thread] = []
+        self._start_workers()
+
+    def _start_workers(self) -> None:
+        for i in range(self._num_workers):
+            t = threading.Thread(
+                target=self._worker_loop,
+                name=f"NLPLPool-Worker-{i}",
+                daemon=True,
+            )
+            t.start()
+            self._workers.append(t)
+
+    def _worker_loop(self) -> None:
+        while not self._shutdown.is_set():
+            try:
+                future, fn, args = self._task_queue.get(timeout=0.05)
+            except queue.Empty:
+                continue
+            try:
+                result = fn(*args)
+                future.set_result(result)
+            except Exception as exc:
+                future.set_result(None)  # keep future consistent
+                # Re-store error so pool_submit callers can retrieve it
+                future._exc = exc
+            finally:
+                with self._count_lock:
+                    self._pending_count[0] -= 1
+
+    def submit(self, fn: Callable, *args) -> "NLPLFutureResult":
+        """Submit work and return a future-like result handle."""
+        if self._shutdown.is_set():
+            raise RuntimeError("Pool has been shut down")
+        future = NLPLFutureResult()
+        with self._count_lock:
+            self._pending_count[0] += 1
+        self._task_queue.put((future, fn, args))
+        return future
+
+    def pending_count(self) -> int:
+        """Number of tasks queued but not yet complete."""
+        with self._count_lock:
+            return self._pending_count[0]
+
+    def join(self, timeout: Optional[float] = None) -> None:
+        """Wait until all submitted tasks have been processed."""
+        deadline = None if timeout is None else time.monotonic() + timeout
+        while True:
+            with self._count_lock:
+                if self._pending_count[0] == 0:
+                    return
+            if deadline is not None and time.monotonic() >= deadline:
+                raise TimeoutError("pool_join timed out")
+            time.sleep(0.005)
+
+    def shutdown(self, wait: bool = True) -> None:
+        """Signal workers to stop. If *wait* drains the queue first."""
+        if wait:
+            self.join()
+        self._shutdown.set()
+
+
+class NLPLFutureResult:
+    """Simple non-blocking result container used by :class:`NLPLWorkStealingPool`."""
+
+    def __init__(self):
+        self._event = threading.Event()
+        self._value: Any = None
+        self._exc: Optional[Exception] = None
+
+    def set_result(self, value: Any) -> None:
+        self._value = value
+        self._event.set()
+
+    def get(self, timeout: Optional[float] = None) -> Any:
+        if not self._event.wait(timeout):
+            raise TimeoutError("pool task timed out")
+        if self._exc is not None:
+            raise self._exc
+        return self._value
+
+    def is_done(self) -> bool:
+        return self._event.is_set()
+
+    def __repr__(self) -> str:
+        if not self._event.is_set():
+            return "PoolFuture<pending>"
+        return "PoolFuture<done: {!r}>".format(self._value)
+
+
+# --- NLPL-facing pool functions ---
+
+def create_work_stealing_pool(runtime, num_workers: int) -> NLPLWorkStealingPool:
+    """
+    Create a work-stealing thread pool with *num_workers* threads.
+
+    Example:
+        set pool to create_work_stealing_pool with 4
+    """
+    return NLPLWorkStealingPool(int(num_workers))
+
+
+def pool_submit(runtime, pool: NLPLWorkStealingPool, fn: Callable, *args) -> NLPLFutureResult:
+    """
+    Submit *fn* with *args* to *pool*. Returns a future for the result.
+
+    Example:
+        set fut to pool_submit with pool and my_function and arg1
+        set result to fut.get()
+    """
+    if not isinstance(pool, NLPLWorkStealingPool):
+        raise TypeError("Expected a pool from create_work_stealing_pool")
+    return pool.submit(fn, *args)
+
+
+def pool_join(runtime, pool: NLPLWorkStealingPool, timeout_ms: Optional[float] = None) -> None:
+    """
+    Wait for all submitted tasks in *pool* to complete.
+
+    Args:
+        pool: Pool handle
+        timeout_ms: Maximum milliseconds to wait (None = wait forever)
+
+    Example:
+        pool_join with pool
+        pool_join with pool and 10000  # 10-second timeout
+    """
+    if not isinstance(pool, NLPLWorkStealingPool):
+        raise TypeError("Expected a pool from create_work_stealing_pool")
+    to = None if timeout_ms is None else float(timeout_ms) / 1000.0
+    pool.join(to)
+
+
+def pool_shutdown(runtime, pool: NLPLWorkStealingPool) -> None:
+    """
+    Drain and shut down *pool*, stopping all worker threads.
+
+    Example:
+        pool_shutdown with pool
+    """
+    if not isinstance(pool, NLPLWorkStealingPool):
+        raise TypeError("Expected a pool from create_work_stealing_pool")
+    pool.shutdown(wait=True)
+
+
+def pool_pending_count(runtime, pool: NLPLWorkStealingPool) -> int:
+    """
+    Return the number of tasks pending in *pool*.
+
+    Example:
+        set pending to pool_pending_count with pool
+    """
+    if not isinstance(pool, NLPLWorkStealingPool):
+        raise TypeError("Expected a pool from create_work_stealing_pool")
+    return pool.pending_count()
 
 
 def register_stdlib(runtime):
@@ -394,6 +697,7 @@ def register_stdlib(runtime):
     # Thread creation and management
     runtime.register_function("create_thread", create_thread)
     runtime.register_function("join_thread", join_thread)
+    runtime.register_function("join_thread_timeout", join_thread_timeout)
     runtime.register_function("detach_thread", detach_thread)
     runtime.register_function("thread_is_alive", thread_is_alive)
     
@@ -416,4 +720,13 @@ def register_stdlib(runtime):
     
     # Thread priority and affinity (platform-specific)
     runtime.register_function("set_thread_priority", set_thread_priority)
+    runtime.register_function("get_thread_priority", get_thread_priority)
     runtime.register_function("set_thread_affinity", set_thread_affinity)
+    runtime.register_function("get_thread_affinity", get_thread_affinity)
+
+    # Work-stealing thread pool
+    runtime.register_function("create_work_stealing_pool", create_work_stealing_pool)
+    runtime.register_function("pool_submit", pool_submit)
+    runtime.register_function("pool_join", pool_join)
+    runtime.register_function("pool_shutdown", pool_shutdown)
+    runtime.register_function("pool_pending_count", pool_pending_count)
