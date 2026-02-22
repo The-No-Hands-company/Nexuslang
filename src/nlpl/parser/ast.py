@@ -1307,3 +1307,45 @@ class ParallelForLoop(ASTNode):
     def __str__(self):
         return f"ParallelForLoop({self.var_name} in {self.iterable})"
 
+
+class ConditionalCompilationBlock(ASTNode):
+    """
+    Compile-time / target-conditional block.
+
+    Syntax variants:
+        when target os is "linux"
+            ...body...
+        end
+
+        when target arch is "x86_64"
+            ...body...
+        otherwise
+            ...else_body...
+        end
+
+        when feature "networking"
+            ...body...
+        end
+
+    The interpreter evaluates the condition against the current runtime
+    platform (os.name, platform.system, platform.machine) and executes
+    the matching branch.  The else/otherwise branch is optional.
+
+    Fields:
+        condition_type  - "target_os" | "target_arch" | "target_pointer_width"
+                          | "target_endian" | "feature" | "platform"
+        condition_value - the string value to match against
+        body            - list of statements for the true branch
+        else_body       - list of statements for the false branch (or None)
+    """
+    def __init__(self, condition_type, condition_value,
+                 body, else_body=None, line_number=None):
+        super().__init__("conditional_compilation_block", line_number)
+        self.condition_type = condition_type
+        self.condition_value = condition_value
+        self.body = body
+        self.else_body = else_body
+
+    def __str__(self):
+        return (f"ConditionalCompilationBlock("
+                f"when {self.condition_type} is {self.condition_value!r})")

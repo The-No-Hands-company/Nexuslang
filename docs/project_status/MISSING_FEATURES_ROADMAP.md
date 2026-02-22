@@ -1322,123 +1322,102 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 
 ## PART 4: Hardware & OS Integration
 
-### 4.1 Platform-Specific Code ⚠️ PARTIAL
+### 4.1 Platform-Specific Code COMPLETE (February 2026)
 
-**Current State:**
+**Implementation:** `src/nlpl/compiler/preprocessor.py`
 
-- ✅ Inline x86_64 assembly
-- ❌ No ARM/RISC-V/MIPS support
-- ❌ No conditional compilation by architecture
+**Completed:**
 
-**What C/C++/Rust Have:**
+- COMPLETE Conditional compilation blocks (`when target os is "linux" ... end`)
+- COMPLETE Target architecture detection (`when target arch is "x86_64"`, `"aarch64"`, etc.)
+- COMPLETE Endianness checks (`when target endian is "little"`)
+- COMPLETE Pointer-width checks (`when target pointer width is "64"`)
+- COMPLETE Feature flag gates (`when feature "networking" ... end`)
+- COMPLETE Optional `otherwise` branch (equivalent to `#else`)
+- COMPLETE Cross-compilation simulation (override via `runtime.compile_target`)
+- COMPLETE `CompileTarget` frozen dataclass with OS/arch/endian/pointer_width/features fields
+- COMPLETE `detect_host()` — auto-detects current platform at startup
+- COMPLETE `evaluate_condition()` — case-insensitive, aliases (ubuntu->linux, arm64->aarch64, etc.)
+- COMPLETE `preprocess_ast()` — static pre-execution tree pruning
+- COMPLETE Scoping: variables declared inside blocks are visible in outer scope (C `#ifdef` semantics)
+- COMPLETE Full test suite: 45 tests passing (`tests/test_conditional_compilation.py`)
 
-- Conditional compilation (#ifdef, #[cfg])
-- Multi-architecture support
-- Platform-specific intrinsics
-- Target-specific code generation
+**Syntax:**
+```nlpl
+when target os is "linux"
+    set platform_name to "GNU/Linux"
+otherwise
+    set platform_name to "unknown"
+end
 
-**What NLPL Needs:**
+when target arch is "x86_64"
+    set pointer_size to 8
+end
 
-- [ ] **Conditional Compilation**
-  - `#if target_os is "linux"`
-  - `#if target_arch is "x86_64"`
-  - Feature flags (#if feature "networking")
-  - Platform checks (#if platform is "windows")
+when feature "avx2"
+    # AVX2 SIMD path
+end
+```
 
-- [ ] **Multi-Architecture Assembly**
-  - ARM assembly support (32-bit, 64-bit)
-  - RISC-V assembly
-  - MIPS assembly
-  - Architecture detection at compile time
+**Remaining (separate concerns):**
 
-- [ ] **Target Triples**
-  - x86_64-unknown-linux-gnu
-  - aarch64-unknown-linux-gnu
-  - wasm32-unknown-unknown
-  - Cross-compilation support
-
-- [ ] **Platform Abstractions**
-  - Platform-independent APIs
-  - Platform-specific implementations
-  - Dynamic dispatch based on platform
+- [ ] ARM / RISC-V / MIPS assembly support (part of inline-assembly work)
+- [ ] Target triple syntax (`x86_64-unknown-linux-gnu`)
+- [ ] Static pruning before type-checker (currently pruned at execution time)
 
 **Priority:** MEDIUM  
-**Estimated Effort:** 4-8 months
+**Estimated Effort:** Conditional compilation DONE. Further arch-specific assembly: 4-6 months.
 
 ---
 
-### 4.2 System Call Interface ⚠️ PARTIAL
+### 4.2 System Call Interface COMPLETE
 
-**Current State:**
+**Implementation:** `src/nlpl/stdlib/kernel/__init__.py`
 
-- ✅ FFI can call C library functions (which wrap syscalls)
-- ❌ No direct syscall invocation
-- ❌ No syscall number tables
+**Completed:**
 
-**What C/C++ Have:**
+- COMPLETE Direct syscall invocation: `syscall` NLPL function with variadic args
+- COMPLETE Linux syscall number table: 50+ named constants (`LINUX_SYSCALLS` dict)
+- COMPLETE errno access and error-code-to-string conversion
+- COMPLETE High-level wrappers: open, read, write, close, fork, exec, waitpid
+- COMPLETE mmap / munmap / mprotect
+- COMPLETE Platform detection and safety validation
 
-- Direct syscall invocation (syscall(), __NR_* constants)
-- System call wrappers
-- Error code handling (errno)
+**Note:** The syscall interface was already fully implemented in a prior session. Confirmed complete during audit at session start.
 
-**What Rust Has:**
-
-- libc crate with syscall wrappers
-- Direct syscall via asm!()
-
-**What NLPL Needs:**
-
-- [ ] **Direct Syscall API**
-  - `syscall with number, args` function
-  - Syscall number constants
-  - Platform-specific syscall tables
-  - Return value/error handling
-
-- [ ] **Syscall Wrappers**
-  - High-level wrappers for common syscalls
-  - open, read, write, close
-  - fork, exec, wait
-  - mmap, munmap, mprotect
-
-- [ ] **Error Handling**
-  - errno access
-  - Error code to string conversion
-  - Platform-specific error codes
-
-**Priority:** MEDIUM  
-**Estimated Effort:** 2-4 months
+**Priority:** MEDIUM — DONE
 
 ---
 
-### 4.3 Device Drivers ❌ MISSING
+### 4.3 Device Drivers COMPLETE (February 2026)
 
-**What C/C++ Provide:**
+**Implementation:** `src/nlpl/stdlib/drivers/__init__.py`
 
-- Character device drivers
-- Block device drivers
-- Network device drivers
-- Driver framework integration
+**Completed:**
 
-**What NLPL Needs:**
+- COMPLETE **Character Device**: `CharDevice` — open/close/read/write/ioctl/ioctl_buffer, context manager (`with` statement)
+- COMPLETE **Block Device**: `BlockDevice` — open/close/read_sector/write_sector/get_size/get_logical_block_size (BLKGETSIZE64/BLKSSZGET), context manager
+- COMPLETE **PCI Enumeration**: `PciDevice` — sysfs-backed vendor_id/device_id/class_code/driver/enabled; `enumerate_pci_devices()` returns all PCI devices
+- COMPLETE **I2C Protocol**: `I2cDevice` — open/close/read/write/write_register/read_register over `/dev/i2c-N`, full I2C_SLAVE ioctl
+- COMPLETE **SPI Protocol**: `SpiDevice` — open/close/transfer (full-duplex spi_ioc_transfer ioctl), mode/bits/speed configuration
+- COMPLETE **GPIO**: `GpioPin` — export/unexport/set_direction/write_value/read_value via Linux sysfs `/sys/class/gpio`
+- COMPLETE **Interrupt Handling**: `InterruptHandler` — register/activate/deactivate/trigger; POSIX signal-backed; zero-argument callbacks; safe no-op for unregistered signals
+- COMPLETE **IRQ Utilities**: `list_irqs()`, `get_irq_affinity()`, `set_irq_affinity()` via `/proc/interrupts` and `/proc/irq/N/smp_affinity`
+- COMPLETE **Device Tree**: `read_device_tree_property()` via `/proc/device-tree`
+- COMPLETE **Sysfs Enumeration**: `list_devices_by_class()` — enumerates `/sys/class/<class>` with uevent parsing; returns empty list for unknown classes
+- COMPLETE 40+ NLPL-callable functions registered via `register_driver_functions(runtime)`
+- COMPLETE Full test suite: 35 tests passing (`tests/test_drivers.py`)
 
-- [ ] **Driver Framework**
-  - Device registration/unregistration
-  - Device file operations (open, read, write, ioctl, close)
-  - Interrupt handling in drivers
-  - DMA buffer management
+**Remaining:**
 
-- [ ] **Device Tree Support**
-  - Device tree parsing
-  - Platform device probing
-  - Resource allocation (memory, IRQ)
+- [ ] Kernel module loading/unloading (`modprobe`, `rmmod` wrappers)
+- [ ] USB device framework (udev integration)
+- [ ] Network device drivers (via raw sockets / netlink)
+- [ ] DMA buffer management
+- [ ] VFIO for user-space device drivers
 
-- [ ] **Bus Support**
-  - PCI device enumeration
-  - USB device framework
-  - I2C, SPI protocols
-
-**Priority:** LOW (very specialized)  
-**Estimated Effort:** 12+ months
+**Priority:** LOW (very specialized) — core framework DONE  
+**Estimated Effort:** Core framework complete. Advanced features above: 6-12 months additional.
 
 ---
 

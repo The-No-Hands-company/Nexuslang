@@ -75,6 +75,7 @@ from ..stdlib.data import register_data_functions
 from ..stdlib.scientific import register_scientific_functions
 from ..stdlib.parallel import register_parallel_functions
 from ..stdlib.kernel import register_kernel_functions
+from ..stdlib.drivers import register_driver_functions
 
 def register_stdlib(runtime: Runtime) -> None:
     """Register all standard library functions with the runtime."""
@@ -297,7 +298,10 @@ def register_stdlib(runtime: Runtime) -> None:
 
     # Register OS kernel primitives
     register_kernel_functions(runtime)
-    
+
+    # Register device driver framework
+    register_driver_functions(runtime)
+
     # Register module names for importing
     runtime.register_module("math")
     runtime.register_module("string")

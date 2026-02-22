@@ -845,14 +845,53 @@ class Interpreter:
             )
         return None
 
-    
+    def execute_conditional_compilation_block(self, node):
+        """Execute a compile-time conditional block.
+
+        Evaluates the condition against the current host platform (or the
+        CompileTarget set in the runtime, if any) and runs the matching branch.
+
+        Even though this is called at *runtime* in interpreter mode, the
+        semantics are identical to a compile-time branch: only the selected
+        branch is executed; the other branch is silently skipped.
+
+        Example NLPL::
+
+            when target os is "linux"
+                print text "Running on Linux"
+            otherwise
+                print text "Not Linux"
+            end
+        """
+        from nlpl.compiler.preprocessor import evaluate_condition, host_target
+
+        # Allow the runtime to override the default host target for
+        # cross-compilation simulation: runtime.compile_target
+        target = getattr(self.runtime, "compile_target", None) or host_target()
+
+        condition_holds = evaluate_condition(
+            node.condition_type,
+            str(node.condition_value),
+            target,
+        )
+
+        chosen_branch = node.body if condition_holds else (node.else_body or [])
+
+        # Execute in the *current* scope (not a new inner scope).
+        # Conditional compilation blocks are equivalent to C's #ifdef: variables
+        # declared inside must be visible after the `end` keyword.
+        result = None
+        for stmt in chosen_branch:
+            result = self.execute(stmt)
+        return result
+
     def execute_repeat_n_times_loop(self, node):
         """Execute a repeat-n-times loop."""
         result = None
-        
+
         # Evaluate the count expression to get number of iterations
         count = self.execute(node.count)
-        
+
         # Ensure count is an integer
         if not isinstance(count, (int, float)):
             raise NLPLTypeError(

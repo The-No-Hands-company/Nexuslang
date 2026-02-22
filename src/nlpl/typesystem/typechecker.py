@@ -449,6 +449,15 @@ class TypeChecker:
                         f"Line {getattr(statement, 'line_number', '?')}: Raise message should be String, got {message_type}"
                     )
             return ANY_TYPE  # Raise statements don't produce a value
+        elif hasattr(statement, 'node_type') and getattr(statement, 'node_type', None) == 'conditional_compilation_block':
+            # Conditional compilation block - type-check both branches
+            branch_env = env.create_child_scope() if hasattr(env, 'create_child_scope') else env
+            for stmt in (statement.body or []):
+                self.check_statement(stmt, branch_env)
+            if statement.else_body:
+                for stmt in statement.else_body:
+                    self.check_statement(stmt, branch_env)
+            return ANY_TYPE
         else:
             raise TypeCheckError(f"Unsupported statement type: {statement.__class__.__name__}")
             return ANY_TYPE

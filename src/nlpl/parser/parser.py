@@ -33,6 +33,8 @@ from nlpl.parser.ast import (
     LifetimeAnnotation, BorrowExpressionWithLifetime, ParameterWithLifetime, ReturnTypeWithLifetime,
     # Allocator hints and parallel execution
     AllocatorHint, ParallelForLoop,
+    # Conditional compilation / platform detection
+    ConditionalCompilationBlock,
     # Struct and union types
     StructDefinition, StructField, UnionDefinition, EnumDefinition, EnumMember, OffsetofExpression, TypeCastExpression,
     # Inline assembly
@@ -268,7 +270,16 @@ class Parser:
             elif token.type == TokenType.PARALLEL:
                 # Handle "parallel for each item in collection ... end"
                 return self.parse_parallel_for()
-            
+
+            elif token.type == TokenType.WHEN:
+                # Disambiguate: "when target ..." / "when feature ..." are
+                # conditional compilation blocks; anything else falls through
+                # to expression parsing.
+                next_tok = self._peek_next()
+                if next_tok and next_tok.lexeme in ("target", "feature"):
+                    return self.parse_conditional_compilation()
+                # Otherwise fall through to expression statement
+
             elif token.type == TokenType.REPEAT:
                 # Could be "repeat N times" or "repeat for each"
                 return self.for_loop()
@@ -3106,6 +3117,141 @@ class Parser:
             
         return WhileLoop(condition, body, line_number, else_body, label)
         
+    def _peek_next(self):
+        """Return the next token without consuming it (alias for peek(1))."""
+        return self.peek(1)
+
+    def parse_conditional_compilation(self):
+        """Parse a compile-time conditional block.
+
+        Supported syntax variants::
+
+            when target os is "linux"
+                ...body...
+            end
+
+            when target arch is "x86_64"
+                ...body...
+            otherwise
+                ...else_body...
+            end
+
+            when target endian is "little"
+                ...body...
+            end
+
+            when target pointer width is "64"
+                ...body...
+            end
+
+            when feature "networking"
+                ...body...
+            end
+
+        Returns a :class:`~nlpl.parser.ast.ConditionalCompilationBlock` node.
+        """
+        line_number = self.current_token.line
+        self.advance()  # consume 'when'
+
+        # --- Parse condition ---
+        condition_type: str
+        condition_value: str
+
+        if self.current_token and self.current_token.lexeme == "feature":
+            self.advance()  # consume 'feature'
+            if self.current_token and self.current_token.type == TokenType.STRING_LITERAL:
+                condition_value = self.current_token.lexeme.strip('"\'')
+                self.advance()
+            elif self.current_token:
+                condition_value = self.current_token.lexeme or ""
+                self.advance()
+            else:
+                condition_value = ""
+            condition_type = "feature"
+
+        elif self.current_token and self.current_token.lexeme == "target":
+            self.advance()  # consume 'target'
+            # Next word is the dimension: os, arch, endian, pointer, ptr, platform
+            if not self.current_token:
+                self.error("Expected dimension after 'when target'")
+            dim = self.current_token.lexeme.lower() if self.current_token.lexeme else ""
+            self.advance()  # consume dimension word
+
+            if dim in ("os", "platform"):
+                condition_type = "target_os"
+            elif dim in ("arch", "architecture"):
+                condition_type = "target_arch"
+            elif dim in ("endian", "endianness"):
+                condition_type = "target_endian"
+            elif dim in ("pointer", "ptr"):
+                # Support "target pointer width is X" (optional "width")
+                if (self.current_token
+                        and self.current_token.lexeme
+                        and self.current_token.lexeme.lower() == "width"):
+                    self.advance()  # consume 'width'
+                condition_type = "target_ptr_width"
+            else:
+                condition_type = f"target_{dim}"
+
+            # Optional 'is'
+            if self.current_token and self.current_token.lexeme in ("is", "=", "=="):
+                self.advance()
+
+            # Read the value (string literal or identifier)
+            if self.current_token and self.current_token.type == TokenType.STRING_LITERAL:
+                condition_value = self.current_token.lexeme.strip('"\'')
+                self.advance()
+            elif self.current_token:
+                condition_value = self.current_token.lexeme or ""
+                self.advance()
+            else:
+                condition_value = ""
+        else:
+            self.error("Expected 'target' or 'feature' after 'when' in conditional compilation")
+
+        # --- Skip optional newline ---
+        while (self.current_token
+               and self.current_token.type in (TokenType.NEWLINE, TokenType.INDENT)):
+            self.advance()
+
+        # --- Parse true body ---
+        body = []
+        while (self.current_token
+               and self.current_token.type not in (TokenType.END, TokenType.EOF)
+               and not (self.current_token.lexeme
+                        and self.current_token.lexeme.lower() == "otherwise")):
+            stmt = self.statement()
+            if stmt:
+                body.append(stmt)
+
+        # --- Optional 'otherwise' / else branch ---
+        else_body = None
+        if (self.current_token
+                and self.current_token.lexeme
+                and self.current_token.lexeme.lower() == "otherwise"):
+            self.advance()  # consume 'otherwise'
+            while (self.current_token
+                   and self.current_token.type in (TokenType.NEWLINE, TokenType.INDENT)):
+                self.advance()
+            else_body = []
+            while (self.current_token
+                   and self.current_token.type not in (TokenType.END, TokenType.EOF)):
+                stmt = self.statement()
+                if stmt:
+                    else_body.append(stmt)
+
+        # --- Consume closing 'end' ---
+        if self.current_token and self.current_token.type == TokenType.END:
+            self.advance()
+
+        return ConditionalCompilationBlock(
+            condition_type=condition_type,
+            condition_value=condition_value,
+            body=body,
+            else_body=else_body,
+            line_number=line_number,
+        )
+
     def parse_parallel_for(self):
         """Parse a parallel for-each loop.
 
