@@ -183,15 +183,20 @@ def spawn_async(fn: Callable, *args) -> NLPLTask:
     loop = _get_or_create_loop()
 
     if inspect.iscoroutinefunction(fn):
-        async def _run():
+        # Native coroutine: schedule it directly on the event loop.
+        async def _run_coro():
             return await fn(*args)
+        cf_future = asyncio.run_coroutine_threadsafe(_run_coro(), loop)
     else:
-        async def _run():
-            return fn(*args)
+        # Plain blocking callable: run it in the loop's default
+        # ThreadPoolExecutor so it never blocks the event-loop thread.
+        # This avoids starving other pending tasks when fn calls time.sleep
+        # or performs any other blocking I/O.
+        async def _run_in_executor():
+            return await loop.run_in_executor(None, lambda: fn(*args))
+        cf_future = asyncio.run_coroutine_threadsafe(_run_in_executor(), loop)
 
-    # run_coroutine_threadsafe returns a concurrent.futures.Future which is
-    # thread-safe; no additional wrapping needed.
-    cf_future = asyncio.run_coroutine_threadsafe(_run(), loop)
+    # concurrent.futures.Future is inherently thread-safe; NLPLTask wraps it.
     return NLPLTask(cf_future)
 
 
