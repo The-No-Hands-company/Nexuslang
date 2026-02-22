@@ -496,7 +496,7 @@ class BorrowChecker:
 
     def _check_ClassDefinition(self, node) -> None:
         self._scope.push()
-        for stmt in (node.body or []):
+        for stmt in (node.methods or []):
             self._check_node(stmt)
         self._scope.pop()
 
