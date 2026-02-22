@@ -1423,61 +1423,69 @@ end
 
 ## PART 5: Tooling & Ecosystem
 
-### 5.1 Build System ⚠️ PARTIAL
+### 5.1 Build System - COMPLETE (February 22, 2026)
 
-**Current State:**
+**Implementation:** `src/nlpl/tooling/` — `config.py`, `builder.py`, `lockfile.py`, `dependency_manager.py`  
+**CLI:** `src/nlpl/cli/__init__.py` — 11 subcommands  
+**Tests:** `tests/test_build_system.py` — 62 tests, all passing
 
-- ✅ Basic compilation with nlplc
-- ❌ No build configuration files
-- ❌ No dependency management
-- ❌ No build caching
+**Implemented Features:**
 
-**What C/C++ Have:**
+- ✅ **Build configuration** (`nlpl.toml` manifest — TOML-based, Cargo-inspired)
+  - `[package]` — name, version, authors, description
+  - `[build]` — source_dir, output_dir, target, optimization, profile, jobs, features, target_triple, warnings_as_errors
+  - `[dependencies]`, `[dev-dependencies]`, `[build-dependencies]`
+  - `[features]` — named features with transitive expansion, default features
+  - `[profile.NAME]` — custom build profiles inheriting from `dev` or `release`
 
-- Make, CMake, Meson, Bazel
-- Build configuration files
-- Dependency tracking
-- Incremental compilation
-- Cross-compilation
+- ✅ **Build tool** (full `BuildSystem` class)
+  - `nlpl build` — incremental compilation with SHA-256 content-hash cache
+  - `nlpl build --release` — release profile (O3, strip, LTO, no debug)
+  - `nlpl build --profile <NAME>` — custom named profiles
+  - `nlpl build --features f1 f2` — feature flag activation
+  - `nlpl build --jobs N` / `-j N` — parallel compilation via ThreadPoolExecutor
+  - `nlpl build --clean` — discard cache and rebuild all
+  - `nlpl check` — parse + type-check without emitting output
+  - `nlpl clean` — remove build output directory and cache
+  - `nlpl run [--release] [--features ...] [-- args]` — build then execute
+  - `nlpl test [NAME] [--release] [--features ...]` — discover and run `tests/*.nlpl`
 
-**What Rust Has (Gold Standard):**
+- ✅ **Project scaffolding**
+  - `nlpl new <name>` — create project in a new directory
+  - `nlpl init [name]` — initialise in the current directory
+  - Generates `nlpl.toml`, `src/main.nlpl`, `tests/.gitkeep`, `.gitignore`
 
-- Cargo (build tool + package manager)
-- Cargo.toml (manifest file)
-- Build scripts (build.rs)
-- Feature flags
-- Workspace management
+- ✅ **Build profiles**
+  - Built-in `dev` profile: O0, debug info, debug assertions, incremental, no strip
+  - Built-in `release` profile: O3, no debug, LTO, strip, no incremental
+  - Custom profiles via `[profile.NAME]` with `inherits = "dev"` or `"release"`
 
-**What NLPL Needs:**
+- ✅ **Dependency management**
+  - `nlpl add <pkg[@ver]> [--dev] [--path P] [--git URL] [--branch/--tag/--rev]`
+  - `nlpl remove <pkg> [--dev]`
+  - `nlpl lock` — regenerate `nlpl.lock` from `nlpl.toml`
+  - `nlpl deps` — list all dependencies with lock status
 
-- [ ] **Build Configuration**
-  - `nlpl.toml` or `package.nlpl` manifest
-  - Project metadata (name, version, author)
-  - Dependency declarations
-  - Build targets (library, executable)
-  - Feature flags
+- ✅ **Dependency locking** (`nlpl.lock` — JSON, version-stamped)
+  - Atomic writes (temp file + rename)
+  - SHA-256 checksums for path and file dependencies
+  - `git ls-remote` for git dependency commit resolution
+  - `verify_paths()` validates all path dependencies still exist
 
-- [ ] **Build Tool**
-  - `nlpl build` command
-  - Incremental compilation
-  - Build caching (artifacts)
-  - Parallel compilation
-  - Clean builds
+- ✅ **Feature flags**
+  - Named features with dependency activation (`dep:libname`)
+  - Transitive feature expansion
+  - Default features list
+  - Extra features enabled at build time via `--features`
 
-- [ ] **Dependency Management**
-  - Dependency resolution
-  - Version constraints (semver)
-  - Dependency locking
-  - Private/dev dependencies
+**Not Yet Implemented (future work):**
 
-- [ ] **Cross-Compilation**
-  - Target specification
-  - Toolchain management
-  - Cross-compile for embedded targets
-  - WASM compilation
+- [ ] **Cross-compilation** — target triple parsing, toolchain selection, WASM output
+- [ ] **Build scripts** — `build.nlpl` pre-build hooks
+- [ ] **Workspace management** — mono-repo with multiple packages
 
-**Priority:** HIGH (essential for ecosystem)  
-**Estimated Effort:** 6-9 months
+**Priority:** COMPLETE  
+**Effort:** Implemented in one session as part of 5.1 Build System milestone
 
 ---
 

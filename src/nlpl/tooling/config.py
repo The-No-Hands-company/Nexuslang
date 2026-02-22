@@ -40,30 +40,114 @@ class PackageConfig:
     description: str = ""
 
 @dataclass
+class ProfileConfig:
+    """Build profile (dev, release, or custom)."""
+    name: str
+    optimization: int = 0       # 0-3
+    debug_info: bool = True
+    debug_assertions: bool = True
+    lto: bool = False            # Link-time optimisation
+    incremental: bool = True
+    strip: bool = False          # Strip symbols on release
+
+
+# Built-in profiles
+_PROFILE_DEV = ProfileConfig(
+    name="dev",
+    optimization=0,
+    debug_info=True,
+    debug_assertions=True,
+    lto=False,
+    incremental=True,
+    strip=False,
+)
+
+_PROFILE_RELEASE = ProfileConfig(
+    name="release",
+    optimization=3,
+    debug_info=False,
+    debug_assertions=False,
+    lto=True,
+    incremental=False,
+    strip=True,
+)
+
+
+@dataclass
 class BuildConfig:
     source_dir: str = "src"
     output_dir: str = "build"
     target: str = "c"  # c, cpp, llvm_ir, etc.
     optimization: int = 0
+    debug_info: bool = True
     headers: bool = False
+    # Feature flags enabled by the user or manifest
+    features: List[str] = field(default_factory=list)
+    # Current active profile name ("dev" or "release" or custom)
+    profile: str = "dev"
+    # Target triple for cross-compilation (e.g. "aarch64-unknown-linux-gnu")
+    target_triple: Optional[str] = None
+    # Number of parallel compilation jobs (None = cpu_count)
+    jobs: Optional[int] = None
+    # Treat warnings as errors
+    warnings_as_errors: bool = False
+
+
+@dataclass
+class FeaturesConfig:
+    """[features] section — each feature can enable a list of other features/deps."""
+    definitions: Dict[str, List[str]] = field(default_factory=dict)
+    default: List[str] = field(default_factory=list)  # features enabled by default
+
 
 @dataclass
 class ProjectConfig:
     package: PackageConfig
     build: BuildConfig
-    dependencies: Dict[str, str] = field(default_factory=dict)
+    dependencies: Dict[str, Any] = field(default_factory=dict)
+    dev_dependencies: Dict[str, Any] = field(default_factory=dict)
+    build_dependencies: Dict[str, Any] = field(default_factory=dict)
+    features_config: FeaturesConfig = field(default_factory=FeaturesConfig)
+    profiles: Dict[str, ProfileConfig] = field(default_factory=dict)
+
+    def get_profile(self, name: Optional[str] = None) -> ProfileConfig:
+        """Return the profile config for *name* (defaults to build.profile)."""
+        profile_name = name or self.build.profile
+        if profile_name in self.profiles:
+            return self.profiles[profile_name]
+        if profile_name == "release":
+            return _PROFILE_RELEASE
+        return _PROFILE_DEV
+
+    def effective_features(self) -> List[str]:
+        """Resolve the full set of active features, including defaults."""
+        active = set(self.features_config.default)
+        active.update(self.build.features)
+        # Expand transitive feature dependencies
+        changed = True
+        while changed:
+            changed = False
+            for feat in list(active):
+                for dep in self.features_config.definitions.get(feat, []):
+                    if dep.startswith("dep:"):
+                        continue  # Dependency activation, not a feature name
+                    if dep not in active:
+                        active.add(dep)
+                        changed = True
+        return sorted(active)
+
 
 class ConfigLoader:
     """Loads and validates nlpl.toml configuration."""
-    
+
     @staticmethod
     def load(path: str = "nlpl.toml") -> ProjectConfig:
         if not os.path.exists(path):
             raise FileNotFoundError(f"Configuration file not found: {path}")
-            
+
         with open(path, "rb") as f:
             data = tomllib.load(f)
-            
+
         # Parse [package]
         pkg_data = data.get("package", {})
         package = PackageConfig(
@@ -72,7 +156,7 @@ class ConfigLoader:
             authors=pkg_data.get("authors", []),
             description=pkg_data.get("description", "")
         )
-        
+
         # Parse [build]
         build_data = data.get("build", {})
         build = BuildConfig(
@@ -80,10 +164,53 @@ class ConfigLoader:
             output_dir=build_data.get("output_dir", "build"),
             target=build_data.get("target", "c"),
             optimization=int(build_data.get("optimization", 0)),
-            headers=bool(build_data.get("headers", False))
+            debug_info=bool(build_data.get("debug_info", True)),
+            headers=bool(build_data.get("headers", False)),
+            features=list(build_data.get("features", [])),
+            profile=build_data.get("profile", "dev"),
+            target_triple=build_data.get("target_triple"),
+            jobs=build_data.get("jobs"),
+            warnings_as_errors=bool(build_data.get("warnings_as_errors", False)),
         )
-        
-        # Parse [dependencies]
+
+        # Parse [features]
+        features_raw = data.get("features", {})
+        default_features = features_raw.pop("default", []) if isinstance(features_raw, dict) else []
+        features_config = FeaturesConfig(
+            definitions=dict(features_raw) if isinstance(features_raw, dict) else {},
+            default=list(default_features),
+        )
+
+        # Parse [profile.NAME] sections
+        profiles: Dict[str, ProfileConfig] = {}
+        for profile_name, profile_data in data.get("profile", {}).items():
+            inherits = profile_data.get("inherits", profile_name)
+            if inherits == "release":
+                base = _PROFILE_RELEASE
+            else:
+                base = _PROFILE_DEV
+            profiles[profile_name] = ProfileConfig(
+                name=profile_name,
+                optimization=profile_data.get("opt-level", base.optimization),
+                debug_info=profile_data.get("debug", base.debug_info),
+                debug_assertions=profile_data.get("debug-assertions", base.debug_assertions),
+                lto=profile_data.get("lto", base.lto),
+                incremental=profile_data.get("incremental", base.incremental),
+                strip=profile_data.get("strip", base.strip),
+            )
+
+        # Parse dependency sections
         dependencies = data.get("dependencies", {})
-        
-        return ProjectConfig(package, build, dependencies)
+        dev_dependencies = data.get("dev-dependencies", {})
+        build_dependencies = data.get("build-dependencies", {})
+
+        return ProjectConfig(
+            package=package,
+            build=build,
+            dependencies=dependencies,
+            dev_dependencies=dev_dependencies,
+            build_dependencies=build_dependencies,
+            features_config=features_config,
+            profiles=profiles,
+        )
+

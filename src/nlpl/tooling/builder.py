@@ -2,323 +2,574 @@
 import os
 import shutil
 import glob
-from typing import List, Optional, Dict
-from .config import ProjectConfig
+import time
+import hashlib
+import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+from typing import List, Optional, Dict, Tuple
+from dataclasses import dataclass, field
+
+from .config import ProjectConfig, ProfileConfig
 from ..compiler import Compiler, CompilerOptions, CompilationTarget
 from ..parser.lexer import Lexer
 from ..parser.parser import Parser
 
-class BuildSystem:
-    """Orchestrates the build process based on project configuration."""
-    
-    def __init__(self, config: ProjectConfig):
-        self.config = config
-        self.compiler = Compiler()
-        self._configure_compiler()
-        
-    def _configure_compiler(self):
-        """Configure compiler options from project config."""
-        options = self.compiler.options
-        options.optimization_level = self.config.build.optimization
-        options.generate_header = self.config.build.headers
-        
-        # Add dependency paths to library search paths
-        # Dependencies are typically installed in standard locations or specified paths
-        for dep_name, dep_spec in self.config.dependencies.items():
-            # If dependency specifies a path (local dependency)
-            if isinstance(dep_spec, dict) and 'path' in dep_spec:
-                dep_path = dep_spec['path']
-                # Add the dependency's build/lib directory to search paths
-                lib_path = os.path.join(dep_path, 'build', 'lib')
-                if os.path.exists(lib_path):
-                    options.library_search_paths.append(lib_path)
-            # For version-based dependencies, check standard locations
-            else:
-                # Check common installation paths
-                standard_paths = [
-                    os.path.expanduser(f'~/.nlpl/lib/{dep_name}'),
-                    f'/usr/local/lib/nlpl/{dep_name}',
-                    f'/usr/lib/nlpl/{dep_name}'
-                ]
-                for path in standard_paths:
-                    if os.path.exists(path):
-                        options.library_search_paths.append(path)
-                        break
-        
-    def clean(self):
-        """Clean build directory."""
-        if os.path.exists(self.config.build.output_dir):
-            shutil.rmtree(self.config.build.output_dir)
-            print(f" Cleaned {self.config.build.output_dir}")
-            
-    def build(self) -> bool:
-        """Build the project."""
-        src_dir = self.config.build.source_dir
-        out_dir = self.config.build.output_dir
-        
-        # Ensure output dir exists
-        os.makedirs(out_dir, exist_ok=True)
-        
-        # Find all .nlpl files
-        sources = glob.glob(os.path.join(src_dir, "**/*.nlpl"), recursive=True)
-        
-        if not sources:
-            print(f" No source files found in {src_dir}")
-            return False
-            
-        print(f"Building {self.config.package.name} v{self.config.package.version}...")
-        
-        # Detect main entry point and module structure
-        main_file = self._detect_main_entry_point(sources)
-        module_files = self._group_into_modules(sources)
-        
-        success_count = 0
-        compiled_objects = []  # For linking multi-file modules
-        
-        # Handle multi-file modules properly
-        # Strategy: Compile each file to intermediate format, then link if needed
-        for source_path in sources:
-            # Determine output path
-            rel_path = os.path.relpath(source_path, src_dir)
-            base_name = os.path.splitext(rel_path)[0]
-            
-            # Determine if this is the main file
-            is_main = (source_path == main_file)
-            
-            # For C/C++ targets with multiple files, compile to object files first
-            if self.config.build.target in [CompilationTarget.C, CompilationTarget.CPP]:
-                if len(sources) > 1:
-                    # Multi-file project: compile to intermediate C/C++ first
-                    intermediate_file = os.path.join(out_dir, f"{base_name}.{self.config.build.target}")
-                    output_file = intermediate_file
-                else:
-                    # Single file: compile and link directly to executable
-                    output_file = os.path.join(out_dir, base_name if is_main else base_name)
-            else:
-                # For other targets, use appropriate extension
-                output_file = os.path.join(out_dir, base_name)
-                if self.config.build.target not in ["c", "cpp", "asm"]:
-                    output_file += f".{self.config.build.target}"
-            
-            print(f"  Compiling {source_path}...")
-            
-            try:
-                # Read source
-                with open(source_path, 'r') as f:
-                    code = f.read()
-                
-                # Parse
-                lexer = Lexer(code)
-                tokens = lexer.tokenize()
-                parser = Parser(tokens)
-                ast = parser.parse()
-                
-                # Compile to intermediate format
-                if self.config.build.target in [CompilationTarget.C, CompilationTarget.CPP]:
-                    # For multi-file projects, compile to C/C++ source
-                    ok, libs = self.compiler.compile(ast, self.config.build.target, output_file)
-                    if ok:
-                        compiled_objects.append(output_file)
-                        success_count += 1
-                    else:
-                        return False
-                else:
-                    # For other targets, compile directly
-                    ok, _ = self.compiler.compile(ast, self.config.build.target, output_file)
-                    if ok:
-                        success_count += 1
-                    else:
-                        return False
-                    
-            except Exception as e:
-                print(f" Failed to compile {source_path}: {e}")
-                import traceback
-                traceback.print_exc()
-                return False
-        
-        # Link multi-file C/C++ projects
-        if self.config.build.target in [CompilationTarget.C, CompilationTarget.CPP] and len(compiled_objects) > 1:
-            print(f"\n  Linking {len(compiled_objects)} object files...")
-            final_executable = os.path.join(out_dir, self.config.package.name)
-            if not self._link_multi_file_project(compiled_objects, final_executable):
-                return False
-                
-        print(f" Built {success_count} files to {out_dir}")
-        return True
 
-    def run(self):
-        """Run the built executable."""
-        out_dir = self.config.build.output_dir
-        
-        # Better main entry point detection using multiple strategies
-        executable = self._find_executable(out_dir)
-        
-        if executable:
-            print(f"Running {executable}...")
-            import subprocess
-            try:
-                result = subprocess.run([executable], cwd=out_dir)
-                return result.returncode == 0
-            except Exception as e:
-                print(f" Failed to run executable: {e}")
-                return False
-        else:
-            print(" No executable found to run")
-            print(f"   Searched in: {out_dir}")
-            return False
-    
-    def _detect_main_entry_point(self, sources: List[str]) -> Optional[str]:
-        """Detect the main entry point file from a list of sources.
-        
-        Strategies:
-        1. Look for file named 'main.nlpl'
-        2. Look for file with same name as package
-        3. Look for file containing a main() function
-        4. Default to first file if none found
-        """
-        # Strategy 1: main.nlpl
-        for source in sources:
-            if os.path.basename(source).lower() == 'main.nlpl':
-                return source
-        
-        # Strategy 2: package name
-        package_file = f"{self.config.package.name}.nlpl"
-        for source in sources:
-            if os.path.basename(source).lower() == package_file.lower():
-                return source
-        
-        # Strategy 3: File containing main() function
-        for source in sources:
-            try:
-                with open(source, 'r') as f:
-                    content = f.read()
-                    # Simple heuristic: look for 'function main' or 'define a function called main'
-                    if 'function main' in content.lower() or 'called main' in content.lower():
-                        return source
-            except:
-                continue
-        
-        # Strategy 4: Default to first file
-        return sources[0] if sources else None
-    
-    def _group_into_modules(self, sources: List[str]) -> Dict[str, List[str]]:
-        """Group source files into modules based on directory structure.
-        
-        Returns:
-            Dictionary mapping module names to list of source files
-        """
-        modules = {}
-        src_dir = self.config.build.source_dir
-        
-        for source in sources:
-            rel_path = os.path.relpath(source, src_dir)
-            dir_name = os.path.dirname(rel_path)
-            
-            # If file is in a subdirectory, that's the module name
-            if dir_name:
-                module_name = dir_name.replace(os.sep, '.')
-            else:
-                module_name = 'main'
-            
-            if module_name not in modules:
-                modules[module_name] = []
-            modules[module_name].append(source)
-        
-        return modules
-    
-    def _link_multi_file_project(self, object_files: List[str], output_executable: str) -> bool:
-        """Link multiple C/C++ source files into a single executable.
-        
-        Args:
-            object_files: List of compiled C/C++ source files
-            output_executable: Path to output executable
-            
-        Returns:
-            True if linking succeeded, False otherwise
-        """
-        import subprocess
-        import shutil
-        
-        # Choose compiler based on target
-        if self.config.build.target == CompilationTarget.CPP:
-            compilers = ['g++', 'clang++']
-        else:
-            compilers = ['gcc', 'clang']
-        
-        compiler = None
-        for c in compilers:
-            if shutil.which(c):
-                compiler = c
-                break
-        
-        if not compiler:
-            print(f" No C/C++ compiler found for linking")
-            return False
-        
-        # Build linker command
-        cmd = [compiler] + object_files + ['-o', output_executable]
-        
-        # Add library search paths
-        for path in self.compiler.options.library_search_paths:
-            cmd.append(f'-L{path}')
-        
-        # Add optimization flags
-        if self.compiler.options.optimization_level > 0:
-            cmd.append(f'-O{self.compiler.options.optimization_level}')
-        
+# ---------------------------------------------------------------------------
+# Build cache (file-level incremental compilation)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class _CacheEntry:
+    path: str
+    mtime: float
+    size: int
+    content_hash: str
+
+
+class _BuildCache:
+    """Lightweight build cache backed by a JSON file in the build output dir."""
+
+    VERSION = 1
+
+    def __init__(self, cache_path: Path) -> None:
+        self._path = cache_path
+        self._entries: Dict[str, _CacheEntry] = {}
+        self._load()
+
+    def _load(self) -> None:
+        if not self._path.exists():
+            return
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            if result.returncode == 0:
-                print(f" Linking successful: {output_executable}")
+            with open(self._path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if data.get("version") != self.VERSION:
+                return
+            for e in data.get("entries", []):
+                self._entries[e["path"]] = _CacheEntry(**e)
+        except Exception:
+            self._entries = {}
+
+    def save(self) -> None:
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        data = {
+            "version": self.VERSION,
+            "entries": [vars(e) for e in self._entries.values()],
+        }
+        with open(self._path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+
+    @staticmethod
+    def _file_hash(path: str) -> str:
+        sha = hashlib.sha256()
+        with open(path, "rb") as f:
+            while chunk := f.read(65536):
+                sha.update(chunk)
+        return sha.hexdigest()
+
+    def needs_rebuild(self, source_path: str) -> bool:
+        """Return True if *source_path* has changed since it was last cached."""
+        if source_path not in self._entries:
+            return True
+        try:
+            st = os.stat(source_path)
+        except OSError:
+            return True
+        e = self._entries[source_path]
+        if st.st_mtime != e.mtime or st.st_size != e.size:
+            current_hash = self._file_hash(source_path)
+            if current_hash != e.content_hash:
                 return True
-            else:
-                print(f" Linking failed:")
-                print(result.stderr)
-                return False
-        except Exception as e:
-            print(f" Linking error: {e}")
-            return False
-    
-    def _find_executable(self, out_dir: str) -> Optional[str]:
-        """Find the executable in the output directory using multiple strategies.
-        
-        Strategies:
-        1. Look for file matching package name (no extension)
-        2. Look for 'main' executable
-        3. Look for any executable file (has execute permission)
-        4. Look for newest file without source extension
-        
+        return False
+
+    def mark_built(self, source_path: str) -> None:
+        """Record that *source_path* was successfully compiled."""
+        try:
+            st = os.stat(source_path)
+            self._entries[source_path] = _CacheEntry(
+                path=source_path,
+                mtime=st.st_mtime,
+                size=st.st_size,
+                content_hash=self._file_hash(source_path),
+            )
+        except OSError:
+            pass
+
+    def clear(self) -> None:
+        self._entries = {}
+        if self._path.exists():
+            self._path.unlink()
+
+
+# ---------------------------------------------------------------------------
+# Build result
+# ---------------------------------------------------------------------------
+
+@dataclass
+class BuildResult:
+    """Outcome of a build invocation."""
+    success: bool
+    errors: List[str] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
+    files_compiled: int = 0
+    files_cached: int = 0
+    elapsed: float = 0.0
+
+    def print_summary(self, project_name: str, profile: str) -> None:
+        status = "Finished" if self.success else "Failed"
+        cached_note = f" ({self.files_cached} cached)" if self.files_cached else ""
+        print(
+            f"  {status} [{profile}] {project_name!r} in {self.elapsed:.2f}s"
+            f" — {self.files_compiled} compiled{cached_note}"
+        )
+        for err in self.errors:
+            print(f"  error: {err}")
+        for warn in self.warnings:
+            print(f"  warning: {warn}")
+
+
+# ---------------------------------------------------------------------------
+# Main builder
+# ---------------------------------------------------------------------------
+
+class BuildSystem:
+    """Orchestrates the build process based on project configuration.
+
+    Supports:
+    - Incremental builds (file-level caching via SHA-256 hashes)
+    - Parallel compilation (one thread per source file)
+    - Release / dev profiles
+    - Feature flags
+    """
+
+    def __init__(self, config: ProjectConfig) -> None:
+        self.config = config
+
+    # ------------------------------------------------------------------
+    # Public commands
+    # ------------------------------------------------------------------
+
+    def build(
+        self,
+        *,
+        release: bool = False,
+        profile: Optional[str] = None,
+        features: Optional[List[str]] = None,
+        jobs: Optional[int] = None,
+        clean: bool = False,
+        check_only: bool = False,
+        optimize_bounds_checks: bool = False,
+    ) -> bool:
+        """Build the project.
+
+        Args:
+            release:                Build with ``release`` profile (O3, no debug).
+            profile:                Explicit profile name (overrides *release*).
+            features:               Extra feature flags to enable.
+            jobs:                   Max parallel workers. None = CPU count.
+            clean:                  Discard cache and rebuild everything.
+            check_only:             Parse and type-check without emitting output.
+            optimize_bounds_checks: Enable compile-time bounds check elimination.
+
         Returns:
-            Path to executable if found, None otherwise
+            True if all files compiled successfully.
         """
-        # Strategy 1: Package name
-        executable = os.path.join(out_dir, self.config.package.name)
-        if os.path.exists(executable) and os.access(executable, os.X_OK):
-            return executable
-        
+        result = self._build_internal(
+            release=release,
+            profile=profile,
+            features=features,
+            jobs=jobs,
+            clean=clean,
+            check_only=check_only,
+            optimize_bounds_checks=optimize_bounds_checks,
+        )
+        result.print_summary(
+            self.config.package.name,
+            profile or ("release" if release else self.config.build.profile),
+        )
+        return result.success
+
+    def run(
+        self,
+        *,
+        release: bool = False,
+        features: Optional[List[str]] = None,
+        run_args: Optional[List[str]] = None,
+    ) -> int:
+        """Build then run the project executable.
+
+        Returns:
+            Exit code of the executed program (1 if build failed).
+        """
+        if not self.build(release=release, features=features):
+            return 1
+
+        executable = self._find_executable(self.config.build.output_dir)
+        if not executable:
+            print(f"  error: no executable found in {self.config.build.output_dir}")
+            return 1
+
+        import subprocess
+        cmd = [executable] + (run_args or [])
+        print(f"\nRunning `{' '.join(cmd)}`")
+        print("-" * 40)
+        try:
+            return subprocess.run(cmd).returncode
+        except Exception as exc:
+            print(f"  error running executable: {exc}")
+            return 1
+
+    def check(
+        self,
+        *,
+        features: Optional[List[str]] = None,
+    ) -> bool:
+        """Parse and type-check without producing compiled output (fast path).
+
+        Returns:
+            True if no errors were found.
+        """
+        return self.build(check_only=True, features=features)
+
+    def clean(self) -> None:
+        """Remove build output directory and clear the build cache."""
+        out_dir = self.config.build.output_dir
+        if os.path.exists(out_dir):
+            shutil.rmtree(out_dir)
+            print(f"  Removed {out_dir}/")
+        cache_path = self._cache_path()
+        if cache_path.exists():
+            cache_path.unlink()
+        print("  Done")
+
+    def test(
+        self,
+        *,
+        filter_names: Optional[List[str]] = None,
+        release: bool = False,
+        features: Optional[List[str]] = None,
+    ) -> int:
+        """Discover and run test files from the ``tests/`` directory.
+
+        Args:
+            filter_names: If provided, only run tests whose filename contains
+                          one of these strings.
+            release:      Build tests with release profile.
+            features:     Extra feature flags for test compilation.
+
+        Returns:
+            0 if all tests passed, 1 otherwise.
+        """
+        test_dir_path = Path(self.config.build.source_dir).parent / "tests"
+        if not test_dir_path.exists():
+            print("  No tests/ directory found.")
+            return 0
+
+        test_files = sorted(test_dir_path.rglob("*.nlpl"))
+        if filter_names:
+            test_files = [
+                f for f in test_files
+                if any(name in f.name for name in filter_names)
+            ]
+
+        if not test_files:
+            print("  No test files found.")
+            return 0
+
+        print(f"\nRunning {len(test_files)} test file(s)...")
+
+        passed = 0
+        failed = 0
+        for test_file in test_files:
+            label = test_file.stem
+            ok = self._run_single_test(
+                test_file, release=release, features=features
+            )
+            if ok:
+                passed += 1
+                print(f"  test {label} ... ok")
+            else:
+                failed += 1
+                print(f"  test {label} ... FAILED")
+
+        print(f"\ntest result: {'ok' if failed == 0 else 'FAILED'}. "
+              f"{passed} passed; {failed} failed.")
+        return 0 if failed == 0 else 1
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _cache_path(self) -> Path:
+        out_dir = Path(self.config.build.output_dir)
+        return out_dir / ".build_cache.json"
+
+    def _resolve_profile(
+        self, release: bool, profile: Optional[str]
+    ) -> ProfileConfig:
+        if profile:
+            return self.config.get_profile(profile)
+        if release:
+            return self.config.get_profile("release")
+        return self.config.get_profile(self.config.build.profile)
+
+    def _configure_compiler(
+        self,
+        prof: ProfileConfig,
+        active_features: List[str],
+        optimize_bounds_checks: bool = False,
+    ) -> Compiler:
+        """Create and configure a fresh Compiler instance."""
+        from ..compiler import create_compiler
+        compiler = create_compiler(
+            optimization_level=prof.optimization,
+            debug=prof.debug_info,
+        )
+        compiler.options.optimization_level = prof.optimization
+        compiler.options.generate_header = self.config.build.headers
+        if optimize_bounds_checks:
+            # Signal to backends that bounds-check elimination is requested
+            compiler.options.optimization_level = max(compiler.options.optimization_level, 1)
+
+        # Add dependency library search paths
+        all_deps = {**self.config.dependencies, **self.config.build_dependencies}
+        for dep_name, dep_spec in all_deps.items():
+            if isinstance(dep_spec, dict) and "path" in dep_spec:
+                lib_path = os.path.join(dep_spec["path"], "build", "lib")
+                if os.path.exists(lib_path):
+                    compiler.options.library_search_paths.append(lib_path)
+
+        return compiler
+
+    def _compile_one(
+        self, source_path: str, out_dir: str, prof: ProfileConfig,
+        active_features: List[str], check_only: bool, optimize_bounds_checks: bool
+    ) -> Tuple[str, bool, List[str]]:
+        """Compile a single source file.  Designed to run in a thread.
+
+        Returns:
+            (source_path, success, list_of_error_lines)
+        """
+        errors: List[str] = []
+        try:
+            with open(source_path, "r", encoding="utf-8") as f:
+                code = f.read()
+
+            lexer = Lexer(code)
+            tokens = lexer.tokenize()
+            parser = Parser(tokens)
+            ast = parser.parse()
+
+            if check_only:
+                # Parse-only: no backend emission
+                return source_path, True, []
+
+            compiler = self._configure_compiler(
+                prof, active_features, optimize_bounds_checks
+            )
+            rel = os.path.relpath(source_path, self.config.build.source_dir)
+            base = os.path.splitext(rel)[0]
+            output_file = os.path.join(out_dir, base)
+
+            ok, _ = compiler.compile(ast, self.config.build.target, output_file)
+            if not ok:
+                errors.append(f"Compiler reported failure for {source_path}")
+            return source_path, ok, errors
+
+        except Exception as exc:
+            return source_path, False, [f"{source_path}: {exc}"]
+
+    def _build_internal(
+        self,
+        release: bool,
+        profile: Optional[str],
+        features: Optional[List[str]],
+        jobs: Optional[int],
+        clean: bool,
+        check_only: bool,
+        optimize_bounds_checks: bool,
+    ) -> BuildResult:
+        t0 = time.monotonic()
+
+        prof = self._resolve_profile(release, profile)
+        profile_name = profile or ("release" if release else self.config.build.profile)
+
+        # Merge features: manifest defaults + cli-supplied
+        cfg_features = self.config.build.features[:]
+        if features:
+            cfg_features.extend(features)
+        active_features = list(dict.fromkeys(cfg_features))  # deduplicate, preserve order
+
+        src_dir = self.config.build.source_dir
+        out_dir = self.config.build.output_dir
+        os.makedirs(out_dir, exist_ok=True)
+
+        # Build cache
+        cache = _BuildCache(self._cache_path())
+        if clean:
+            cache.clear()
+
+        # Discover source files
+        sources = glob.glob(os.path.join(src_dir, "**/*.nlpl"), recursive=True)
+        if not sources:
+            return BuildResult(
+                success=False,
+                errors=[f"No source files found in {src_dir}"],
+                elapsed=time.monotonic() - t0,
+            )
+
+        # Determine which files need (re)compilation
+        to_compile = [s for s in sources if cache.needs_rebuild(s)] if not clean else sources
+        cached_count = len(sources) - len(to_compile)
+
+        if not to_compile:
+            print(f"  Nothing to compile (all {len(sources)} file(s) up-to-date).")
+            return BuildResult(
+                success=True,
+                files_compiled=0,
+                files_cached=cached_count,
+                elapsed=time.monotonic() - t0,
+            )
+
+        # Determine parallelism
+        max_workers = jobs or self.config.build.jobs or os.cpu_count() or 1
+        max_workers = min(max_workers, len(to_compile))
+
+        print(
+            f"  Compiling {self.config.package.name} v{self.config.package.version} "
+            f"[{profile_name}] "
+            f"({len(to_compile)} file{'s' if len(to_compile) != 1 else ''}"
+            f"{', ' + str(cached_count) + ' cached' if cached_count else ''})"
+        )
+
+        all_errors: List[str] = []
+        all_warnings: List[str] = []
+        compiled_ok = 0
+
+        if max_workers == 1:
+            # Serial path
+            for src in to_compile:
+                _, ok, errs = self._compile_one(
+                    src, out_dir, prof, active_features, check_only, optimize_bounds_checks
+                )
+                if ok:
+                    compiled_ok += 1
+                    cache.mark_built(src)
+                else:
+                    all_errors.extend(errs)
+        else:
+            # Parallel path
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futures = {
+                    executor.submit(
+                        self._compile_one,
+                        src, out_dir, prof, active_features, check_only, optimize_bounds_checks,
+                    ): src
+                    for src in to_compile
+                }
+                for future in as_completed(futures):
+                    src_path, ok, errs = future.result()
+                    if ok:
+                        compiled_ok += 1
+                        cache.mark_built(src_path)
+                    else:
+                        all_errors.extend(errs)
+
+        # Persist updated cache entries
+        cache.save()
+
+        # Link multi-file C/C++ projects when more than one file compiled
+        if (
+            not check_only
+            and not all_errors
+            and self.config.build.target in ("c", "cpp", CompilationTarget.C, CompilationTarget.CPP)
+            and len(sources) > 1
+        ):
+            self._maybe_link(out_dir, all_errors)
+
+        return BuildResult(
+            success=len(all_errors) == 0,
+            errors=all_errors,
+            warnings=all_warnings,
+            files_compiled=compiled_ok,
+            files_cached=cached_count,
+            elapsed=time.monotonic() - t0,
+        )
+
+    def _maybe_link(self, out_dir: str, errors: List[str]) -> None:
+        """Attempt to link compiled C/C++ objects into a single executable."""
+        import subprocess
+
+        target = self.config.build.target
+        compilers = (
+            ["g++", "clang++"] if target in ("cpp", CompilationTarget.CPP)
+            else ["gcc", "clang"]
+        )
+        cc = next((shutil.which(c) for c in compilers if shutil.which(c)), None)
+        if not cc:
+            return  # No host C compiler available
+
+        object_files = glob.glob(os.path.join(out_dir, "**/*.c"), recursive=True)
+        object_files += glob.glob(os.path.join(out_dir, "**/*.cpp"), recursive=True)
+        if not object_files:
+            return
+
+        final = os.path.join(out_dir, self.config.package.name)
+        cmd = [cc] + object_files + ["-o", final]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            errors.append(f"Linking failed:\n{result.stderr.strip()}")
+
+    def _run_single_test(
+        self,
+        test_file: Path,
+        release: bool,
+        features: Optional[List[str]],
+    ) -> bool:
+        """Compile and run a single test file.  Returns True if it exits 0."""
+        import subprocess
+        import tempfile
+
+        prof = self._resolve_profile(release, None)
+        active_features = self.config.build.features[:] + (features or [])
+        out_dir = Path(self.config.build.output_dir) / "test_bins"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_file = str(out_dir / test_file.stem)
+
+        _, ok, _ = self._compile_one(
+            str(test_file), str(out_dir), prof, active_features,
+            check_only=False, optimize_bounds_checks=False
+        )
+        if not ok:
+            return False
+
+        try:
+            result = subprocess.run(
+                [out_file], capture_output=True, timeout=30
+            )
+            return result.returncode == 0
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return False
+
+    def _find_executable(self, out_dir: str) -> Optional[str]:
+        """Find the project executable in the build output directory."""
+        # Strategy 1: package name
+        exe = os.path.join(out_dir, self.config.package.name)
+        if os.path.isfile(exe) and os.access(exe, os.X_OK):
+            return exe
+
         # Strategy 2: 'main'
-        executable = os.path.join(out_dir, 'main')
-        if os.path.exists(executable) and os.access(executable, os.X_OK):
-            return executable
-        
-        # Strategy 3: Any executable file
-        files = glob.glob(os.path.join(out_dir, '*'))
-        for f in files:
-            # Skip directories, object files, and source files
-            if (os.path.isfile(f) and 
-                os.access(f, os.X_OK) and 
-                not f.endswith(('.o', '.c', '.cpp', '.h', '.nlpl', '.ll', '.js', '.ts'))):
+        exe = os.path.join(out_dir, "main")
+        if os.path.isfile(exe) and os.access(exe, os.X_OK):
+            return exe
+
+        # Strategy 3: any executable
+        for f in glob.glob(os.path.join(out_dir, "*")):
+            if (os.path.isfile(f) and os.access(f, os.X_OK)
+                    and not f.endswith((".o", ".c", ".cpp", ".h", ".nlpl", ".ll"))):
                 return f
-        
-        # Strategy 4: Newest file without source extension
-        candidates = []
-        for f in files:
-            if (os.path.isfile(f) and 
-                not f.endswith(('.o', '.c', '.cpp', '.h', '.nlpl', '.ll', '.js', '.ts'))):
-                candidates.append((os.path.getmtime(f), f))
-        
-        if candidates:
-            candidates.sort(reverse=True)  # Newest first
-            return candidates[0][1]
-        
+
         return None
+
+
