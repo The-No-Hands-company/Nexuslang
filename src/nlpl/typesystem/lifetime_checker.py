@@ -341,7 +341,7 @@ class LifetimeChecker:
             self._check_statements(node.finally_block)
 
     def _check_ClassDefinition(self, node) -> None:
-        for stmt in (node.body or []):
+        for stmt in (node.methods or []):
             self._check_node(stmt)
 
     def _check_MoveExpression(self, node) -> None:
