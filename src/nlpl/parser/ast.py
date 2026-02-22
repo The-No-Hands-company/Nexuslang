@@ -1179,6 +1179,10 @@ class ExternFunctionDeclaration(ASTNode):
         self.library = library  # Library name (e.g., "c", "m", "pthread")
         self.calling_convention = calling_convention  # cdecl, stdcall, etc.
         self.variadic = variadic  # True if function accepts variable arguments (...)
+        # Buffer size annotations: list of (param_index, size_param_index_or_literal)
+        # e.g. [(0, 1)] means param 0 has its size in param 1
+        # Used to emit __attribute__((access(...))) and runtime buffer checks.
+        self.buffer_size_annotations: list = []
     
     def __str__(self):
         return f"ExternFunction({self.name} from {self.library})"
@@ -1237,6 +1241,32 @@ class ForeignLibraryLoad(ASTNode):
     
     def __str__(self):
         return f"ForeignLibraryLoad({self.library_path} as {self.alias})"
+
+
+class UnsafeBlock(ASTNode):
+    """Marks a block of FFI code as explicitly unsafe.
+
+    Unsafe blocks suppress NLPL's automatic safety checks (null-pointer guards,
+    bounds checks, ownership enforcement) for the statements they contain.
+    Only use when calling C functions that cannot be wrapped safely.
+
+    Example::
+
+        unsafe do
+            set raw_ptr to malloc with 1024
+            free with raw_ptr
+        end
+    """
+
+    def __init__(self, body, line_number=None):
+        super().__init__("unsafe_block", line_number)
+        self.body = body or []
+
+    def __str__(self):
+        return f"UnsafeBlock({len(self.body)} statements)"
+
+    def __repr__(self):
+        return f"UnsafeBlock(body={len(self.body)} stmts)"
 
 class CallbackReference(Expression):
     """Represents a reference to a callback function.

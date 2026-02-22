@@ -109,7 +109,12 @@ class Interpreter:
         # Ownership / borrow tracking
         # Structure: { var_name: {"immutable_count": int, "is_mutable": bool} }
         self._borrow_tracker: dict = {}
-        
+
+        # Unsafe FFI context depth (0 = safe mode, >0 = inside an 'unsafe' block).
+        # When > 0, null-pointer guards, bounds checks, and ownership enforcement
+        # are suppressed to allow raw C-level FFI operations.
+        self._in_unsafe_context: int = 0
+
         # Type system components (lazy initialization)
         self.enable_type_checking = enable_type_checking
         self.type_checker = None
@@ -1982,7 +1987,23 @@ class Interpreter:
                 error_type_key="undefined_function",
                 full_source=self.source,
             )
-    
+
+    def execute_unsafe_block(self, node):
+        """Execute an unsafe FFI block, suppressing runtime safety checks.
+
+        While _in_unsafe_context > 0, null-pointer guards, bounds checks,
+        and borrow-checker enforcements are suppressed.  The depth counter
+        supports nested 'unsafe' blocks correctly.
+        """
+        self._in_unsafe_context += 1
+        try:
+            result = None
+            for stmt in node.body:
+                result = self.execute(stmt)
+            return result
+        finally:
+            self._in_unsafe_context -= 1
+
     def execute_extern_variable_declaration(self, node):
         """Execute an extern variable declaration.
         

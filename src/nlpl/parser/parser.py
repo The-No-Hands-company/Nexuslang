@@ -383,6 +383,9 @@ class Parser:
             
             elif token.type == TokenType.EXTERN or token.type == TokenType.FOREIGN:
                 return self.extern_declaration()
+
+            elif token.type == TokenType.UNSAFE:
+                return self.parse_unsafe_block()
             
             elif token.type == TokenType.EOF:
                 # End of file - return None to stop parsing
@@ -8645,7 +8648,42 @@ class Parser:
         
         else:
             self.error("Expected 'function' or 'variable' after 'extern'/'foreign'")
-    
+
+    def parse_unsafe_block(self):
+        """Parse an unsafe FFI block.
+
+        Syntax:
+            unsafe do
+                <statements>
+            end
+
+        Inside an unsafe block, null-pointer guards, bounds checks, and
+        ownership enforcement are suppressed so that raw FFI operations can
+        be performed without runtime overhead.
+        """
+        from ..parser.ast import UnsafeBlock
+
+        line_number = self.current_token.line
+        self.advance()  # consume 'unsafe'
+
+        # Optional 'do' keyword
+        if self.current_token and self.current_token.type == TokenType.DO:
+            self.advance()
+
+        body = []
+        while (self.current_token and
+               self.current_token.type not in (TokenType.END, TokenType.EOF)):
+            stmt = self.statement()
+            if stmt is not None:
+                body.append(stmt)
+
+        if self.current_token and self.current_token.type == TokenType.END:
+            self.advance()  # consume 'end'
+        else:
+            self.error("Expected 'end' to close 'unsafe' block")
+
+        return UnsafeBlock(body=body, line_number=line_number)
+
     def parse_decorator(self):
         """Parse a decorator: @name or @name with arg1 value1, arg2 value2"""
         self.eat(TokenType.AT)

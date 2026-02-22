@@ -67,6 +67,7 @@ class TokenType(Enum):
     STDCALL = auto()
     CALLBACK = auto()
     LAMBDA = auto()
+    UNSAFE = auto()    # Explicit unsafe FFI block marker
     
     # Macros
     MACRO = auto()
@@ -398,6 +399,7 @@ class Lexer:
             "stdcall": TokenType.STDCALL,
             "callback": TokenType.CALLBACK,
             "lambda": TokenType.LAMBDA,
+            "unsafe": TokenType.UNSAFE,
             
             # Macros
             "macro": TokenType.MACRO,

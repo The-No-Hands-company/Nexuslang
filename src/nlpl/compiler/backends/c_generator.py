@@ -111,7 +111,13 @@ class CCodeGenerator(CodeGenerator):
         if runtime_code:
             header_lines.extend(runtime_code.split('\n'))
             header_lines.append("")
-        
+
+        # FFI safety macros (FORTIFY, Valgrind, nonnull attributes)
+        ffi_macros = self._generate_ffi_safety_macros()
+        if ffi_macros:
+            header_lines.extend(ffi_macros.split('\n'))
+            header_lines.append("")
+
         # Prepend header to output buffer
         self.output_buffer = header_lines + self.output_buffer
         
@@ -399,6 +405,8 @@ class CCodeGenerator(CodeGenerator):
                 # Complex target (nested access, etc.) - no bounds check
                 target_expr = self._generate_expression(target)
                 self.emit(f"{target_expr} = {value_expr};")
+        elif isinstance(node, UnsafeBlock):
+            self._generate_unsafe_block(node)
         else:
             # Try to handle as expression
             try:
@@ -1384,6 +1392,50 @@ class CCodeGenerator(CodeGenerator):
         
         return type_map.get(nlpl_type, "void*")
     
+    def _generate_ffi_safety_macros(self) -> str:
+        """Return a block of C preprocessor macros for FFI safety.
+
+        Emits:
+        - _FORTIFY_SOURCE=2 (buffer overflow detection in glibc)
+        - GCC/Clang nonnull / returns_nonnull attribute helpers
+        - Conditional Valgrind memcheck macro (no-op when Valgrind not present)
+
+        These are emitted unconditionally: they are purely additive and safe
+        even on MSVC (where the GNU attributes expand to nothing).
+        """
+        return (
+            "/* NLPL FFI Safety Macros -- auto-generated, do not edit */\n"
+            "#ifndef _FORTIFY_SOURCE\n"
+            "#  define _FORTIFY_SOURCE 2\n"
+            "#endif\n"
+            "#if defined(__GNUC__) || defined(__clang__)\n"
+            "#  define NLPL_NONNULL(...) __attribute__((nonnull(__VA_ARGS__)))\n"
+            "#  define NLPL_RETURNS_NONNULL __attribute__((returns_nonnull))\n"
+            "#else\n"
+            "#  define NLPL_NONNULL(...)\n"
+            "#  define NLPL_RETURNS_NONNULL\n"
+            "#endif\n"
+            "#if defined(__has_include) && __has_include(<valgrind/memcheck.h>)\n"
+            "#  include <valgrind/memcheck.h>\n"
+            "#  define NLPL_VALGRIND_CHECK(p) \\\n"
+            "       VALGRIND_CHECK_MEM_IS_ADDRESSABLE((p), sizeof(*(p)))\n"
+            "#else\n"
+            "#  define NLPL_VALGRIND_CHECK(p) ((void)0)\n"
+            "#endif\n"
+        )
+
+    def _generate_unsafe_block(self, node: Any) -> None:
+        """Generate C code for an 'unsafe' FFI block.
+
+        The unsafe keyword is a compile-time annotation; in generated C there
+        is no runtime overhead.  We emit a comment pair so that the block is
+        clearly visible in the generated source for auditing purposes.
+        """
+        self.emit("/* unsafe block begin */")
+        for stmt in node.body:
+            self._generate_statement(stmt)
+        self.emit("/* unsafe block end */")
+
     def _generate_runtime_functions(self) -> str:
         """Generate inline C implementations of NLPL runtime functions."""
         if not self.needed_runtime_functions:
@@ -1401,6 +1453,27 @@ void nlpl_bounds_check(int index, int size, const char* array_name, int line) {
         fprintf(stderr, "  at line %d\\n", line);
         exit(1);
     }
+}''')
+
+        # FFI pointer validation
+        if "nlpl_ffi_check_ptr" in self.needed_runtime_functions:
+            code_parts.append('''
+// FFI pointer validation: checks for NULL and (when compiled with ASan) poisoned memory.
+static inline void* nlpl_ffi_check_ptr(void* ptr, const char* name, int line) {
+    if (!ptr) {
+        fprintf(stderr, "NLPL FFI Error: NULL pointer passed for parameter '%s' at line %d\\n", name, line);
+        exit(1);
+    }
+#if defined(__has_feature)
+#  if __has_feature(address_sanitizer)
+    if (__asan_address_is_poisoned(ptr)) {
+        fprintf(stderr, "NLPL FFI Error: poisoned pointer for parameter '%s' at line %d\\n", name, line);
+        exit(1);
+    }
+#  endif
+#endif
+    NLPL_VALGRIND_CHECK(ptr);
+    return ptr;
 }''')
         
         # File I/O functions

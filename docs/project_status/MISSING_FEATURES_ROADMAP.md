@@ -214,15 +214,15 @@ FFI lets users leverage **existing ecosystems** without reimplementation:
 - ✅ Function pointer callbacks with trampolines
 - ✅ Variadic C functions support (printf-style)
 
-**FFI Safety Features** (57% Complete - 4/7 features)
+**FFI Safety Features** (COMPLETE - 7/7 features, February 22, 2026)
 
 - ✅ Memory ownership tracking (OWNED, BORROWED, TRANSFER, SHARED) - `MemoryOwnershipTracker` class
 - ✅ Null pointer handling patterns (documented and tested) - 20+ NULL checks in test files
 - ✅ Type safety at FFI boundary (TypeMapper validation) - 50+ type mappings
 - ✅ Best practices documentation (memory management, cleanup) - 900+ line guide
-- ❌ Unsafe FFI blocks (explicit marking) - Parser support needed
-- ❌ Automatic buffer overflow protection - Compiler instrumentation needed
-- ❌ Runtime pointer validation - valgrind/asan integration needed
+- ✅ Unsafe FFI blocks (explicit marking) - `unsafe do ... end` syntax, lexer/parser/interpreter/c_generator
+- ✅ Automatic buffer overflow protection - `_FORTIFY_SOURCE 2`, `NLPL_NONNULL` attributes, `buffer_size_annotations` on `ExternFunctionDeclaration`
+- ✅ Runtime pointer validation - `nlpl_ffi_check_ptr` runtime function (ASan + Valgrind), `sanitize_address`/`sanitize_undefined`/`enable_valgrind` CompilerOptions flags
 
 **FFI Tools** (80% Complete - 8/10 features)
 

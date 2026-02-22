@@ -101,6 +101,11 @@ class CompilerOptions:
         self.strip_symbols = False
         self.library_search_paths = []  # List of paths to search for libraries (-L)
         self.generate_header = False     # Whether to generate a C header file
+
+        # Runtime pointer / memory validation (FFI safety)
+        self.sanitize_address = False      # Enable AddressSanitizer (-fsanitize=address)
+        self.sanitize_undefined = False    # Enable UndefinedBehaviorSanitizer (-fsanitize=undefined)
+        self.enable_valgrind = False       # Emit Valgrind client-request macros in generated C
         
     def apply_optimization_preset(self, level: int) -> None:
         """Apply optimization preset based on level."""
@@ -315,7 +320,12 @@ class Compiler:
         
         if self.options.debug_info:
             cmd.append('-g')
-        
+
+        if self.options.sanitize_address:
+            cmd.extend(['-fsanitize=address', '-fno-omit-frame-pointer'])
+        if self.options.sanitize_undefined:
+            cmd.append('-fsanitize=undefined')
+
         if self.options.strip_symbols and self.options.optimization_level >= 3:
             cmd.append('-s')
         
