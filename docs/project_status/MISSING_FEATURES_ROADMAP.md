@@ -263,32 +263,23 @@ FFI lets users leverage **existing ecosystems** without reimplementation:
 - `examples/ffi_sqlite3.nlpl` - Real-world database example
 - Full documentation in `docs/project_status/FFI_COMPLETE.md`
 
-**Overall FFI Completion: 67% (16/24 features across all subcategories)**
+**Overall FFI Completion: 79% (19/24 features across all subcategories)**
 
 **Next Steps - Recommended Priority Order:**
 
-1. **IMMEDIATE: Test & Validate FFI** (1-2 days) ⭐ **DO THIS FIRST**
-   - Run all 4 test programs to verify correctness
-   - Execute SQLite3 example end-to-end
-   - Create OpenGL triangle example (validate graphics FFI)
-   - Optional: GTK+ window example (validate GUI FFI)
-   - **Why:** Find bugs now before Build System depends on FFI
-
-2. **NEXT: Build System** (Part 1.2 below, 6-9 months) - CRITICAL PRIORITY
-   - More important than completing remaining 33% of FFI features
-   - Current FFI (67% complete) is production-ready for most use cases
-   - Can circle back to advanced FFI features later if needed
-
-3. **FUTURE: Advanced FFI Features** (3-4 weeks each) - LOW PRIORITY
+1. **NEAR TERM: Advanced FFI Features** (3-4 weeks each) - LOW PRIORITY
    - ABI compatibility checker (nice-to-have tooling)
    - FFI debugging tools (developer quality-of-life)
    - C++ interop (low priority - most libraries provide C APIs)
 
-**Rationale:** FFI is foundational infrastructure. Build System will depend on it working correctly. Better to validate FFI with real-world examples NOW than discover critical bugs later during Build System development.
+2. **NEAR TERM: Validate FFI with real-world examples**
+   - Execute SQLite3 example end-to-end
+   - Create OpenGL triangle example (validate graphics FFI)
+   - Optional: GTK+ window example (validate GUI FFI)
 
 ---
 
-### 1.2 Build System ✅ CORE COMPLETE (February 15, 2026)
+### 1.2 Build System ✅ COMPLETE (February 22, 2026)
 
 **Current State:**
 
@@ -296,8 +287,8 @@ FFI lets users leverage **existing ecosystems** without reimplementation:
 - ✅ **Build configuration files** (`nlpl.toml` manifest)
 - ✅ **Incremental compilation** (smart rebuilds with dependency tracking)
 - ✅ **Build caching** (persistent JSON cache with file metadata)
-- ✅ **Build tool** (`nlpl_build.py` with 5 commands)
-- ❌ Dependency management (package registry integration)
+- ✅ **Build tool** (`nlpl_build.py` / `nlpl.cli` with 11 subcommands)
+- ✅ **Dependency management** (lock file, version constraints, dev-deps, profiles)
 - ❌ Advanced features (parallel compilation, LTO, cross-compilation)
 
 **What Makes Rust/Cargo Universal:**
@@ -358,16 +349,20 @@ Cargo doesn't care if you're building:
 
 **What NLPL Still Needs:**
 
-- [ ] **Dependency Management**
-  - [ ] Dependency resolution algorithm (resolve version conflicts)
-  - [ ] Version constraints (semver: ^, ~, >=, etc.)
-  - [ ] Dependency locking (nlpl.lock file)
-  - [ ] Package registry integration (download from repository)
-  - [ ] Private/dev dependencies
-  - [ ] Workspace management (multi-crate projects)
-  - [ ] Local path dependencies
-  - **Status:** Requires Package Manager (Part 1.3)
-  - **Priority:** HIGH (after package registry exists)
+- ✅ **Dependency Management** (COMPLETE - February 22, 2026)
+  - ✅ Dependency resolution algorithm (version conflict resolution)
+  - ✅ Version constraints (semver: ^, ~, >=, exact)
+  - ✅ Dependency locking (`nlpl.lock` file with SHA-256 checksums, atomic writes)
+  - ✅ Private/dev dependencies (dev_dependencies in nlpl.toml)
+  - ✅ Build profiles (dev, release, custom)
+  - ✅ Feature flags with transitive dependency resolution
+  - ✅ CLI: 11 subcommands (`add`, `remove`, `update`, `list`, `lock`, `build`, `clean`, `check`, `run`, `test`, `publish`)
+  - ✅ Implementation: `src/nlpl/tooling/lockfile.py`, `dependency_manager.py`, `builder.py`, `config.py`; `src/nlpl/cli/__init__.py`
+  - ✅ Test coverage: `tests/test_build_system.py` — 62 tests, all passing
+  - ❌ Package registry integration (download from repository) — requires Part 1.3
+  - ❌ Workspace management (multi-package projects) — future work
+  - ❌ Local path dependencies — future work
+  - **Status:** Core complete; registry integration deferred to Package Manager (Part 1.3)
 
 - [ ] **Parallel Compilation**
   - [ ] Build independent files in parallel
@@ -395,14 +390,13 @@ Cargo doesn't care if you're building:
   - **Priority:** LOW
   - **Estimated Effort:** 3-6 months
 
-**Status:** ✅ **CORE COMPLETE** (70% of build system functionality)  
-**Completion Date:** February 15, 2026  
-**Implementation Time:** 2 days (Tasks 1-4)  
-**Total Code:** 1,683+ lines (parser + tool + cache)  
+**Status:** ✅ **COMPLETE** (85% of build system functionality; remaining: parallel compilation, cross-compilation, LTO)  
+**Completion Date:** February 22, 2026  
+**Total Code:** 2,500+ lines (manifest + incremental + lockfile + dep manager + builder + CLI)  
 **Documentation:** 1,400+ lines across 3 documents  
-**Test Coverage:** 24/24 parser tests, manual integration tests validated
+**Test Coverage:** 24/24 manifest tests + 62/62 build system unit tests
 
-**Files Created:**
+**Files Created/Updated:**
 
 - `docs/build_system/NLPL_TOML_SPECIFICATION.md` - Manifest format reference
 - `docs/build_system/BUILD_TOOL_GUIDE.md` - Build tool documentation
@@ -410,17 +404,21 @@ Cargo doesn't care if you're building:
 - `docs/build_system/BUILD_SYSTEM_COMPLETE.md` - Implementation summary
 - `src/nlpl/build/manifest.py` - Manifest parser
 - `src/nlpl/build/incremental.py` - Incremental compilation engine
-- `dev_tools/nlpl_build.py` - Build CLI tool
-- `test_programs/build_system/` - Test programs with dependencies
+- `src/nlpl/tooling/lockfile.py` - Lock file (atomic writes, SHA-256 checksums)
+- `src/nlpl/tooling/dependency_manager.py` - Dep resolution, version constraints
+- `src/nlpl/tooling/builder.py` - Build system orchestration
+- `src/nlpl/tooling/config.py` - Build configuration
+- `src/nlpl/cli/__init__.py` - 11-subcommand CLI
+- `tests/test_build_system.py` - 62 unit tests (all passing)
 
 **Next Steps:**
 
-1. **IMMEDIATE**: Continue with Package Manager (Part 1.3) - dependency management foundation
-2. **SHORT TERM**: Add parallel compilation (2-3 weeks) - significant speed improvement
+1. **IMMEDIATE**: Package Manager (Part 1.3) - registry integration, publish/install
+2. **SHORT TERM**: Parallel compilation (2-3 weeks) - significant speed improvement
 3. **MEDIUM TERM**: Cross-compilation support (2-3 months) - enables embedded/WASM targets
-4. **LONG TERM**: Advanced optimization features (LTO, dead code elimination)
+4. **LONG TERM**: LTO, dead code elimination, symbol stripping
 
-**Priority:** Core features **COMPLETE** ✅, remaining features **MEDIUM-LOW** priority
+**Priority:** ✅ **COMPLETE**, remaining advanced features **MEDIUM-LOW** priority
 
 ---
 
