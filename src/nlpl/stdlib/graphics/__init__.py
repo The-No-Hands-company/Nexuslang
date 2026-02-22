@@ -39,6 +39,8 @@ class GraphicsWindow:
             raise RuntimeError("Failed to create window")
         
         glfw.make_context_current(self.window)
+        glfw.show_window(self.window)   # ensure window is visible (some WMs need this)
+        glfw.focus_window(self.window)  # bring to front
         glEnable(GL_DEPTH_TEST)  # Enable depth testing by default
         
         self.width = width
