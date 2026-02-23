@@ -18,6 +18,7 @@ from ..stdlib.iterators import register_iterator_functions
 from ..stdlib.ffi import register_ffi_functions
 from ..stdlib.asm import register_asm_functions
 from ..stdlib.testing import register_testing_functions
+from ..stdlib.benchmark import register_benchmark_functions
 from ..stdlib.graphics import register_graphics_functions
 from ..stdlib.modules import register_module_functions
 from ..stdlib.filesystem import register_filesystem_functions
@@ -127,7 +128,10 @@ def register_stdlib(runtime: Runtime) -> None:
     
     # Register testing framework
     register_testing_functions(runtime)
-    
+
+    # Register benchmarking framework
+    register_benchmark_functions(runtime)
+
     # Register module system
     register_module_functions(runtime)
     

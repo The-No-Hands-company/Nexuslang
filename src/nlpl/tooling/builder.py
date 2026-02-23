@@ -250,18 +250,29 @@ class BuildSystem:
         filter_names: Optional[List[str]] = None,
         release: bool = False,
         features: Optional[List[str]] = None,
+        coverage: bool = False,
+        coverage_output: Optional[str] = None,
+        parallel: bool = True,
+        jobs: Optional[int] = None,
     ) -> int:
         """Discover and run test files from the ``tests/`` directory.
 
         Args:
-            filter_names: If provided, only run tests whose filename contains
-                          one of these strings.
-            release:      Build tests with release profile.
-            features:     Extra feature flags for test compilation.
+            filter_names:     If provided, only run tests whose filename
+                              contains one of these strings.
+            release:          Build tests with release profile.
+            features:         Extra feature flags for test compilation.
+            coverage:         Collect and report line coverage.
+            coverage_output:  Directory to write coverage HTML/JSON.
+                              Defaults to ``coverage/``.
+            parallel:         Run tests in parallel (default True).
+            jobs:             Max parallel test jobs (default: CPU count).
 
         Returns:
             0 if all tests passed, 1 otherwise.
         """
+        import time as _time
+
         test_dir_path = Path(self.config.build.source_dir).parent / "tests"
         if not test_dir_path.exists():
             print("  No tests/ directory found.")
@@ -278,24 +289,86 @@ class BuildSystem:
             print("  No test files found.")
             return 0
 
-        print(f"\nRunning {len(test_files)} test file(s)...")
+        # Coverage setup
+        collector = None
+        if coverage:
+            from .coverage import CoverageCollector
+            collector = CoverageCollector()
+            collector.start()
+
+        print(f"\nRunning {len(test_files)} test file(s)...\n")
+        t_start = _time.perf_counter()
+
+        results: List[Tuple[str, bool, float]] = []  # (label, ok, duration)
+
+        max_workers = jobs or min(len(test_files), os.cpu_count() or 4)
+
+        if parallel and max_workers > 1:
+            with ThreadPoolExecutor(max_workers=max_workers) as exe:
+                future_to_file = {
+                    exe.submit(
+                        self._run_single_test,
+                        test_file,
+                        release=release,
+                        features=features,
+                    ): test_file
+                    for test_file in test_files
+                }
+                for future in as_completed(future_to_file):
+                    tf = future_to_file[future]
+                    t0 = _time.perf_counter()
+                    try:
+                        ok = future.result()
+                    except Exception:
+                        ok = False
+                    dur = _time.perf_counter() - t0
+                    results.append((tf.stem, ok, dur))
+        else:
+            for test_file in test_files:
+                t0 = _time.perf_counter()
+                ok = self._run_single_test(
+                    test_file, release=release, features=features
+                )
+                dur = _time.perf_counter() - t0
+                results.append((test_file.stem, ok, dur))
 
         passed = 0
         failed = 0
-        for test_file in test_files:
-            label = test_file.stem
-            ok = self._run_single_test(
-                test_file, release=release, features=features
-            )
+        failed_names: List[str] = []
+        for label, ok, dur in sorted(results, key=lambda r: r[0]):
             if ok:
                 passed += 1
-                print(f"  test {label} ... ok")
+                print(f"  test {label:<50s} ... ok      ({dur:.2f}s)")
             else:
                 failed += 1
-                print(f"  test {label} ... FAILED")
+                failed_names.append(label)
+                print(f"  test {label:<50s} ... FAILED  ({dur:.2f}s)")
 
-        print(f"\ntest result: {'ok' if failed == 0 else 'FAILED'}. "
-              f"{passed} passed; {failed} failed.")
+        total_time = _time.perf_counter() - t_start
+        status_word = "ok" if failed == 0 else "FAILED"
+        print(
+            f"\ntest result: {status_word}. "
+            f"{passed} passed; {failed} failed; "
+            f"total time: {total_time:.2f}s"
+        )
+        if failed_names:
+            print("\nFailed tests:")
+            for name in failed_names:
+                print(f"  - {name}")
+            print()
+
+        # Coverage report
+        if collector:
+            collector.stop()
+            out_dir = coverage_output or "coverage"
+            from .coverage import CoverageReport
+            source_paths = [str(f) for f in test_files]
+            report = collector.build_report(source_paths=source_paths)
+            print(report.summary())
+            report.write_json(os.path.join(out_dir, "coverage.json"))
+            report.write_html(out_dir)
+            print(f"Coverage report written to: {out_dir}/index.html")
+
         return 0 if failed == 0 else 1
 
     # ------------------------------------------------------------------

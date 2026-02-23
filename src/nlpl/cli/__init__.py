@@ -9,6 +9,8 @@ run       Build and execute the project
 check     Parse/type-check without producing output
 clean     Remove the build output directory
 test      Discover and run tests from tests/
+coverage  Run a file with coverage collection and report
+profile   Run a file with CPU/memory profiling and report
 add       Add a dependency to nlpl.toml
 remove    Remove a dependency from nlpl.toml
 lock      Regenerate nlpl.lock from the current nlpl.toml
@@ -175,8 +177,40 @@ def cmd_test(args):
         filter_names=filter_names if filter_names else None,
         release=args.release,
         features=features,
+        coverage=getattr(args, 'coverage', False),
+        coverage_output=getattr(args, 'coverage_output', None),
+        jobs=getattr(args, 'jobs', None),
     )
     sys.exit(code)
+
+
+def cmd_coverage(args):
+    """Run a NLPL file (or test suite) and generate a coverage report."""
+    from ..tooling.coverage import run_with_coverage
+    source = args.source
+    output_dir = args.output or "coverage"
+    report = run_with_coverage(
+        source_path=source,
+        output_dir=output_dir,
+        report_json=True,
+        report_html=True,
+    )
+    if report.total_pct() < (args.fail_under or 0):
+        print(f"error: coverage {report.total_pct():.1f}% is below required {args.fail_under}%")
+        sys.exit(1)
+
+
+def cmd_profile(args):
+    """Run a NLPL file with CPU and memory profiling."""
+    from ..tooling.profiler import run_with_profiling
+    source = args.source
+    output_dir = args.output or "profile"
+    run_with_profiling(
+        source_path=source,
+        output_dir=output_dir,
+        cpu=not args.no_cpu,
+        memory=not args.no_memory,
+    )
 
 
 def cmd_add(args):
@@ -496,6 +530,30 @@ def _build_parser() -> argparse.ArgumentParser:
                         help="Build tests with release profile")
     p_test.add_argument("--features", nargs="+", metavar="FEATURE",
                         help="Enable additional named features")
+    p_test.add_argument("--coverage", action="store_true",
+                        help="Collect line coverage and write report to coverage/")
+    p_test.add_argument("--coverage-output", metavar="DIR",
+                        help="Directory to write coverage report (default: coverage/)")
+    p_test.add_argument("--jobs", "-j", type=int, metavar="N",
+                        help="Number of parallel test jobs (default: CPU count)")
+
+    # ---- coverage -----------------------------------------------------------
+    p_cov = sub.add_parser("coverage", help="Run a file with coverage collection")
+    p_cov.add_argument("source", metavar="FILE", help="NLPL source file to run")
+    p_cov.add_argument("--output", "-o", metavar="DIR",
+                       help="Output directory for coverage report (default: coverage/)")
+    p_cov.add_argument("--fail-under", type=float, metavar="PCT",
+                       help="Exit 1 if coverage is below this percentage")
+
+    # ---- profile ------------------------------------------------------------
+    p_prof = sub.add_parser("profile", help="Run a file with CPU/memory profiling")
+    p_prof.add_argument("source", metavar="FILE", help="NLPL source file to profile")
+    p_prof.add_argument("--output", "-o", metavar="DIR",
+                        help="Output directory for profile report (default: profile/)")
+    p_prof.add_argument("--no-cpu", action="store_true",
+                        help="Disable CPU profiling")
+    p_prof.add_argument("--no-memory", action="store_true",
+                        help="Disable memory profiling")
 
     # ---- add ----------------------------------------------------------------
     p_add = sub.add_parser("add", help="Add a dependency")
@@ -609,6 +667,8 @@ def main():
         "publish":   cmd_publish,
         "workspace": cmd_workspace,
         "ws":        cmd_workspace,  # Short alias
+        "coverage":  cmd_coverage,
+        "profile":   cmd_profile,
     }
 
     handler = dispatch.get(args.command)
