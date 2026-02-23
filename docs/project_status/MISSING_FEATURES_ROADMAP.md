@@ -1361,14 +1361,14 @@ when feature "avx2"
 end
 ```
 
-**Remaining (separate concerns):**
+**Completed (section 4.1 now 100% done):**
 
-- [ ] ARM / RISC-V / MIPS assembly support (part of inline-assembly work)
-- [ ] Target triple syntax (`x86_64-unknown-linux-gnu`)
-- [ ] Static pruning before type-checker (currently pruned at execution time)
+- ✅ ARM / RISC-V / MIPS assembly support: `asm for arch "riscv64"` guard syntax; riscv64/riscv32/mips/mips64 register sets and instruction validation in LLVM backend; x86-only Intel-syntax guard
+- ✅ Target triple syntax (`x86_64-unknown-linux-gnu`): `CompileTarget.from_triple()`, `to_triple()`, `--target TRIPLE` CLI flag, `target_triple` condition type in `evaluate_condition()`
+- ✅ Static pruning before type-checker: `preprocess_ast()` wired into `run_program()` immediately after parse, before borrow/lifetime/type checkers
 
-**Priority:** MEDIUM  
-**Estimated Effort:** Conditional compilation DONE. Further arch-specific assembly: 4-6 months.
+**Priority:** COMPLETE  
+**Estimated Effort:** DONE.
 
 ---
 

@@ -84,6 +84,105 @@ class CompileTarget:
             features=frozenset(list(self.features) + [n.lower() for n in names]),
         )
 
+    # ------------------------------------------------------------------
+    # Target triple support  (x86_64-unknown-linux-gnu style)
+    # ------------------------------------------------------------------
+
+    def to_triple(self) -> str:
+        """Return an LLVM-style target triple string for this target.
+
+        Format: ``<arch>-<vendor>-<os>[-<abi>]``
+
+        Examples::
+
+            x86_64-pc-linux-gnu
+            aarch64-unknown-linux-gnu
+            riscv64-unknown-none-elf   (bare-metal)
+            mips-unknown-linux-gnu
+        """
+        _OS_TRIPLE: Dict[str, str] = {
+            "linux": "linux-gnu",
+            "windows": "windows-msvc",
+            "macos": "apple-darwin",
+            "freebsd": "freebsd",
+            "openbsd": "openbsd",
+            "netbsd": "netbsd",
+            "android": "linux-android",
+            "ios": "apple-ios",
+            "wasi": "wasi",
+            "unknown": "none-elf",
+        }
+        vendor = "pc" if self.arch in ("x86_64", "x86") else "unknown"
+        os_abi = _OS_TRIPLE.get(self.os, f"{self.os}")
+        return f"{self.arch}-{vendor}-{os_abi}"
+
+    @classmethod
+    def from_triple(cls, triple: str) -> "CompileTarget":
+        """Construct a CompileTarget from an LLVM-style target triple.
+
+        Accepts 3- or 4-component triples of the form
+        ``arch-vendor-os[-abi]``.  Common examples::
+
+            x86_64-unknown-linux-gnu
+            aarch64-unknown-linux-gnu
+            arm-unknown-linux-gnueabihf
+            riscv64-unknown-none-elf
+            riscv32-unknown-none-elf
+            mips-unknown-linux-gnu
+            mips64-unknown-linux-gnu
+            wasm32-unknown-unknown
+
+        Raises ValueError for triples with fewer than 3 components.
+        """
+        parts = triple.strip().split("-")
+        if len(parts) < 3:
+            raise ValueError(
+                f"Invalid target triple {triple!r}: need at least 3 components "
+                f"(arch-vendor-os), got {len(parts)}"
+            )
+
+        raw_arch = parts[0].lower()
+        # parts[1] is vendor (ignored for CompileTarget)
+        raw_os = parts[2].lower()
+        # parts[3] is optional ABI (ignored for CompileTarget)
+
+        arch = _ARCH_ALIASES.get(raw_arch, raw_arch)
+
+        _TRIPLE_OS_MAP: Dict[str, str] = {
+            "linux": "linux",
+            "windows": "windows",
+            "apple": "macos",
+            "darwin": "macos",
+            "freebsd": "freebsd",
+            "openbsd": "openbsd",
+            "netbsd": "netbsd",
+            "android": "android",
+            "ios": "ios",
+            "wasi": "wasi",
+            "none": "unknown",
+            "unknown": "unknown",
+        }
+        tgt_os = _TRIPLE_OS_MAP.get(raw_os, raw_os)
+
+        # Endianness: MIPS BE by default; MIPSEL/MIPS64EL are LE
+        _BIG_ENDIAN_ARCHS = {"mips", "mips64", "powerpc", "s390x"}
+        endian = "big" if arch.rstrip("64") in _BIG_ENDIAN_ARCHS else "little"
+        # mipsel / mips64el are explicitly little-endian
+        if "el" in raw_arch:
+            endian = "little"
+
+        pointer_width = "64" if arch in (
+            "x86_64", "aarch64", "riscv64", "mips64",
+            "powerpc64", "powerpc64le", "s390x", "wasm64",
+        ) else "32"
+
+        return cls(
+            os=tgt_os,
+            arch=arch,
+            endian=endian,
+            pointer_width=pointer_width,
+        )
+
 
 def detect_host() -> CompileTarget:
     """Build a CompileTarget that reflects the host machine at runtime."""
@@ -246,6 +345,16 @@ def evaluate_condition(
 
     if ct == "feature":
         return target.has_feature(condition_value)
+
+    if ct in ("target_triple", "triple"):
+        # Accept either exact triple match or arch-only prefix match.
+        # e.g. condition_value "x86_64-unknown-linux-gnu" matches target with arch=x86_64, os=linux.
+        # condition_value "riscv64" is treated as an arch check for convenience.
+        if "-" in condition_value:
+            # Full or partial triple comparison against target.to_triple()
+            return target.to_triple().startswith(condition_value.lower())
+        # Bare arch token: delegate to arch check
+        return target.arch == _norm_arch(condition_value)
 
     # Unknown condition type: conservatively return False
     return False

@@ -4105,9 +4105,9 @@ class Parser:
 
     def parse_inline_assembly(self):
         """Parse inline assembly block.
-        
+
         Syntax:
-            asm
+            asm [for arch "<arch>"]
                 code
                     "assembly instruction"
                     "another instruction"
@@ -4115,12 +4115,40 @@ class Parser:
                 [outputs "constraint": variable, ...]
                 [clobbers "register", ...]
             end
+
+        The optional ``for arch "<arch>"`` guard restricts the block to a
+        specific target architecture (e.g. ``"riscv64"``, ``"arm"``,
+        ``"mips"``).  When the compilation target does not match the guard
+        the compiler skips the entire block.
         """
         line_number = self.current_token.line
-        
+
         # Eat 'asm'
         self.eat(TokenType.ASM)
-        
+
+        # Optional architecture guard: for arch "riscv64"
+        # NB: 'for' is lexed as TokenType.FOR (a keyword), not as an IDENTIFIER.
+        arch_guard = None
+        if (self.current_token
+                and (self.current_token.type == TokenType.FOR
+                     or (self.current_token.type == TokenType.IDENTIFIER
+                         and self.current_token.lexeme.lower() == "for"))):
+            self.advance()  # consume 'for'
+            # Expect 'arch' keyword (as identifier)
+            if (self.current_token
+                    and self.current_token.type == TokenType.IDENTIFIER
+                    and self.current_token.lexeme.lower() == "arch"):
+                self.advance()  # consume 'arch'
+            # Expect string literal with arch name
+            if self.current_token and self.current_token.type == TokenType.STRING_LITERAL:
+                arch_guard = self.current_token.literal.lower()
+                self.advance()
+
+        # Skip any newlines between the asm header and the indented block.
+        # (The lexer emits NEWLINE before INDENT at block boundaries.)
+        while self.current_token and self.current_token.type == TokenType.NEWLINE:
+            self.advance()
+
         # Expect INDENT
         if self.current_token and self.current_token.type == TokenType.INDENT:
             self.advance()
@@ -4138,7 +4166,11 @@ class Parser:
                 if keyword == "code":
                     # Parse code section
                     self.advance()  # consume 'code'
-                    
+
+                    # Skip any newlines between 'code' and its indented block.
+                    while self.current_token and self.current_token.type == TokenType.NEWLINE:
+                        self.advance()
+
                     # Expect INDENT
                     if self.current_token and self.current_token.type == TokenType.INDENT:
                         self.advance()
@@ -4188,8 +4220,8 @@ class Parser:
         # Consume END if present (for non-indented style)
         if self.current_token and self.current_token.type == TokenType.END:
             self.advance()
-        
-        return InlineAssembly(asm_code, inputs, outputs, clobbers, line_number)
+
+        return InlineAssembly(asm_code, inputs, outputs, clobbers, line_number, arch=arch_guard)
     
     def _parse_asm_operands(self):
         """Parse assembly operands: "constraint": expression, ...

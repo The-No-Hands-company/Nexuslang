@@ -330,6 +330,58 @@ class LLVMIRGenerator(CodeGenerator):
                 'd8', 'd9', 'd10', 'd11', 'd12', 'd13', 'd14', 'd15',
                 'q0', 'q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7',
             }
+        elif arch in ('riscv64', 'riscv32', 'riscv'):
+            # RISC-V registers: x0-x31 (integer), f0-f31 (float)
+            # ABI names also accepted.
+            return {
+                # Integer registers (x0-x31)
+                *{f'x{i}' for i in range(32)},
+                # ABI names
+                'zero', 'ra', 'sp', 'gp', 'tp',
+                't0', 't1', 't2', 't3', 't4', 't5', 't6',
+                's0', 's1', 's2', 's3', 's4', 's5', 's6', 's7', 's8', 's9', 's10', 's11',
+                'a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7',
+                'fp',  # alias for s0
+                # Floating-point registers (f0-f31)
+                *{f'f{i}' for i in range(32)},
+                # FP ABI names
+                'ft0', 'ft1', 'ft2', 'ft3', 'ft4', 'ft5', 'ft6', 'ft7',
+                'fs0', 'fs1', 'fs2', 'fs3', 'fs4', 'fs5', 'fs6', 'fs7',
+                'fs8', 'fs9', 'fs10', 'fs11',
+                'fa0', 'fa1', 'fa2', 'fa3', 'fa4', 'fa5', 'fa6', 'fa7',
+                # Vector registers (RVV)
+                *{f'v{i}' for i in range(32)},
+            }
+        elif arch in ('mips', 'mipsel'):
+            # MIPS 32-bit registers
+            return {
+                # Numeric names
+                *{f'${i}' for i in range(32)},
+                # ABI names
+                'zero', 'at',
+                'v0', 'v1',
+                'a0', 'a1', 'a2', 'a3',
+                't0', 't1', 't2', 't3', 't4', 't5', 't6', 't7',
+                's0', 's1', 's2', 's3', 's4', 's5', 's6', 's7',
+                't8', 't9',
+                'k0', 'k1',
+                'gp', 'sp', 'fp', 's8', 'ra',
+                # Floating-point registers
+                *{f'f{i}' for i in range(32)},
+                *{f'$f{i}' for i in range(32)},
+            }
+        elif arch in ('mips64', 'mips64el'):
+            # MIPS64 registers: same ABI names as MIPS32 but 64-bit wide
+            return {
+                *{f'${i}' for i in range(32)},
+                'zero', 'at', 'v0', 'v1',
+                'a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7',
+                't0', 't1', 't2', 't3', 't8', 't9',
+                's0', 's1', 's2', 's3', 's4', 's5', 's6', 's7',
+                'k0', 'k1', 'gp', 'sp', 'fp', 's8', 'ra',
+                *{f'f{i}' for i in range(32)},
+                *{f'$f{i}' for i in range(32)},
+            }
         else:
             # Default to x86_64
             return self._get_valid_registers.__wrapped__(self, 'x86_64')
@@ -377,6 +429,36 @@ class LLVMIRGenerator(CodeGenerator):
                 'exception': {
                     'instructions': ['svc', 'hvc', 'smc'],
                     'message': 'Exception generation instruction'
+                }
+            }
+        elif arch in ('riscv64', 'riscv32', 'riscv'):
+            dangerous_patterns = {
+                'privileged': {
+                    'instructions': ['ecall', 'ebreak', 'mret', 'sret', 'uret', 'wfi'],
+                    'message': 'Privileged or environment-call instruction'
+                },
+                'csr': {
+                    'instructions': ['csrrw', 'csrrs', 'csrrc', 'csrrwi', 'csrrsi', 'csrrci'],
+                    'message': 'CSR (Control and Status Register) access - requires supervisor or machine mode'
+                },
+                'fence': {
+                    'instructions': ['fence', 'fence.i'],
+                    'message': 'Memory fence instruction - ensure correct ordering semantics'
+                }
+            }
+        elif arch in ('mips', 'mipsel', 'mips64', 'mips64el'):
+            dangerous_patterns = {
+                'privileged': {
+                    'instructions': ['syscall', 'break', 'eret', 'eretnc', 'wait'],
+                    'message': 'Syscall, trap, or privileged instruction'
+                },
+                'coprocessor': {
+                    'instructions': ['mfc0', 'mtc0', 'mfc1', 'mtc1', 'dmfc0', 'dmtc0'],
+                    'message': 'Coprocessor register access - requires privileged mode'
+                },
+                'cache': {
+                    'instructions': ['cache', 'synci', 'sync'],
+                    'message': 'Cache/sync instruction - use with caution'
                 }
             }
         else:
@@ -2928,6 +3010,13 @@ class LLVMIRGenerator(CodeGenerator):
         elif stmt_type == 'PanicStatement':
             self._generate_panic_statement(stmt, indent)
         elif stmt_type == 'InlineAssembly':
+            # Architecture guard: skip block if node.arch is set and doesn't match target.
+            node_arch = getattr(stmt, 'arch', None)
+            if node_arch is not None:
+                from ...compiler.preprocessor import _ARCH_ALIASES as _PP_ARCH
+                normalized = _PP_ARCH.get(node_arch.lower(), node_arch.lower())
+                if normalized != self.target_arch:
+                    return  # This asm block targets a different architecture.
             self._generate_inline_assembly(stmt, indent)
         # Add more statement types as needed
     
@@ -3295,18 +3384,23 @@ class LLVMIRGenerator(CodeGenerator):
         # - AT&T (default): $1 becomes %rax (with % prefix)
         # - Intel (inteldialect): $1 becomes rax (no prefix)
         use_inteldialect = False
-        
+
         # Check if assembly code contains operand references ($0, $1, etc.)
         import re
         if re.search(r'\$\d+', asm_code):
             # Assembly uses operand references - use inteldialect attribute
-            use_inteldialect = True
+            # Only for x86/x86_64; on other architectures pass through without dialect
+            if self.target_arch in ('x86_64', 'x86'):
+                use_inteldialect = True
             # Don't add .intel_syntax directive when using inteldialect
         else:
-            # No operand references - use .intel_syntax directive for plain assembly
-            if asm_code and not asm_code.strip().startswith('.intel_syntax'):
-                # Prepend Intel syntax directive for x86/x64 targets
-                asm_code = '.intel_syntax noprefix\n' + asm_code
+            # No operand references - for x86/x86_64 targets only, prepend Intel
+            # syntax directive so the assembler accepts register names without %
+            # prefix.  For RISC-V, MIPS, ARM etc. the assembly is already in the
+            # native (non-Intel) syntax.
+            if self.target_arch in ('x86_64', 'x86'):
+                if asm_code and not asm_code.strip().startswith('.intel_syntax'):
+                    asm_code = '.intel_syntax noprefix\n' + asm_code
         
         # Process output operands FIRST (they get numbered $0, $1, ...)
         output_allocas = []

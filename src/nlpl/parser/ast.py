@@ -1150,19 +1150,32 @@ class GenericTypeInstantiation(Expression):
         return f"GenericType({self.generic_name}<{', '.join(self.type_args)}>)"
 
 class InlineAssembly(ASTNode):
-    """Represents inline assembly code."""
-    def __init__(self, asm_code, inputs=None, outputs=None, clobbers=None, line_number=None):
+    """Represents inline assembly code.
+
+    The optional *arch* attribute is an architecture guard: when set the
+    compiler only emits the block for the matching target architecture
+    (e.g. ``"riscv64"``, ``"arm"``, ``"mips"``).  In the interpreter the
+    block is always skipped regardless of arch.
+    """
+    def __init__(self, asm_code, inputs=None, outputs=None, clobbers=None,
+                 line_number=None, arch=None):
         super().__init__("inline_assembly", line_number)
-        self.asm_code = asm_code          # Assembly code string
+        self.asm_code = asm_code          # Assembly code string(s)
         self.inputs = inputs or []        # Input operands: [(constraint, expression), ...]
         self.outputs = outputs or []      # Output operands: [(constraint, variable), ...]
         self.clobbers = clobbers or []    # Clobbered registers
-    
+        self.arch = arch                  # Optional architecture guard, e.g. "riscv64"
+
     def __str__(self):
-        return f"InlineAssembly({len(self.asm_code)} instructions)"
-    
+        arch_part = f" arch={self.arch}" if self.arch else ""
+        return f"InlineAssembly({len(self.asm_code)} instructions{arch_part})"
+
     def __repr__(self):
-        return f"InlineAssembly(code={len(self.asm_code)}, inputs={len(self.inputs)}, outputs={len(self.outputs)}, clobbers={len(self.clobbers)})"
+        return (
+            f"InlineAssembly(code={len(self.asm_code)}, "
+            f"inputs={len(self.inputs)}, outputs={len(self.outputs)}, "
+            f"clobbers={len(self.clobbers)}, arch={self.arch!r})"
+        )
 
 class ExternFunctionDeclaration(ASTNode):
     """Represents an external function declaration for FFI.

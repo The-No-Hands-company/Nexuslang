@@ -17,7 +17,7 @@ from .tools import get_profiler, enable_profiling, disable_profiling
 from .errors import NLPLError, NLPLTypeError, NLPLRuntimeError
 
 def run_program(source_code, debug=False, type_check=True, profiler=None, optimize=0,
-               file_path=None, freestanding_config=None):
+               file_path=None, freestanding_config=None, target=None):
     """
     Run an NLPL program from source code.
 
@@ -29,6 +29,7 @@ def run_program(source_code, debug=False, type_check=True, profiler=None, optimi
         optimize (int): AST optimization level (0=none, 1=basic, 2=standard, 3=aggressive)
         file_path (str): Absolute or relative path of the source file (enables relative imports)
         freestanding_config: Optional FreestandingConfig for bare-metal builds
+        target: Optional CompileTarget for conditional compilation; defaults to host_target()
 
     Returns:
         The result of the program execution
@@ -59,11 +60,16 @@ def run_program(source_code, debug=False, type_check=True, profiler=None, optimi
     
     parser = Parser(tokens, source=source_code)
     ast = parser.parse()
-    
+
+    # Static conditional-compilation pruning: strip dead 'when target ...' blocks
+    # BEFORE any static analysis so checkers never see dead-branch code.
+    from .compiler.preprocessor import preprocess_ast, host_target
+    preprocess_ast(ast, target=target if target is not None else host_target())
+
     if debug:
         print("\nAST:")
         print_ast(ast)
-    
+
     # Compile-time borrow checker (ownership / borrow safety)
     from .typesystem.borrow_checker import BorrowChecker
     from .typesystem.lifetime_checker import LifetimeChecker
@@ -155,6 +161,16 @@ def main():
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')
     parser.add_argument('--no-type-check', action='store_true', help='Disable type checking')
     parser.add_argument('--repl', action='store_true', help='Start interactive REPL (default if no file)')
+    parser.add_argument(
+        '--target',
+        metavar='TRIPLE',
+        default=None,
+        help=(
+            'Cross-compilation target triple, e.g. x86_64-unknown-linux-gnu, '
+            'aarch64-unknown-linux-gnu, riscv64-unknown-none-elf. '
+            'Controls conditional compilation blocks (when target os/arch is ...)'
+        ),
+    )
     parser.add_argument('--debugger', action='store_true', help='Enable interactive debugger')
     parser.add_argument('--break', '-b', dest='breakpoints', action='append',
                        help='Set breakpoint at line (can be used multiple times)')
@@ -388,12 +404,22 @@ def main():
         
         return
     
+    # Resolve --target triple into a CompileTarget (for conditional compilation)
+    _compile_target = None
+    if getattr(args, 'target', None):
+        from .compiler.preprocessor import CompileTarget
+        try:
+            _compile_target = CompileTarget.from_triple(args.target)
+        except ValueError as e:
+            print(f"Error: Invalid target triple: {e}")
+            sys.exit(1)
+
     # Run normally without debugger
     try:
         _fs_cfg = _apply_freestanding(args, None)
         result = run_program(source_code, args.debug, not args.no_type_check, profiler,
                              optimize=args.optimize, file_path=args.file,
-                             freestanding_config=_fs_cfg)
+                             freestanding_config=_fs_cfg, target=_compile_target)
         if result is not None:
             print(f"Program result: {result}")
         
