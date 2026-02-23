@@ -19,7 +19,9 @@ from ..parser.ast import (
     RaiseStatement,  # Add raise statement
     # Low-level constructs
     StructDefinition, UnionDefinition, ObjectInstantiation, MemberAssignment,
-    SizeofExpression, AddressOfExpression, DereferenceExpression
+    SizeofExpression, AddressOfExpression, DereferenceExpression,
+    # Allocator hint
+    AllocatorHint,
 )
 from ..typesystem.types import (
     Type, PrimitiveType, ListType, DictionaryType, ClassType, 
@@ -470,7 +472,22 @@ class TypeChecker:
         """Check the type of a variable declaration with bidirectional inference."""
         # If there's a type annotation, use bidirectional inference
         if declaration.type_annotation:
-            declared_type = get_type_by_name(declaration.type_annotation)
+            # AllocatorHint wraps a base type with an allocator name.
+            # For type checking purposes we use the base type and also validate
+            # that the allocator name resolves to an allocator in scope.
+            raw_annotation = declaration.type_annotation
+            if isinstance(raw_annotation, AllocatorHint):
+                alloc_name = raw_annotation.allocator_name
+                if alloc_name not in env.variables:
+                    self.errors.append(
+                        f"Line {getattr(declaration, 'line_number', '?')}: "
+                        f"Allocator '{alloc_name}' is not defined in the current scope"
+                    )
+                effective_annotation = raw_annotation.base_type
+            else:
+                effective_annotation = raw_annotation
+
+            declared_type = get_type_by_name(effective_annotation)
             
             # Use bidirectional inference: expected type guides value type inference
             value_type = self.type_inference.infer_with_expected_type(

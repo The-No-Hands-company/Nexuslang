@@ -1308,6 +1308,9 @@ class AllocatorHint(ASTNode):
     def __str__(self):
         return f"AllocatorHint({self.base_type} with allocator {self.allocator_name})"
 
+    def __repr__(self):
+        return self.__str__()
+
 
 class ParallelForLoop(ASTNode):
     """

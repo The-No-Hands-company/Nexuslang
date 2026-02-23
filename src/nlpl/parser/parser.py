@@ -591,8 +591,14 @@ class Parser:
             value = self.expression()
             if value is None:
                 self.error("Expected a value expression after TO")
-                
-            return VariableDeclaration(var_name, value, None)
+
+            # Optional type annotation: set x to value as List of Integer [with allocator arena]
+            type_annotation = None
+            if self.current_token and self.current_token.type == TokenType.AS:
+                self.advance()  # consume 'as'
+                type_annotation = self.parse_type()
+
+            return VariableDeclaration(var_name, value, type_annotation)
     
     def add_statement(self):
         """Parse an add/append statement.

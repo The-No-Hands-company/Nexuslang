@@ -563,9 +563,11 @@ class Interpreter:
             value = self.execute(node.value)
 
         # Handle allocator hints on collection types:
-        #   set items to List of Integer with allocator arena_alloc
+        #   set items to [] as List of Integer with allocator arena_alloc
         # The AllocatorHint tells us to route collection construction through the
-        # specified allocator so that the backing memory is tracked by it.
+        # specified allocator so that the backing memory is tracked by it, and
+        # wrap the collection in an AllocatorTrackedList / AllocatorTrackedDict so
+        # subsequent mutations (append, insert, remove, …) are also tracked.
         if hasattr(node, 'type_annotation') and isinstance(node.type_annotation, AllocatorHint):
             alloc_name = node.type_annotation.allocator_name
             try:
@@ -577,11 +579,11 @@ class Interpreter:
                     error_type_key="undefined_variable",
                     full_source=self.source,
                 )
-            # Record the allocation with the allocator (for stats and tracking)
-            if allocator is not None and hasattr(allocator, 'allocate'):
-                element_count = len(value) if hasattr(value, '__len__') else 1
-                # Estimate 8 bytes per element (conservative pointer-sized approximation)
-                allocator.allocate(element_count * 8, alignment=8)
+            if allocator is not None:
+                from ..stdlib.allocators import wrap_collection_with_allocator
+                # wrap_collection_with_allocator handles both list and dict
+                # and calls allocator.allocate() for the initial elements.
+                value = wrap_collection_with_allocator(value if value is not None else [], allocator)
 
         self.set_variable(node.name, value)
         return value

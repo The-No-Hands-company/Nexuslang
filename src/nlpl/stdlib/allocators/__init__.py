@@ -499,6 +499,225 @@ class SlabAllocator(Allocator):
 
 
 # ---------------------------------------------------------------------------
+# Allocator-tracked collection wrappers
+# ---------------------------------------------------------------------------
+
+_BYTES_PER_ELEMENT = 8  # Conservative pointer-sized estimate per list/dict element
+
+
+class AllocatorTrackedList(list):
+    """
+    A list whose mutations are tracked through an NLPL allocator.
+
+    Subclasses the built-in ``list`` so all existing code that checks
+    ``isinstance(x, list)`` or calls ``len()``, iteration, and indexing
+    continues to work without modification.
+
+    Mutation methods (``append``, ``insert``, ``extend``, ``pop``,
+    ``remove``, ``clear``) notify the backing allocator so that
+    ``get_allocator_stats()`` reflects actual live collection memory.
+
+    For arena/bump allocators that do not support per-element free the
+    deallocation path updates only the stats counters rather than calling
+    ``deallocate()`` (which would be a no-op anyway).
+    """
+
+    def __new__(cls, data=None, allocator=None):
+        return super().__new__(cls, data or [])
+
+    def __init__(self, data=None, allocator: Optional['Allocator'] = None):
+        super().__init__(data or [])
+        self._allocator: Optional['Allocator'] = allocator
+
+    # ------------------------------------------------------------------
+    # Mutation hooks
+    # ------------------------------------------------------------------
+
+    def _alloc_n(self, n: int) -> None:
+        """Notify the allocator of *n* new element-slots (one call per element)."""
+        if self._allocator is not None and hasattr(self._allocator, 'allocate'):
+            for _ in range(n):
+                self._allocator.allocate(_BYTES_PER_ELEMENT)
+
+    def _dealloc_n(self, n: int) -> None:
+        """Notify the allocator that *n* element-slots were freed."""
+        if self._allocator is None:
+            return
+        # Use stats.record_dealloc to properly increment all counters.
+        # Arena allocators do not support physical per-element frees, but we
+        # still record the logical deallocation so stats remain accurate.
+        freed_bytes = n * _BYTES_PER_ELEMENT
+        stats = getattr(self._allocator, 'stats', None)
+        if stats is not None:
+            stats.record_dealloc(freed_bytes)
+
+    def append(self, item) -> None:
+        super().append(item)
+        self._alloc_n(1)
+
+    def insert(self, index: int, item) -> None:
+        super().insert(index, item)
+        self._alloc_n(1)
+
+    def extend(self, items) -> None:
+        items = list(items)
+        super().extend(items)
+        self._alloc_n(len(items))
+
+    def pop(self, index: int = -1):
+        item = super().pop(index)
+        self._dealloc_n(1)
+        return item
+
+    def remove(self, item) -> None:
+        super().remove(item)
+        self._dealloc_n(1)
+
+    def clear(self) -> None:
+        n = len(self)
+        super().clear()
+        self._dealloc_n(n)
+
+    def __setitem__(self, index, value) -> None:
+        # Replacing an existing element does not change allocation count.
+        super().__setitem__(index, value)
+
+    def __delitem__(self, index) -> None:
+        n = len(range(*index.indices(len(self)))) if isinstance(index, slice) else 1
+        super().__delitem__(index)
+        self._dealloc_n(n)
+
+    def __iadd__(self, other):
+        other = list(other)
+        result = super().__iadd__(other)
+        self._alloc_n(len(other))
+        return result
+
+    def __reduce__(self):
+        # Pickling / copy support: drop the allocator reference.
+        return (AllocatorTrackedList, (list(self), None))
+
+    def __repr__(self) -> str:
+        return f"AllocatorTrackedList({list.__repr__(self)})"
+
+
+class AllocatorTrackedDict(dict):
+    """
+    A dict whose insertions and removals are tracked through an NLPL allocator.
+
+    Same design as :class:`AllocatorTrackedList`: subclasses ``dict`` for
+    full compatibility with existing code.
+
+    Each inserted key-value pair is modeled as two pointer-sized slots
+    (key + value = 16 bytes).
+    """
+
+    _BYTES_PER_ENTRY = _BYTES_PER_ELEMENT * 2  # key + value pointers
+
+    def __new__(cls, data=None, allocator=None):
+        return super().__new__(cls, data or {})
+
+    def __init__(self, data=None, allocator: Optional['Allocator'] = None):
+        super().__init__(data or {})
+        self._allocator: Optional['Allocator'] = allocator
+
+    # ------------------------------------------------------------------
+    # Mutation hooks
+    # ------------------------------------------------------------------
+
+    def _alloc_n(self, n: int) -> None:
+        if self._allocator is not None and hasattr(self._allocator, 'allocate'):
+            for _ in range(n):
+                self._allocator.allocate(self._BYTES_PER_ENTRY)
+
+    def _dealloc_n(self, n: int) -> None:
+        if self._allocator is None:
+            return
+        freed_bytes = n * self._BYTES_PER_ENTRY
+        stats = getattr(self._allocator, 'stats', None)
+        if stats is not None:
+            stats.record_dealloc(freed_bytes)
+
+    def __setitem__(self, key, value) -> None:
+        is_new = key not in self
+        super().__setitem__(key, value)
+        if is_new:
+            self._alloc_n(1)
+
+    def update(self, other=(), **kwargs) -> None:
+        if hasattr(other, 'items'):
+            other = dict(other)
+        else:
+            other = dict(other)
+        other.update(kwargs)
+        new_keys = sum(1 for k in other if k not in self)
+        super().update(other)
+        if new_keys:
+            self._alloc_n(new_keys)
+
+    def setdefault(self, key, default=None):
+        if key not in self:
+            self[key] = default
+            # __setitem__ already calls _alloc_n
+            return default
+        return self[key]
+
+    def pop(self, *args):
+        existed = len(args) >= 1 and args[0] in self
+        result = super().pop(*args)
+        if existed:
+            self._dealloc_n(1)
+        return result
+
+    def popitem(self):
+        item = super().popitem()
+        self._dealloc_n(1)
+        return item
+
+    def clear(self) -> None:
+        n = len(self)
+        super().clear()
+        self._dealloc_n(n)
+
+    def __delitem__(self, key) -> None:
+        super().__delitem__(key)
+        self._dealloc_n(1)
+
+    def __reduce__(self):
+        return (AllocatorTrackedDict, (dict(self), None))
+
+    def __repr__(self) -> str:
+        return f"AllocatorTrackedDict({dict.__repr__(self)})"
+
+
+def wrap_collection_with_allocator(value, allocator: 'Allocator'):
+    """
+    Wrap *value* in an allocator-tracked collection type if it is a ``list``
+    or ``dict``.  Already-wrapped values are re-wrapped with the new allocator.
+
+    For other types (scalars, objects) the value is returned unchanged but the
+    initial byte count is still reported to the allocator.
+    """
+    if isinstance(value, AllocatorTrackedList):
+        # Re-wrap with the new allocator (rare but correct)
+        wrapped = AllocatorTrackedList(list(value), allocator)
+    elif isinstance(value, list):
+        wrapped = AllocatorTrackedList(value, allocator)
+    elif isinstance(value, AllocatorTrackedDict):
+        wrapped = AllocatorTrackedDict(dict(value), allocator)
+    elif isinstance(value, dict):
+        wrapped = AllocatorTrackedDict(value, allocator)
+    else:
+        return value
+    # Report the initial allocation for any pre-existing elements.
+    initial_count = len(wrapped)
+    if initial_count and hasattr(allocator, 'allocate'):
+        for _ in range(initial_count):
+            allocator.allocate(_BYTES_PER_ELEMENT)
+    return wrapped
+
+
+# ---------------------------------------------------------------------------
 # Global allocator registry
 # ---------------------------------------------------------------------------
 

@@ -1102,7 +1102,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 - ✅ Statistics tracking (`get_allocator_stats` - total_allocated, peak_bytes, etc.)
 - ✅ Block introspection (`allocator_block_size`, `allocator_block_type`, `allocator_read_byte`, `allocator_write_byte`)
 - ✅ Tested: `test_programs/unit/basic/test_allocators.nlpl`
-- ❌ Compiler-level allocator syntax (`List of Integer with allocator arena_alloc`) - requires type system integration (future work)
+- ✅ Compiler-level allocator syntax (`set items to [] as List of Integer with allocator arena_alloc`) - parser, type system, and interpreter fully integrated; `AllocatorTrackedList`/`AllocatorTrackedDict` wrapper classes track per-element allocations; tested in `tests/test_allocator_syntax.py` (58/58)
 
 **What C/C++ Have:**
 

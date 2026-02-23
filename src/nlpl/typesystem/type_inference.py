@@ -7,7 +7,8 @@ from typing import Dict, List, Optional, Set, Union, Any, Tuple
 from ..parser.ast import (
     Program, VariableDeclaration, FunctionDefinition, Parameter,
     BinaryOperation, UnaryOperation, Literal, Identifier, FunctionCall,
-    Expression, ClassDefinition, MethodDefinition, ReturnStatement
+    Expression, ClassDefinition, MethodDefinition, ReturnStatement,
+    AllocatorHint,
 )
 from ..typesystem.types import (
     Type, PrimitiveType, ListType, DictionaryType, ClassType, 
@@ -216,7 +217,15 @@ class TypeInferenceEngine:
         """Infer the type of a variable declaration."""
         # If there's an explicit type annotation, use it
         if declaration.type_annotation:
-            type_ = get_type_by_name(declaration.type_annotation)
+            # AllocatorHint carries a base_type plus allocator metadata.
+            # For inference purposes use only the base_type.
+            raw_annotation = declaration.type_annotation
+            effective_annotation = (
+                raw_annotation.base_type
+                if isinstance(raw_annotation, AllocatorHint)
+                else raw_annotation
+            )
+            type_ = get_type_by_name(effective_annotation)
             
             # If we have a generic context, substitute any generic parameters
             if generic_context:
