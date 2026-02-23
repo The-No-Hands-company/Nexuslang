@@ -1141,7 +1141,7 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
   - `get_global_allocator with 0`
   - Statistics via `get_allocator_stats with alloc`
 
-- [ ] **Compiler-level collection allocator syntax**
+- [X] **Compiler-level collection allocator syntax**
   - `set list to List of Integer with allocator arena_alloc` (requires type system integration)
 
 **Priority:** MEDIUM (useful but not critical)  
@@ -1324,25 +1324,25 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 
 ## PART 4: Hardware & OS Integration
 
-### 4.1 Platform-Specific Code COMPLETE (February 2026)
+### 4.1 Platform-Specific Code ✅ COMPLETE (February 2026)
 
 **Implementation:** `src/nlpl/compiler/preprocessor.py`
 
 **Completed:**
 
-- COMPLETE Conditional compilation blocks (`when target os is "linux" ... end`)
-- COMPLETE Target architecture detection (`when target arch is "x86_64"`, `"aarch64"`, etc.)
-- COMPLETE Endianness checks (`when target endian is "little"`)
-- COMPLETE Pointer-width checks (`when target pointer width is "64"`)
-- COMPLETE Feature flag gates (`when feature "networking" ... end`)
-- COMPLETE Optional `otherwise` branch (equivalent to `#else`)
-- COMPLETE Cross-compilation simulation (override via `runtime.compile_target`)
-- COMPLETE `CompileTarget` frozen dataclass with OS/arch/endian/pointer_width/features fields
-- COMPLETE `detect_host()` — auto-detects current platform at startup
-- COMPLETE `evaluate_condition()` — case-insensitive, aliases (ubuntu->linux, arm64->aarch64, etc.)
-- COMPLETE `preprocess_ast()` — static pre-execution tree pruning
-- COMPLETE Scoping: variables declared inside blocks are visible in outer scope (C `#ifdef` semantics)
-- COMPLETE Full test suite: 45 tests passing (`tests/test_conditional_compilation.py`)
+- ✅ Conditional compilation blocks (`when target os is "linux" ... end`)
+- ✅ Target architecture detection (`when target arch is "x86_64"`, `"aarch64"`, etc.)
+- ✅ Endianness checks (`when target endian is "little"`)
+- ✅ Pointer-width checks (`when target pointer width is "64"`)
+- ✅ Feature flag gates (`when feature "networking" ... end`)
+- ✅ Optional `otherwise` branch (equivalent to `#else`)
+- ✅ Cross-compilation simulation (override via `runtime.compile_target`)
+- ✅ `CompileTarget` frozen dataclass with OS/arch/endian/pointer_width/features fields
+- ✅ `detect_host()` — auto-detects current platform at startup
+- ✅ `evaluate_condition()` — case-insensitive, aliases (ubuntu->linux, arm64->aarch64, etc.)
+- ✅ `preprocess_ast()` — static pre-execution tree pruning
+- ✅ Scoping: variables declared inside blocks are visible in outer scope (C `#ifdef` semantics)
+- ✅ Full test suite: 45 tests passing (`tests/test_conditional_compilation.py`)
 
 **Syntax:**
 ```nlpl
@@ -1372,18 +1372,18 @@ end
 
 ---
 
-### 4.2 System Call Interface COMPLETE
+### 4.2 System Call Interface ✅ COMPLETE
 
 **Implementation:** `src/nlpl/stdlib/kernel/__init__.py`
 
 **Completed:**
 
-- COMPLETE Direct syscall invocation: `syscall` NLPL function with variadic args
-- COMPLETE Linux syscall number table: 50+ named constants (`LINUX_SYSCALLS` dict)
-- COMPLETE errno access and error-code-to-string conversion
-- COMPLETE High-level wrappers: open, read, write, close, fork, exec, waitpid
-- COMPLETE mmap / munmap / mprotect
-- COMPLETE Platform detection and safety validation
+- ✅ Direct syscall invocation: `syscall` NLPL function with variadic args
+- ✅ Linux syscall number table: 50+ named constants (`LINUX_SYSCALLS` dict)
+- ✅ errno access and error-code-to-string conversion
+- ✅ High-level wrappers: open, read, write, close, fork, exec, waitpid
+- ✅ mmap / munmap / mprotect
+- ✅ Platform detection and safety validation
 
 **Note:** The syscall interface was already fully implemented in a prior session. Confirmed complete during audit at session start.
 
@@ -1391,24 +1391,24 @@ end
 
 ---
 
-### 4.3 Device Drivers COMPLETE (February 2026)
+### 4.3 Device Drivers ✅ COMPLETE (February 2026)
 
 **Implementation:** `src/nlpl/stdlib/drivers/__init__.py`
 
 **Completed:**
 
-- COMPLETE **Character Device**: `CharDevice` — open/close/read/write/ioctl/ioctl_buffer, context manager (`with` statement)
-- COMPLETE **Block Device**: `BlockDevice` — open/close/read_sector/write_sector/get_size/get_logical_block_size (BLKGETSIZE64/BLKSSZGET), context manager
-- COMPLETE **PCI Enumeration**: `PciDevice` — sysfs-backed vendor_id/device_id/class_code/driver/enabled; `enumerate_pci_devices()` returns all PCI devices
-- COMPLETE **I2C Protocol**: `I2cDevice` — open/close/read/write/write_register/read_register over `/dev/i2c-N`, full I2C_SLAVE ioctl
-- COMPLETE **SPI Protocol**: `SpiDevice` — open/close/transfer (full-duplex spi_ioc_transfer ioctl), mode/bits/speed configuration
-- COMPLETE **GPIO**: `GpioPin` — export/unexport/set_direction/write_value/read_value via Linux sysfs `/sys/class/gpio`
-- COMPLETE **Interrupt Handling**: `InterruptHandler` — register/activate/deactivate/trigger; POSIX signal-backed; zero-argument callbacks; safe no-op for unregistered signals
-- COMPLETE **IRQ Utilities**: `list_irqs()`, `get_irq_affinity()`, `set_irq_affinity()` via `/proc/interrupts` and `/proc/irq/N/smp_affinity`
-- COMPLETE **Device Tree**: `read_device_tree_property()` via `/proc/device-tree`
-- COMPLETE **Sysfs Enumeration**: `list_devices_by_class()` — enumerates `/sys/class/<class>` with uevent parsing; returns empty list for unknown classes
-- COMPLETE 40+ NLPL-callable functions registered via `register_driver_functions(runtime)`
-- COMPLETE Full test suite: 35 tests passing (`tests/test_drivers.py`)
+- ✅ **Character Device**: `CharDevice` — open/close/read/write/ioctl/ioctl_buffer, context manager (`with` statement)
+- ✅ **Block Device**: `BlockDevice` — open/close/read_sector/write_sector/get_size/get_logical_block_size (BLKGETSIZE64/BLKSSZGET), context manager
+- ✅ **PCI Enumeration**: `PciDevice` — sysfs-backed vendor_id/device_id/class_code/driver/enabled; `enumerate_pci_devices()` returns all PCI devices
+- ✅ **I2C Protocol**: `I2cDevice` — open/close/read/write/write_register/read_register over `/dev/i2c-N`, full I2C_SLAVE ioctl
+- ✅ **SPI Protocol**: `SpiDevice` — open/close/transfer (full-duplex spi_ioc_transfer ioctl), mode/bits/speed configuration
+- ✅ **GPIO**: `GpioPin` — export/unexport/set_direction/write_value/read_value via Linux sysfs `/sys/class/gpio`
+- ✅ **Interrupt Handling**: `InterruptHandler` — register/activate/deactivate/trigger; POSIX signal-backed; zero-argument callbacks; safe no-op for unregistered signals
+- ✅ **IRQ Utilities**: `list_irqs()`, `get_irq_affinity()`, `set_irq_affinity()` via `/proc/interrupts` and `/proc/irq/N/smp_affinity`
+- ✅ **Device Tree**: `read_device_tree_property()` via `/proc/device-tree`
+- ✅ **Sysfs Enumeration**: `list_devices_by_class()` — enumerates `/sys/class/<class>` with uevent parsing; returns empty list for unknown classes
+- ✅ 40+ NLPL-callable functions registered via `register_driver_functions(runtime)`
+- ✅ Full test suite: 35 tests passing (`tests/test_drivers.py`)
 
 **Remaining:**
 
@@ -1425,7 +1425,7 @@ end
 
 ## PART 5: Tooling & Ecosystem
 
-### 5.1 Build System - COMPLETE (February 22, 2026)
+### 5.1 Build System ✅ COMPLETE (February 22, 2026)
 
 **Implementation:** `src/nlpl/tooling/` — `config.py`, `builder.py`, `lockfile.py`, `dependency_manager.py`  
 **CLI:** `src/nlpl/cli/__init__.py` — 11 subcommands  
