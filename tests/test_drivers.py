@@ -3,6 +3,7 @@ import pytest
 import sys
 import os
 import platform
+import tempfile
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
@@ -18,6 +19,33 @@ from nlpl.stdlib.drivers import (
     list_irqs,
     read_device_tree_string,
     list_devices_by_class,
+    # Kernel modules
+    load_kernel_module,
+    unload_kernel_module,
+    is_module_loaded,
+    list_loaded_modules,
+    get_module_info,
+    get_module_dependencies,
+    # USB
+    UsbDevice,
+    enumerate_usb_devices,
+    find_usb_device,
+    # Network
+    NetDevice,
+    enumerate_net_devices,
+    create_raw_socket,
+    send_raw_packet,
+    receive_raw_packet,
+    # DMA
+    DmaBuffer,
+    list_dma_heaps,
+    # VFIO
+    VfioContainer,
+    VfioGroup,
+    VfioDevice,
+    bind_vfio_pci,
+    unbind_vfio_pci,
+    get_iommu_group,
 )
 from nlpl.runtime.runtime import Runtime
 from nlpl.stdlib import register_stdlib
@@ -362,3 +390,438 @@ class TestDriverRegistration:
         register_driver_functions(runtime)
         register_driver_functions(runtime)  # should not raise
         assert "open_char_device" in runtime.functions
+
+
+# ---------------------------------------------------------------------------
+# Kernel Modules
+# ---------------------------------------------------------------------------
+
+class TestKernelModules:
+    def test_is_module_loaded_returns_bool(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: /proc/modules")
+        result = is_module_loaded("loop")
+        assert isinstance(result, bool)
+
+    def test_is_module_loaded_false_for_nonexistent(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: /proc/modules")
+        assert is_module_loaded("definitely_not_a_module_xyz_99") is False
+
+    def test_list_loaded_modules_nonempty(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: /proc/modules")
+        modules = list_loaded_modules()
+        assert isinstance(modules, list)
+        assert len(modules) > 0
+
+    def test_list_loaded_modules_entry_keys(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: /proc/modules")
+        modules = list_loaded_modules()
+        required_keys = {"name", "size", "refcount", "dependencies", "state", "offset"}
+        for entry in modules:
+            assert required_keys.issubset(entry.keys()), f"Missing keys in {entry}"
+            assert isinstance(entry["name"], str)
+            assert isinstance(entry["size"], int)
+            assert isinstance(entry["refcount"], int)
+            assert isinstance(entry["dependencies"], list)
+
+    def test_list_loaded_modules_offset_hex_string(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: /proc/modules")
+        modules = list_loaded_modules()
+        for entry in modules:
+            assert isinstance(entry["offset"], str)
+            # Offset should be a hex string like "0xffffffff..."
+            assert entry["offset"].startswith("0x") or entry["offset"] == "-"
+
+    def test_get_module_info_unknown_raises(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: modinfo")
+        with pytest.raises(DriverError):
+            get_module_info("nonexistent_xyz_99")
+
+    def test_load_nonexistent_module_raises(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: modprobe")
+        with pytest.raises(DriverError):
+            load_kernel_module("nonexistent_xyz_99")
+
+    def test_unload_nonexistent_module_raises(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: rmmod")
+        with pytest.raises(DriverError):
+            unload_kernel_module("nonexistent_xyz_99")
+
+    def test_get_module_dependencies_unknown_raises(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: modinfo")
+        with pytest.raises(DriverError):
+            get_module_dependencies("nonexistent_xyz_99")
+
+    def test_non_linux_raises(self):
+        if IS_LINUX:
+            pytest.skip("Non-Linux test only")
+        with pytest.raises(DriverError, match="Linux"):
+            is_module_loaded("x")
+
+
+# ---------------------------------------------------------------------------
+# USB Devices
+# ---------------------------------------------------------------------------
+
+class TestUsbDevices:
+    def test_enumerate_usb_returns_list(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: /sys/bus/usb/devices")
+        result = enumerate_usb_devices()
+        assert isinstance(result, list)
+
+    def test_enumerate_usb_all_usb_device_instances(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: /sys/bus/usb/devices")
+        devices = enumerate_usb_devices()
+        for d in devices:
+            assert isinstance(d, UsbDevice)
+
+    def test_usb_device_to_dict_keys(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: /sys/bus/usb/devices")
+        devices = enumerate_usb_devices()
+        if not devices:
+            pytest.skip("No USB devices found")
+        required_keys = {"vendor_id", "product_id", "manufacturer", "product",
+                         "bus_number", "device_number", "speed", "address"}
+        for d in devices:
+            d_dict = d.to_dict()
+            assert required_keys.issubset(d_dict.keys())
+
+    def test_usb_device_vid_pid_hex_format(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: /sys/bus/usb/devices")
+        devices = enumerate_usb_devices()
+        if not devices:
+            pytest.skip("No USB devices found")
+        for d in devices:
+            d_dict = d.to_dict()
+            if d_dict["vendor_id"] is not None:
+                # Should be a 4-char hex string (from :04x format)
+                assert len(d_dict["vendor_id"]) == 4
+                int(d_dict["vendor_id"], 16)  # parseable as hex
+
+    def test_find_usb_nonexistent_returns_none(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: /sys/bus/usb/devices")
+        result = find_usb_device(0xFFFF, 0xFFFF)
+        assert result is None
+
+    def test_usb_device_sysfs_mock(self, tmp_path):
+        """UsbDevice reads attributes from sysfs directory."""
+        sysfs_dir = tmp_path / "usb1"
+        sysfs_dir.mkdir()
+        (sysfs_dir / "idVendor").write_text("0483\n")
+        (sysfs_dir / "idProduct").write_text("5740\n")
+        (sysfs_dir / "manufacturer").write_text("STMicroelectronics\n")
+        (sysfs_dir / "product").write_text("Virtual COM Port\n")
+        (sysfs_dir / "busnum").write_text("1\n")
+        (sysfs_dir / "devnum").write_text("5\n")
+        (sysfs_dir / "speed").write_text("12\n")
+        dev = UsbDevice(str(sysfs_dir))
+        assert dev.vendor_id == 0x0483
+        assert dev.product_id == 0x5740
+        assert dev.manufacturer == "STMicroelectronics"
+        assert dev.product == "Virtual COM Port"
+        assert dev.bus_number == 1
+        assert dev.device_number == 5
+
+    def test_usb_device_repr(self, tmp_path):
+        sysfs_dir = tmp_path / "usb2"
+        sysfs_dir.mkdir()
+        (sysfs_dir / "idVendor").write_text("04d8\n")
+        (sysfs_dir / "idProduct").write_text("000a\n")
+        dev = UsbDevice(str(sysfs_dir))
+        r = repr(dev)
+        assert "UsbDevice" in r
+
+    def test_non_linux_raises(self):
+        if IS_LINUX:
+            pytest.skip("Non-Linux test only")
+        with pytest.raises(DriverError, match="Linux"):
+            enumerate_usb_devices()
+
+
+# ---------------------------------------------------------------------------
+# Network Devices
+# ---------------------------------------------------------------------------
+
+class TestNetDevices:
+    def test_enumerate_net_returns_list(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: /sys/class/net")
+        devices = enumerate_net_devices()
+        assert isinstance(devices, list)
+        assert len(devices) > 0  # at least loopback
+
+    def test_loopback_present(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: /sys/class/net")
+        names = [d.name for d in enumerate_net_devices()]
+        assert "lo" in names
+
+    def test_net_device_mac_address(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: /sys/class/net")
+        dev = NetDevice("lo")
+        mac = dev.mac_address
+        # Loopback has 00:00:00:00:00:00 or similar
+        assert isinstance(mac, str)
+        assert len(mac) > 0
+
+    def test_net_device_mtu(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: /sys/class/net")
+        dev = NetDevice("lo")
+        mtu = dev.mtu
+        assert isinstance(mtu, int)
+        assert mtu > 0
+
+    def test_net_device_is_up_bool(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: /sys/class/net")
+        dev = NetDevice("lo")
+        assert isinstance(dev.is_up, bool)
+
+    def test_net_device_stats_are_int(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: /sys/class/net")
+        dev = NetDevice("lo")
+        for attr in ("rx_bytes", "tx_bytes", "rx_packets", "tx_packets",
+                     "rx_errors", "tx_errors", "rx_dropped", "tx_dropped"):
+            val = getattr(dev, attr)
+            assert isinstance(val, int), f"{attr} should be int, got {type(val)}"
+
+    def test_net_device_operstate(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: /sys/class/net")
+        dev = NetDevice("lo")
+        assert isinstance(dev.operstate, str)
+
+    def test_net_device_to_dict_keys(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: /sys/class/net")
+        dev = NetDevice("lo")
+        d = dev.to_dict()
+        required_keys = {"name", "mac_address", "mtu", "operstate", "is_up",
+                         "rx_bytes", "tx_bytes", "rx_packets", "tx_packets"}
+        assert required_keys.issubset(d.keys())
+
+    def test_net_device_repr(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: /sys/class/net")
+        assert "lo" in repr(NetDevice("lo"))
+
+    def test_non_linux_raises(self):
+        if IS_LINUX:
+            pytest.skip("Non-Linux test only")
+        with pytest.raises(DriverError, match="Linux"):
+            enumerate_net_devices()
+
+
+# ---------------------------------------------------------------------------
+# DMA Buffers
+# ---------------------------------------------------------------------------
+
+class TestDmaBuffers:
+    def test_list_dma_heaps_returns_list(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: /dev/dma_heap")
+        result = list_dma_heaps()
+        assert isinstance(result, list)
+        # May be empty if kernel lacks dma_heap support; that is fine
+
+    def test_dma_alloc_nonexistent_heap_raises(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: /dev/dma_heap")
+        with pytest.raises(DriverError):
+            DmaBuffer.allocate(4096, "nonexistent_heap_xyz_99")
+
+    def test_dma_buffer_properties_on_construction(self):
+        buf = DmaBuffer(-1, 4096, "system")
+        assert buf.fd == -1
+        assert buf.size == 4096
+        assert buf.heap == "system"
+
+    def test_dma_buffer_close_with_no_fd_is_safe(self):
+        buf = DmaBuffer(-1, 4096, "system")
+        buf.close()  # should not raise even with fd=-1
+
+    def test_dma_buffer_double_close_is_safe(self):
+        buf = DmaBuffer(-1, 4096, "system")
+        buf.close()
+        buf.close()  # idempotent
+
+    def test_dma_buffer_map_closed_raises(self):
+        buf = DmaBuffer(-1, 4096, "system")
+        buf.close()
+        with pytest.raises(DriverError):
+            buf.map()
+
+    def test_dma_buffer_repr(self):
+        buf = DmaBuffer(3, 8192, "linux,cma")
+        r = repr(buf)
+        assert "DmaBuffer" in r
+        assert "8192" in r
+
+
+# ---------------------------------------------------------------------------
+# VFIO
+# ---------------------------------------------------------------------------
+
+class TestVfio:
+    def test_vfio_container_not_open_initially(self):
+        c = VfioContainer()
+        assert c.fd == -1
+
+    def test_vfio_open_no_device_raises(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: /dev/vfio/vfio")
+        import os
+        if os.path.exists("/dev/vfio/vfio"):
+            pytest.skip("System has /dev/vfio/vfio — actual open would succeed")
+        c = VfioContainer()
+        with pytest.raises(DriverError):
+            c.open()
+
+    def test_vfio_container_close_unopened_safe(self):
+        c = VfioContainer()
+        c.close()  # should not raise
+
+    def test_vfio_group_not_open_initially(self):
+        g = VfioGroup(42)
+        assert g.fd == -1
+
+    def test_vfio_group_nonexistent_raises(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: /dev/vfio/<group>")
+        g = VfioGroup(99999)
+        with pytest.raises(DriverError):
+            g.open()
+
+    def test_vfio_group_close_unopened_safe(self):
+        g = VfioGroup(0)
+        g.close()  # should not raise
+
+    def test_get_iommu_group_nonexistent_returns_none(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: /sys/bus/pci/devices")
+        result = get_iommu_group("9999:ff:ff.7")
+        assert result is None
+
+    def test_unbind_vfio_nonexistent_raises(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: /sys/bus/pci")
+        with pytest.raises(DriverError):
+            unbind_vfio_pci("0000:ff:ff.7")
+
+    def test_bind_vfio_nonexistent_raises(self):
+        if not IS_LINUX:
+            pytest.skip("Linux-only: /sys/bus/pci")
+        with pytest.raises(DriverError):
+            bind_vfio_pci("0000:ff:ff.7")
+
+
+# ---------------------------------------------------------------------------
+# Registration — new functions
+# ---------------------------------------------------------------------------
+
+class TestNewFunctionsRegistered:
+    KERNEL_MODULE_FNS = [
+        "load_kernel_module",
+        "unload_kernel_module",
+        "is_module_loaded",
+        "list_loaded_modules",
+        "get_module_info",
+        "get_module_dependencies",
+    ]
+
+    USB_FNS = [
+        "enumerate_usb_devices",
+        "find_usb_device",
+        "get_usb_device_info",
+    ]
+
+    NET_FNS = [
+        "enumerate_net_devices",
+        "get_net_device",
+        "net_device_info",
+        "net_set_mtu",
+        "net_bring_up",
+        "net_bring_down",
+        "create_raw_socket",
+        "send_raw_packet",
+        "receive_raw_packet",
+    ]
+
+    DMA_FNS = [
+        "dma_alloc",
+        "dma_map",
+        "dma_unmap",
+        "dma_free",
+        "dma_buffer_fd",
+        "dma_buffer_size",
+        "list_dma_heaps",
+    ]
+
+    VFIO_FNS = [
+        "vfio_open_container",
+        "vfio_close_container",
+        "vfio_set_iommu",
+        "vfio_map_dma",
+        "vfio_unmap_dma",
+        "vfio_open_group",
+        "vfio_close_group",
+        "vfio_group_set_container",
+        "vfio_group_is_viable",
+        "vfio_get_device",
+        "vfio_device_info",
+        "vfio_region_info",
+        "vfio_mmap_region",
+        "vfio_irq_info",
+        "vfio_set_irqs",
+        "vfio_device_reset",
+        "vfio_close_device",
+        "bind_vfio_pci",
+        "unbind_vfio_pci",
+        "get_iommu_group",
+    ]
+
+    def _get_registered(self):
+        runtime = Runtime()
+        register_driver_functions(runtime)
+        return set(runtime.functions.keys())
+
+    def test_kernel_module_functions_registered(self):
+        registered = self._get_registered()
+        for fn in self.KERNEL_MODULE_FNS:
+            assert fn in registered, f"Missing kernel-module function: {fn}"
+
+    def test_usb_functions_registered(self):
+        registered = self._get_registered()
+        for fn in self.USB_FNS:
+            assert fn in registered, f"Missing USB function: {fn}"
+
+    def test_net_functions_registered(self):
+        registered = self._get_registered()
+        for fn in self.NET_FNS:
+            assert fn in registered, f"Missing network function: {fn}"
+
+    def test_dma_functions_registered(self):
+        registered = self._get_registered()
+        for fn in self.DMA_FNS:
+            assert fn in registered, f"Missing DMA function: {fn}"
+
+    def test_vfio_functions_registered(self):
+        registered = self._get_registered()
+        for fn in self.VFIO_FNS:
+            assert fn in registered, f"Missing VFIO function: {fn}"

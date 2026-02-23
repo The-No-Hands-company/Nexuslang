@@ -1407,19 +1407,15 @@ end
 - ✅ **IRQ Utilities**: `list_irqs()`, `get_irq_affinity()`, `set_irq_affinity()` via `/proc/interrupts` and `/proc/irq/N/smp_affinity`
 - ✅ **Device Tree**: `read_device_tree_property()` via `/proc/device-tree`
 - ✅ **Sysfs Enumeration**: `list_devices_by_class()` — enumerates `/sys/class/<class>` with uevent parsing; returns empty list for unknown classes
-- ✅ 40+ NLPL-callable functions registered via `register_driver_functions(runtime)`
-- ✅ Full test suite: 35 tests passing (`tests/test_drivers.py`)
+- ✅ **Kernel Module Management**: `load_kernel_module()`, `unload_kernel_module()`, `is_module_loaded()`, `list_loaded_modules()`, `get_module_info()`, `get_module_dependencies()` via `modprobe`/`rmmod`/`modinfo` and `/proc/modules`
+- ✅ **USB Device Framework**: `UsbDevice` class (sysfs-backed — vendor_id, product_id, manufacturer, product, serial_number, speed, bus/device number, device class, max power); `enumerate_usb_devices()` with optional VID/PID filter; `find_usb_device()`
+- ✅ **Network Device Drivers**: `NetDevice` class (sysfs stats + ioctl MTU/flags — `rx_bytes`, `tx_bytes`, `rx_packets`, `tx_packets`, `rx_errors`, `tx_errors`, `rx_dropped`, `tx_dropped`, `mtu`, `mac_address`, `operstate`, `is_up`, `speed_mbps`); `enumerate_net_devices()`; `create_raw_socket()` (AF_PACKET/SOCK_RAW); `send_raw_packet()`; `receive_raw_packet()`; `bring_up()`/`bring_down()`/`set_mtu()` via ioctl (SIOCGIFFLAGS/SIOCSIFFLAGS/SIOCSIFMTU)
+- ✅ **DMA Buffer Management**: `DmaBuffer` class with `allocate()` classmethod via `/dev/dma_heap` (Linux 5.6+ dma-buf FDs), `map()`/`unmap()`/`close()`, context manager; `list_dma_heaps()`; full `DMA_HEAP_IOCTL_ALLOC` ioctl support
+- ✅ **VFIO User-space Device Drivers**: `VfioContainer` (open/close/set_iommu/map_dma/unmap_dma); `VfioGroup` (open/close/is_viable/set_container/unset_container/get_device); `VfioDevice` (get_info/get_region_info/mmap_region/get_irq_info/set_irqs/reset/close); `bind_vfio_pci()`/`unbind_vfio_pci()`/`get_iommu_group()`; full VFIO IOCTL suite (~20 NLPL-callable functions)
+- ✅ 70+ NLPL-callable functions registered via `register_driver_functions(runtime)`
+- ✅ Full test suite: 80 tests passing (`tests/test_drivers.py`)
 
-**Remaining:**
-
-- [ ] Kernel module loading/unloading (`modprobe`, `rmmod` wrappers)
-- [ ] USB device framework (udev integration)
-- [ ] Network device drivers (via raw sockets / netlink)
-- [ ] DMA buffer management
-- [ ] VFIO for user-space device drivers
-
-**Priority:** LOW (very specialized) — core framework DONE  
-**Estimated Effort:** Core framework complete. Advanced features above: 6-12 months additional.
+**Priority:** COMPLETE — all subsystems implemented
 
 ---
 
