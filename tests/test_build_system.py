@@ -23,6 +23,14 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from nlpl.tooling.builder import _BuildCache, BuildResult, BuildSystem
+from nlpl.tooling.build_script import (
+    BuildScriptCache,
+    BuildScriptDirectives,
+    BuildScriptResult,
+    _parse_directives,
+    _file_sha256,
+    run_build_script,
+)
 from nlpl.tooling.config import (
     ConfigLoader,
     FeaturesConfig,
@@ -740,3 +748,528 @@ class TestBuiltinProfiles:
     def test_dev_and_release_differ(self):
         assert _PROFILE_DEV.optimization != _PROFILE_RELEASE.optimization
         assert _PROFILE_DEV.debug_info != _PROFILE_RELEASE.debug_info
+
+
+# ---------------------------------------------------------------------------
+# Build script support (build_script.py)
+# ---------------------------------------------------------------------------
+
+class TestParseDirectives:
+    """Unit tests for _parse_directives() — a pure function."""
+
+    def test_empty_stdout_produces_no_directives(self):
+        d, plain = _parse_directives("")
+        assert d.rerun_if_changed == []
+        assert d.rerun_if_env_changed == []
+        assert d.cfg_flags == []
+        assert d.warnings == []
+        assert d.errors == []
+        assert plain == []
+
+    def test_plain_lines_not_classified_as_directives(self):
+        stdout = "Hello build\nSome status\n"
+        d, plain = _parse_directives(stdout)
+        assert plain == ["Hello build", "Some status"]
+        assert d.cfg_flags == []
+
+    def test_rerun_if_changed_parsed(self):
+        _, _ = _parse_directives("")
+        d, _ = _parse_directives("nlpl:rerun-if-changed=config.h\nnlpl:rerun-if-changed=src/gen.c\n")
+        assert d.rerun_if_changed == ["config.h", "src/gen.c"]
+
+    def test_rerun_if_env_changed_parsed(self):
+        d, _ = _parse_directives("nlpl:rerun-if-env-changed=CC\nnlpl:rerun-if-env-changed=TARGET\n")
+        assert d.rerun_if_env_changed == ["CC", "TARGET"]
+
+    def test_cfg_flag_parsed(self):
+        d, plain = _parse_directives("nlpl:cfg=simd_avx2\nnlpl:cfg=feature_x\n")
+        assert d.cfg_flags == ["simd_avx2", "feature_x"]
+        assert plain == []
+
+    def test_warning_parsed(self):
+        d, _ = _parse_directives("nlpl:warning=deprecated API used\n")
+        assert d.warnings == ["deprecated API used"]
+
+    def test_error_parsed(self):
+        d, _ = _parse_directives("nlpl:error=missing header foo.h\n")
+        assert d.errors == ["missing header foo.h"]
+
+    def test_mixed_stdout(self):
+        stdout = (
+            "Starting code generation\n"
+            "nlpl:cfg=generated_bindings\n"
+            "nlpl:rerun-if-changed=schema.proto\n"
+            "Generated 42 binding files\n"
+            "nlpl:warning=protobuf v2 used; v3 recommended\n"
+        )
+        d, plain = _parse_directives(stdout)
+        assert d.cfg_flags == ["generated_bindings"]
+        assert d.rerun_if_changed == ["schema.proto"]
+        assert d.warnings == ["protobuf v2 used; v3 recommended"]
+        assert plain == ["Starting code generation", "Generated 42 binding files"]
+
+    def test_cfg_flag_empty_string_ignored(self):
+        # "nlpl:cfg=" with nothing after the = produces no flag
+        d, _ = _parse_directives("nlpl:cfg=\n")
+        assert d.cfg_flags == []
+
+
+class TestBuildScriptCache:
+    """Unit tests for BuildScriptCache."""
+
+    def test_needs_rerun_true_when_no_cache_file(self, tmp_path):
+        cache = BuildScriptCache(tmp_path / "state.json")
+        # Any path — cache is empty so always returns True
+        assert cache.needs_rerun("/nonexistent/script.nlpl") is True
+
+    def test_needs_rerun_true_when_script_hash_changes(self, tmp_path):
+        script = tmp_path / "build.nlpl"
+        script.write_text("print text \"v1\"\n")
+        cache_path = tmp_path / "state.json"
+        cache = BuildScriptCache(cache_path)
+
+        # Save state for v1
+        directives = BuildScriptDirectives()
+        cache.save(_file_sha256(str(script)), directives)
+
+        # Modify the script
+        script.write_text("print text \"v2\"\n")
+        cache2 = BuildScriptCache(cache_path)
+        assert cache2.needs_rerun(str(script)) is True
+
+    def test_needs_rerun_false_when_unchanged(self, tmp_path):
+        script = tmp_path / "build.nlpl"
+        script.write_text("print text \"v1\"\n")
+        cache_path = tmp_path / "state.json"
+        cache = BuildScriptCache(cache_path)
+        directives = BuildScriptDirectives()
+        cache.save(_file_sha256(str(script)), directives)
+
+        cache2 = BuildScriptCache(cache_path)
+        assert cache2.needs_rerun(str(script)) is False
+
+    def test_needs_rerun_true_when_watched_file_changes(self, tmp_path):
+        script = tmp_path / "build.nlpl"
+        script.write_text("print text \"ok\"\n")
+        watched = tmp_path / "config.h"
+        watched.write_text("#define VERSION 1\n")
+
+        cache_path = tmp_path / "state.json"
+        cache = BuildScriptCache(cache_path)
+        directives = BuildScriptDirectives(rerun_if_changed=[str(watched)])
+        cache.save(_file_sha256(str(script)), directives)
+
+        # Change the watched file
+        watched.write_text("#define VERSION 2\n")
+        cache2 = BuildScriptCache(cache_path)
+        assert cache2.needs_rerun(str(script)) is True
+
+    def test_needs_rerun_true_when_env_var_changes(self, tmp_path, monkeypatch):
+        script = tmp_path / "build.nlpl"
+        script.write_text("print text \"ok\"\n")
+
+        monkeypatch.setenv("TEST_CC", "gcc")
+        cache_path = tmp_path / "state.json"
+        cache = BuildScriptCache(cache_path)
+        directives = BuildScriptDirectives(rerun_if_env_changed=["TEST_CC"])
+        cache.save(_file_sha256(str(script)), directives)
+
+        # Simulate env var change
+        monkeypatch.setenv("TEST_CC", "clang")
+        cache2 = BuildScriptCache(cache_path)
+        assert cache2.needs_rerun(str(script)) is True
+
+    def test_needs_rerun_false_when_env_var_unchanged(self, tmp_path, monkeypatch):
+        script = tmp_path / "build.nlpl"
+        script.write_text("print text \"ok\"\n")
+
+        monkeypatch.setenv("TEST_CC", "gcc")
+        cache_path = tmp_path / "state.json"
+        cache = BuildScriptCache(cache_path)
+        directives = BuildScriptDirectives(rerun_if_env_changed=["TEST_CC"])
+        cache.save(_file_sha256(str(script)), directives)
+
+        cache2 = BuildScriptCache(cache_path)
+        assert cache2.needs_rerun(str(script)) is False
+
+    def test_clear_removes_cache_file(self, tmp_path):
+        script = tmp_path / "build.nlpl"
+        script.write_text("x\n")
+        cache_path = tmp_path / "state.json"
+        cache = BuildScriptCache(cache_path)
+        cache.save(_file_sha256(str(script)), BuildScriptDirectives())
+        assert cache_path.exists()
+        cache.clear()
+        assert not cache_path.exists()
+
+    def test_clear_on_empty_cache_is_safe(self, tmp_path):
+        cache = BuildScriptCache(tmp_path / "state.json")
+        cache.clear()  # must not raise
+
+    def test_corrupted_cache_treated_as_missing(self, tmp_path):
+        cache_path = tmp_path / "state.json"
+        cache_path.write_text("not json {{{")
+        script = tmp_path / "build.nlpl"
+        script.write_text("x\n")
+        cache = BuildScriptCache(cache_path)
+        assert cache.needs_rerun(str(script)) is True
+
+
+class TestBuildScriptRunnerUnit:
+    """Unit tests for run_build_script() that do NOT require the NLPL interpreter."""
+
+    def test_returns_success_false_on_timeout(self, tmp_path, monkeypatch):
+        """A TimeoutExpired from subprocess is turned into a failed result."""
+        import subprocess
+        script = tmp_path / "build.nlpl"
+        script.write_text("print text \"x\"\n")
+
+        def _fake_run(*args, **kwargs):
+            raise subprocess.TimeoutExpired(cmd="test", timeout=300)
+
+        monkeypatch.setattr(subprocess, "run", _fake_run)
+        result = run_build_script(
+            script_path=str(script),
+            manifest_dir=str(tmp_path),
+            out_dir=str(tmp_path),
+            pkg_name="test",
+            pkg_version="0.1.0",
+            profile_name="dev",
+            opt_level=0,
+            debug_info=True,
+            jobs=1,
+            force=True,
+        )
+        assert result.success is False
+        assert any("timed out" in e.lower() for e in result.directives.errors)
+
+    def test_returns_success_false_on_oserror(self, tmp_path, monkeypatch):
+        import subprocess
+        script = tmp_path / "build.nlpl"
+        script.write_text("print text \"x\"\n")
+
+        def _fake_run(*args, **kwargs):
+            raise OSError("No such file")
+
+        monkeypatch.setattr(subprocess, "run", _fake_run)
+        result = run_build_script(
+            script_path=str(script),
+            manifest_dir=str(tmp_path),
+            out_dir=str(tmp_path),
+            pkg_name="test",
+            pkg_version="0.1.0",
+            profile_name="dev",
+            opt_level=0,
+            debug_info=True,
+            jobs=1,
+            force=True,
+        )
+        assert result.success is False
+        assert result.directives.errors
+
+    def test_nonzero_exit_becomes_error(self, tmp_path, monkeypatch):
+        import subprocess
+        script = tmp_path / "build.nlpl"
+        script.write_text("print text \"x\"\n")
+
+        class _FakeProc:
+            returncode = 1
+            stdout = ""
+            stderr = "kaboom"
+
+        monkeypatch.setattr(subprocess, "run", lambda *a, **kw: _FakeProc())
+        result = run_build_script(
+            script_path=str(script),
+            manifest_dir=str(tmp_path),
+            out_dir=str(tmp_path),
+            pkg_name="pkg",
+            pkg_version="1.0",
+            profile_name="release",
+            opt_level=3,
+            debug_info=False,
+            jobs=4,
+            force=True,
+        )
+        assert result.success is False
+        assert "kaboom" in result.directives.errors[0]
+
+    def test_error_directive_overrides_rc_zero(self, tmp_path, monkeypatch):
+        """nlpl:error= in stdout must fail the build even if the process exits 0."""
+        import subprocess
+        script = tmp_path / "build.nlpl"
+        script.write_text("print text \"x\"\n")
+
+        class _FakeProc:
+            returncode = 0
+            stdout = "nlpl:error=required header not found"
+            stderr = ""
+
+        monkeypatch.setattr(subprocess, "run", lambda *a, **kw: _FakeProc())
+        result = run_build_script(
+            script_path=str(script),
+            manifest_dir=str(tmp_path),
+            out_dir=str(tmp_path),
+            pkg_name="pkg",
+            pkg_version="1.0",
+            profile_name="dev",
+            opt_level=0,
+            debug_info=True,
+            jobs=1,
+            force=True,
+        )
+        assert result.success is False
+        assert result.directives.errors == ["required header not found"]
+
+    def test_cfg_directive_in_result(self, tmp_path, monkeypatch):
+        import subprocess
+        script = tmp_path / "build.nlpl"
+        script.write_text("x\n")
+
+        class _FakeProc:
+            returncode = 0
+            stdout = "nlpl:cfg=avx2_enabled\nnlpl:cfg=neon_enabled\n"
+            stderr = ""
+
+        monkeypatch.setattr(subprocess, "run", lambda *a, **kw: _FakeProc())
+        result = run_build_script(
+            script_path=str(script),
+            manifest_dir=str(tmp_path),
+            out_dir=str(tmp_path),
+            pkg_name="p",
+            pkg_version="0.1",
+            profile_name="dev",
+            opt_level=0,
+            debug_info=True,
+            jobs=1,
+            force=True,
+        )
+        assert result.success is True
+        assert "avx2_enabled" in result.directives.cfg_flags
+        assert "neon_enabled" in result.directives.cfg_flags
+
+    def test_cache_skip_when_unchanged(self, tmp_path, monkeypatch):
+        """run_build_script returns cached success without calling subprocess."""
+        import subprocess
+        script = tmp_path / "build.nlpl"
+        script.write_text("x\n")
+        out_dir = tmp_path / "build"
+        out_dir.mkdir()
+
+        call_count = [0]
+
+        class _FakeProc:
+            returncode = 0
+            stdout = ""
+            stderr = ""
+
+        def _counting_run(*a, **kw):
+            call_count[0] += 1
+            return _FakeProc()
+
+        monkeypatch.setattr(subprocess, "run", _counting_run)
+
+        # First call: subprocess used
+        run_build_script(
+            script_path=str(script),
+            manifest_dir=str(tmp_path),
+            out_dir=str(out_dir),
+            pkg_name="p",
+            pkg_version="0.1",
+            profile_name="dev",
+            opt_level=0,
+            debug_info=True,
+            jobs=1,
+            force=True,  # force first run
+        )
+        assert call_count[0] == 1
+
+        # Second call without force: should use cache (no subprocess)
+        result = run_build_script(
+            script_path=str(script),
+            manifest_dir=str(tmp_path),
+            out_dir=str(out_dir),
+            pkg_name="p",
+            pkg_version="0.1",
+            profile_name="dev",
+            opt_level=0,
+            debug_info=True,
+            jobs=1,
+            force=False,
+        )
+        assert call_count[0] == 1  # subprocess NOT called again
+        assert result.success is True
+
+    def test_plain_output_lines_captured(self, tmp_path, monkeypatch):
+        import subprocess
+        script = tmp_path / "build.nlpl"
+        script.write_text("x\n")
+
+        class _FakeProc:
+            returncode = 0
+            stdout = "Building generated bindings\nnlpl:cfg=bindings\nDone.\n"
+            stderr = ""
+
+        monkeypatch.setattr(subprocess, "run", lambda *a, **kw: _FakeProc())
+        result = run_build_script(
+            script_path=str(script),
+            manifest_dir=str(tmp_path),
+            out_dir=str(tmp_path),
+            pkg_name="p",
+            pkg_version="0.1",
+            profile_name="dev",
+            opt_level=0,
+            debug_info=True,
+            jobs=1,
+            force=True,
+        )
+        assert "Building generated bindings" in result.output_lines
+        assert "Done." in result.output_lines
+        # Directive line must NOT appear in plain output
+        assert all("nlpl:cfg" not in ln for ln in result.output_lines)
+
+
+class TestBuildScriptBuilderIntegration:
+    """Tests that verify BuildSystem correctly invokes and reacts to build scripts."""
+
+    def _make_project(self, tmp_path, build_script_content=None, build_script_cfg=None):
+        src_dir = tmp_path / "src"
+        src_dir.mkdir()
+        (src_dir / "main.nlpl").write_text(
+            'function main\n    print text "hello"\nend\n'
+        )
+        out_dir = tmp_path / "build"
+
+        if build_script_content is not None:
+            (tmp_path / "build.nlpl").write_text(build_script_content)
+
+        config = _minimal_project_config(
+            src_dir=str(src_dir), out_dir=str(out_dir)
+        )
+        config.manifest_dir = str(tmp_path)
+        if build_script_cfg is not None:
+            config.build.build_script = build_script_cfg
+        return config
+
+    def test_no_build_script_file_no_run(self, tmp_path, monkeypatch):
+        """When build.nlpl is absent, _run_build_script_if_present returns None."""
+        config = self._make_project(tmp_path)  # no build.nlpl
+        bs = BuildSystem(config)
+        from nlpl.tooling.config import _PROFILE_DEV
+        result = bs._run_build_script_if_present(
+            _PROFILE_DEV, "dev", str(tmp_path / "build"), 1, False
+        )
+        assert result is None
+
+    def test_explicitly_disabled_build_script(self, tmp_path):
+        """build_script = '' disables the hook even when build.nlpl exists."""
+        config = self._make_project(
+            tmp_path,
+            build_script_content='print text "should not run"\n',
+            build_script_cfg="",  # disabled
+        )
+        bs = BuildSystem(config)
+        from nlpl.tooling.config import _PROFILE_DEV
+        result = bs._run_build_script_if_present(
+            _PROFILE_DEV, "dev", str(tmp_path / "build"), 1, False
+        )
+        assert result is None
+
+    def test_missing_explicit_script_is_error(self, tmp_path):
+        """When build_script points to a non-existent file, result.success is False."""
+        config = self._make_project(
+            tmp_path,
+            build_script_cfg="nonexistent_script.nlpl",
+        )
+        bs = BuildSystem(config)
+        from nlpl.tooling.config import _PROFILE_DEV
+        (tmp_path / "build").mkdir(exist_ok=True)
+        result = bs._run_build_script_if_present(
+            _PROFILE_DEV, "dev", str(tmp_path / "build"), 1, False
+        )
+        assert result is not None
+        assert result.success is False
+        assert result.directives.errors
+
+    def test_cfg_flag_from_script_added_to_features(self, tmp_path, monkeypatch):
+        """nlpl:cfg= directives emitted by the script appear in active_features."""
+        import subprocess
+        config = self._make_project(
+            tmp_path, build_script_content='print text "x"\n'
+        )
+        bs = BuildSystem(config)
+        (tmp_path / "build").mkdir(exist_ok=True)
+
+        class _FakeProc:
+            returncode = 0
+            stdout = "nlpl:cfg=my_generated_feature\n"
+            stderr = ""
+
+        monkeypatch.setattr(subprocess, "run", lambda *a, **kw: _FakeProc())
+
+        active = ["existing_flag"]
+        # Simulate what _build_internal does after receiving script_result
+        from nlpl.tooling.config import _PROFILE_DEV
+        result = bs._run_build_script_if_present(
+            _PROFILE_DEV, "dev", str(tmp_path / "build"), 1, True
+        )
+        assert result is not None and result.success
+        for flag in result.directives.cfg_flags:
+            if flag not in active:
+                active.append(flag)
+        assert "my_generated_feature" in active
+        assert "existing_flag" in active  # original flag preserved
+
+    def test_build_script_error_prevents_compilation(self, tmp_path, monkeypatch):
+        """A build script that emits nlpl:error= must cause build() to return False."""
+        import subprocess
+        config = self._make_project(
+            tmp_path, build_script_content='print text "x"\n'
+        )
+        bs = BuildSystem(config)
+
+        class _FakeProc:
+            returncode = 0
+            stdout = "nlpl:error=missing required library"
+            stderr = ""
+
+        monkeypatch.setattr(subprocess, "run", lambda *a, **kw: _FakeProc())
+        success = bs.build()
+        assert success is False
+
+    def test_config_build_script_field_parsed_from_toml(self, tmp_path):
+        """build_script setting in [build] is parsed by ConfigLoader."""
+        toml = (
+            '[package]\nname = "mypkg"\nversion = "1.0.0"\n'
+            '[build]\nbuild_script = "scripts/prebuild.nlpl"\n'
+        )
+        toml_path = tmp_path / "nlpl.toml"
+        toml_path.write_text(toml)
+        config = ConfigLoader.load(str(toml_path))
+        assert config.build.build_script == "scripts/prebuild.nlpl"
+        assert config.manifest_dir == str(tmp_path)
+
+    def test_config_build_script_absent_defaults_none(self, tmp_path):
+        """When build_script is not in toml, it defaults to None (auto-detect)."""
+        toml = '[package]\nname = "x"\nversion = "0.1.0"\n'
+        toml_path = tmp_path / "nlpl.toml"
+        toml_path.write_text(toml)
+        config = ConfigLoader.load(str(toml_path))
+        assert config.build.build_script is None
+
+    def test_config_build_script_disabled_empty_string(self, tmp_path):
+        """build_script = "" in toml disables the hook."""
+        toml = (
+            '[package]\nname = "x"\nversion = "0.1.0"\n'
+            '[build]\nbuild_script = ""\n'
+        )
+        toml_path = tmp_path / "nlpl.toml"
+        toml_path.write_text(toml)
+        config = ConfigLoader.load(str(toml_path))
+        assert config.build.build_script == ""
+
+    def test_manifest_dir_set_by_config_loader(self, tmp_path):
+        toml = '[package]\nname = "x"\nversion = "0.1.0"\n'
+        toml_path = tmp_path / "nlpl.toml"
+        toml_path.write_text(toml)
+        config = ConfigLoader.load(str(toml_path))
+        assert config.manifest_dir == str(tmp_path)

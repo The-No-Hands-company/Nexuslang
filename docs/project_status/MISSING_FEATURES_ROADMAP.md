@@ -1051,13 +1051,13 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 
 **What NLPL Needs:**
 
-- [x] **Ownership System** (COMPLETE)
+- ✅ **Ownership System** (COMPLETE)
   - Value ownership tracking
   - Move semantics (transfer ownership)
   - Ownership transfer validation at runtime and compile time
   - Drop/destructor at end of scope (RAII scope exit)
 
-- [x] **Borrow Checking** (COMPLETE — runtime + static)
+- ✅ **Borrow Checking** (COMPLETE — runtime + static)
   - Mutable vs immutable borrows
   - Borrow scope tracking
   - Compile-time borrow validation (`BorrowChecker` AST pass)
@@ -1065,21 +1065,21 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
   - Use-after-move detection (runtime and static)
   - Conservative branch-merge analysis (move in any branch -> merged as moved)
 
-- [x] **Lifetime Annotations** (COMPLETE)
+- ✅ **Lifetime Annotations** (COMPLETE)
   - Lifetime labels on borrow expressions: `borrow x with lifetime outer`
   - Lifetime labels on function parameters: `x as borrow String with lifetime a`
   - Lifetime labels on return types: `returns borrow String with lifetime a`
   - `LifetimeChecker` pass: undeclared labels, return-label consistency, unused-label warnings
   - Natural-language syntax (no Rust `'a` sigil required)
 
-- [x] **Additional Smart Pointers** (COMPLETE)
+- ✅ **Additional Smart Pointers** (COMPLETE)
   - `Weak<T>` — language keyword, integrated with Rc/Arc downgrade/upgrade
   - `Arc<T>` — atomic reference counting for threads, language keyword
   - `Box<T>` — unique ownership heap allocation (stdlib functions)
   - `RefCell<T>` — runtime borrow checking (stdlib functions)
   - `Mutex<T>`, `RwLock<T>` — thread-safe smart pointers (stdlib functions)
 
-- [x] **Automatic Drop/Destructors** (PARTIAL — scope-level only)
+- ✅ **Automatic Drop/Destructors** (PARTIAL — scope-level only)
   - RAII pattern: Rc/Arc/Weak ref counts drop on scope exit
   - Deterministic destruction at scope exit (function / match / try scopes)
   - Custom drop implementations: not yet
@@ -1119,29 +1119,29 @@ Good documentation isn't domain-specific - it helps developers in **all fields**
 
 **What NLPL Has:**
 
-- [x] **Custom Allocator API**
+- ✅ **Custom Allocator API**
   - Abstract `Allocator` base class with `allocate`, `deallocate`, `reallocate`, `reset`
   - Alignment specification on every allocation
   - OOM returns `None` (error safe, no crash)
   - `AllocatorStats` with full counters
 
-- [x] **Built-in Allocators**
+- ✅ **Built-in Allocators**
   - `SystemAllocator` - default heap wrapper
   - `ArenaAllocator` - bump allocator with O(1) bulk reset
   - `PoolAllocator` - fixed-size block recycler, O(1) alloc/free
   - `SlabAllocator` - kernel-style slab cache with unlimited slabs
 
-- [x] **Per-Type Allocators**
+- ✅ **Per-Type Allocators**
   - `set_type_allocator with "TypeName" and alloc`
   - `get_type_allocator with "TypeName"` (falls back to global)
   - `clear_type_allocator with "TypeName"`
 
-- [x] **Global Allocator Override**
+- ✅ **Global Allocator Override**
   - `set_global_allocator with alloc`
   - `get_global_allocator with 0`
   - Statistics via `get_allocator_stats with alloc`
 
-- [X] **Compiler-level collection allocator syntax**
+- ✅ **Compiler-level collection allocator syntax**
   - `set list to List of Integer with allocator arena_alloc` (requires type system integration)
 
 **Priority:** MEDIUM (useful but not critical)  
@@ -1479,7 +1479,7 @@ end
 **Not Yet Implemented (future work):**
 
 - [x] **Cross-compilation** — ✅ COMPLETE (`src/nlpl/build/cross.py`)
-- [ ] **Build scripts** — `build.nlpl` pre-build hooks
+- [x] **Build scripts** — ✅ COMPLETE (`src/nlpl/tooling/build_script.py`) — `build.nlpl` pre-build hook; auto-detected in project root or configured via `[build] build_script = "path"` (empty string disables); directives: `nlpl:cfg=`, `nlpl:rerun-if-changed=`, `nlpl:rerun-if-env-changed=`, `nlpl:warning=`, `nlpl:error=`; content-hash cache prevents redundant re-runs; subprocess-isolated execution with full env (`OUT_DIR`, `PROFILE`, `NLPL_PKG_NAME`, etc.); cfg flags injected into active feature set; 96/96 tests passing
 - [x] **Workspace management** — ✅ COMPLETE (`src/nlpl/tooling/workspace.py`, topological ordering, shared lockfile)
 
 **Priority:** COMPLETE  

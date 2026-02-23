@@ -11,6 +11,7 @@ from typing import List, Optional, Dict, Tuple
 from dataclasses import dataclass, field
 
 from .config import ProjectConfig, ProfileConfig
+from .build_script import BuildScriptResult, run_build_script
 from ..compiler import Compiler, CompilerOptions, CompilationTarget
 from ..parser.lexer import Lexer
 from ..parser.parser import Parser
@@ -405,6 +406,33 @@ class BuildSystem:
         out_dir = self.config.build.output_dir
         os.makedirs(out_dir, exist_ok=True)
 
+        # ------------------------------------------------------------------
+        # Pre-build hook (build.nlpl)
+        # ------------------------------------------------------------------
+        _resolved_jobs = jobs or self.config.build.jobs or os.cpu_count() or 1
+        script_result = self._run_build_script_if_present(
+            prof, profile_name, out_dir, _resolved_jobs, clean
+        )
+        script_warnings: List[str] = []
+        if script_result is not None:
+            for line in script_result.output_lines:
+                if line.strip():
+                    print(f"  [build script] {line}")
+            for w in script_result.directives.warnings:
+                msg = f"[build script] {w}"
+                script_warnings.append(msg)
+                print(f"  warning: {msg}")
+            if not script_result.success:
+                return BuildResult(
+                    success=False,
+                    errors=[f"[build script] {e}" for e in script_result.directives.errors],
+                    warnings=script_warnings,
+                    elapsed=time.monotonic() - t0,
+                )
+            for flag in script_result.directives.cfg_flags:
+                if flag not in active_features:
+                    active_features.append(flag)
+
         # Build cache
         cache = _BuildCache(self._cache_path())
         if clean:
@@ -491,11 +519,72 @@ class BuildSystem:
         return BuildResult(
             success=len(all_errors) == 0,
             errors=all_errors,
-            warnings=all_warnings,
+            warnings=script_warnings + all_warnings,
             files_compiled=compiled_ok,
             files_cached=cached_count,
             elapsed=time.monotonic() - t0,
         )
+
+    def _run_build_script_if_present(
+        self,
+        prof: ProfileConfig,
+        profile_name: str,
+        out_dir: str,
+        jobs: int,
+        clean: bool,
+    ) -> Optional[BuildScriptResult]:
+        """Locate and run the build script for this project, if any.
+
+        Returns:
+            :class:`BuildScriptResult` if a script was found and executed,
+            ``None`` if there is no build script to run.
+        """
+        cfg_script = self.config.build.build_script
+
+        # Explicitly disabled
+        if cfg_script == "":
+            return None
+
+        # Resolve the manifest directory (project root)
+        manifest_dir = self.config.manifest_dir or os.getcwd()
+
+        if cfg_script is None:
+            # Auto-detect build.nlpl in the project root
+            candidate = os.path.join(manifest_dir, "build.nlpl")
+            if not os.path.isfile(candidate):
+                return None
+            script_path = candidate
+        else:
+            # Explicit path — may be relative to manifest_dir or absolute
+            script_path = (
+                cfg_script if os.path.isabs(cfg_script)
+                else os.path.join(manifest_dir, cfg_script)
+            )
+            if not os.path.isfile(script_path):
+                # Configured script missing — hard error
+                from dataclasses import field as _field
+                from .build_script import BuildScriptDirectives
+                return BuildScriptResult(
+                    success=False,
+                    directives=BuildScriptDirectives(
+                        errors=[f"Build script not found: {script_path}"]
+                    ),
+                )
+
+        print(f"  Running build script {os.path.relpath(script_path, manifest_dir)}")
+        result = run_build_script(
+            script_path=script_path,
+            manifest_dir=manifest_dir,
+            out_dir=os.path.abspath(out_dir),
+            pkg_name=self.config.package.name,
+            pkg_version=self.config.package.version,
+            profile_name=profile_name,
+            opt_level=prof.optimization,
+            debug_info=prof.debug_info,
+            jobs=jobs,
+            force=clean,
+        )
+        return result
 
     def _maybe_link(self, out_dir: str, errors: List[str]) -> None:
         """Attempt to link compiled C/C++ objects into a single executable."""

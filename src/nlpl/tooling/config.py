@@ -91,6 +91,11 @@ class BuildConfig:
     jobs: Optional[int] = None
     # Treat warnings as errors
     warnings_as_errors: bool = False
+    # Path to the pre-build hook script (relative to manifest_dir).
+    # None  = auto-detect "build.nlpl" in the project root.
+    # ""    = explicitly disabled (never run any build script).
+    # "path" = explicit path to a specific script.
+    build_script: Optional[str] = None
 
 
 @dataclass
@@ -109,6 +114,9 @@ class ProjectConfig:
     build_dependencies: Dict[str, Any] = field(default_factory=dict)
     features_config: FeaturesConfig = field(default_factory=FeaturesConfig)
     profiles: Dict[str, ProfileConfig] = field(default_factory=dict)
+    # Absolute path to the directory that contains nlpl.toml.  Set by
+    # ConfigLoader.load(); empty string means "use the current directory".
+    manifest_dir: str = ""
 
     def get_profile(self, name: Optional[str] = None) -> ProfileConfig:
         """Return the profile config for *name* (defaults to build.profile)."""
@@ -171,6 +179,8 @@ class ConfigLoader:
             target_triple=build_data.get("target_triple"),
             jobs=build_data.get("jobs"),
             warnings_as_errors=bool(build_data.get("warnings_as_errors", False)),
+            # None preserves auto-detect; absent key → None.  Empty string → disabled.
+            build_script=build_data.get("build_script", None),
         )
 
         # Parse [features]
@@ -212,5 +222,6 @@ class ConfigLoader:
             build_dependencies=build_dependencies,
             features_config=features_config,
             profiles=profiles,
+            manifest_dir=os.path.dirname(os.path.abspath(path)),
         )
 
