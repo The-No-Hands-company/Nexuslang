@@ -196,9 +196,12 @@ class Parser:
         return None
     
     def _skip_whitespace_tokens(self):
-        """Skip NEWLINE, INDENT, and DEDENT tokens for multi-line structures."""
-        while (self.current_token and 
-               self.current_token.type in (TokenType.NEWLINE, TokenType.INDENT, TokenType.DEDENT)):
+        """Skip NEWLINE, INDENT, DEDENT, and DOC_COMMENT boundary tokens."""
+        while (self.current_token and
+               self.current_token.type in (
+                   TokenType.NEWLINE, TokenType.INDENT, TokenType.DEDENT,
+                   TokenType.DOC_COMMENT,
+               )):
             self.advance()
         
     def parse(self):
@@ -208,28 +211,49 @@ class Parser:
     def program(self):
         """Parse a program."""
         statements = []
-        
+        # Collects consecutive ## doc-comment lines preceding a definition.
+        _pending_doc_lines: list = []
+
+        # Node types that represent named definitions (eligible for doc attachment).
+        _DOC_TARGET_TYPES = (
+            "function_definition", "async_function_definition",
+            "class_definition", "struct_definition",
+            "enum_definition", "trait_definition", "interface_definition",
+            "module_definition",
+        )
+
         while self.current_token and self.current_token.type != TokenType.EOF:
             # Skip NEWLINE/INDENT/DEDENT boundary tokens and empty-lexeme identifiers
             if self.current_token.type in (TokenType.NEWLINE, TokenType.INDENT, TokenType.DEDENT):
                 self.advance()
                 continue
+            # Collect documentation comments
+            if self.current_token.type == TokenType.DOC_COMMENT:
+                _pending_doc_lines.append(self.current_token.lexeme)
+                self.advance()
+                continue
             if self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.strip() == '':
                 self.advance()
                 continue
-                
+
             # Parse statement
             try:
                 statement = self.statement()
                 if statement:
+                    # Attach any buffered doc comment to definition nodes
+                    if _pending_doc_lines and getattr(statement, 'node_type', None) in _DOC_TARGET_TYPES:
+                        statement.doc = "\n".join(_pending_doc_lines)
                     statements.append(statement)
             except SyntaxError as e:
                 raise
-                
+            finally:
+                # Always clear the pending doc after consuming a statement
+                _pending_doc_lines = []
+
             # Skip empty lines and whitespace after statement
             while self.current_token and self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.strip() == '':
                 self.advance()
-        
+
         return Program(statements)
         
     def statement(self):

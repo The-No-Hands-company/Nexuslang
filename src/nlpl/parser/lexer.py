@@ -289,6 +289,9 @@ class TokenType(Enum):
     # Variadic functions
     ELLIPSIS = auto()  # ... for variadic parameters
 
+    # Documentation
+    DOC_COMMENT = auto()  # ## doc comment (## text after the double-hash)
+
     # Backward-compatibility aliases (used by older tests / external code)
     INTEGER_TYPE = INTEGER        # type: ignore[assignment]
     FLOAT_TYPE = FLOAT            # type: ignore[assignment]
@@ -683,9 +686,22 @@ class Lexer:
         
         # Handle comments
         if c == '#':
-            # Skip until end of line
-            while self.peek() != '\n' and not self.is_at_end():
-                self.advance()
+            if self.peek() == '#':
+                # Documentation comment (##) — capture the text and emit a token
+                self.advance()  # consume the second '#'
+                # Skip optional single space after ##
+                if self.peek() == ' ':
+                    self.advance()
+                # Read the rest of the line as the doc text
+                doc_start = self.current
+                while self.peek() != '\n' and not self.is_at_end():
+                    self.advance()
+                doc_text = self.source[doc_start:self.current]
+                self.add_token(TokenType.DOC_COMMENT, doc_text)
+            else:
+                # Regular comment — skip until end of line
+                while self.peek() != '\n' and not self.is_at_end():
+                    self.advance()
             return
         
         if c.isalpha() or c == '_':
