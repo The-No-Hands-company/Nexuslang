@@ -13,6 +13,9 @@ add       Add a dependency to nlpl.toml
 remove    Remove a dependency from nlpl.toml
 lock      Regenerate nlpl.lock from the current nlpl.toml
 deps      List all dependencies and their lock status
+search    Search the package registry for packages
+publish   Publish this package to the registry
+workspace Manage multi-package workspaces (init/list/build/clean/test)
 """
 
 import os
@@ -208,8 +211,9 @@ def cmd_remove(args):
 def cmd_lock(args):
     """Regenerate nlpl.lock from the current nlpl.toml."""
     from ..tooling.dependency_manager import update_lockfile
+    offline = getattr(args, "offline", False)
     try:
-        update_lockfile(Path.cwd())
+        update_lockfile(Path.cwd(), offline=offline)
     except Exception as exc:
         print(f"error: {exc}")
         sys.exit(1)
@@ -221,6 +225,206 @@ def cmd_deps(args):
     try:
         list_dependencies(Path.cwd())
     except Exception as exc:
+        print(f"error: {exc}")
+        sys.exit(1)
+
+
+def cmd_search(args):
+    """Search the package registry for packages."""
+    from ..tooling.registry import RegistryConfig, RegistryClient, RegistryError
+
+    config = RegistryConfig.from_project(Path.cwd())
+    client = RegistryClient(config)
+
+    try:
+        results = client.search(args.query, limit=args.limit or 20)
+    except RegistryError as exc:
+        print(f"error: {exc}")
+        sys.exit(1)
+
+    if not results:
+        print(f"No packages found matching '{args.query}'.")
+        return
+
+    print(f"Registry: {config.url}")
+    print(f"Results for '{args.query}':\n")
+    for r in results:
+        dl = f"  ({r.downloads:,} downloads)" if r.downloads else ""
+        desc = f"  {r.description}" if r.description else ""
+        print(f"  {r.name} {r.version}{dl}")
+        if desc:
+            print(f"  {r.description}")
+        print()
+
+
+def cmd_publish(args):
+    """Publish this package to the registry."""
+    from ..tooling.registry import (
+        RegistryConfig,
+        RegistryClient,
+        RegistryError,
+        AuthError,
+    )
+
+    config = RegistryConfig.from_project(Path.cwd())
+    client = RegistryClient(config)
+    dry_run = getattr(args, "dry_run", False)
+
+    if dry_run:
+        print("  Dry run mode: package will not be uploaded.")
+
+    try:
+        client.publish(Path.cwd(), dry_run=dry_run)
+    except AuthError as exc:
+        print(f"error: {exc}")
+        print("Hint: Set NLPL_REGISTRY_TOKEN or add token to nlpl.toml [registry].")
+        sys.exit(1)
+    except RegistryError as exc:
+        print(f"error: {exc}")
+        sys.exit(1)
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"error: {exc}")
+        sys.exit(1)
+
+
+def cmd_workspace(args):
+    """Dispatch workspace sub-subcommands."""
+    from ..tooling.workspace import (
+        WorkspaceManifest,
+        WorkspaceResolver,
+        WorkspaceBuilder,
+        WorkspaceError,
+        init_workspace,
+        load_workspace,
+    )
+
+    subcmd = getattr(args, "ws_command", None)
+
+    if subcmd is None or subcmd == "init":
+        _ws_init(args, init_workspace)
+    elif subcmd == "list":
+        _ws_list(args, load_workspace)
+    elif subcmd == "build":
+        _ws_build(args, load_workspace)
+    elif subcmd == "clean":
+        _ws_clean(args, load_workspace)
+    elif subcmd == "test":
+        _ws_test(args, load_workspace)
+    elif subcmd == "lock":
+        _ws_lock(args, load_workspace)
+    else:
+        print(f"error: unknown workspace subcommand '{subcmd}'")
+        print("Available: init, list, build, clean, test, lock")
+        sys.exit(1)
+
+
+def _ws_init(args, init_workspace):
+    from ..tooling.workspace import WorkspaceError
+    members = getattr(args, "members", None)
+    description = getattr(args, "description", "") or ""
+    try:
+        init_workspace(
+            Path.cwd(),
+            members=members,
+            description=description,
+        )
+    except FileExistsError as exc:
+        print(f"error: {exc}")
+        sys.exit(1)
+    except WorkspaceError as exc:
+        print(f"error: {exc}")
+        sys.exit(1)
+
+
+def _ws_list(args, load_workspace):
+    from ..tooling.workspace import WorkspaceError
+    try:
+        manifest, resolver = load_workspace(Path.cwd())
+    except (FileNotFoundError, WorkspaceError) as exc:
+        print(f"error: {exc}")
+        sys.exit(1)
+
+    print(f"Workspace: {manifest.root}")
+    if manifest.description:
+        print(f"  {manifest.description}")
+    print(f"\nMembers ({len(resolver.members)}):")
+    for info in resolver.status():
+        deps_str = ""
+        if info["intra_deps"]:
+            deps_str = f"  -> {', '.join(info['intra_deps'])}"
+        print(f"  {info['name']} {info['version']}{deps_str}")
+        if info["description"]:
+            print(f"    {info['description']}")
+    print(f"\nBuild order: {' -> '.join(resolver.build_order)}")
+
+
+def _ws_build(args, load_workspace):
+    from ..tooling.workspace import WorkspaceError
+    try:
+        manifest, resolver = load_workspace(Path.cwd())
+    except (FileNotFoundError, WorkspaceError) as exc:
+        print(f"error: {exc}")
+        sys.exit(1)
+
+    builder = WorkspaceBuilder(resolver)
+    member_name = getattr(args, "member", None)
+    features = getattr(args, "features", None) or []
+    release = getattr(args, "release", False)
+    jobs = getattr(args, "jobs", None)
+
+    if member_name:
+        try:
+            ok = builder.build_member(
+                member_name, release=release, features=features, jobs=jobs
+            )
+        except KeyError as exc:
+            print(f"error: {exc}")
+            sys.exit(1)
+    else:
+        ok = builder.build_all(release=release, features=features, jobs=jobs)
+    sys.exit(0 if ok else 1)
+
+
+def _ws_clean(args, load_workspace):
+    from ..tooling.workspace import WorkspaceError
+    try:
+        manifest, resolver = load_workspace(Path.cwd())
+    except (FileNotFoundError, WorkspaceError) as exc:
+        print(f"error: {exc}")
+        sys.exit(1)
+    WorkspaceBuilder(resolver).clean_all()
+
+
+def _ws_test(args, load_workspace):
+    from ..tooling.workspace import WorkspaceError
+    try:
+        manifest, resolver = load_workspace(Path.cwd())
+    except (FileNotFoundError, WorkspaceError) as exc:
+        print(f"error: {exc}")
+        sys.exit(1)
+
+    filter_names = getattr(args, "filter", None) or []
+    release = getattr(args, "release", False)
+    features = getattr(args, "features", None) or []
+
+    code = WorkspaceBuilder(resolver).test_all(
+        filter_names=filter_names if filter_names else None,
+        release=release,
+        features=features,
+    )
+    sys.exit(code)
+
+
+def _ws_lock(args, load_workspace):
+    from ..tooling.workspace import WorkspaceError
+    try:
+        manifest, resolver = load_workspace(Path.cwd())
+    except (FileNotFoundError, WorkspaceError) as exc:
+        print(f"error: {exc}")
+        sys.exit(1)
+    try:
+        resolver.regenerate_shared_lock()
+    except WorkspaceError as exc:
         print(f"error: {exc}")
         sys.exit(1)
 
@@ -317,10 +521,58 @@ def _build_parser() -> argparse.ArgumentParser:
                           help="Remove from dev-dependencies")
 
     # ---- lock ---------------------------------------------------------------
-    sub.add_parser("lock", help="Regenerate nlpl.lock from nlpl.toml")
+    p_lock = sub.add_parser("lock", help="Regenerate nlpl.lock from nlpl.toml")
+    p_lock.add_argument("--offline", action="store_true",
+                        help="Skip registry network calls (use cached/fallback data)")
 
     # ---- deps ---------------------------------------------------------------
     sub.add_parser("deps", help="List dependencies and lock status")
+
+    # ---- search -------------------------------------------------------------
+    p_search = sub.add_parser("search", help="Search the package registry")
+    p_search.add_argument("query", help="Search term")
+    p_search.add_argument("--limit", "-n", type=int, default=20, metavar="N",
+                          help="Maximum number of results (default: 20)")
+
+    # ---- publish ------------------------------------------------------------
+    p_publish = sub.add_parser("publish", help="Publish this package to the registry")
+    p_publish.add_argument("--dry-run", action="store_true",
+                           help="Create archive and validate metadata but do not upload")
+
+    # ---- workspace ----------------------------------------------------------
+    p_ws = sub.add_parser("workspace", help="Manage multi-package workspaces",
+                          aliases=["ws"])
+    ws_sub = p_ws.add_subparsers(dest="ws_command", metavar="<subcommand>")
+
+    p_ws_init = ws_sub.add_parser("init", help="Create a workspace manifest in the current directory")
+    p_ws_init.add_argument("--members", nargs="+", metavar="GLOB",
+                           help="Member glob patterns (default: packages/*)")
+    p_ws_init.add_argument("--description", metavar="TEXT",
+                           help="Optional workspace description")
+
+    ws_sub.add_parser("list", help="List all workspace members and build order")
+
+    p_ws_build = ws_sub.add_parser("build", help="Build all (or a single) workspace member")
+    p_ws_build.add_argument("member", nargs="?", metavar="NAME",
+                             help="Build only this member (default: build all)")
+    p_ws_build.add_argument("--release", action="store_true",
+                             help="Build with release profile")
+    p_ws_build.add_argument("--features", nargs="+", metavar="FEATURE",
+                             help="Enable named features")
+    p_ws_build.add_argument("--jobs", "-j", type=int, metavar="N",
+                             help="Parallel compilation workers")
+
+    ws_sub.add_parser("clean", help="Clean all workspace members")
+
+    p_ws_test = ws_sub.add_parser("test", help="Run tests across all workspace members")
+    p_ws_test.add_argument("filter", nargs="*", metavar="NAME",
+                           help="Only run tests whose filename contains this string")
+    p_ws_test.add_argument("--release", action="store_true",
+                           help="Run tests with release profile")
+    p_ws_test.add_argument("--features", nargs="+", metavar="FEATURE",
+                           help="Enable named features")
+
+    ws_sub.add_parser("lock", help="Regenerate the shared workspace nlpl.lock")
 
     return parser
 
@@ -342,17 +594,21 @@ def main():
     args = parser.parse_args(argv)
 
     dispatch = {
-        "new":    cmd_new,
-        "init":   cmd_init,
-        "build":  cmd_build,
-        "run":    cmd_run,
-        "check":  cmd_check,
-        "clean":  cmd_clean,
-        "test":   cmd_test,
-        "add":    cmd_add,
-        "remove": cmd_remove,
-        "lock":   cmd_lock,
-        "deps":   cmd_deps,
+        "new":       cmd_new,
+        "init":      cmd_init,
+        "build":     cmd_build,
+        "run":       cmd_run,
+        "check":     cmd_check,
+        "clean":     cmd_clean,
+        "test":      cmd_test,
+        "add":       cmd_add,
+        "remove":    cmd_remove,
+        "lock":      cmd_lock,
+        "deps":      cmd_deps,
+        "search":    cmd_search,
+        "publish":   cmd_publish,
+        "workspace": cmd_workspace,
+        "ws":        cmd_workspace,  # Short alias
     }
 
     handler = dispatch.get(args.command)

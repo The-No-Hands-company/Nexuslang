@@ -362,16 +362,95 @@ def resolve_git_dependency(
 # Main entry point: generate_lockfile
 # ---------------------------------------------------------------------------
 
-def generate_lockfile(project_root: Path) -> LockFile:
+def resolve_registry_dependency(
+    name: str,
+    version_req: str,
+    project_root: Path,
+) -> LockedPackage:
+    """Resolve a registry dependency to a specific locked version.
+
+    Contacts the configured package registry, picks the best matching version
+    for *version_req*, downloads the archive into the local cache, and returns
+    a fully resolved ``LockedPackage`` with the checksum recorded.
+
+    Args:
+        name:         Dependency name.
+        version_req:  Version requirement string (e.g. ``"^1.2"``).
+        project_root: Root directory of the depending package (used to read
+                      ``[registry]`` config from ``nlpl.toml``).
+
+    Returns:
+        Locked package with resolved version and sha256 checksum.
+
+    Raises:
+        ValueError:            If no matching version is found in the registry.
+        ImportError:           If the registry module cannot be imported.
+    """
+    # Lazy import to keep lockfile.py free of heavy dependencies when the
+    # registry is not used.
+    from .registry import (
+        RegistryConfig,
+        RegistryClient,
+        resolve_version,
+        RegistryError,
+        PackageNotFoundError,
+    )
+
+    config = RegistryConfig.from_project(project_root)
+    client = RegistryClient(config)
+
+    try:
+        pkg_info = client.get_package_info(name)
+    except PackageNotFoundError:
+        raise ValueError(
+            f"Package '{name}' not found in registry {config.url}."
+        )
+
+    available = sorted(pkg_info.versions.keys())
+    resolved_version = resolve_version(available, version_req)
+    if resolved_version is None:
+        raise ValueError(
+            f"No version of '{name}' satisfies requirement '{version_req}'. "
+            f"Available: {', '.join(available) or '(none)'}"
+        )
+
+    ver_info = pkg_info.get_version(resolved_version)
+    checksum = ver_info.checksum if ver_info else ""
+
+    # Download and cache the package archive
+    try:
+        client.download(name, resolved_version, quiet=True)
+    except RegistryError:
+        pass  # Cache only — don't fail the lock if download fails
+
+    return LockedPackage(
+        name=name,
+        version=resolved_version,
+        source="registry",
+        checksum=checksum or None,
+    )
+
+
+def generate_lockfile(
+    project_root: Path,
+    *,
+    resolve_registry: bool = True,
+) -> LockFile:
     """Generate a complete lock file from nlpl.toml.
 
     Resolves all path and git dependencies in their respective sections
     (``dependencies``, ``dev-dependencies``, ``build-dependencies``).
-    Registry dependencies are recorded as-is (the registry is not yet
-    operational, so no network fetch is attempted).
+    Registry dependencies are resolved against the configured package registry
+    when *resolve_registry* is True (the default).  If the registry is
+    unreachable the version requirement is recorded verbatim and a warning is
+    printed so that offline or CI builds can still regenerate the lock file.
 
     Args:
-        project_root: Root directory containing nlpl.toml.
+        project_root:     Root directory containing nlpl.toml.
+        resolve_registry: Contact the package registry to resolve version
+                          requirements to exact versions and cache archives.
+                          Defaults to True.  Pass False to skip all network
+                          calls (useful for offline regeneration).
 
     Returns:
         Fully populated LockFile ready to be saved.
@@ -401,10 +480,20 @@ def generate_lockfile(project_root: Path) -> LockFile:
 
             try:
                 if isinstance(spec, str):
-                    # Simple version string — registry dependency (not yet resolved)
-                    lock.add_package(
-                        LockedPackage(name=name, version=spec, source="registry")
-                    )
+                    # Simple version string — registry dependency
+                    if resolve_registry:
+                        try:
+                            pkg = resolve_registry_dependency(name, spec, project_root)
+                        except Exception as reg_exc:
+                            print(
+                                f"  Warning: Could not resolve registry dep '{name}' "
+                                f"({reg_exc}). Recording requirement verbatim."
+                            )
+                            pkg = LockedPackage(name=name, version=spec, source="registry")
+                    else:
+                        pkg = LockedPackage(name=name, version=spec, source="registry")
+                    lock.add_package(pkg)
+
                 elif isinstance(spec, dict):
                     if "path" in spec:
                         pkg = resolve_path_dependency(name, spec, project_root)
@@ -414,11 +503,24 @@ def generate_lockfile(project_root: Path) -> LockFile:
                         lock.add_package(pkg)
                     else:
                         version = spec.get("version", "*")
-                        lock.add_package(
-                            LockedPackage(
+                        if resolve_registry:
+                            try:
+                                pkg = resolve_registry_dependency(
+                                    name, version, project_root
+                                )
+                            except Exception as reg_exc:
+                                print(
+                                    f"  Warning: Could not resolve registry dep "
+                                    f"'{name}' ({reg_exc}). Recording requirement verbatim."
+                                )
+                                pkg = LockedPackage(
+                                    name=name, version=version, source="registry"
+                                )
+                        else:
+                            pkg = LockedPackage(
                                 name=name, version=version, source="registry"
                             )
-                        )
+                        lock.add_package(pkg)
                 else:
                     raise ValueError(f"Invalid dependency spec: {spec!r}")
             except Exception as exc:

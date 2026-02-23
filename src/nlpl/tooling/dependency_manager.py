@@ -71,16 +71,25 @@ def _parse_package_spec(package_spec: str) -> Tuple[str, Optional[str]]:
 # Lock file maintenance
 # ---------------------------------------------------------------------------
 
-def _regenerate_lock(project_root: Path, quiet: bool = False) -> None:
+def _regenerate_lock(
+    project_root: Path,
+    quiet: bool = False,
+    offline: bool = False,
+) -> None:
     """Regenerate nlpl.lock from the current nlpl.toml state.
 
     Prints a status line unless *quiet* is True.  On failure prints a
     warning rather than raising so that the calling command still succeeds
     (the user can run ``nlpl lock`` manually to retry).
+
+    Args:
+        project_root: Root directory of the NLPL project.
+        quiet:        Suppress output when True.
+        offline:      Skip registry network calls when True.
     """
     lock_path = project_root / "nlpl.lock"
     try:
-        lock = generate_lockfile(project_root)
+        lock = generate_lockfile(project_root, resolve_registry=not offline)
         lock.save(lock_path)
         n = len(lock.packages)
         if not quiet:
@@ -234,15 +243,19 @@ def remove_dependency(
     _regenerate_lock(project_root)
 
 
-def update_lockfile(project_root: Path) -> None:
+def update_lockfile(project_root: Path, *, offline: bool = False) -> None:
     """Regenerate nlpl.lock from nlpl.toml, printing a summary.
+
+    Args:
+        project_root: Root directory of the NLPL project.
+        offline:      Skip registry network calls when True.
 
     Raises:
         FileNotFoundError: If nlpl.toml is not found.
         ValueError:        If any dependency cannot be resolved.
     """
     lock_path = project_root / "nlpl.lock"
-    lock = generate_lockfile(project_root)
+    lock = generate_lockfile(project_root, resolve_registry=not offline)
     lock.save(lock_path)
 
     n = len(lock.packages)
