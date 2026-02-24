@@ -7,6 +7,7 @@ Provides:
 - MessagePack serialization (binary JSON)
 - YAML serialization
 - TOML serialization
+- Protocol Buffers serialization (google.protobuf Struct encoding)
 """
 
 import pickle
@@ -32,6 +33,13 @@ try:
     HAS_TOML = True
 except ImportError:
     HAS_TOML = False
+
+try:
+    from google.protobuf.struct_pb2 import Struct as _PbStruct
+    from google.protobuf.json_format import MessageToDict as _pb_to_dict, ParseDict as _pb_parse_dict
+    HAS_PROTOBUF = True
+except ImportError:
+    HAS_PROTOBUF = False
 
 
 def pickle_dumps(obj: Any) -> bytes:
@@ -302,6 +310,74 @@ def toml_load_file(filepath: str) -> dict:
         return toml.load(f)
 
 
+def protobuf_dumps(obj: dict) -> bytes:
+    """Serialize dictionary to Protocol Buffers bytes using Struct encoding.
+
+    Args:
+        obj: Dictionary to serialize (values must be JSON-compatible types)
+
+    Returns:
+        Serialized bytes
+    """
+    if not HAS_PROTOBUF:
+        raise ImportError("protobuf is not installed. Install with: pip install protobuf")
+    s = _PbStruct()
+    _pb_parse_dict(obj, s)
+    return s.SerializeToString()
+
+
+def protobuf_loads(data: bytes) -> dict:
+    """Deserialize dictionary from Protocol Buffers bytes.
+
+    Args:
+        data: Serialized bytes produced by protobuf_dumps
+
+    Returns:
+        Deserialized dictionary
+    """
+    if not HAS_PROTOBUF:
+        raise ImportError("protobuf is not installed. Install with: pip install protobuf")
+    s = _PbStruct()
+    s.ParseFromString(data)
+    return _pb_to_dict(s)
+
+
+def protobuf_dump_file(obj: dict, filepath: str) -> bool:
+    """Serialize dictionary to Protocol Buffers binary file.
+
+    Args:
+        obj: Dictionary to serialize
+        filepath: Path to output file
+
+    Returns:
+        True on success, False on failure
+    """
+    if not HAS_PROTOBUF:
+        raise ImportError("protobuf is not installed. Install with: pip install protobuf")
+    try:
+        os.makedirs(os.path.dirname(os.path.abspath(filepath)), exist_ok=True)
+        with open(filepath, 'wb') as f:
+            f.write(protobuf_dumps(obj))
+        return True
+    except Exception:
+        return False
+
+
+def protobuf_load_file(filepath: str) -> dict:
+    """Deserialize dictionary from Protocol Buffers binary file.
+
+    Args:
+        filepath: Path to input file
+
+    Returns:
+        Deserialized dictionary
+    """
+    if not HAS_PROTOBUF:
+        raise ImportError("protobuf is not installed. Install with: pip install protobuf")
+    with open(filepath, 'rb') as f:
+        return protobuf_loads(f.read())
+
+
 def register_serialization_functions(runtime):
     """Register serialization functions with the NLPL runtime."""
     # Pickle serialization
@@ -309,24 +385,31 @@ def register_serialization_functions(runtime):
     runtime.register_function("pickle_loads", pickle_loads)
     runtime.register_function("pickle_dump_file", pickle_dump_file)
     runtime.register_function("pickle_load_file", pickle_load_file)
-    
+
     # MessagePack serialization (if available)
     if HAS_MSGPACK:
         runtime.register_function("msgpack_dumps", msgpack_dumps)
         runtime.register_function("msgpack_loads", msgpack_loads)
         runtime.register_function("msgpack_dump_file", msgpack_dump_file)
         runtime.register_function("msgpack_load_file", msgpack_load_file)
-    
+
     # YAML serialization (if available)
     if HAS_YAML:
         runtime.register_function("yaml_dumps", yaml_dumps)
         runtime.register_function("yaml_loads", yaml_loads)
         runtime.register_function("yaml_dump_file", yaml_dump_file)
         runtime.register_function("yaml_load_file", yaml_load_file)
-    
+
     # TOML serialization (if available)
     if HAS_TOML:
         runtime.register_function("toml_dumps", toml_dumps)
         runtime.register_function("toml_loads", toml_loads)
         runtime.register_function("toml_dump_file", toml_dump_file)
         runtime.register_function("toml_load_file", toml_load_file)
+
+    # Protocol Buffers serialization (if available)
+    if HAS_PROTOBUF:
+        runtime.register_function("protobuf_dumps", protobuf_dumps)
+        runtime.register_function("protobuf_loads", protobuf_loads)
+        runtime.register_function("protobuf_dump_file", protobuf_dump_file)
+        runtime.register_function("protobuf_load_file", protobuf_load_file)

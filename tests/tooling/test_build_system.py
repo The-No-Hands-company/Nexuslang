@@ -1273,3 +1273,191 @@ class TestBuildScriptBuilderIntegration:
         toml_path.write_text(toml)
         config = ConfigLoader.load(str(toml_path))
         assert config.manifest_dir == str(tmp_path)
+
+
+# ---------------------------------------------------------------------------
+# BuildSystem.test() — test runner tests
+# ---------------------------------------------------------------------------
+
+
+from unittest.mock import patch, MagicMock
+
+
+def _make_test_runner_project(tmp_path: Path, test_filenames=None) -> tuple:
+    """Return a (BuildSystem, tests_dir) pair with optional .nlpl test files."""
+    src_dir = tmp_path / "src"
+    out_dir = tmp_path / "build"
+    tests_dir = tmp_path / "tests"
+    src_dir.mkdir(parents=True, exist_ok=True)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (src_dir / "main.nlpl").write_text("function main\n    print text \"hi\"\nend\n")
+    if test_filenames is not None:
+        tests_dir.mkdir(parents=True, exist_ok=True)
+        for fname in test_filenames:
+            (tests_dir / fname).write_text("function main\n    print text \"ok\"\nend\n")
+    config = ProjectConfig(
+        package=PackageConfig(name="runner_test", version="0.1.0"),
+        build=BuildConfig(source_dir=str(src_dir), output_dir=str(out_dir)),
+    )
+    return BuildSystem(config), tests_dir
+
+
+class TestBuildSystemTestRunner:
+
+    def test_no_tests_dir_returns_0(self, tmp_path, capsys):
+        bs, _ = _make_test_runner_project(tmp_path)
+        result = bs.test(parallel=False)
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "No tests" in captured.out
+
+    def test_empty_tests_dir_returns_0(self, tmp_path, capsys):
+        bs, tests_dir = _make_test_runner_project(tmp_path, test_filenames=[])
+        result = bs.test(parallel=False)
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "No test files" in captured.out
+
+    def test_all_pass_returns_0(self, tmp_path):
+        bs, _ = _make_test_runner_project(
+            tmp_path, test_filenames=["test_alpha.nlpl", "test_beta.nlpl"]
+        )
+        with patch.object(bs, "_run_single_test", return_value=True):
+            result = bs.test(parallel=False)
+        assert result == 0
+
+    def test_one_fail_returns_1(self, tmp_path):
+        bs, _ = _make_test_runner_project(
+            tmp_path, test_filenames=["test_pass.nlpl", "test_fail.nlpl"]
+        )
+
+        def _side_effect(test_file, release, features):
+            return "pass" in test_file.name
+
+        with patch.object(bs, "_run_single_test", side_effect=_side_effect):
+            result = bs.test(parallel=False)
+        assert result == 1
+
+    def test_all_fail_returns_1(self, tmp_path):
+        bs, _ = _make_test_runner_project(
+            tmp_path, test_filenames=["test_x.nlpl", "test_y.nlpl"]
+        )
+        with patch.object(bs, "_run_single_test", return_value=False):
+            result = bs.test(parallel=False)
+        assert result == 1
+
+    def test_filter_names_selects_matching(self, tmp_path):
+        bs, _ = _make_test_runner_project(
+            tmp_path,
+            test_filenames=["test_math.nlpl", "test_string.nlpl", "test_io.nlpl"],
+        )
+        calls = []
+
+        def _track(test_file, release, features):
+            calls.append(test_file.name)
+            return True
+
+        with patch.object(bs, "_run_single_test", side_effect=_track):
+            result = bs.test(filter_names=["math"], parallel=False)
+
+        assert result == 0
+        assert calls == ["test_math.nlpl"]
+
+    def test_filter_names_no_match_returns_0(self, tmp_path, capsys):
+        bs, _ = _make_test_runner_project(
+            tmp_path, test_filenames=["test_alpha.nlpl"]
+        )
+        with patch.object(bs, "_run_single_test", return_value=True) as mock_run:
+            result = bs.test(filter_names=["nonexistent"], parallel=False)
+        assert result == 0
+        mock_run.assert_not_called()
+        captured = capsys.readouterr()
+        assert "No test files" in captured.out
+
+    def test_output_shows_ok_for_passing_test(self, tmp_path, capsys):
+        bs, _ = _make_test_runner_project(
+            tmp_path, test_filenames=["test_example.nlpl"]
+        )
+        with patch.object(bs, "_run_single_test", return_value=True):
+            bs.test(parallel=False)
+        captured = capsys.readouterr()
+        assert "ok" in captured.out
+        assert "test_example" in captured.out
+
+    def test_output_shows_failed_for_failing_test(self, tmp_path, capsys):
+        bs, _ = _make_test_runner_project(
+            tmp_path, test_filenames=["test_broken.nlpl"]
+        )
+        with patch.object(bs, "_run_single_test", return_value=False):
+            bs.test(parallel=False)
+        captured = capsys.readouterr()
+        assert "FAILED" in captured.out
+        assert "test_broken" in captured.out
+
+    def test_failed_names_listed_in_summary(self, tmp_path, capsys):
+        bs, _ = _make_test_runner_project(
+            tmp_path,
+            test_filenames=["test_good.nlpl", "test_bad.nlpl"],
+        )
+
+        def _side_effect(test_file, release, features):
+            return "good" in test_file.name
+
+        with patch.object(bs, "_run_single_test", side_effect=_side_effect):
+            bs.test(parallel=False)
+        captured = capsys.readouterr()
+        assert "test_bad" in captured.out
+        assert "Failed tests:" in captured.out
+
+    def test_parallel_and_serial_agree_on_pass(self, tmp_path):
+        bs, _ = _make_test_runner_project(
+            tmp_path,
+            test_filenames=["test_a.nlpl", "test_b.nlpl", "test_c.nlpl"],
+        )
+        with patch.object(bs, "_run_single_test", return_value=True):
+            serial_result = bs.test(parallel=False)
+        with patch.object(bs, "_run_single_test", return_value=True):
+            parallel_result = bs.test(parallel=True, jobs=2)
+        assert serial_result == parallel_result == 0
+
+    def test_parallel_and_serial_agree_on_fail(self, tmp_path):
+        bs, _ = _make_test_runner_project(
+            tmp_path,
+            test_filenames=["test_a.nlpl", "test_b.nlpl", "test_c.nlpl"],
+        )
+        with patch.object(bs, "_run_single_test", return_value=False):
+            serial_result = bs.test(parallel=False)
+        with patch.object(bs, "_run_single_test", return_value=False):
+            parallel_result = bs.test(parallel=True, jobs=2)
+        assert serial_result == parallel_result == 1
+
+    def test_coverage_activates_collector(self, tmp_path):
+        bs, _ = _make_test_runner_project(
+            tmp_path, test_filenames=["test_cov.nlpl"]
+        )
+
+        mock_collector = MagicMock()
+        mock_report = MagicMock()
+        mock_report.summary.return_value = "Coverage: 80%"
+        mock_collector.build_report.return_value = mock_report
+
+        with patch.object(bs, "_run_single_test", return_value=True):
+            with patch(
+                "nlpl.tooling.coverage.CoverageCollector",
+                return_value=mock_collector,
+            ):
+                bs.test(parallel=False, coverage=True, coverage_output=str(tmp_path / "cov"))
+
+        mock_collector.start.assert_called_once()
+        mock_collector.stop.assert_called_once()
+        mock_collector.build_report.assert_called_once()
+
+    def test_result_summary_line_printed(self, tmp_path, capsys):
+        bs, _ = _make_test_runner_project(
+            tmp_path, test_filenames=["test_one.nlpl"]
+        )
+        with patch.object(bs, "_run_single_test", return_value=True):
+            bs.test(parallel=False)
+        captured = capsys.readouterr()
+        assert "test result:" in captured.out
+        assert "passed" in captured.out
