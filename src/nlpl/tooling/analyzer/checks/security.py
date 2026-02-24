@@ -93,6 +93,8 @@ class SecurityChecker(BaseChecker):
             self._check_assignment(node)
         elif node_type == "FunctionCall":
             self._check_function_call(node, parent)
+        elif node_type == "PrintStatement":
+            self._check_print_statement(node)
 
         for child in self._iter_children(node):
             self._walk(child, parent=node, depth=depth + 1)
@@ -108,7 +110,7 @@ class SecurityChecker(BaseChecker):
 
         # SEC001: hardcoded credential
         if name in _SECRET_NAMES and value is not None:
-            if type(value).__name__ == "StringLiteral":
+            if type(value).__name__ in ("StringLiteral", "Literal"):
                 literal = getattr(value, "value", "")
                 if isinstance(literal, str) and literal not in ("", "<placeholder>", "***"):
                     self.issues.append(Issue(
@@ -234,7 +236,7 @@ class SecurityChecker(BaseChecker):
                 suggestion="Replace with a strong hash: `sha256(data)` or `blake3(data)`.",
             ))
 
-        # SEC007: printing sensitive variables
+        # SEC007: printing sensitive variables via function call
         if name == "print":
             for arg in args:
                 var_name = (getattr(arg, "name", None) or "").lower()
@@ -250,6 +252,26 @@ class SecurityChecker(BaseChecker):
                         location=self.get_node_location(call),
                         source_line=self.get_source_line(line),
                     ))
+
+    def _check_print_statement(self, node: Any) -> None:
+        """SEC007: `print text <sensitive_var>` exposes credentials."""
+        expr = getattr(node, "expression", None)
+        if expr is None:
+            return
+        var_name = (getattr(expr, "name", None) or "").lower()
+        if var_name in _SECRET_NAMES:
+            line = getattr(node, "line_number", 0) or getattr(node, "line", 0)
+            self.issues.append(Issue(
+                code="SEC007",
+                severity=Severity.WARNING,
+                category=Category.SECURITY,
+                message=(
+                    f"Printing sensitive variable `{var_name}` may expose "
+                    "credentials in logs or to users."
+                ),
+                location=self.get_node_location(node),
+                source_line=self.get_source_line(line),
+            ))
 
     # ------------------------------------------------------------------
     # Predicates

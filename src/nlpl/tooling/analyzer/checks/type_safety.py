@@ -391,5 +391,8 @@ from ..report import Issue
 from nlpl.parser.ast import ASTNode
 
 class TypeSafetyChecker(BaseChecker):
+
+    CHECKER_NAME = "type_safety"
+
     def check(self, ast: ASTNode, source: str, lines: list[str]) -> list[Issue]:
         return []

@@ -32,6 +32,8 @@ class ResourceInfo:
 
 
 class ResourceLeakChecker(BaseChecker):
+
+    CHECKER_NAME = "resource_leak"
     """
     Checks for resource leaks.
     

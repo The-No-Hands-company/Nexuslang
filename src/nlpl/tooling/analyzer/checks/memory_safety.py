@@ -32,6 +32,8 @@ class AllocationInfo:
 
 
 class MemorySafetyChecker(BaseChecker):
+
+    CHECKER_NAME = "memory_safety"
     """
     Checks for memory safety violations.
     

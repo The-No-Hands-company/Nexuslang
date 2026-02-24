@@ -20,6 +20,8 @@ from ..report import Issue, Severity, Category, SourceLocation
 
 
 class InitializationChecker(BaseChecker):
+
+    CHECKER_NAME = "initialization"
     """Checks for uninitialized variable use."""
     
     def __init__(self):

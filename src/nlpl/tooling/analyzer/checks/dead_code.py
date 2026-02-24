@@ -24,7 +24,7 @@ from ..report import Issue, Severity, Category
 class DeadCodeChecker(BaseChecker):
     """
     Checks for dead code.
-    
+
     Error codes:
     - D001: Unreachable code after return
     - D002: Unreachable code after break/continue
@@ -32,7 +32,9 @@ class DeadCodeChecker(BaseChecker):
     - D004: Unused function
     - D005: Redundant condition (always true/false)
     """
-    
+
+    CHECKER_NAME = "dead_code"
+
     def __init__(self):
         super().__init__()
         self.defined_vars: Set[str] = set()
@@ -90,7 +92,8 @@ class DeadCodeChecker(BaseChecker):
         """Check for unreachable code."""
         node_type = node.__class__.__name__
         
-        if node_type in ['Block', 'FunctionBody']:
+        if node_type in ['Block', 'FunctionBody', 'FunctionDefinition',
+                          'WhileLoop', 'ForLoop', 'ForEachLoop']:
             self._check_block_reachability(node)
         
         elif node_type == 'If':
@@ -107,13 +110,14 @@ class DeadCodeChecker(BaseChecker):
             # Check if code after return/break/continue
             if found_terminator:
                 location = self.get_node_location(stmt)
-                
-                if stmt_type == 'Return':
+
+                if stmt_type in ('Return', 'ReturnStatement'):
                     code = "D001"
                     msg = "Unreachable code: statement after return"
-                elif stmt_type in ['Break', 'Continue']:
+                elif stmt_type in ('Break', 'BreakStatement',
+                                   'Continue', 'ContinueStatement'):
                     code = "D002"
-                    msg = f"Unreachable code: statement after {stmt_type.lower()}"
+                    msg = "Unreachable code: statement after break/continue"
                 else:
                     code = "D001"
                     msg = "Unreachable code: statement will never execute"
@@ -131,7 +135,9 @@ class DeadCodeChecker(BaseChecker):
                 break
             
             # Mark if we found a terminator
-            if stmt_type in ['Return', 'Break', 'Continue']:
+            if stmt_type in ('Return', 'ReturnStatement',
+                             'Break', 'BreakStatement',
+                             'Continue', 'ContinueStatement'):
                 found_terminator = True
     
     def _check_redundant_condition(self, node: ASTNode):

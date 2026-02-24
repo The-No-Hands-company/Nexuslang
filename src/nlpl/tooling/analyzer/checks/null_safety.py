@@ -30,6 +30,8 @@ class VariableState:
 
 
 class NullSafetyAnalyzer(BaseChecker):
+
+    CHECKER_NAME = "null_safety"
     """
     Checks for null safety violations.
     

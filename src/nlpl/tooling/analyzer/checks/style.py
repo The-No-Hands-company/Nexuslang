@@ -57,16 +57,20 @@ class StyleChecker(BaseChecker):
         self.max_parameters = 5
         self.max_nesting = 4
     
-    def check(self, ast: ASTNode) -> List[Issue]:
+    CHECKER_NAME = "style"
+
+    def check(self, ast: ASTNode, source: str = "", lines: List[str] = None) -> List[Issue]:
         """Check AST for style issues."""
         self.issues = []
         self.nesting_level = 0
-        
+        self.current_source = source
+        self.current_lines = lines or (source.splitlines() if source else [])
+
         self.walk_ast(ast, self._check_node)
-        
+
         # Check line-based issues
         self._check_line_issues()
-        
+
         return self.issues
     
     def _check_node(self, node: ASTNode):
