@@ -89,6 +89,12 @@ class BuildConfig:
     target_triple: Optional[str] = None
     # Number of parallel compilation jobs (None = cpu_count)
     jobs: Optional[int] = None
+    # Parallel compilation jobs: 0 = auto-detect, >0 = exact count
+    parallel_jobs: int = 0
+    # Link-time optimisation mode: "disabled" | "thin" | "full"
+    lto: str = "disabled"
+    # Sysroot for cross-compilation (e.g. "/opt/aarch64-sysroot")
+    sysroot: Optional[str] = None
     # Treat warnings as errors
     warnings_as_errors: bool = False
     # Path to the pre-build hook script (relative to manifest_dir).
