@@ -59,12 +59,21 @@ class ControlFlowChecker(BaseChecker):
 
         if node_type == "FunctionDefinition":
             self._check_function(node)
+            # CF003 inside the function body (list stored in .body)
+            self._check_block_jumps(node)
             # Also recurse into nested functions
             self._recurse_children(node, depth + 1)
             return  # _check_function already recurses the body
 
         if node_type in ("WhileLoop", "InfiniteLoop", "LoopForever"):
             self._check_infinite_loop(node)
+            # CF003 inside the loop body
+            self._check_block_jumps(node)
+
+        if node_type in ("ForLoop", "ForEachLoop", "ForEach", "RepeatNTimesLoop",
+                         "RepeatWhileLoop"):
+            # CF003 inside for/for-each/repeat loop bodies
+            self._check_block_jumps(node)
 
         if node_type in ("Block", "FunctionBody", "Program"):
             self._check_block_jumps(node)
@@ -73,8 +82,8 @@ class ControlFlowChecker(BaseChecker):
 
     def _recurse_children(self, node: ASTNode, depth: int) -> None:
         """Recurse into child nodes without re-triggering top-level logic."""
-        for attr in ("body", "statements", "then_branch", "else_branch",
-                     "else_body", "cases", "finally_body"):
+        for attr in ("body", "statements", "then_block", "else_block",
+                     "then_branch", "else_branch", "else_body", "cases", "finally_body"):
             child = getattr(node, attr, None)
             if child is None:
                 continue
@@ -162,10 +171,10 @@ class ControlFlowChecker(BaseChecker):
             if stype in ("NewlineStatement", "Comment", "Pass"):
                 continue
 
-            if stype == "Return":
+            if stype == "ReturnStatement":
                 return True
 
-            if stype == "If":
+            if stype == "IfStatement":
                 return self._if_always_returns(stmt)
 
             # Any other terminal statement → does not guarantee a return
@@ -175,19 +184,22 @@ class ControlFlowChecker(BaseChecker):
 
     def _if_always_returns(self, node: ASTNode) -> bool:
         """Return True when an if/else block guarantees a return on every path."""
-        # Must have an else branch to be exhaustive
-        else_branch = getattr(node, "else_branch", None) or getattr(node, "else_body", None)
-        if else_branch is None:
+        # Must have an else branch to be exhaustive.
+        # IfStatement stores branches in then_block / else_block (plain lists).
+        else_stmts = getattr(node, "else_block", None)
+        if else_stmts is None:
+            # Fall back to other possible attribute names
+            else_stmts = getattr(node, "else_branch", None) or getattr(node, "else_body", None)
+        if not else_stmts:
             return False
 
-        then_stmts = getattr(node, "then_branch", None) or getattr(node, "body", [])
+        then_stmts = getattr(node, "then_block", None)
+        if then_stmts is None:
+            then_stmts = getattr(node, "then_branch", None) or getattr(node, "body", [])
         if isinstance(then_stmts, ASTNode):
             then_stmts = getattr(then_stmts, "statements", [then_stmts])
-
-        if isinstance(else_branch, ASTNode):
-            else_stmts = getattr(else_branch, "statements", [else_branch])
-        else:
-            else_stmts = else_branch
+        if isinstance(else_stmts, ASTNode):
+            else_stmts = getattr(else_stmts, "statements", [else_stmts])
 
         return (self._block_always_returns(then_stmts) and
                 self._block_always_returns(else_stmts))
@@ -208,9 +220,13 @@ class ControlFlowChecker(BaseChecker):
             condition = getattr(node, "condition", None)
             if condition is not None:
                 ctype = condition.__class__.__name__
-                if ctype == "BooleanLiteral" and getattr(condition, "value", None) is True:
+                # Parser produces Literal(type='boolean', value=True) for "while true"
+                if ctype == "Literal" and getattr(condition, "value", None) is True:
                     is_infinite = True
-                # Also catch identifier "true"
+                # Also catch dedicated BooleanLiteral node (future-proof)
+                elif ctype == "BooleanLiteral" and getattr(condition, "value", None) is True:
+                    is_infinite = True
+                # Also catch identifier "true" (legacy parser variants)
                 elif ctype == "Identifier" and getattr(condition, "name", "") == "true":
                     is_infinite = True
 
@@ -242,13 +258,17 @@ class ControlFlowChecker(BaseChecker):
             if stmt is None:
                 continue
             stype = stmt.__class__.__name__
-            if stype in ("Break", "Return"):
+            if stype in ("BreakStatement", "Break", "ReturnStatement", "Return"):
                 return True
             # Recurse one level into conditional branches (not into nested loops
             # to avoid false negatives from enclosed loop breaks)
-            if stype == "If":
-                then_b = getattr(stmt, "then_branch", None) or getattr(stmt, "body", [])
-                else_b = getattr(stmt, "else_branch", None) or getattr(stmt, "else_body", [])
+            if stype in ("IfStatement", "If"):
+                then_b = (getattr(stmt, "then_block", None)
+                          or getattr(stmt, "then_branch", None)
+                          or getattr(stmt, "body", []))
+                else_b = (getattr(stmt, "else_block", None)
+                          or getattr(stmt, "else_branch", None)
+                          or getattr(stmt, "else_body", []))
                 for branch in (then_b, else_b):
                     if self._block_has_escape(branch):
                         return True
@@ -285,5 +305,7 @@ class ControlFlowChecker(BaseChecker):
                     suggestion="Remove the unreachable code or restructure the control flow",
                 ))
                 break  # report only the first unreachable statement per block
-            if stype in ("Return", "Break", "Continue"):
+            if stype in ("ReturnStatement", "Return",
+                         "BreakStatement", "Break",
+                         "ContinueStatement", "Continue"):
                 found_jump = True

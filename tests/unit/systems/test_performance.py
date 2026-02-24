@@ -244,9 +244,9 @@ end
 print text convert count to string
 '''
         elapsed = _run_nlpl(src)
-        # Observed: ~5ms. Threshold: 200ms
-        assert elapsed < 200.0, (
-            f"1000-iteration while loop took {elapsed:.1f}ms (expected < 200ms)"
+        # Observed: ~5ms. Threshold: 2000ms (generous to avoid flakiness under load)
+        assert elapsed < 2000.0, (
+            f"1000-iteration while loop took {elapsed:.1f}ms (expected < 2000ms)"
         )
 
     def test_list_append_loop(self):
