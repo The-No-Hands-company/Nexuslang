@@ -25,6 +25,9 @@ from .checks.initialization import InitializationChecker
 from .checks.type_safety import TypeSafetyChecker
 from .checks.dead_code import DeadCodeChecker
 from .checks.style import StyleChecker
+from .checks.performance import PerformanceChecker
+from .checks.security import SecurityChecker
+from .checks.data_flow import DataFlowChecker
 
 
 class StaticAnalyzer:
@@ -41,7 +44,7 @@ class StaticAnalyzer:
     - Style issues
     """
     
-    def __init__(self, 
+    def __init__(self,
                  enable_all: bool = True,
                  enable_memory: bool = True,
                  enable_null: bool = True,
@@ -49,7 +52,10 @@ class StaticAnalyzer:
                  enable_init: bool = True,
                  enable_types: bool = True,
                  enable_dead_code: bool = True,
-                 enable_style: bool = False):
+                 enable_style: bool = False,
+                 enable_performance: bool = True,
+                 enable_security: bool = True,
+                 enable_data_flow: bool = True):
         """
         Initialize analyzer with configuration.
         
@@ -71,6 +77,9 @@ class StaticAnalyzer:
             'types': enable_all and enable_types,
             'dead_code': enable_all and enable_dead_code,
             'style': enable_style,  # Not affected by enable_all
+            'performance': enable_all and enable_performance,
+            'security': enable_all and enable_security,
+            'data_flow': enable_all and enable_data_flow,
         }
         
         # Initialize checkers
@@ -90,6 +99,12 @@ class StaticAnalyzer:
             self.checkers.append(DeadCodeChecker())
         if self.config['style']:
             self.checkers.append(StyleChecker())
+        if self.config['performance']:
+            self.checkers.append(PerformanceChecker())
+        if self.config['security']:
+            self.checkers.append(SecurityChecker())
+        if self.config['data_flow']:
+            self.checkers.append(DataFlowChecker())
     
     def analyze_file(self, file_path: str) -> AnalysisReport:
         """

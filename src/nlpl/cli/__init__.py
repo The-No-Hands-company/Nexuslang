@@ -11,6 +11,8 @@ clean     Remove the build output directory
 test      Discover and run tests from tests/
 coverage  Run a file with coverage collection and report
 profile   Run a file with CPU/memory profiling and report
+lint      Run the static analyser on the project
+pgo       Profile-guided optimisation workflow (instrument/collect/build)
 add       Add a dependency to nlpl.toml
 remove    Remove a dependency from nlpl.toml
 lock      Regenerate nlpl.lock from the current nlpl.toml
@@ -27,6 +29,7 @@ from pathlib import Path
 
 from ..tooling.config import ConfigLoader
 from ..tooling.builder import BuildSystem
+from ..optimizer import int_to_opt_level
 
 __all__ = ["main", "nlpllint"]
 
@@ -124,6 +127,22 @@ def cmd_init(args):
 def cmd_build(args):
     """Compile the project."""
     config = _load_project()
+
+    # --opt-level / -O overrides profile
+    if hasattr(args, 'opt_level') and args.opt_level is not None:
+        try:
+            opt = int_to_opt_level(args.opt_level)
+            config.profile.optimization = opt.value
+        except (ValueError, KeyError):
+            print(f"error: invalid optimisation level '{args.opt_level}'. Use 0, 1, 2, 3, or s.")
+            sys.exit(1)
+
+    if hasattr(args, 'lto') and args.lto:
+        config.profile.lto = True
+
+    if hasattr(args, 'pgo_use') and args.pgo_use:
+        config.profile.pgo_profile = args.pgo_use
+
     builder = BuildSystem(config)
     features = args.features or []
     ok = builder.build(
@@ -140,6 +159,15 @@ def cmd_build(args):
 def cmd_run(args):
     """Build and run the project executable."""
     config = _load_project()
+
+    if hasattr(args, 'opt_level') and args.opt_level is not None:
+        try:
+            opt = int_to_opt_level(args.opt_level)
+            config.profile.optimization = opt.value
+        except (ValueError, KeyError):
+            print(f"error: invalid optimisation level '{args.opt_level}'.")
+            sys.exit(1)
+
     builder = BuildSystem(config)
     features = args.features or []
     run_args = args.run_args or []
@@ -149,6 +177,99 @@ def cmd_run(args):
         run_args=run_args,
     )
     sys.exit(code)
+
+
+def cmd_lint(args):
+    """Run the static analyser on the project."""
+    from ..tooling.analyzer.analyzer import StaticAnalyzer
+
+    config = _load_project()
+    src_dir = getattr(args, 'path', None) or 'src'
+    analyzer = StaticAnalyzer(
+        enable_all=True,
+        enable_style=getattr(args, 'style', False),
+        enable_security=not getattr(args, 'no_security', False),
+        enable_performance=not getattr(args, 'no_performance', False),
+        enable_data_flow=not getattr(args, 'no_data_flow', False),
+    )
+    reports = analyzer.analyze_directory(src_dir, recursive=True)
+    total_errors = 0
+    total_warnings = 0
+    for report in reports:
+        printed = report.format()
+        if printed:
+            print(printed)
+        total_errors += sum(
+            1 for i in report.issues
+            if i.severity.value == 'error'
+        )
+        total_warnings += sum(
+            1 for i in report.issues
+            if i.severity.value == 'warning'
+        )
+    print(f"\nLint complete: {total_errors} errors, {total_warnings} warnings.")
+    sys.exit(1 if total_errors > 0 else 0)
+
+
+def cmd_pgo(args):
+    """Profile-guided optimisation workflow."""
+    from ..tooling.pgo import PGODriver, PGOConfig
+
+    subcmd = getattr(args, 'pgo_command', None)
+    if subcmd is None:
+        print("error: specify a pgo subcommand: instrument, collect, or build")
+        sys.exit(1)
+
+    config = _load_project()
+    profile_dir = getattr(args, 'profile_dir', 'build/profiles')
+    pgo_cfg = PGOConfig(
+        profile_dir=profile_dir,
+        min_hot_count=getattr(args, 'min_hot_count', 100),
+        merge_profiles=True,
+        verbose=getattr(args, 'verbose', False),
+    )
+    driver = PGODriver(pgo_cfg)
+
+    if subcmd == 'instrument':
+        source = getattr(args, 'source', None)
+        if not source:
+            print("error: specify source file to instrument")
+            sys.exit(1)
+        print(f"Instrumenting {source} for PGO data collection...")
+        print(f"Run your workload, then use: nlpl pgo collect --profile-dir {profile_dir}")
+
+    elif subcmd == 'collect':
+        print(f"Collecting PGO profiles from {profile_dir}...")
+        merged_path = driver.save_merged_profile()
+        driver.print_profile_summary()
+        print(f"Merged profile written to: {merged_path}")
+
+    elif subcmd == 'build':
+        pgo_profile = getattr(args, 'pgo_profile', None)
+        if not pgo_profile:
+            # Auto-detect merged profile
+            import os as _os
+            candidate = _os.path.join(profile_dir, 'merged.json')
+            if _os.path.exists(candidate):
+                pgo_profile = candidate
+            else:
+                print(f"error: no PGO profile found. Run 'nlpl pgo collect' first, or pass --pgo-profile.")
+                sys.exit(1)
+        builder = BuildSystem(config)
+        print(f"Building with PGO data from {pgo_profile}...")
+        ok = builder.build(
+            release=True,
+            profile=None,
+            features=[],
+            jobs=None,
+            clean=False,
+            optimize_bounds_checks=False,
+        )
+        sys.exit(0 if ok else 1)
+
+    else:
+        print(f"error: unknown pgo subcommand '{subcmd}'")
+        sys.exit(1)
 
 
 def cmd_check(args):
@@ -504,6 +625,12 @@ def _build_parser() -> argparse.ArgumentParser:
                          help="Suppress informational output")
     p_build.add_argument("--target", metavar="TRIPLE",
                          help="Target triple for cross-compilation (e.g. x86_64-linux-gnu)")
+    p_build.add_argument("--opt-level", "-O", metavar="LEVEL",
+                         help="Optimisation level: 0 (none), 1 (basic), 2 (standard), 3 (aggressive), s (size). Overrides profile.")
+    p_build.add_argument("--lto", action="store_true",
+                         help="Enable link-time optimisation (LTO)")
+    p_build.add_argument("--pgo-use", metavar="PROFILE",
+                         help="Path to a merged PGO profile to guide optimisation")
 
     # ---- run ----------------------------------------------------------------
     p_run = sub.add_parser("run", help="Build and run the project")
@@ -513,6 +640,49 @@ def _build_parser() -> argparse.ArgumentParser:
                        help="Enable additional named features")
     p_run.add_argument("run_args", nargs=argparse.REMAINDER, metavar="-- [ARGS...]",
                        help="Arguments to pass to the compiled program (after --)")
+    p_run.add_argument("--opt-level", "-O", metavar="LEVEL",
+                       help="Optimisation level: 0, 1, 2, 3, or s (size).")
+
+    # ---- lint ---------------------------------------------------------------
+    p_lint = sub.add_parser("lint", help="Run static analysis on the project")
+    p_lint.add_argument("path", nargs="?", default="src", metavar="PATH",
+                        help="Source directory to analyse (default: src/)")
+    p_lint.add_argument("--style", action="store_true",
+                        help="Enable style checks")
+    p_lint.add_argument("--no-security", action="store_true",
+                        help="Disable security checks")
+    p_lint.add_argument("--no-performance", action="store_true",
+                        help="Disable performance checks")
+    p_lint.add_argument("--no-data-flow", action="store_true",
+                        help="Disable data-flow checks")
+
+    # ---- pgo ----------------------------------------------------------------
+    p_pgo = sub.add_parser(
+        "pgo",
+        help="Profile-guided optimisation workflow",
+    )
+    pgo_sub = p_pgo.add_subparsers(dest="pgo_command", metavar="<subcommand>")
+
+    p_pgo_inst = pgo_sub.add_parser("instrument",
+                                     help="Build an instrumented binary that emits profile data")
+    p_pgo_inst.add_argument("source", nargs="?", metavar="FILE",
+                             help="Source file to instrument (default: project entry-point)")
+    p_pgo_inst.add_argument("--profile-dir", metavar="DIR", default="build/profiles",
+                             help="Directory to write raw profile data (default: build/profiles)")
+
+    p_pgo_coll = pgo_sub.add_parser("collect",
+                                     help="Merge raw profile files into a single optimisation profile")
+    p_pgo_coll.add_argument("--profile-dir", metavar="DIR", default="build/profiles",
+                             help="Directory containing raw profiles (default: build/profiles)")
+    p_pgo_coll.add_argument("--min-hot-count", type=int, default=100, metavar="N",
+                             help="Call-count threshold for 'hot' functions (default: 100)")
+    p_pgo_coll.add_argument("--verbose", "-v", action="store_true")
+
+    p_pgo_build = pgo_sub.add_parser("build",
+                                      help="Build with PGO optimisation data")
+    p_pgo_build.add_argument("--pgo-profile", metavar="FILE",
+                              help="Path to merged profile (default: build/profiles/merged.json)")
+    p_pgo_build.add_argument("--profile-dir", metavar="DIR", default="build/profiles")
 
     # ---- check --------------------------------------------------------------
     p_check = sub.add_parser("check", help="Type-check without producing output")
@@ -669,6 +839,8 @@ def main():
         "ws":        cmd_workspace,  # Short alias
         "coverage":  cmd_coverage,
         "profile":   cmd_profile,
+        "lint":      cmd_lint,
+        "pgo":       cmd_pgo,
     }
 
     handler = dispatch.get(args.command)

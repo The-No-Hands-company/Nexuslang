@@ -16,6 +16,30 @@ except ImportError:
     GLFW_AVAILABLE = False
     print("Warning: GLFW or PyOpenGL not installed. Graphics module functionality limited.")
     print("Install with: pip install glfw PyOpenGL numpy")
+    # Stub out GL constants used as default argument values in class definitions
+    # so that the module can be imported even without PyOpenGL installed.
+    GL_STATIC_DRAW = 0x88B4
+    GL_DYNAMIC_DRAW = 0x88E8
+    GL_STREAM_DRAW = 0x88E0
+    GL_ARRAY_BUFFER = 0x8892
+    GL_ELEMENT_ARRAY_BUFFER = 0x8893
+    GL_TRIANGLES = 0x0004
+    GL_UNSIGNED_INT = 0x1405
+    GL_FLOAT = 0x1406
+    GL_TEXTURE_2D = 0x0DE1
+    GL_TEXTURE0 = 0x84C0
+    GL_LINEAR = 0x2601
+    GL_REPEAT = 0x2901
+    GL_RGBA = 0x1908
+    GL_UNSIGNED_BYTE = 0x1401
+    GL_COLOR_BUFFER_BIT = 0x4000
+    GL_DEPTH_BUFFER_BIT = 0x0100
+    GL_DEPTH_TEST = 0x0B71
+    GL_BLEND = 0x0BE2
+    GL_SRC_ALPHA = 0x0302
+    GL_ONE_MINUS_SRC_ALPHA = 0x0303
+    GL_VERTEX_SHADER = 0x8B31
+    GL_FRAGMENT_SHADER = 0x8B30
 
 class GraphicsWindow:
     """Represents an OpenGL window with GLFW"""

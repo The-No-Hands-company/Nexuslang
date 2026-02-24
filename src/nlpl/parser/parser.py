@@ -49,7 +49,10 @@ from nlpl.parser.ast import (
     # String operations
     StringLiteral, FStringExpression,
     # Smart pointers and memory management
-    RcType, WeakType, ArcType, RcCreation
+    RcType, WeakType, ArcType, RcCreation,
+    # Native test framework
+    TestBlock, DescribeBlock, ItBlock, ParameterizedTestBlock,
+    BeforeEachBlock, AfterEachBlock,
 )
 
 class Parser:
@@ -410,7 +413,22 @@ class Parser:
 
             elif token.type == TokenType.UNSAFE:
                 return self.parse_unsafe_block()
-            
+
+            elif token.type == TokenType.TEST:
+                return self.parse_test_block()
+
+            elif token.type == TokenType.DESCRIBE:
+                return self.parse_describe_block()
+
+            elif token.type == TokenType.IT:
+                return self.parse_it_block()
+
+            elif token.type == TokenType.BEFORE_EACH:
+                return self.parse_before_each_block()
+
+            elif token.type == TokenType.AFTER_EACH:
+                return self.parse_after_each_block()
+
             elif token.type == TokenType.EOF:
                 # End of file - return None to stop parsing
                 return None
@@ -8863,4 +8881,281 @@ class Parser:
         
         return MacroExpansion(macro_name, arguments, line_number)
 
-    # ... rest of the parser implementation ...
+    # ---------------------------------------------------------------------------
+    # Native test framework parsing
+    # ---------------------------------------------------------------------------
+
+    def _parse_block_body(self, stop_types=None):
+        """Parse a list of statements until END or EOF.
+
+        Parameters
+        ----------
+        stop_types : collection of TokenType, optional
+            Additional token types (besides END and EOF) that terminate the
+            block.  Defaults to just (END, EOF).
+
+        Returns
+        -------
+        list
+            The collected statement nodes.
+        """
+        terminators = {TokenType.END, TokenType.EOF}
+        if stop_types:
+            terminators.update(stop_types)
+
+        body = []
+        while self.current_token and self.current_token.type not in terminators:
+            stmt = self.statement()
+            if stmt is not None:
+                body.append(stmt)
+        return body
+
+    def parse_test_block(self):
+        """Parse a test block.
+
+        Syntax:
+            test "name" do
+                <statements>
+            end
+
+        Parameterized variant:
+            test "name" with cases
+                case (arg1, arg2, ...)
+                case (arg1, arg2, ...)
+            do
+                <statements>
+            end
+        """
+        line_number = self.current_token.line
+        self.advance()  # consume 'test'
+
+        # Test name - must be a string literal
+        if not (self.current_token and
+                self.current_token.type == TokenType.STRING_LITERAL):
+            self.error("Expected a string literal test name after 'test'")
+
+        name = self.current_token.literal
+        self.advance()
+
+        # Check for "with cases" (parameterized test)
+        if (self.current_token and
+                self.current_token.type == TokenType.WITH):
+            peek = self.peek(1)
+            if peek and peek.lexeme.lower() == "cases":
+                return self._parse_parameterized_test(name, line_number)
+
+        # Plain test block
+        if self.current_token and self.current_token.type == TokenType.DO:
+            self.advance()  # consume 'do'
+
+        body = self._parse_block_body()
+
+        if self.current_token and self.current_token.type == TokenType.END:
+            self.advance()
+        else:
+            self.error("Expected 'end' to close 'test' block")
+
+        return TestBlock(name=name, body=body, line_number=line_number)
+
+    def _parse_parameterized_test(self, name, line_number):
+        """Continue parsing a parameterized test after the name has been consumed.
+
+        Syntax (resumed after name):
+            with cases
+                case (<params>) using (<param_names>)
+                case (<args>)
+                ...
+            do
+                <body>
+            end
+        """
+        self.advance()  # consume 'with'
+        # consume 'cases' identifier
+        if (self.current_token and
+                self.current_token.lexeme.lower() == "cases"):
+            self.advance()
+        else:
+            self.error("Expected 'cases' after 'with' in parameterized test")
+
+        # Optional parameter name declaration
+        # "using (param1, param2, ...)" or just positional names in the body
+        param_names = []
+        if (self.current_token and
+                self.current_token.type == TokenType.IDENTIFIER and
+                self.current_token.lexeme.lower() == "using"):
+            self.advance()  # consume 'using'
+            if (self.current_token and
+                    self.current_token.type == TokenType.LPAREN):
+                self.advance()  # consume '('
+                while (self.current_token and
+                       self.current_token.type != TokenType.RPAREN and
+                       self.current_token.type != TokenType.EOF):
+                    if self.current_token.type == TokenType.IDENTIFIER:
+                        param_names.append(self.current_token.lexeme)
+                        self.advance()
+                    if (self.current_token and
+                            self.current_token.type == TokenType.COMMA):
+                        self.advance()
+                if self.current_token and self.current_token.type == TokenType.RPAREN:
+                    self.advance()
+
+        # Parse case rows
+        cases = []
+        while (self.current_token and
+               self.current_token.type not in (TokenType.DO, TokenType.END,
+                                               TokenType.EOF)):
+            if (self.current_token.type == TokenType.IDENTIFIER and
+                    self.current_token.lexeme.lower() == "case"):
+                self.advance()  # consume 'case'
+                # Parse a tuple / parenthesised list of arguments
+                args = []
+                if (self.current_token and
+                        self.current_token.type == TokenType.LPAREN):
+                    self.advance()  # consume '('
+                    while (self.current_token and
+                           self.current_token.type not in (TokenType.RPAREN,
+                                                           TokenType.EOF)):
+                        arg = self.expression()
+                        if arg is not None:
+                            args.append(arg)
+                        if (self.current_token and
+                                self.current_token.type == TokenType.COMMA):
+                            self.advance()
+                    if (self.current_token and
+                            self.current_token.type == TokenType.RPAREN):
+                        self.advance()
+                else:
+                    # Single bare expression as the case argument
+                    arg = self.expression()
+                    if arg is not None:
+                        args.append(arg)
+                cases.append(args)
+            else:
+                self.advance()  # skip unexpected tokens inside cases section
+
+        if self.current_token and self.current_token.type == TokenType.DO:
+            self.advance()
+
+        body = self._parse_block_body()
+
+        if self.current_token and self.current_token.type == TokenType.END:
+            self.advance()
+        else:
+            self.error("Expected 'end' to close parameterized 'test' block")
+
+        return ParameterizedTestBlock(
+            name=name,
+            params=param_names,
+            cases=cases,
+            body=body,
+            line_number=line_number,
+        )
+
+    def parse_describe_block(self):
+        """Parse a describe (test suite) block.
+
+        Syntax:
+            describe "SuiteName" do
+                before each do ... end
+                after each do ... end
+                it "should ..." do ... end
+                test "..." do ... end
+            end
+        """
+        line_number = self.current_token.line
+        self.advance()  # consume 'describe'
+
+        if not (self.current_token and
+                self.current_token.type == TokenType.STRING_LITERAL):
+            self.error("Expected a string literal suite name after 'describe'")
+
+        name = self.current_token.literal
+        self.advance()
+
+        if self.current_token and self.current_token.type == TokenType.DO:
+            self.advance()
+
+        body = self._parse_block_body()
+
+        if self.current_token and self.current_token.type == TokenType.END:
+            self.advance()
+        else:
+            self.error("Expected 'end' to close 'describe' block")
+
+        return DescribeBlock(name=name, body=body, line_number=line_number)
+
+    def parse_it_block(self):
+        """Parse an 'it' specification block (BDD style).
+
+        Syntax:
+            it "should do something" do
+                <statements>
+            end
+        """
+        line_number = self.current_token.line
+        self.advance()  # consume 'it'
+
+        if not (self.current_token and
+                self.current_token.type == TokenType.STRING_LITERAL):
+            self.error("Expected a string literal spec name after 'it'")
+
+        name = self.current_token.literal
+        self.advance()
+
+        if self.current_token and self.current_token.type == TokenType.DO:
+            self.advance()
+
+        body = self._parse_block_body()
+
+        if self.current_token and self.current_token.type == TokenType.END:
+            self.advance()
+        else:
+            self.error("Expected 'end' to close 'it' block")
+
+        return ItBlock(name=name, body=body, line_number=line_number)
+
+    def parse_before_each_block(self):
+        """Parse a 'before each' setup block inside a describe suite.
+
+        Syntax:
+            before each do
+                <statements>
+            end
+        """
+        line_number = self.current_token.line
+        self.advance()  # consume 'before each' (single token BEFORE_EACH)
+
+        if self.current_token and self.current_token.type == TokenType.DO:
+            self.advance()
+
+        body = self._parse_block_body()
+
+        if self.current_token and self.current_token.type == TokenType.END:
+            self.advance()
+        else:
+            self.error("Expected 'end' to close 'before each' block")
+
+        return BeforeEachBlock(body=body, line_number=line_number)
+
+    def parse_after_each_block(self):
+        """Parse an 'after each' teardown block inside a describe suite.
+
+        Syntax:
+            after each do
+                <statements>
+            end
+        """
+        line_number = self.current_token.line
+        self.advance()  # consume 'after each' (single token AFTER_EACH)
+
+        if self.current_token and self.current_token.type == TokenType.DO:
+            self.advance()
+
+        body = self._parse_block_body()
+
+        if self.current_token and self.current_token.type == TokenType.END:
+            self.advance()
+        else:
+            self.error("Expected 'end' to close 'after each' block")
+
+        return AfterEachBlock(body=body, line_number=line_number)

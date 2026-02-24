@@ -641,3 +641,295 @@ def register_algorithms_functions(runtime: Runtime) -> None:
     runtime.register_function("algo_all_of", algo_all_of)
     runtime.register_function("algo_any_of", algo_any_of)
     runtime.register_function("algo_none_of", algo_none_of)
+
+    # Graph
+    runtime.register_function("algo_dfs", algo_dfs)
+    runtime.register_function("algo_bfs", algo_bfs)
+    runtime.register_function("algo_dijkstra", algo_dijkstra)
+    runtime.register_function("algo_topological_sort", algo_topological_sort)
+    runtime.register_function("algo_astar", algo_astar)
+
+    # String search
+    runtime.register_function("algo_kmp_search", algo_kmp_search)
+    runtime.register_function("algo_rabin_karp", algo_rabin_karp)
+
+
+# ---------------------------------------------------------------------------
+# Graph algorithms
+# ---------------------------------------------------------------------------
+#
+# Graphs are represented as dicts of adjacency lists:
+#   {"A": ["B", "C"], "B": ["D"], ...}
+# Weighted graphs use dicts of {neighbour: weight}:
+#   {"A": {"B": 1, "C": 4}, "B": {"D": 2}, ...}
+
+
+def algo_dfs(graph: dict, start, visited=None) -> list:
+    """
+    Depth-first search traversal.
+
+    Args:
+        graph: Adjacency dict  {node: [neighbour, ...]}
+        start: Starting node
+        visited: Set of already-visited nodes (optional, used for recursion)
+
+    Returns:
+        List of nodes in DFS visit order.
+    """
+    if visited is None:
+        visited = set()
+    result = []
+    stack = [start]
+    while stack:
+        node = stack.pop()
+        if node in visited:
+            continue
+        visited.add(node)
+        result.append(node)
+        neighbours = graph.get(node, [])
+        # reverse so left-most neighbour is visited first
+        if isinstance(neighbours, dict):
+            neighbours = list(neighbours.keys())
+        for nb in reversed(list(neighbours)):
+            if nb not in visited:
+                stack.append(nb)
+    return result
+
+
+def algo_bfs(graph: dict, start) -> list:
+    """
+    Breadth-first search traversal.
+
+    Args:
+        graph: Adjacency dict  {node: [neighbour, ...]}
+        start: Starting node
+
+    Returns:
+        List of nodes in BFS visit order.
+    """
+    from collections import deque
+    visited = set()
+    result = []
+    queue = deque([start])
+    visited.add(start)
+    while queue:
+        node = queue.popleft()
+        result.append(node)
+        neighbours = graph.get(node, [])
+        if isinstance(neighbours, dict):
+            neighbours = list(neighbours.keys())
+        for nb in neighbours:
+            if nb not in visited:
+                visited.add(nb)
+                queue.append(nb)
+    return result
+
+
+def algo_dijkstra(graph: dict, start) -> dict:
+    """
+    Dijkstra shortest-path algorithm.
+
+    Args:
+        graph: Weighted adjacency dict  {node: {neighbour: weight, ...}}
+        start: Source node
+
+    Returns:
+        Dict mapping each reachable node to its shortest distance from start.
+        Unreachable nodes are absent from the result.
+    """
+    import heapq
+    dist: dict = {start: 0}
+    heap = [(0, start)]
+    while heap:
+        d, u = heapq.heappop(heap)
+        if d > dist.get(u, float("inf")):
+            continue
+        neighbours = graph.get(u, {})
+        if isinstance(neighbours, list):
+            # Unweighted: treat each edge as weight 1
+            neighbours = {v: 1 for v in neighbours}
+        for v, w in neighbours.items():
+            nd = d + w
+            if nd < dist.get(v, float("inf")):
+                dist[v] = nd
+                heapq.heappush(heap, (nd, v))
+    return dist
+
+
+def algo_topological_sort(graph: dict) -> list:
+    """
+    Topological sort of a directed acyclic graph (Kahn's algorithm).
+
+    Args:
+        graph: Adjacency dict  {node: [neighbour, ...]}
+
+    Returns:
+        Topologically sorted list of nodes, or raises ValueError on cycle.
+    """
+    from collections import deque
+    in_degree: dict = {}
+    for node in graph:
+        if node not in in_degree:
+            in_degree[node] = 0
+        neighbours = graph[node]
+        if isinstance(neighbours, dict):
+            neighbours = list(neighbours.keys())
+        for nb in neighbours:
+            in_degree[nb] = in_degree.get(nb, 0) + 1
+
+    queue = deque(n for n, d in in_degree.items() if d == 0)
+    result = []
+    while queue:
+        node = queue.popleft()
+        result.append(node)
+        neighbours = graph.get(node, [])
+        if isinstance(neighbours, dict):
+            neighbours = list(neighbours.keys())
+        for nb in neighbours:
+            in_degree[nb] -= 1
+            if in_degree[nb] == 0:
+                queue.append(nb)
+
+    if len(result) != len(in_degree):
+        raise ValueError("Graph contains a cycle — topological sort not possible.")
+    return result
+
+
+def algo_astar(graph: dict, start, goal, heuristic=None) -> list:
+    """
+    A* shortest-path search.
+
+    Args:
+        graph    : Weighted adjacency dict  {node: {neighbour: weight, ...}}
+        start    : Start node
+        goal     : Goal node
+        heuristic: Function (node, goal) -> float (default: always 0, same as Dijkstra)
+
+    Returns:
+        List of nodes forming the shortest path from start to goal,
+        or an empty list if no path exists.
+    """
+    import heapq
+
+    if heuristic is None:
+        def heuristic(n, g):
+            return 0
+
+    g_score: dict = {start: 0}
+    came_from: dict = {}
+    open_set = [(heuristic(start, goal), 0, start)]
+
+    while open_set:
+        _, g, current = heapq.heappop(open_set)
+        if current == goal:
+            path = []
+            while current in came_from:
+                path.append(current)
+                current = came_from[current]
+            path.append(start)
+            path.reverse()
+            return path
+        if g > g_score.get(current, float("inf")):
+            continue
+        neighbours = graph.get(current, {})
+        if isinstance(neighbours, list):
+            neighbours = {nb: 1 for nb in neighbours}
+        for nb, w in neighbours.items():
+            tentative = g + w
+            if tentative < g_score.get(nb, float("inf")):
+                g_score[nb] = tentative
+                came_from[nb] = current
+                f = tentative + heuristic(nb, goal)
+                heapq.heappush(open_set, (f, tentative, nb))
+
+    return []  # No path found
+
+
+# ---------------------------------------------------------------------------
+# String search algorithms
+# ---------------------------------------------------------------------------
+
+
+def algo_kmp_search(text: str, pattern: str) -> list:
+    """
+    Knuth-Morris-Pratt substring search.
+
+    Args:
+        text    : The string to search in.
+        pattern : The pattern to search for.
+
+    Returns:
+        List of starting indices where pattern occurs in text.
+    """
+    if not pattern:
+        return list(range(len(text) + 1))
+    if not text:
+        return []
+
+    # Build failure function
+    m = len(pattern)
+    fail = [0] * m
+    j = 0
+    for i in range(1, m):
+        while j > 0 and pattern[i] != pattern[j]:
+            j = fail[j - 1]
+        if pattern[i] == pattern[j]:
+            j += 1
+        fail[i] = j
+
+    # Search
+    j = 0
+    results = []
+    for i, c in enumerate(text):
+        while j > 0 and c != pattern[j]:
+            j = fail[j - 1]
+        if c == pattern[j]:
+            j += 1
+        if j == m:
+            results.append(i - m + 1)
+            j = fail[j - 1]
+    return results
+
+
+def algo_rabin_karp(text: str, pattern: str, base: int = 31, mod: int = 10**9 + 7) -> list:
+    """
+    Rabin-Karp substring search using polynomial rolling hash.
+
+    Args:
+        text   : The string to search in.
+        pattern: The pattern to search for.
+        base   : Hash base (default: 31).
+        mod    : Hash modulus (default: 10^9+7).
+
+    Returns:
+        List of starting indices where pattern occurs in text.
+    """
+    n, m = len(text), len(pattern)
+    if m == 0:
+        return list(range(n + 1))
+    if m > n:
+        return []
+
+    # Precompute base^(m-1) mod P
+    bm = pow(base, m - 1, mod)
+
+    def _h(s: str) -> int:
+        h = 0
+        for ch in s:
+            h = (h * base + ord(ch)) % mod
+        return h
+
+    pat_hash = _h(pattern)
+    win_hash = _h(text[:m])
+    results = []
+
+    if win_hash == pat_hash and text[:m] == pattern:
+        results.append(0)
+
+    for i in range(1, n - m + 1):
+        win_hash = (win_hash - ord(text[i - 1]) * bm) % mod
+        win_hash = (win_hash * base + ord(text[i + m - 1])) % mod
+        if win_hash == pat_hash and text[i:i + m] == pattern:
+            results.append(i)
+
+    return results

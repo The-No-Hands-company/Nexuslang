@@ -1395,3 +1395,143 @@ class ConditionalCompilationBlock(ASTNode):
     def __str__(self):
         return (f"ConditionalCompilationBlock("
                 f"when {self.condition_type} is {self.condition_value!r})")
+
+
+# ---------------------------------------------------------------------------
+# Test framework nodes
+# ---------------------------------------------------------------------------
+
+class TestBlock(ASTNode):
+    """
+    A named test block.
+
+    Syntax:
+        test "name" do
+            ...
+        end
+
+    Attributes:
+        name        - string label for the test
+        body        - list of statements to execute as the test
+        line_number - source line
+    """
+    def __init__(self, name: str, body: list, line_number=None):
+        super().__init__("test_block", line_number)
+        self.name = name
+        self.body = body or []
+
+    def __str__(self):
+        return f"TestBlock({self.name!r}, {len(self.body)} statements)"
+
+
+class DescribeBlock(ASTNode):
+    """
+    A describe (test suite) block that groups related tests.
+
+    Syntax:
+        describe "SuiteName" do
+            ...
+        end
+
+    Attributes:
+        name        - suite label
+        body        - list of TestBlock / ItBlock / before_each / after_each nodes
+        line_number - source line
+    """
+    def __init__(self, name: str, body: list, line_number=None):
+        super().__init__("describe_block", line_number)
+        self.name = name
+        self.body = body or []
+
+    def __str__(self):
+        return f"DescribeBlock({self.name!r}, {len(self.body)} items)"
+
+
+class ItBlock(ASTNode):
+    """
+    An `it` behaviour block (alias for test, BDD-style).
+
+    Syntax:
+        it "should do something" do
+            ...
+        end
+
+    Attributes:
+        name        - behaviour description
+        body        - list of statements
+        line_number - source line
+    """
+    def __init__(self, name: str, body: list, line_number=None):
+        super().__init__("it_block", line_number)
+        self.name = name
+        self.body = body or []
+
+    def __str__(self):
+        return f"ItBlock({self.name!r}, {len(self.body)} statements)"
+
+
+class ParameterizedTestBlock(ASTNode):
+    """
+    A parameterized test that runs once for each set of inputs.
+
+    Syntax:
+        test "name" with cases
+            case (1, 2, 3)
+            case (4, 5, 9)
+        do
+            ...
+        end
+
+    Attributes:
+        name      - test label
+        params    - list of parameter name strings
+        cases     - list of case argument lists (each is a list of expressions)
+        body      - list of statements (can reference param names)
+        line_number
+    """
+    def __init__(self, name: str, params: list, cases: list, body: list,
+                 line_number=None):
+        super().__init__("parameterized_test_block", line_number)
+        self.name = name
+        self.params = params or []
+        self.cases = cases or []
+        self.body = body or []
+
+    def __str__(self):
+        return (f"ParameterizedTestBlock({self.name!r}, "
+                f"{len(self.cases)} cases, params={self.params})")
+
+
+class BeforeEachBlock(ASTNode):
+    """
+    Setup block run before each test in the enclosing describe block.
+
+    Syntax:
+        before each do
+            ...
+        end
+    """
+    def __init__(self, body: list, line_number=None):
+        super().__init__("before_each_block", line_number)
+        self.body = body or []
+
+    def __str__(self):
+        return f"BeforeEachBlock({len(self.body)} statements)"
+
+
+class AfterEachBlock(ASTNode):
+    """
+    Teardown block run after each test in the enclosing describe block.
+
+    Syntax:
+        after each do
+            ...
+        end
+    """
+    def __init__(self, body: list, line_number=None):
+        super().__init__("after_each_block", line_number)
+        self.body = body or []
+
+    def __str__(self):
+        return f"AfterEachBlock({len(self.body)} statements)"
+

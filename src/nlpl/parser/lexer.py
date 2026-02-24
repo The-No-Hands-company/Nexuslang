@@ -236,7 +236,15 @@ class TokenType(Enum):
     
     # Decorators
     AT = auto()  # @ symbol for decorators
-    
+
+    # Test framework
+    TEST = auto()        # `test "name" do ... end`
+    DESCRIBE = auto()   # `describe "suite" do ... end`
+    IT = auto()          # `it "behaviour" do ... end`
+    EXPECT = auto()     # `expect value to equal ...`
+    BEFORE_EACH = auto()  # `before each do ... end`
+    AFTER_EACH = auto()   # `after each do ... end`
+
     # Literals
     IDENTIFIER = auto()
     INTEGER_LITERAL = auto()
@@ -602,6 +610,14 @@ class Lexer:
             "assembly": TokenType.ASSEMBLY,
             "asm": TokenType.ASM,
             "inline assembly": TokenType.INLINE,
+
+            # Test framework
+            "test": TokenType.TEST,
+            "describe": TokenType.DESCRIBE,
+            "it": TokenType.IT,
+            "expect": TokenType.EXPECT,
+            "before each": TokenType.BEFORE_EACH,
+            "after each": TokenType.AFTER_EACH,
         }
     
     def scan_tokens(self) -> List[Token]:

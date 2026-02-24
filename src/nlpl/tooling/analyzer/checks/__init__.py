@@ -13,6 +13,9 @@ from .initialization import InitializationChecker
 from .type_safety import TypeSafetyChecker
 from .dead_code import DeadCodeChecker
 from .style import StyleChecker
+from .performance import PerformanceChecker
+from .security import SecurityChecker
+from .data_flow import DataFlowChecker
 
 __all__ = [
     'BaseChecker',
@@ -23,4 +26,7 @@ __all__ = [
     'TypeSafetyChecker',
     'DeadCodeChecker',
     'StyleChecker',
+    'PerformanceChecker',
+    'SecurityChecker',
+    'DataFlowChecker',
 ]

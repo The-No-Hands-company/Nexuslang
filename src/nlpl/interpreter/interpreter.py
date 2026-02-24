@@ -2006,6 +2006,217 @@ class Interpreter:
         finally:
             self._in_unsafe_context -= 1
 
+    # ---------------------------------------------------------------------------
+    # Native test framework execution
+    # ---------------------------------------------------------------------------
+
+    def _run_test_body(self, name: str, body: list,
+                       setup_stmts: list = None,
+                       teardown_stmts: list = None) -> dict:
+        """Execute one test case body and return a result dict.
+
+        Parameters
+        ----------
+        name : str
+            Human-readable test name for reporting.
+        body : list
+            Statement nodes forming the test body.
+        setup_stmts : list, optional
+            Statements to execute before the body (before-each).
+        teardown_stmts : list, optional
+            Statements to execute after the body regardless of outcome.
+
+        Returns
+        -------
+        dict with keys: name, passed (bool), error (str or None), duration (float)
+        """
+        import time
+        start = time.time()
+        error_msg = None
+        passed = False
+        self.enter_scope()
+        try:
+            if setup_stmts:
+                for stmt in setup_stmts:
+                    self.execute(stmt)
+            for stmt in body:
+                self.execute(stmt)
+            passed = True
+        except AssertionError as exc:
+            error_msg = str(exc)
+        except Exception as exc:
+            error_msg = f"{type(exc).__name__}: {exc}"
+        finally:
+            if teardown_stmts:
+                try:
+                    for stmt in teardown_stmts:
+                        self.execute(stmt)
+                except Exception as td_exc:
+                    if error_msg is None:
+                        error_msg = f"Teardown failed: {td_exc}"
+            self.exit_scope()
+        duration = time.time() - start
+        return {"name": name, "passed": passed, "error": error_msg,
+                "duration": duration}
+
+    def _print_test_summary(self, results: list, suite_name: str = ""):
+        """Print a test-run summary to stdout."""
+        total = len(results)
+        passed = sum(1 for r in results if r["passed"])
+        failed = total - passed
+        marker = "=" * 60
+        print(f"\n{marker}")
+        if suite_name:
+            print(f"Test suite: {suite_name}")
+        for r in results:
+            status = "PASS" if r["passed"] else "FAIL"
+            print(f"  [{status}] {r['name']} ({r['duration']:.3f}s)")
+            if r["error"]:
+                print(f"         {r['error']}")
+        print(f"{marker}")
+        rate = (passed / total * 100) if total else 0.0
+        print(f"Results: {passed}/{total} passed ({rate:.1f}%)")
+        if failed:
+            print(f"FAILURES: {failed} test(s) failed")
+        print()
+        return {"total": total, "passed": passed, "failed": failed}
+
+    def execute_test_block(self, node):
+        """Execute a named test block.
+
+        Syntax: test "name" do ... end
+        """
+        result = self._run_test_body(node.name, node.body)
+        self._print_test_summary([result])
+        return result
+
+    def execute_describe_block(self, node):
+        """Execute a describe (test suite) block.
+
+        Runs 'before each' / 'after each' hooks around each nested test/it block.
+        """
+        from ..parser.ast import (
+            BeforeEachBlock, AfterEachBlock, TestBlock, ItBlock,
+            ParameterizedTestBlock,
+        )
+
+        # Collect lifecycle hooks and test nodes from the body
+        setup_stmts: list = []
+        teardown_stmts: list = []
+        test_nodes: list = []
+
+        for item in node.body:
+            if isinstance(item, BeforeEachBlock):
+                setup_stmts = item.body
+            elif isinstance(item, AfterEachBlock):
+                teardown_stmts = item.body
+            elif isinstance(item, (TestBlock, ItBlock, ParameterizedTestBlock)):
+                test_nodes.append(item)
+            else:
+                # Non-test statements (variable declarations etc.) are executed
+                # as suite-level setup code.
+                self.execute(item)
+
+        results = []
+        for test_node in test_nodes:
+            if isinstance(test_node, ParameterizedTestBlock):
+                # Delegate to parameterized handler for each case
+                sub_results = self._run_parameterized_cases(
+                    test_node, setup_stmts, teardown_stmts
+                )
+                results.extend(sub_results)
+            else:
+                r = self._run_test_body(
+                    test_node.name, test_node.body, setup_stmts, teardown_stmts
+                )
+                results.append(r)
+
+        self._print_test_summary(results, suite_name=node.name)
+        return results
+
+    def execute_it_block(self, node):
+        """Execute a BDD-style 'it' specification block.
+
+        Functionally identical to execute_test_block; the different keyword
+        conveys intent only.
+        """
+        result = self._run_test_body(node.name, node.body)
+        self._print_test_summary([result])
+        return result
+
+    def execute_before_each_block(self, node):
+        """Execute a 'before each' block.
+
+        When encountered at the top level (outside a describe block) it runs
+        immediately as a plain statement sequence.  Inside a describe block it
+        is collected and used as setup only.
+        """
+        for stmt in node.body:
+            self.execute(stmt)
+        return None
+
+    def execute_after_each_block(self, node):
+        """Execute an 'after each' block at the top level (immediate run)."""
+        for stmt in node.body:
+            self.execute(stmt)
+        return None
+
+    def _run_parameterized_cases(self, node, setup_stmts: list,
+                                  teardown_stmts: list) -> list:
+        """Run each case of a parameterized test block and return result list."""
+        results = []
+        for idx, case_args in enumerate(node.cases):
+            case_label = f"{node.name} (case {idx + 1})"
+            evaluated_args = [self.execute(arg) for arg in case_args]
+
+            def _body_with_bindings(args=evaluated_args, params=node.params,
+                                    body=node.body):
+                if params:
+                    for name, value in zip(params, args):
+                        self.current_scope[-1][name] = value
+                for stmt in body:
+                    self.execute(stmt)
+
+            # Use _run_test_body mechanics manually so we keep scope handling
+            import time
+            start = time.time()
+            error_msg = None
+            passed = False
+            self.enter_scope()
+            try:
+                if setup_stmts:
+                    for stmt in setup_stmts:
+                        self.execute(stmt)
+                _body_with_bindings()
+                passed = True
+            except AssertionError as exc:
+                error_msg = str(exc)
+            except Exception as exc:
+                error_msg = f"{type(exc).__name__}: {exc}"
+            finally:
+                if teardown_stmts:
+                    try:
+                        for stmt in teardown_stmts:
+                            self.execute(stmt)
+                    except Exception as td_exc:
+                        if error_msg is None:
+                            error_msg = f"Teardown failed: {td_exc}"
+                self.exit_scope()
+            results.append({
+                "name": case_label,
+                "passed": passed,
+                "error": error_msg,
+                "duration": time.time() - start,
+            })
+        return results
+
+    def execute_parameterized_test_block(self, node):
+        """Execute a parameterized test block (standalone, outside describe)."""
+        results = self._run_parameterized_cases(node, [], [])
+        self._print_test_summary(results, suite_name=node.name)
+        return results
+
+
     def execute_extern_variable_declaration(self, node):
         """Execute an extern variable declaration.
         

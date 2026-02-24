@@ -105,12 +105,17 @@ class OptimizationPipeline:
 def create_optimization_pipeline(level: OptimizationLevel, verbose: bool = False) -> OptimizationPipeline:
     """
     Create a standard optimization pipeline for the given level.
-    
+
     O0: No optimizations
-    O1: Basic DCE, constant folding
-    O2: O1 + inlining, strength reduction, loop unrolling
-    O3: O2 + aggressive inlining, CSE, tail call optimization
-    Os: Optimize for code size
+    O1: Basic DCE, constant folding, dispatch hints, string interning
+    O2: O1 + inlining, strength reduction, loop unrolling, type specialization
+    O3: O2 + aggressive inlining, CSE, tail call optimization, all NLPL opts
+    Os: Optimize for code size (small inline threshold, aggressive DCE)
+
+    NLPL-specific passes added at each level:
+    - O1+: DispatchOptimizationPass (inline-cache hints, builtin lowering)
+    - O1+: StringInterningPass (intern repeated string literals)
+    - O2+: TypeSpecializationPass (specialize generics for known types)
     """
     from ..optimizer.dead_code_elimination import DeadCodeEliminationPass
     from ..optimizer.constant_folding import ConstantFoldingPass
@@ -119,28 +124,37 @@ def create_optimization_pipeline(level: OptimizationLevel, verbose: bool = False
     from ..optimizer.loop_unrolling import LoopUnrollingPass
     from ..optimizer.common_subexpression_elimination import CommonSubexpressionEliminationPass
     from ..optimizer.tail_call_optimization import TailCallOptimizationPass
-    
+    from ..optimizer.string_interning import StringInterningPass
+    from ..optimizer.type_specialization import TypeSpecializationPass
+    from ..optimizer.dispatch_optimization import DispatchOptimizationPass
+
     pipeline = OptimizationPipeline(level)
     pipeline.verbose = verbose
-    
+
     if level == OptimizationLevel.O0:
-        # No optimizations
+        # No optimizations – fastest compile, easiest debugging
         return pipeline
-    
+
     # O1 and above: basic optimizations
     if level.value >= OptimizationLevel.O1.value:
         pipeline.add_pass(ConstantFoldingPass())
         pipeline.add_pass(DeadCodeEliminationPass(aggressive=False))
-    
+        # NLPL-specific: annotate call sites with dispatch hints
+        pipeline.add_pass(DispatchOptimizationPass(enable_builtin_lowering=True))
+        # NLPL-specific: intern duplicate string literals
+        pipeline.add_pass(StringInterningPass(min_occurrences=2))
+
     # O2 and above: more optimizations
     if level.value >= OptimizationLevel.O2.value:
         pipeline.add_pass(StrengthReductionPass())
         pipeline.add_pass(LoopUnrollingPass(max_unroll_count=8))
         pipeline.add_pass(FunctionInliningPass(max_size=50))
         pipeline.add_pass(DeadCodeEliminationPass(aggressive=True))
+        # NLPL-specific: create type-specialized function variants
+        pipeline.add_pass(TypeSpecializationPass(min_calls=3))
         # Run constant folding again after transformations
         pipeline.add_pass(ConstantFoldingPass())
-    
+
     # O3: aggressive optimizations
     if level == OptimizationLevel.O3:
         pipeline.add_pass(CommonSubexpressionEliminationPass())
@@ -150,15 +164,35 @@ def create_optimization_pipeline(level: OptimizationLevel, verbose: bool = False
         pipeline.add_pass(StrengthReductionPass())
         pipeline.add_pass(DeadCodeEliminationPass(aggressive=True))
         pipeline.add_pass(ConstantFoldingPass())
-    
-    # Os: optimize for size
+        # Additional NLPL-specific: more aggressive specialization at O3
+        pipeline.add_pass(TypeSpecializationPass(min_calls=2, max_specs=8))
+        pipeline.add_pass(StringInterningPass(min_occurrences=1))
+
+    # Os: optimize for code size
     if level == OptimizationLevel.Os:
         pipeline.add_pass(ConstantFoldingPass())
         pipeline.add_pass(DeadCodeEliminationPass(aggressive=True))
         # Small inline threshold for size optimization
         pipeline.add_pass(FunctionInliningPass(max_size=20))
-    
+        # String interning reduces binary size
+        pipeline.add_pass(StringInterningPass(min_occurrences=2))
+
     return pipeline
+
+
+def int_to_opt_level(n: int) -> OptimizationLevel:
+    """Convert an integer (0-3) or special string to OptimizationLevel."""
+    mapping = {
+        0: OptimizationLevel.O0,
+        1: OptimizationLevel.O1,
+        2: OptimizationLevel.O2,
+        3: OptimizationLevel.O3,
+        4: OptimizationLevel.Os,
+        's': OptimizationLevel.Os,
+    }
+    if n not in mapping:
+        raise ValueError(f"Unknown optimization level: {n!r}. Use 0-3 or 's'.")
+    return mapping[n]
 
 
 # Export main classes
@@ -167,5 +201,6 @@ __all__ = [
     'OptimizationStats',
     'OptimizationPass',
     'OptimizationPipeline',
-    'create_optimization_pipeline'
+    'create_optimization_pipeline',
+    'int_to_opt_level',
 ]

@@ -339,11 +339,403 @@ def dict_get(target, key, default=None):
         raise TypeError(f"Cannot get key from type {type(target).__name__}")
 
 
+# ---------------------------------------------------------------------------
+# BTreeMap — ordered dictionary (sorted by key)
+# ---------------------------------------------------------------------------
+
+class BTreeMap(Generic[K, V]):
+    """
+    Ordered key-value map, sorted by key in ascending order.
+
+    Backed by a sorted list of (key, value) pairs for O(log n) lookups
+    via bisect, and O(n) inserts (acceptable for typical use cases).
+    """
+
+    def __init__(self) -> None:
+        import bisect as _bisect
+        self._bisect = _bisect
+        self._keys: list = []
+        self._vals: list = []
+
+    def insert(self, key, value) -> None:
+        """Insert or update a key."""
+        idx = self._bisect.bisect_left(self._keys, key)
+        if idx < len(self._keys) and self._keys[idx] == key:
+            self._vals[idx] = value
+        else:
+            self._keys.insert(idx, key)
+            self._vals.insert(idx, value)
+
+    def get(self, key, default=None):
+        """Return value for key, or default if not present."""
+        idx = self._bisect.bisect_left(self._keys, key)
+        if idx < len(self._keys) and self._keys[idx] == key:
+            return self._vals[idx]
+        return default
+
+    def remove(self, key) -> bool:
+        """Remove key, return True if it was present."""
+        idx = self._bisect.bisect_left(self._keys, key)
+        if idx < len(self._keys) and self._keys[idx] == key:
+            self._keys.pop(idx)
+            self._vals.pop(idx)
+            return True
+        return False
+
+    def contains_key(self, key) -> bool:
+        idx = self._bisect.bisect_left(self._keys, key)
+        return idx < len(self._keys) and self._keys[idx] == key
+
+    def keys(self) -> list:
+        return list(self._keys)
+
+    def values(self) -> list:
+        return list(self._vals)
+
+    def items(self) -> list:
+        return list(zip(self._keys, self._vals))
+
+    def len(self) -> int:
+        return len(self._keys)
+
+    def is_empty(self) -> bool:
+        return len(self._keys) == 0
+
+    def min_key(self):
+        return self._keys[0] if self._keys else None
+
+    def max_key(self):
+        return self._keys[-1] if self._keys else None
+
+    def __len__(self) -> int:
+        return len(self._keys)
+
+    def __repr__(self) -> str:
+        pairs = ", ".join(f"{k}: {v}" for k, v in zip(self._keys, self._vals))
+        return f"BTreeMap{{{pairs}}}"
+
+
+# ---------------------------------------------------------------------------
+# BTreeSet — ordered set
+# ---------------------------------------------------------------------------
+
+class BTreeSet(Generic[T]):
+    """Ordered set, sorted in ascending order. O(log n) lookup via bisect."""
+
+    def __init__(self) -> None:
+        import bisect as _bisect
+        self._bisect = _bisect
+        self._data: list = []
+
+    def insert(self, value) -> bool:
+        """Insert value. Returns True if newly inserted."""
+        idx = self._bisect.bisect_left(self._data, value)
+        if idx < len(self._data) and self._data[idx] == value:
+            return False
+        self._data.insert(idx, value)
+        return True
+
+    def remove(self, value) -> bool:
+        """Remove value. Returns True if it was present."""
+        idx = self._bisect.bisect_left(self._data, value)
+        if idx < len(self._data) and self._data[idx] == value:
+            self._data.pop(idx)
+            return True
+        return False
+
+    def contains(self, value) -> bool:
+        idx = self._bisect.bisect_left(self._data, value)
+        return idx < len(self._data) and self._data[idx] == value
+
+    def to_list(self) -> list:
+        return list(self._data)
+
+    def len(self) -> int:
+        return len(self._data)
+
+    def is_empty(self) -> bool:
+        return len(self._data) == 0
+
+    def min(self):
+        return self._data[0] if self._data else None
+
+    def max(self):
+        return self._data[-1] if self._data else None
+
+    def union(self, other: "BTreeSet") -> "BTreeSet":
+        result: BTreeSet = BTreeSet()
+        result._data = sorted(set(self._data) | set(other._data))
+        return result
+
+    def intersection(self, other: "BTreeSet") -> "BTreeSet":
+        result: BTreeSet = BTreeSet()
+        result._data = sorted(set(self._data) & set(other._data))
+        return result
+
+    def difference(self, other: "BTreeSet") -> "BTreeSet":
+        result: BTreeSet = BTreeSet()
+        result._data = sorted(set(self._data) - set(other._data))
+        return result
+
+    def __iter__(self):
+        return iter(self._data)
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def __repr__(self) -> str:
+        return f"BTreeSet{{{', '.join(repr(v) for v in self._data)}}}"
+
+
+# ---------------------------------------------------------------------------
+# LinkedList — doubly-linked list
+# ---------------------------------------------------------------------------
+
+class _LLNode:
+    __slots__ = ("value", "prev", "next")
+
+    def __init__(self, value) -> None:
+        self.value = value
+        self.prev: "_LLNode | None" = None
+        self.next: "_LLNode | None" = None
+
+
+class LinkedList(Generic[T]):
+    """
+    Doubly-linked list with O(1) push_front, push_back, pop_front, pop_back.
+    """
+
+    def __init__(self) -> None:
+        self._head: "_LLNode | None" = None
+        self._tail: "_LLNode | None" = None
+        self._size: int = 0
+
+    def push_back(self, value) -> None:
+        node = _LLNode(value)
+        if self._tail is None:
+            self._head = self._tail = node
+        else:
+            node.prev = self._tail
+            self._tail.next = node
+            self._tail = node
+        self._size += 1
+
+    def push_front(self, value) -> None:
+        node = _LLNode(value)
+        if self._head is None:
+            self._head = self._tail = node
+        else:
+            node.next = self._head
+            self._head.prev = node
+            self._head = node
+        self._size += 1
+
+    def pop_front(self):
+        if self._head is None:
+            raise IndexError("pop_front on empty LinkedList")
+        val = self._head.value
+        self._head = self._head.next
+        if self._head:
+            self._head.prev = None
+        else:
+            self._tail = None
+        self._size -= 1
+        return val
+
+    def pop_back(self):
+        if self._tail is None:
+            raise IndexError("pop_back on empty LinkedList")
+        val = self._tail.value
+        self._tail = self._tail.prev
+        if self._tail:
+            self._tail.next = None
+        else:
+            self._head = None
+        self._size -= 1
+        return val
+
+    def front(self):
+        if self._head is None:
+            return None
+        return self._head.value
+
+    def back(self):
+        if self._tail is None:
+            return None
+        return self._tail.value
+
+    def is_empty(self) -> bool:
+        return self._size == 0
+
+    def len(self) -> int:
+        return self._size
+
+    def to_list(self) -> list:
+        result = []
+        node = self._head
+        while node is not None:
+            result.append(node.value)
+            node = node.next
+        return result
+
+    def __iter__(self):
+        node = self._head
+        while node is not None:
+            yield node.value
+            node = node.next
+
+    def __len__(self) -> int:
+        return self._size
+
+    def __repr__(self) -> str:
+        return f"LinkedList([{', '.join(repr(v) for v in self)}])"
+
+
+# ---------------------------------------------------------------------------
+# VecDeque — double-ended queue (O(1) amortised push/pop both ends)
+# ---------------------------------------------------------------------------
+
+from collections import deque as _deque
+
+
+class VecDeque(Generic[T]):
+    """Double-ended queue backed by collections.deque."""
+
+    def __init__(self) -> None:
+        self._data: _deque = _deque()
+
+    def push_back(self, value) -> None:
+        self._data.append(value)
+
+    def push_front(self, value) -> None:
+        self._data.appendleft(value)
+
+    def pop_back(self):
+        if not self._data:
+            raise IndexError("pop_back on empty VecDeque")
+        return self._data.pop()
+
+    def pop_front(self):
+        if not self._data:
+            raise IndexError("pop_front on empty VecDeque")
+        return self._data.popleft()
+
+    def front(self):
+        return self._data[0] if self._data else None
+
+    def back(self):
+        return self._data[-1] if self._data else None
+
+    def get(self, index: int):
+        return self._data[index]
+
+    def len(self) -> int:
+        return len(self._data)
+
+    def is_empty(self) -> bool:
+        return len(self._data) == 0
+
+    def to_list(self) -> list:
+        return list(self._data)
+
+    def __iter__(self):
+        return iter(self._data)
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def __repr__(self) -> str:
+        return f"VecDeque([{', '.join(repr(v) for v in self._data)}])"
+
+
+# ---------------------------------------------------------------------------
+# MinHeap / MaxHeap — priority queues
+# ---------------------------------------------------------------------------
+
+import heapq as _heapq
+
+
+class MinHeap(Generic[T]):
+    """Min-heap priority queue. Smallest element is always at the top."""
+
+    def __init__(self) -> None:
+        self._data: list = []
+
+    def push(self, value) -> None:
+        _heapq.heappush(self._data, value)
+
+    def pop(self):
+        if not self._data:
+            raise IndexError("pop on empty MinHeap")
+        return _heapq.heappop(self._data)
+
+    def peek(self):
+        if not self._data:
+            return None
+        return self._data[0]
+
+    def len(self) -> int:
+        return len(self._data)
+
+    def is_empty(self) -> bool:
+        return len(self._data) == 0
+
+    def to_sorted_list(self) -> list:
+        return sorted(self._data)
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def __repr__(self) -> str:
+        return f"MinHeap(len={len(self._data)}, top={self.peek()!r})"
+
+
+class MaxHeap(Generic[T]):
+    """Max-heap priority queue. Largest element is always at the top."""
+
+    def __init__(self) -> None:
+        self._data: list = []  # Stores negated values for max semantics
+
+    def push(self, value) -> None:
+        _heapq.heappush(self._data, -value)
+
+    def pop(self):
+        if not self._data:
+            raise IndexError("pop on empty MaxHeap")
+        return -_heapq.heappop(self._data)
+
+    def peek(self):
+        if not self._data:
+            return None
+        return -self._data[0]
+
+    def len(self) -> int:
+        return len(self._data)
+
+    def is_empty(self) -> bool:
+        return len(self._data) == 0
+
+    def to_sorted_list(self) -> list:
+        return sorted((-x for x in self._data), reverse=True)
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def __repr__(self) -> str:
+        return f"MaxHeap(len={len(self._data)}, top={self.peek()!r})"
+
+
 def register_collections_functions(runtime):
     """Register collection constructors with runtime."""
     runtime.register_function("Vec", Vec)
     runtime.register_function("HashMap", HashMap)
     runtime.register_function("Set", Set)
+    runtime.register_function("BTreeMap", BTreeMap)
+    runtime.register_function("BTreeSet", BTreeSet)
+    runtime.register_function("LinkedList", LinkedList)
+    runtime.register_function("VecDeque", VecDeque)
+    runtime.register_function("MinHeap", MinHeap)
+    runtime.register_function("MaxHeap", MaxHeap)
     runtime.register_function("list_append", list_append)
     runtime.register_function("append", list_append)  # Alias
     runtime.register_function("dict_set", dict_set)
