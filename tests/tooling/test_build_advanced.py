@@ -719,3 +719,302 @@ class TestBuilderJobsOverride:
         with patch.object(Builder, "_find_compiler", return_value=Path("nlplc")):
             b = Builder(project)
         assert b._jobs == 4
+
+
+# ---------------------------------------------------------------------------
+# Integration: BuildSystem LTO wiring
+# ---------------------------------------------------------------------------
+
+from nlpl.tooling.builder import BuildSystem, BuildResult
+from nlpl.tooling.config import ProjectConfig, ProfileConfig, PackageConfig, BuildConfig
+
+
+def _make_build_system(tmp_path: Path, target: str = "c", lto: bool = False) -> BuildSystem:
+    """Create a minimal BuildSystem pointing at tmp_path."""
+    pkg = PackageConfig(name="testpkg", version="0.1.0")
+    build_cfg = BuildConfig(
+        source_dir=str(tmp_path / "src"),
+        output_dir=str(tmp_path / "build"),
+        target=target,
+    )
+    cfg = ProjectConfig(package=pkg, build=build_cfg)
+    cfg.profiles["dev"] = ProfileConfig(
+        name="dev", optimization=0, lto=lto
+    )
+    cfg.profiles["release"] = ProfileConfig(
+        name="release", optimization=3, lto=lto, strip=True
+    )
+    return BuildSystem(cfg)
+
+
+class TestBuildResultLTOFields:
+    """BuildResult carries LTO metadata correctly."""
+
+    def test_default_lto_fields_are_none(self):
+        r = BuildResult(success=True)
+        assert r.lto_output is None
+        assert r.lto_skipped_reason is None
+
+    def test_lto_output_set(self, tmp_path):
+        out = tmp_path / "mypkg"
+        r = BuildResult(success=True, lto_output=out)
+        assert r.lto_output == out
+
+    def test_lto_skipped_reason_set(self):
+        r = BuildResult(success=True, lto_skipped_reason="no .ll files")
+        assert "no .ll" in r.lto_skipped_reason
+
+    def test_print_summary_with_lto_output(self, tmp_path, capsys):
+        out = tmp_path / "mypkg"
+        r = BuildResult(success=True, files_compiled=2, elapsed=0.5, lto_output=out)
+        r.print_summary("mypkg", "release")
+        captured = capsys.readouterr().out
+        assert "LTO" in captured
+        assert "mypkg" in captured
+
+    def test_print_summary_with_lto_skipped(self, capsys):
+        r = BuildResult(
+            success=True, files_compiled=1, elapsed=0.1,
+            lto_skipped_reason="target is 'c'"
+        )
+        r.print_summary("mypkg", "dev")
+        captured = capsys.readouterr().out
+        assert "LTO skipped" in captured
+
+    def test_print_summary_no_lto_no_mention(self, capsys):
+        r = BuildResult(success=True, files_compiled=1, elapsed=0.1)
+        r.print_summary("mypkg", "dev")
+        captured = capsys.readouterr().out
+        assert "LTO" not in captured
+
+
+class TestBuildSystemRunLTOIfEnabled:
+    """Unit tests for BuildSystem._run_lto_if_enabled."""
+
+    def test_lto_disabled_returns_no_run(self, tmp_path):
+        bs = _make_build_system(tmp_path, target="llvm_ir", lto=False)
+        prof = bs.config.get_profile("dev")  # lto=False
+        ran, out, skip, errs, warns = bs._run_lto_if_enabled(prof, str(tmp_path), "pkg")
+        assert ran is False
+        assert out is None
+        assert skip is None
+        assert errs == []
+        assert warns == []
+
+    def test_lto_enabled_but_wrong_target_returns_skip_reason(self, tmp_path):
+        bs = _make_build_system(tmp_path, target="c", lto=True)
+        prof = ProfileConfig(name="release", optimization=3, lto=True)
+        ran, out, skip, errs, warns = bs._run_lto_if_enabled(prof, str(tmp_path), "pkg")
+        assert ran is False
+        assert out is None
+        assert skip is not None
+        assert "llvm_ir" in skip
+        assert errs == []
+
+    def test_lto_enabled_llvm_ir_no_ll_files_returns_skip(self, tmp_path):
+        bs = _make_build_system(tmp_path, target="llvm_ir", lto=True)
+        prof = ProfileConfig(name="release", optimization=3, lto=True)
+        ran, out, skip, errs, warns = bs._run_lto_if_enabled(
+            prof, str(tmp_path / "empty_dir"), "pkg"
+        )
+        assert ran is False
+        assert skip is not None
+        assert "no .ll" in skip
+
+    def test_lto_enabled_missing_tools_returns_errors(self, tmp_path):
+        out_dir = tmp_path / "build"
+        out_dir.mkdir()
+        (out_dir / "main.ll").write_text("; fake bitcode\n")
+
+        bs = _make_build_system(tmp_path, target="llvm_ir", lto=True)
+        prof = ProfileConfig(name="release", optimization=3, lto=True)
+
+        from nlpl.build.lto import LTOResult
+        with patch("nlpl.tooling.builder.LTOLinker") as MockLinker:
+            instance = MockLinker.return_value
+            instance.link_with_lto.return_value = LTOResult(
+                success=False, errors=["llvm-link not found"]
+            )
+            ran, out, skip, errs, warns = bs._run_lto_if_enabled(
+                prof, str(out_dir), "pkg"
+            )
+
+        assert ran is True
+        assert out is None
+        assert errs == ["llvm-link not found"]
+
+    def test_lto_enabled_success_path(self, tmp_path):
+        out_dir = tmp_path / "build"
+        out_dir.mkdir()
+        (out_dir / "main.ll").write_text("; fake bitcode\n")
+        (out_dir / "utils.ll").write_text("; fake bitcode 2\n")
+
+        bs = _make_build_system(tmp_path, target="llvm_ir", lto=True)
+        prof = ProfileConfig(name="release", optimization=3, lto=True)
+
+        final_out = out_dir / "pkg"
+        from nlpl.build.lto import LTOResult
+        with patch("nlpl.tooling.builder.LTOLinker") as MockLinker:
+            instance = MockLinker.return_value
+            instance.link_with_lto.return_value = LTOResult(
+                success=True, output_file=final_out
+            )
+            ran, out, skip, errs, warns = bs._run_lto_if_enabled(
+                prof, str(out_dir), "pkg"
+            )
+
+        assert ran is True
+        assert out == final_out
+        assert skip is None
+        assert errs == []
+
+    def test_lto_uses_thin_for_opt_lt_3(self, tmp_path):
+        out_dir = tmp_path / "build"
+        out_dir.mkdir()
+        (out_dir / "a.ll").write_text("; bit\n")
+
+        bs = _make_build_system(tmp_path, target="llvm_ir", lto=True)
+        prof = ProfileConfig(name="dev", optimization=1, lto=True)
+
+        from nlpl.build.lto import LTOResult, LTOMode
+        captured_config = {}
+
+        def capture_link(bitcode_files, output, work_dir=None):
+            captured_config["mode"] = MockLinker.call_args[0][0].mode
+            return LTOResult(success=True, output_file=output)
+
+        with patch("nlpl.tooling.builder.LTOLinker") as MockLinker:
+            instance = MockLinker.return_value
+            instance.link_with_lto.side_effect = capture_link
+            bs._run_lto_if_enabled(prof, str(out_dir), "pkg")
+
+        # LTOLinker was constructed with THIN mode for opt_level < 3
+        ctor_config = MockLinker.call_args[0][0]
+        assert ctor_config.mode == LTOMode.THIN
+
+    def test_lto_uses_full_for_opt_3(self, tmp_path):
+        out_dir = tmp_path / "build"
+        out_dir.mkdir()
+        (out_dir / "a.ll").write_text("; bit\n")
+
+        bs = _make_build_system(tmp_path, target="llvm_ir", lto=True)
+        prof = ProfileConfig(name="release", optimization=3, lto=True)
+
+        from nlpl.build.lto import LTOResult, LTOMode
+        with patch("nlpl.tooling.builder.LTOLinker") as MockLinker:
+            instance = MockLinker.return_value
+            instance.link_with_lto.return_value = LTOResult(success=True, output_file=out_dir / "pkg")
+            bs._run_lto_if_enabled(prof, str(out_dir), "pkg")
+
+        ctor_config = MockLinker.call_args[0][0]
+        assert ctor_config.mode == LTOMode.FULL
+
+    def test_lto_strip_debug_follows_profile(self, tmp_path):
+        out_dir = tmp_path / "build"
+        out_dir.mkdir()
+        (out_dir / "a.ll").write_text("; bit\n")
+
+        bs = _make_build_system(tmp_path, target="llvm_ir", lto=True)
+        prof = ProfileConfig(name="release", optimization=3, lto=True, strip=True)
+
+        from nlpl.build.lto import LTOResult
+        with patch("nlpl.tooling.builder.LTOLinker") as MockLinker:
+            instance = MockLinker.return_value
+            instance.link_with_lto.return_value = LTOResult(
+                success=True, output_file=out_dir / "pkg"
+            )
+            bs._run_lto_if_enabled(prof, str(out_dir), "pkg")
+
+        ctor_config = MockLinker.call_args[0][0]
+        assert ctor_config.strip_debug is True
+
+    def test_lto_passes_all_ll_files(self, tmp_path):
+        out_dir = tmp_path / "build"
+        out_dir.mkdir()
+        sub = out_dir / "sub"
+        sub.mkdir()
+        (out_dir / "a.ll").write_text("; 1\n")
+        (out_dir / "b.ll").write_text("; 2\n")
+        (sub / "c.ll").write_text("; 3\n")
+
+        bs = _make_build_system(tmp_path, target="llvm_ir", lto=True)
+        prof = ProfileConfig(name="release", optimization=3, lto=True)
+
+        from nlpl.build.lto import LTOResult
+        with patch("nlpl.tooling.builder.LTOLinker") as MockLinker:
+            instance = MockLinker.return_value
+            instance.link_with_lto.return_value = LTOResult(
+                success=True, output_file=out_dir / "pkg"
+            )
+            bs._run_lto_if_enabled(prof, str(out_dir), "pkg")
+
+        call_args = instance.link_with_lto.call_args
+        passed_files = call_args[1]["bitcode_files"] if call_args[1] else call_args[0][0]
+        assert len(passed_files) == 3
+
+
+class TestBuildResultLTOIntegration:
+    """Verify that _build_internal populates BuildResult LTO fields."""
+
+    def _make_project_config(self, tmp_path: Path, target: str, lto: bool) -> ProjectConfig:
+        src_dir = tmp_path / "src"
+        src_dir.mkdir(parents=True, exist_ok=True)
+        (src_dir / "main.nlpl").write_text('print text "hello"\n')
+        build_dir = tmp_path / "build"
+
+        pkg = PackageConfig(name="mypkg", version="0.1.0")
+        build_cfg = BuildConfig(
+            source_dir=str(src_dir),
+            output_dir=str(build_dir),
+            target=target,
+        )
+        cfg = ProjectConfig(package=pkg, build=build_cfg)
+        cfg.profiles["dev"] = ProfileConfig(name="dev", optimization=0, lto=lto)
+        cfg.profiles["release"] = ProfileConfig(
+            name="release", optimization=3, lto=lto, strip=False
+        )
+        return cfg
+
+    def test_lto_disabled_result_has_no_lto_info(self, tmp_path):
+        cfg = self._make_project_config(tmp_path, target="c", lto=False)
+        bs = BuildSystem(cfg)
+        result = bs._build_internal(
+            release=False, profile=None, features=None,
+            jobs=1, clean=False, check_only=False, optimize_bounds_checks=False,
+        )
+        assert result.lto_output is None
+        assert result.lto_skipped_reason is None
+
+    def test_lto_enabled_wrong_target_sets_skip_reason(self, tmp_path):
+        cfg = self._make_project_config(tmp_path, target="c", lto=True)
+        bs = BuildSystem(cfg)
+        result = bs._build_internal(
+            release=False, profile=None, features=None,
+            jobs=1, clean=False, check_only=False, optimize_bounds_checks=False,
+        )
+        # LTO enabled but target is 'c', not 'llvm_ir' — skip reason set
+        assert result.lto_skipped_reason is not None
+        assert "llvm_ir" in result.lto_skipped_reason
+        # The build should still succeed
+        assert result.success is True
+
+    def test_lto_enabled_llvm_ir_target_skips_gracefully_without_ll_files(self, tmp_path):
+        """When compilation fails to produce .ll files (mocked), LTO is skipped."""
+        cfg = self._make_project_config(tmp_path, target="llvm_ir", lto=True)
+        bs = BuildSystem(cfg)
+
+        # Mock _compile_one to succeed without actually writing .ll files
+        def fake_compile(source_path, out_dir, prof, features, check_only, opt_bounds):
+            return source_path, True, []
+
+        with patch.object(bs, "_compile_one", side_effect=fake_compile):
+            result = bs._build_internal(
+                release=False, profile=None, features=None,
+                jobs=1, clean=False, check_only=False, optimize_bounds_checks=False,
+            )
+
+        # Should succeed (compilation ok) but LTO skipped (no .ll files produced)
+        assert result.success is True
+        assert result.lto_output is None
+        assert result.lto_skipped_reason is not None
+        assert "no .ll" in result.lto_skipped_reason

@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from .config import ProjectConfig, ProfileConfig
 from .build_script import BuildScriptResult, run_build_script
 from ..compiler import Compiler, CompilerOptions, CompilationTarget
+from ..build.lto import LTOConfig, LTOLinker, LTOMode, LTOResult
 from ..parser.lexer import Lexer
 from ..parser.parser import Parser
 
@@ -116,13 +117,21 @@ class BuildResult:
     files_compiled: int = 0
     files_cached: int = 0
     elapsed: float = 0.0
+    # LTO fields (populated when prof.lto=True and target=llvm_ir)
+    lto_output: Optional[Path] = None
+    lto_skipped_reason: Optional[str] = None
 
     def print_summary(self, project_name: str, profile: str) -> None:
         status = "Finished" if self.success else "Failed"
         cached_note = f" ({self.files_cached} cached)" if self.files_cached else ""
+        lto_note = ""
+        if self.lto_output:
+            lto_note = f", LTO -> {self.lto_output.name}"
+        elif self.lto_skipped_reason:
+            lto_note = f" [LTO skipped: {self.lto_skipped_reason}]"
         print(
             f"  {status} [{profile}] {project_name!r} in {self.elapsed:.2f}s"
-            f" — {self.files_compiled} compiled{cached_note}"
+            f" — {self.files_compiled} compiled{cached_note}{lto_note}"
         )
         for err in self.errors:
             print(f"  error: {err}")
@@ -580,6 +589,18 @@ class BuildSystem:
         # Persist updated cache entries
         cache.save()
 
+        # LTO: after successful compilation, run whole-program optimization
+        lto_output: Optional[Path] = None
+        lto_skip_reason: Optional[str] = None
+        if not check_only and not all_errors:
+            ran_lto, lto_output, lto_skip_reason, lto_errors, lto_warnings = \
+                self._run_lto_if_enabled(prof, out_dir, self.config.package.name)
+            if ran_lto:
+                all_errors.extend(lto_errors)
+                all_warnings.extend(lto_warnings)
+                if lto_errors:
+                    lto_output = None
+
         # Link multi-file C/C++ projects when more than one file compiled
         if (
             not check_only
@@ -596,6 +617,8 @@ class BuildSystem:
             files_compiled=compiled_ok,
             files_cached=cached_count,
             elapsed=time.monotonic() - t0,
+            lto_output=lto_output,
+            lto_skipped_reason=lto_skip_reason,
         )
 
     def _run_build_script_if_present(
@@ -658,6 +681,61 @@ class BuildSystem:
             force=clean,
         )
         return result
+
+    # ------------------------------------------------------------------
+    # LTO integration
+    # ------------------------------------------------------------------
+
+    def _run_lto_if_enabled(
+        self,
+        prof: ProfileConfig,
+        out_dir: str,
+        pkg_name: str,
+    ) -> Tuple[bool, Optional[Path], Optional[str], List[str], List[str]]:
+        """Run LTO pipeline when the profile has lto=True and target is llvm_ir.
+
+        Returns:
+            (ran_lto, lto_output_path, skip_reason, extra_errors, extra_warnings)
+        """
+        if not prof.lto:
+            return False, None, None, [], []
+
+        if self.config.build.target not in ("llvm_ir", CompilationTarget.LLVM_IR):
+            reason = (
+                f"LTO requested but target is '{self.config.build.target}'; "
+                "LTO requires target='llvm_ir'"
+            )
+            return False, None, reason, [], []
+
+        # Collect all emitted .ll bitcode files
+        ll_files = [
+            Path(p)
+            for p in glob.glob(os.path.join(out_dir, "**/*.ll"), recursive=True)
+        ]
+        if not ll_files:
+            return False, None, "no .ll bitcode files found after compilation", [], []
+
+        # Choose ThinLTO for opt<3, Full LTO for O3
+        mode = LTOMode.FULL if prof.optimization >= 3 else LTOMode.THIN
+        lto_cfg = LTOConfig(
+            mode=mode,
+            opt_level=prof.optimization,
+            strip_debug=prof.strip,
+            internalize=True,
+        )
+        linker = LTOLinker(lto_cfg)
+        lto_out = Path(out_dir) / pkg_name
+        result: LTOResult = linker.link_with_lto(
+            bitcode_files=ll_files,
+            output=lto_out,
+            work_dir=Path(out_dir),
+        )
+        if result.success:
+            print(
+                f"  LTO ({mode.value}): linked {len(ll_files)} module(s) "
+                f"-> {lto_out.name}"
+            )
+        return True, result.output_file, None, result.errors, result.warnings
 
     def _maybe_link(self, out_dir: str, errors: List[str]) -> None:
         """Attempt to link compiled C/C++ objects into a single executable."""
