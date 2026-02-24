@@ -14,13 +14,13 @@ from enum import Enum
 
 
 try:
-    import tomli as toml  # Python 3.11+
+    import tomllib as toml  # stdlib (Python 3.11+)
 except ImportError:
     try:
-        import toml  # Fallback for older Python
+        import tomli as toml  # type: ignore[no-redef]  # backport
     except ImportError:
         raise ImportError(
-            "TOML parser not available. Install with: pip install tomli"
+            "TOML parser not available. On Python < 3.11 install with: pip install tomli"
         )
 
 

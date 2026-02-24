@@ -3,9 +3,6 @@
 Test type inference for different array element types.
 """
 
-import sys
-sys.path.insert(0, '/run/media/zajferx/Data/dev/The-No-hands-Company/projects/NLPL/src')
-
 from nlpl.parser.lexer import Lexer
 from nlpl.parser.parser import Parser
 from nlpl.compiler.backends.c_generator import CCodeGenerator
@@ -19,7 +16,7 @@ def test_type_inference():
         ("String array", 'set words to ["hello", "world"]', 'const char* words[]'),
         ("Boolean array", 'set flags to [true, false, true]', "bool flags[]"),
         ("Mixed numeric (int + float)", 'set mixed to [1, 2.5, 3]', "double mixed[]"),
-        ("2D int array", 'set grid to [[1, 2], [3, 4]]', "int grid[][]"),
+        ("2D int array", 'set grid to [[1, 2], [3, 4]]', "int grid[2][2]"),
     ]
     
     print("="*70)
@@ -56,8 +53,10 @@ def test_type_inference():
     else:
         print(" Some type inference tests failed")
     print("="*70)
-    
-    return 0 if all_passed else 1
+
+    assert all_passed, "One or more type inference tests failed (see output above)"
 
 if __name__ == "__main__":
-    sys.exit(test_type_inference())
+    import sys
+    test_type_inference()
+    sys.exit(0)

@@ -5,7 +5,10 @@ Handles nlpl.toml project files, dependencies, and build configurations.
 """
 
 import os
-import tomli
+try:
+    import tomllib as tomli  # stdlib (Python 3.11+)
+except ImportError:
+    import tomli  # type: ignore[no-redef]  # backport
 import tomli_w
 from pathlib import Path
 from typing import Dict, List, Optional, Any

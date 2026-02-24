@@ -1,2 +1,3 @@
 # NLPL Compiler Dependencies
 psutil>=5.9.0
+tomli-w>=1.0.0  # TOML writer (stdlib tomllib handles reading on Python 3.11+)

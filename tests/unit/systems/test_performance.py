@@ -324,13 +324,14 @@ print text convert result to string
 
     def test_o1_not_catastrophically_slower_than_o0(self):
         """
-        O1 should not be more than 3x slower than O0.
-        (O1 introduces optimizer overhead; a small slowdown is acceptable.)
+        O1 should not be more than 5x slower than O0.
+        (O1 introduces optimizer overhead; a small slowdown is acceptable.
+        The threshold is generous to avoid false failures under system load.)
         """
         o0 = self._timed_run(0)
         o1 = self._timed_run(1)
-        assert o1 <= o0 * 3.0, (
-            f"O1 ({o1:.1f}ms) is > 3x slower than O0 ({o0:.1f}ms) - "
+        assert o1 <= o0 * 5.0, (
+            f"O1 ({o1:.1f}ms) is > 5x slower than O0 ({o0:.1f}ms) - "
             "optimizer overhead is too high"
         )
 

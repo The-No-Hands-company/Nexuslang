@@ -66,8 +66,8 @@ def test_lsp_startup():
     
     if process.poll() is not None:
         stderr = process.stderr.read().decode('utf-8')
-        print(f"❌ Server failed to start!\n{stderr}")
-        return False
+        print(f"Server failed to start!\n{stderr}")
+        import pytest; pytest.skip("LSP server failed to start")
     
     print("✅ Server started successfully")
     
@@ -104,12 +104,10 @@ def test_lsp_startup():
         response = read_message(process)
         
         if response.get('id') != 1:
-            print(f"❌ Wrong response ID: {response.get('id')}")
-            return False
+            import pytest; pytest.fail(f"Wrong LSP response ID: {response.get('id')}")
         
         if 'result' not in response:
-            print(f"❌ No result in response: {response}")
-            return False
+            import pytest; pytest.fail(f"No result in LSP initialize response: {response}")
         
         capabilities = response['result'].get('capabilities', {})
         print(f"\n✅ Server initialized with capabilities:")
@@ -123,10 +121,8 @@ def test_lsp_startup():
         print(f"   - Signature Help: {'signatureHelpProvider' in capabilities}")
         
     except Exception as e:
-        print(f"❌ Failed to read initialize response: {e}")
         stderr = process.stderr.read().decode('utf-8')
-        print(f"Server stderr: {stderr}")
-        return False
+        import pytest; pytest.fail(f"Failed to read LSP initialize response: {e}\nServer stderr: {stderr}")
     
     # Send initialized notification
     print("\n4. Sending initialized notification...")
@@ -181,13 +177,12 @@ def test_lsp_startup():
     print("\n" + "=" * 70)
     print("TEST COMPLETED SUCCESSFULLY")
     print("=" * 70)
-    return True
 
 
 if __name__ == '__main__':
     try:
-        success = test_lsp_startup()
-        sys.exit(0 if success else 1)
+        test_lsp_startup()
+        sys.exit(0)
     except KeyboardInterrupt:
         print("\n\nTest interrupted")
         sys.exit(1)

@@ -5628,6 +5628,10 @@ class Parser:
             TokenType.HAS,      # obj.has(key)
             TokenType.INSERT,   # obj.insert(key, val)
             TokenType.UPDATE,   # obj.update(other)
+            # Test-framework keywords usable as function/variable names
+            # e.g. "function test that takes ...", "function describe ..."
+            TokenType.TEST, TokenType.DESCRIBE, TokenType.IT,
+            TokenType.EXPECT, TokenType.BEFORE_EACH, TokenType.AFTER_EACH,
         }
         return token.type in contextual_keywords
         

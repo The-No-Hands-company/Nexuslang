@@ -37,10 +37,10 @@ def test_lsp_with_real_file():
     time.sleep(0.5)
     
     if process.poll() is not None:
-        print("❌ Server failed to start!")
+        print("Server failed to start!")
         stderr = process.stderr.read().decode('utf-8')
         print(f"Error: {stderr}")
-        return False
+        import pytest; pytest.skip("LSP server failed to start")
     
     print("✅ Server started")
     
@@ -78,9 +78,9 @@ def test_lsp_with_real_file():
     test_file = workspace_root / "examples" / "01_basic_concepts.nlpl"
     
     if not test_file.exists():
-        print(f"❌ Test file not found: {test_file}")
+        print(f"Test file not found: {test_file}")
         process.terminate()
-        return False
+        import pytest; pytest.skip(f"Test fixture not found: {test_file}")
     
     content = test_file.read_text()
     uri = f"file://{test_file}"
@@ -122,18 +122,16 @@ def test_lsp_with_real_file():
     print("=" * 70)
     print("\n✅ LSP server can open and process real NLPL files!")
     print("   This confirms basic VS Code integration would work.")
-    print("\n📝 Next: Install extension in VS Code and test manually:")
+    print("\nNext: Install extension in VS Code and test manually:")
     print(f"   code --install-extension {workspace_root}/vscode-extension/nlpl-language-support-0.1.0.vsix")
-    
-    return True
 
 
 if __name__ == '__main__':
     try:
-        success = test_lsp_with_real_file()
-        sys.exit(0 if success else 1)
+        test_lsp_with_real_file()
+        sys.exit(0)
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\nError: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

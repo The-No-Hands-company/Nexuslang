@@ -224,8 +224,8 @@ def test_goto_definition_cross_file():
     module_b_path = test_dir / "test_module_b.nlpl"
     
     if not module_a_path.exists() or not module_b_path.exists():
-        print("❌ Test files not found!")
-        return False
+        print("Test files not found!")
+        import pytest; pytest.skip("LSP fixture files test_module_a/b.nlpl not found")
         
     module_a_content = module_a_path.read_text()
     module_b_content = module_b_path.read_text()
@@ -296,7 +296,6 @@ def test_goto_definition_cross_file():
     
     client.shutdown()
     print("\n" + "=" * 70)
-    return True
 
 
 if __name__ == '__main__':
