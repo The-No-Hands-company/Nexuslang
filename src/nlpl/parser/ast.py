@@ -1535,3 +1535,110 @@ class AfterEachBlock(ASTNode):
     def __str__(self):
         return f"AfterEachBlock({len(self.body)} statements)"
 
+
+class ExpectStatement(ASTNode):
+    """
+    Assertion statement for the NLPL test framework.
+
+    Syntax examples:
+        expect x to equal 5
+        expect x to not equal 5
+        expect x to be greater than 3
+        expect x to be less than 10
+        expect x to be greater than or equal to 0
+        expect x to be less than or equal to 100
+        expect x to contain "hello"
+        expect x to be true
+        expect x to be false
+        expect x to be null
+        expect x to not be null
+        expect x to be approximately equal to 3.14 within 0.01
+
+    Attributes
+    ----------
+    actual_expr : ASTNode
+        Expression under test.
+    matcher : str
+        One of: "equal", "greater_than", "less_than",
+        "greater_than_or_equal_to", "less_than_or_equal_to",
+        "contain", "be_true", "be_false", "be_null", "approximately_equal".
+    expected_expr : ASTNode or None
+        The expected value (None for "be_true", "be_false", "be_null").
+    negated : bool
+        True when "not" appears before the matcher (e.g. "not equal").
+    tolerance_expr : ASTNode or None
+        Tolerance for "approximately_equal" matcher (the WITHIN value).
+    """
+    def __init__(self, actual_expr, matcher: str, expected_expr=None,
+                 negated: bool = False, tolerance_expr=None, line_number=None):
+        super().__init__("expect_statement", line_number)
+        self.actual_expr = actual_expr
+        self.matcher = matcher
+        self.expected_expr = expected_expr
+        self.negated = negated
+        self.tolerance_expr = tolerance_expr
+
+    def __str__(self):
+        neg = " not" if self.negated else ""
+        return f"ExpectStatement(<expr>{neg} {self.matcher} <expected>)"
+
+
+class RequireStatement(ASTNode):
+    """
+    Contract precondition statement.
+
+    Syntax:
+        require <condition>
+        require <condition> message "explanation"
+
+    Checked at the beginning of a function.  Raises ContractError when
+    the condition evaluates to False.
+    """
+    def __init__(self, condition, message_expr=None, line_number=None):
+        super().__init__("require_statement", line_number)
+        self.condition = condition
+        self.message_expr = message_expr
+
+    def __str__(self):
+        return f"RequireStatement(<condition>)"
+
+
+class EnsureStatement(ASTNode):
+    """
+    Contract postcondition statement.
+
+    Syntax:
+        ensure <condition>
+        ensure <condition> message "explanation"
+
+    Checked at the end of a function (or at the ensure keyword position
+    for inline use).  Raises ContractError when the condition evaluates
+    to False.
+    """
+    def __init__(self, condition, message_expr=None, line_number=None):
+        super().__init__("ensure_statement", line_number)
+        self.condition = condition
+        self.message_expr = message_expr
+
+    def __str__(self):
+        return f"EnsureStatement(<condition>)"
+
+
+class GuaranteeStatement(ASTNode):
+    """
+    Contract invariant assertion statement.
+
+    Syntax:
+        guarantee <condition>
+        guarantee <condition> message "explanation"
+
+    Raises ContractError immediately when the condition is False.
+    """
+    def __init__(self, condition, message_expr=None, line_number=None):
+        super().__init__("guarantee_statement", line_number)
+        self.condition = condition
+        self.message_expr = message_expr
+
+    def __str__(self):
+        return f"GuaranteeStatement(<condition>)"
+

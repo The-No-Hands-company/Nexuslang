@@ -2161,6 +2161,180 @@ class Interpreter:
             self.execute(stmt)
         return None
 
+    # ------------------------------------------------------------------
+    # Assertion library (expect statements)
+    # ------------------------------------------------------------------
+
+    def execute_expect_statement(self, node):
+        """Execute an expect assertion statement.
+
+        Raises AssertionError on failure so that _run_test_body can catch it.
+        When used outside a test block the AssertionError propagates to the
+        caller (normal Python assertion semantics).
+        """
+        actual = self.execute(node.actual_expr)
+        matcher = node.matcher
+        negated = node.negated
+
+        def _fail(msg: str):
+            raise AssertionError(msg)
+
+        if matcher == "equal":
+            expected = self.execute(node.expected_expr)
+            passed = (actual == expected)
+            if negated:
+                passed = not passed
+            if not passed:
+                if negated:
+                    _fail(f"Expected {actual!r} not to equal {expected!r}")
+                else:
+                    _fail(f"Expected {actual!r} to equal {expected!r}")
+
+        elif matcher == "greater_than":
+            expected = self.execute(node.expected_expr)
+            passed = (actual > expected)
+            if negated:
+                passed = not passed
+            if not passed:
+                qual = "not " if negated else ""
+                _fail(f"Expected {actual!r} {qual}to be greater than {expected!r}")
+
+        elif matcher == "less_than":
+            expected = self.execute(node.expected_expr)
+            passed = (actual < expected)
+            if negated:
+                passed = not passed
+            if not passed:
+                qual = "not " if negated else ""
+                _fail(f"Expected {actual!r} {qual}to be less than {expected!r}")
+
+        elif matcher == "greater_than_or_equal_to":
+            expected = self.execute(node.expected_expr)
+            passed = (actual >= expected)
+            if negated:
+                passed = not passed
+            if not passed:
+                qual = "not " if negated else ""
+                _fail(f"Expected {actual!r} {qual}to be >= {expected!r}")
+
+        elif matcher == "less_than_or_equal_to":
+            expected = self.execute(node.expected_expr)
+            passed = (actual <= expected)
+            if negated:
+                passed = not passed
+            if not passed:
+                qual = "not " if negated else ""
+                _fail(f"Expected {actual!r} {qual}to be <= {expected!r}")
+
+        elif matcher == "contain":
+            expected = self.execute(node.expected_expr)
+            try:
+                passed = (expected in actual)
+            except TypeError:
+                passed = False
+            if negated:
+                passed = not passed
+            if not passed:
+                qual = "not " if negated else ""
+                _fail(f"Expected {actual!r} {qual}to contain {expected!r}")
+
+        elif matcher == "be_true":
+            passed = bool(actual)
+            if negated:
+                passed = not passed
+            if not passed:
+                qual = "not " if negated else ""
+                _fail(f"Expected {actual!r} {qual}to be true")
+
+        elif matcher == "be_false":
+            passed = not bool(actual)
+            if negated:
+                passed = not passed
+            if not passed:
+                qual = "not " if negated else ""
+                _fail(f"Expected {actual!r} {qual}to be false")
+
+        elif matcher == "be_null":
+            passed = (actual is None)
+            if negated:
+                passed = not passed
+            if not passed:
+                qual = "not " if negated else ""
+                _fail(f"Expected value {qual}to be null, got {actual!r}")
+
+        elif matcher == "approximately_equal":
+            expected = self.execute(node.expected_expr)
+            if node.tolerance_expr is not None:
+                tolerance = self.execute(node.tolerance_expr)
+            else:
+                tolerance = 1e-9
+            try:
+                passed = abs(actual - expected) <= tolerance
+            except TypeError:
+                passed = False
+            if negated:
+                passed = not passed
+            if not passed:
+                qual = "not " if negated else ""
+                _fail(
+                    f"Expected {actual!r} {qual}to be approximately equal to "
+                    f"{expected!r} within {tolerance!r}"
+                )
+
+        else:
+            raise RuntimeError(f"Unknown expect matcher: {matcher!r}")
+
+        return None
+
+    # ------------------------------------------------------------------
+    # Contract programming (require / ensure / guarantee)
+    # ------------------------------------------------------------------
+
+    def execute_require_statement(self, node):
+        """Execute a 'require' contract precondition.
+
+        Raises NLPLContractError when the condition is False.
+        """
+        from ..errors import NLPLContractError
+        cond = self.execute(node.condition)
+        if not cond:
+            if node.message_expr is not None:
+                msg = str(self.execute(node.message_expr))
+            else:
+                msg = "Precondition failed (require)"
+            raise NLPLContractError(msg, contract_kind="require")
+        return None
+
+    def execute_ensure_statement(self, node):
+        """Execute an 'ensure' contract postcondition.
+
+        Raises NLPLContractError when the condition is False.
+        """
+        from ..errors import NLPLContractError
+        cond = self.execute(node.condition)
+        if not cond:
+            if node.message_expr is not None:
+                msg = str(self.execute(node.message_expr))
+            else:
+                msg = "Postcondition failed (ensure)"
+            raise NLPLContractError(msg, contract_kind="ensure")
+        return None
+
+    def execute_guarantee_statement(self, node):
+        """Execute a 'guarantee' contract invariant assertion.
+
+        Raises NLPLContractError when the condition is False.
+        """
+        from ..errors import NLPLContractError
+        cond = self.execute(node.condition)
+        if not cond:
+            if node.message_expr is not None:
+                msg = str(self.execute(node.message_expr))
+            else:
+                msg = "Invariant violated (guarantee)"
+            raise NLPLContractError(msg, contract_kind="guarantee")
+        return None
+
     def _run_parameterized_cases(self, node, setup_stmts: list,
                                   teardown_stmts: list) -> list:
         """Run each case of a parameterized test block and return result list."""

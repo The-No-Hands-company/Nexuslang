@@ -217,6 +217,18 @@ class NLPLTypeError(NLPLError):
         return base
 
 
+class NLPLContractError(NLPLError):
+    """Contract violation error raised by require/ensure/guarantee statements."""
+    def __init__(self, message: str, line: Optional[int] = None,
+                 column: Optional[int] = None,
+                 source_line: Optional[str] = None,
+                 contract_kind: str = "contract",
+                 full_source: Optional[str] = None):
+        self.contract_kind = contract_kind
+        super().__init__(message, line, column, source_line, "Contract Error",
+                         "ContractError", full_source=full_source)
+
+
 def get_close_matches(word: str, possibilities: List[str], n: int = 3, cutoff: float = 0.6) -> List[str]:
     """
     Get close matches to a word from a list of possibilities.

@@ -30,6 +30,7 @@ class Category(Enum):
     STYLE = "style"                # Code style
     BEST_PRACTICE = "best-practice"  # Best practices
     DEAD_CODE = "dead-code"        # Unreachable code
+    CONTROL_FLOW = "control-flow"  # Control flow issues
 
 
 @dataclass

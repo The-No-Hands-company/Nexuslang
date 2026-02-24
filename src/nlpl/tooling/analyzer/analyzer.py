@@ -28,6 +28,7 @@ from .checks.style import StyleChecker
 from .checks.performance import PerformanceChecker
 from .checks.security import SecurityChecker
 from .checks.data_flow import DataFlowChecker
+from .checks.control_flow import ControlFlowChecker
 
 
 class StaticAnalyzer:
@@ -55,7 +56,8 @@ class StaticAnalyzer:
                  enable_style: bool = False,
                  enable_performance: bool = True,
                  enable_security: bool = True,
-                 enable_data_flow: bool = True):
+                 enable_data_flow: bool = True,
+                 enable_control_flow: bool = True):
         """
         Initialize analyzer with configuration.
         
@@ -80,6 +82,7 @@ class StaticAnalyzer:
             'performance': enable_all and enable_performance,
             'security': enable_all and enable_security,
             'data_flow': enable_all and enable_data_flow,
+            'control_flow': enable_all and enable_control_flow,
         }
         
         # Initialize checkers
@@ -105,6 +108,8 @@ class StaticAnalyzer:
             self.checkers.append(SecurityChecker())
         if self.config['data_flow']:
             self.checkers.append(DataFlowChecker())
+        if self.config['control_flow']:
+            self.checkers.append(ControlFlowChecker())
     
     def analyze_file(self, file_path: str) -> AnalysisReport:
         """

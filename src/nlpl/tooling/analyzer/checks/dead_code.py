@@ -41,9 +41,11 @@ class DeadCodeChecker(BaseChecker):
         self.called_functions: Set[str] = set()
         self.has_return_or_break = False
     
-    def check(self, ast: ASTNode) -> List[Issue]:
+    def check(self, ast: ASTNode, source: str = "", lines: List[str] = None) -> List[Issue]:
         """Check AST for dead code."""
         self.issues = []
+        self.current_source = source
+        self.current_lines = lines or []
         self.defined_vars = set()
         self.used_vars = set()
         self.defined_functions = set()
@@ -222,10 +224,3 @@ class DeadCodeChecker(BaseChecker):
             return getattr(node, 'name', None) or getattr(node, 'identifier', None)
         
         return None
-from .base import BaseChecker
-from ..report import Issue
-from nlpl.parser.ast import ASTNode
-
-class DeadCodeChecker(BaseChecker):
-    def check(self, ast: ASTNode, source: str, lines: list[str]) -> list[Issue]:
-        return []

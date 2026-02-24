@@ -245,6 +245,11 @@ class TokenType(Enum):
     BEFORE_EACH = auto()  # `before each do ... end`
     AFTER_EACH = auto()   # `after each do ... end`
 
+    # Contract programming
+    REQUIRE = auto()     # `require condition`
+    ENSURE = auto()      # `ensure condition`
+    GUARANTEE = auto()   # `guarantee condition`
+
     # Literals
     IDENTIFIER = auto()
     INTEGER_LITERAL = auto()
@@ -618,6 +623,11 @@ class Lexer:
             "expect": TokenType.EXPECT,
             "before each": TokenType.BEFORE_EACH,
             "after each": TokenType.AFTER_EACH,
+
+            # Contract programming
+            "require": TokenType.REQUIRE,
+            "ensure": TokenType.ENSURE,
+            "guarantee": TokenType.GUARANTEE,
         }
     
     def scan_tokens(self) -> List[Token]:

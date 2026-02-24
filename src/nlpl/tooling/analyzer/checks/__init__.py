@@ -16,6 +16,7 @@ from .style import StyleChecker
 from .performance import PerformanceChecker
 from .security import SecurityChecker
 from .data_flow import DataFlowChecker
+from .control_flow import ControlFlowChecker
 
 __all__ = [
     'BaseChecker',
@@ -29,4 +30,5 @@ __all__ = [
     'PerformanceChecker',
     'SecurityChecker',
     'DataFlowChecker',
+    'ControlFlowChecker',
 ]

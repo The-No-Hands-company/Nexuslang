@@ -53,6 +53,10 @@ from nlpl.parser.ast import (
     # Native test framework
     TestBlock, DescribeBlock, ItBlock, ParameterizedTestBlock,
     BeforeEachBlock, AfterEachBlock,
+    # Assertion library
+    ExpectStatement,
+    # Contract programming
+    RequireStatement, EnsureStatement, GuaranteeStatement,
 )
 
 class Parser:
@@ -428,6 +432,18 @@ class Parser:
 
             elif token.type == TokenType.AFTER_EACH:
                 return self.parse_after_each_block()
+
+            elif token.type == TokenType.EXPECT:
+                return self.parse_expect_statement()
+
+            elif token.type == TokenType.REQUIRE:
+                return self.parse_require_statement()
+
+            elif token.type == TokenType.ENSURE:
+                return self.parse_ensure_statement()
+
+            elif token.type == TokenType.GUARANTEE:
+                return self.parse_guarantee_statement()
 
             elif token.type == TokenType.EOF:
                 # End of file - return None to stop parsing
@@ -9159,3 +9175,198 @@ class Parser:
             self.error("Expected 'end' to close 'after each' block")
 
         return AfterEachBlock(body=body, line_number=line_number)
+
+    # ------------------------------------------------------------------
+    # Assertion library
+    # ------------------------------------------------------------------
+
+    def parse_expect_statement(self):
+        """Parse an expect assertion statement.
+
+        Syntax (all forms):
+            expect <actual> to equal <expected>
+            expect <actual> to not equal <expected>
+            expect <actual> to be greater than <expected>
+            expect <actual> to be less than <expected>
+            expect <actual> to be greater than or equal to <expected>
+            expect <actual> to be less than or equal to <expected>
+            expect <actual> to contain <expected>
+            expect <actual> to be true
+            expect <actual> to be false
+            expect <actual> to be null
+            expect <actual> to not be null
+            expect <actual> to be approximately equal to <expected> within <tol>
+        """
+        line_number = self.current_token.line
+        self.advance()  # consume EXPECT
+
+        # Parse the actual expression (stops naturally at TO keyword)
+        actual_expr = self.expression()
+
+        # Consume TO
+        if self.current_token and self.current_token.type == TokenType.TO:
+            self.advance()
+        else:
+            self.error("Expected 'to' after expect expression")
+
+        negated = False
+        matcher = None
+        expected_expr = None
+        tolerance_expr = None
+
+        # Check for optional NOT
+        if self.current_token and self.current_token.type == TokenType.NOT:
+            negated = True
+            self.advance()
+
+        # Determine the matcher
+        tok = self.current_token
+        if tok is None:
+            self.error("Expected matcher after 'expect ... to'")
+
+        # EQUAL_TO token ("equals" / "equal to")
+        if tok.type == TokenType.EQUAL_TO:
+            matcher = "equal"
+            self.advance()
+            expected_expr = self.expression()
+
+        # IDENTIFIER "equal" (bare word)
+        elif tok.type == TokenType.IDENTIFIER and tok.value in ("equal", "equals"):
+            matcher = "equal"
+            self.advance()
+            expected_expr = self.expression()
+
+        # CONTAINS token ("contains")
+        elif tok.type == TokenType.CONTAINS:
+            matcher = "contain"
+            self.advance()
+            expected_expr = self.expression()
+
+        # IDENTIFIER "contain" / "contains"
+        elif tok.type == TokenType.IDENTIFIER and tok.value in ("contain", "contains"):
+            matcher = "contain"
+            self.advance()
+            expected_expr = self.expression()
+
+        # IDENTIFIER "be" — disambiguate by the next token
+        elif tok.type == TokenType.IDENTIFIER and tok.value == "be":
+            self.advance()  # consume "be"
+            tok2 = self.current_token
+
+            if tok2 is None:
+                self.error("Incomplete expect matcher after 'be'")
+
+            if tok2.type == TokenType.GREATER_THAN:
+                matcher = "greater_than"
+                self.advance()
+                expected_expr = self.expression()
+
+            elif tok2.type == TokenType.LESS_THAN:
+                matcher = "less_than"
+                self.advance()
+                expected_expr = self.expression()
+
+            elif tok2.type == TokenType.GREATER_THAN_OR_EQUAL_TO:
+                matcher = "greater_than_or_equal_to"
+                self.advance()
+                expected_expr = self.expression()
+
+            elif tok2.type == TokenType.LESS_THAN_OR_EQUAL_TO:
+                matcher = "less_than_or_equal_to"
+                self.advance()
+                expected_expr = self.expression()
+
+            elif tok2.type == TokenType.TRUE:
+                matcher = "be_true"
+                self.advance()
+
+            elif tok2.type == TokenType.FALSE:
+                matcher = "be_false"
+                self.advance()
+
+            elif tok2.type == TokenType.NULL:
+                matcher = "be_null"
+                self.advance()
+
+            # "approximately" equal to <expr> within <tol>
+            elif tok2.type == TokenType.IDENTIFIER and tok2.value == "approximately":
+                self.advance()  # consume "approximately"
+                # expect EQUAL_TO next ("equal to")
+                if self.current_token and self.current_token.type == TokenType.EQUAL_TO:
+                    self.advance()
+                matcher = "approximately_equal"
+                expected_expr = self.expression()
+                # Optional "within <tolerance>"
+                if (self.current_token and self.current_token.type == TokenType.IDENTIFIER
+                        and self.current_token.value == "within"):
+                    self.advance()
+                    tolerance_expr = self.expression()
+
+            else:
+                self.error(f"Unknown matcher after 'be': {tok2.value!r}")
+
+        else:
+            self.error(f"Unknown expect matcher: {tok.value!r}")
+
+        return ExpectStatement(
+            actual_expr=actual_expr,
+            matcher=matcher,
+            expected_expr=expected_expr,
+            negated=negated,
+            tolerance_expr=tolerance_expr,
+            line_number=line_number,
+        )
+
+    # ------------------------------------------------------------------
+    # Contract programming
+    # ------------------------------------------------------------------
+
+    def _parse_contract_body(self, keyword: str):
+        """Parse condition and optional 'message <expr>' for contract stmts."""
+        condition = self.expression()
+        message_expr = None
+        if (self.current_token and self.current_token.type == TokenType.IDENTIFIER
+                and self.current_token.value == "message"):
+            self.advance()  # consume "message"
+            message_expr = self.expression()
+        return condition, message_expr
+
+    def parse_require_statement(self):
+        """Parse a 'require <condition>' contract precondition.
+
+        Syntax:
+            require <condition>
+            require <condition> message "explanation"
+        """
+        line_number = self.current_token.line
+        self.advance()  # consume REQUIRE
+        condition, message_expr = self._parse_contract_body("require")
+        return RequireStatement(condition=condition, message_expr=message_expr,
+                                line_number=line_number)
+
+    def parse_ensure_statement(self):
+        """Parse an 'ensure <condition>' contract postcondition.
+
+        Syntax:
+            ensure <condition>
+            ensure <condition> message "explanation"
+        """
+        line_number = self.current_token.line
+        self.advance()  # consume ENSURE
+        condition, message_expr = self._parse_contract_body("ensure")
+        return EnsureStatement(condition=condition, message_expr=message_expr,
+                               line_number=line_number)
+
+    def parse_guarantee_statement(self):
+        """Parse a 'guarantee <condition>' invariant assertion.
+
+        Syntax:
+            guarantee <condition>
+            guarantee <condition> message "explanation"
+        """
+        line_number = self.current_token.line
+        self.advance()  # consume GUARANTEE
+        condition, message_expr = self._parse_contract_body("guarantee")
+        return GuaranteeStatement(condition=condition, message_expr=message_expr,
+                                  line_number=line_number)
+
