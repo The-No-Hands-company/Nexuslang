@@ -8,6 +8,7 @@ Provides:
 - YAML serialization
 - TOML serialization
 - Protocol Buffers serialization (google.protobuf Struct encoding)
+- CBOR serialization (Concise Binary Object Representation — RFC 7049/8949)
 """
 
 import pickle
@@ -40,6 +41,12 @@ try:
     HAS_PROTOBUF = True
 except ImportError:
     HAS_PROTOBUF = False
+
+try:
+    import cbor2
+    HAS_CBOR = True
+except ImportError:
+    HAS_CBOR = False
 
 
 def pickle_dumps(obj: Any) -> bytes:
@@ -378,6 +385,93 @@ def protobuf_load_file(filepath: str) -> dict:
         return protobuf_loads(f.read())
 
 
+# ---------------------------------------------------------------------------
+# CBOR serialization (Concise Binary Object Representation — RFC 7049 / 8949)
+# cbor2 supports: None, bool, int, float, str, bytes, list, dict, datetime,
+#                 Decimal, UUID, sets, and all other CBOR major types.
+# ---------------------------------------------------------------------------
+
+def cbor_dumps(obj: Any) -> bytes:
+    """Serialize a value to CBOR bytes (RFC 8949).
+
+    Args:
+        obj: Any CBOR-serializable value (None, bool, int, float, str,
+             bytes, list, dict, datetime, Decimal, UUID, set, …).
+
+    Returns:
+        CBOR-encoded bytes.
+
+    Raises:
+        ImportError: If the cbor2 package is not installed.
+    """
+    if not HAS_CBOR:
+        raise ImportError("cbor2 is not installed. Install with: pip install cbor2")
+    return cbor2.dumps(obj)
+
+
+def cbor_loads(data: bytes) -> Any:
+    """Deserialize a value from CBOR bytes.
+
+    Args:
+        data: CBOR-encoded bytes produced by cbor_dumps or any CBOR encoder.
+
+    Returns:
+        Decoded Python value.
+
+    Raises:
+        ImportError: If the cbor2 package is not installed.
+        cbor2.CBORDecodeError: If the input is malformed.
+    """
+    if not HAS_CBOR:
+        raise ImportError("cbor2 is not installed. Install with: pip install cbor2")
+    return cbor2.loads(data)
+
+
+def cbor_dump_file(obj: Any, filepath: str) -> bool:
+    """Serialize a value and write CBOR bytes to a file.
+
+    Args:
+        obj: Value to serialize.
+        filepath: Destination file path.
+
+    Returns:
+        True on success.
+
+    Raises:
+        ImportError: If the cbor2 package is not installed.
+        OSError: If the file cannot be written.
+    """
+    if not HAS_CBOR:
+        raise ImportError("cbor2 is not installed. Install with: pip install cbor2")
+    try:
+        os.makedirs(os.path.dirname(os.path.abspath(filepath)), exist_ok=True)
+        with open(filepath, 'wb') as f:
+            cbor2.dump(obj, f)
+        return True
+    except OSError as exc:
+        raise OSError(f"cbor_dump_file: cannot write '{filepath}': {exc}") from exc
+
+
+def cbor_load_file(filepath: str) -> Any:
+    """Read CBOR bytes from a file and deserialize.
+
+    Args:
+        filepath: Path to a CBOR-encoded file.
+
+    Returns:
+        Decoded Python value.
+
+    Raises:
+        ImportError: If the cbor2 package is not installed.
+        OSError: If the file cannot be read.
+        cbor2.CBORDecodeError: If the file contents are malformed.
+    """
+    if not HAS_CBOR:
+        raise ImportError("cbor2 is not installed. Install with: pip install cbor2")
+    with open(filepath, 'rb') as f:
+        return cbor2.load(f)
+
+
 def register_serialization_functions(runtime):
     """Register serialization functions with the NLPL runtime."""
     # Pickle serialization
@@ -413,3 +507,10 @@ def register_serialization_functions(runtime):
         runtime.register_function("protobuf_loads", protobuf_loads)
         runtime.register_function("protobuf_dump_file", protobuf_dump_file)
         runtime.register_function("protobuf_load_file", protobuf_load_file)
+
+    # CBOR serialization (if available)
+    if HAS_CBOR:
+        runtime.register_function("cbor_dumps", cbor_dumps)
+        runtime.register_function("cbor_loads", cbor_loads)
+        runtime.register_function("cbor_dump_file", cbor_dump_file)
+        runtime.register_function("cbor_load_file", cbor_load_file)

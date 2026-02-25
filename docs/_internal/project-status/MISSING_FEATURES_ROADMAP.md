@@ -2143,7 +2143,7 @@ end
 - ✅ Protocol Buffers (February 2026 — `protobuf_dumps`, `protobuf_loads`, `protobuf_dump_file`, `protobuf_load_file`)
 - ✅ MessagePack (February 2026 — `msgpack_dumps`, `msgpack_loads`, `msgpack_dump_file`, `msgpack_load_file`)
 - ✅ TOML (February 2026 — `toml_dumps`, `toml_loads`, `toml_dump_file`, `toml_load_file`)
-- ❌ CBOR (planned)
+- ✅ CBOR (February 25, 2026 — `cbor_dumps`, `cbor_loads`, `cbor_dump_file`, `cbor_load_file` — RFC 8949, 29 tests)
 
 **Priority:** MEDIUM  
 **Estimated Effort:** 6-12 months
@@ -2528,7 +2528,7 @@ end
 - [x] MessagePack — `serialization/` (`msgpack_dumps`, `msgpack_loads`) (February 2026)
 - [x] Protocol Buffers — `serialization/` (`protobuf_dumps`, `protobuf_loads`) (February 2026)
 - [x] YAML/TOML — `serialization/` (February 2026)
-- [ ] CBOR (planned)
+- [x] CBOR — `serialization/` (`cbor_dumps`, `cbor_loads`, `cbor_dump_file`, `cbor_load_file`) (February 25, 2026)
 - [x] Image format handling — `image_utils/` module (JPEG, PNG, BMP, WebP)
 - [ ] Audio format handling (planned)
 
