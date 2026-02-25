@@ -725,6 +725,207 @@ class MaxHeap(Generic[T]):
         return f"MaxHeap(len={len(self._data)}, top={self.peek()!r})"
 
 
+# ---------------------------------------------------------------------------
+# CustomHashMap — HashMap with a user-supplied hash function
+# ---------------------------------------------------------------------------
+
+class CustomHashMap:
+    """HashMap with a user-supplied hash function.
+
+    Allows custom key hashing strategies:
+    - Case-insensitive string keys
+    - Composite / structural keys
+    - Domain-specific hash functions
+
+    Internally uses a ``{hash_value: [(key, value), ...]}`` bucket dict so
+    that hash collisions are resolved by linear scan using the optional
+    equality function.
+
+    Parameters
+    ----------
+    hash_fn : callable, optional
+        ``hash_fn(key) -> hashable``.  Defaults to Python's built-in
+        ``hash()``.
+    eq_fn : callable, optional
+        ``eq_fn(key_a, key_b) -> bool``.  Defaults to ``key_a == key_b``.
+    """
+
+    def __init__(self, hash_fn=None, eq_fn=None):
+        self._hash_fn = hash_fn if hash_fn is not None else hash
+        self._eq_fn = eq_fn if eq_fn is not None else (lambda a, b: a == b)
+        self._buckets: dict = {}  # hash_value -> list of (key, value) pairs
+        self._size: int = 0
+
+    # ------------------------------------------------------------------
+    # Mutating operations
+    # ------------------------------------------------------------------
+
+    def set(self, key, value) -> bool:
+        """Insert or update a key-value pair.
+
+        Returns True when a new key was inserted, False on update.
+        """
+        h = self._hash_fn(key)
+        if h not in self._buckets:
+            self._buckets[h] = []
+        bucket = self._buckets[h]
+        for i, (k, _v) in enumerate(bucket):
+            if self._eq_fn(k, key):
+                bucket[i] = (key, value)  # update in-place
+                return False
+        bucket.append((key, value))
+        self._size += 1
+        return True
+
+    def remove(self, key) -> bool:
+        """Remove a key.  Returns True on success, False if not found."""
+        h = self._hash_fn(key)
+        if h not in self._buckets:
+            return False
+        bucket = self._buckets[h]
+        for i, (k, _v) in enumerate(bucket):
+            if self._eq_fn(k, key):
+                bucket.pop(i)
+                self._size -= 1
+                if not bucket:
+                    del self._buckets[h]
+                return True
+        return False
+
+    def clear(self) -> None:
+        """Remove all entries."""
+        self._buckets.clear()
+        self._size = 0
+
+    # ------------------------------------------------------------------
+    # Query operations
+    # ------------------------------------------------------------------
+
+    def get(self, key, default=None):
+        """Return the value for *key*, or *default* if not present."""
+        h = self._hash_fn(key)
+        if h not in self._buckets:
+            return default
+        for k, v in self._buckets[h]:
+            if self._eq_fn(k, key):
+                return v
+        return default
+
+    def has(self, key) -> bool:
+        """Return True when *key* is present."""
+        h = self._hash_fn(key)
+        if h not in self._buckets:
+            return False
+        return any(self._eq_fn(k, key) for k, _v in self._buckets[h])
+
+    def size(self) -> int:
+        """Return the number of key-value pairs."""
+        return self._size
+
+    def keys(self) -> list:
+        """Return a list of all keys."""
+        return [k for bucket in self._buckets.values() for k, _v in bucket]
+
+    def values(self) -> list:
+        """Return a list of all values."""
+        return [v for bucket in self._buckets.values() for _k, v in bucket]
+
+    def items(self) -> list:
+        """Return a list of (key, value) pairs."""
+        return [(k, v) for bucket in self._buckets.values() for k, v in bucket]
+
+    # ------------------------------------------------------------------
+    # Python protocols
+    # ------------------------------------------------------------------
+
+    def __len__(self) -> int:
+        return self._size
+
+    def __repr__(self) -> str:
+        pairs = ", ".join(f"{k!r}: {v!r}" for k, v in self.items())
+        return f"CustomHashMap{{{pairs}}}"
+
+
+# ---------------------------------------------------------------------------
+# Standalone CustomHashMap helper functions (callable from NLPL)
+# ---------------------------------------------------------------------------
+
+def custom_hash_map_create(hash_fn=None, eq_fn=None) -> CustomHashMap:
+    """Create and return a new CustomHashMap.
+
+    Parameters
+    ----------
+    hash_fn : callable, optional
+        User-supplied hash function ``hash_fn(key) -> hashable``.
+    eq_fn : callable, optional
+        User-supplied equality function ``eq_fn(key_a, key_b) -> bool``.
+    """
+    return CustomHashMap(hash_fn=hash_fn, eq_fn=eq_fn)
+
+
+def custom_hash_map_set(m: CustomHashMap, key, value) -> bool:
+    """Insert/update a key-value pair.  Returns True when key was new."""
+    if not isinstance(m, CustomHashMap):
+        return False
+    return m.set(key, value)
+
+
+def custom_hash_map_get(m: CustomHashMap, key, default=None):
+    """Return the value for key, or default if not found."""
+    if not isinstance(m, CustomHashMap):
+        return default
+    return m.get(key, default)
+
+
+def custom_hash_map_has(m: CustomHashMap, key) -> bool:
+    """Return True when key is present in the map."""
+    if not isinstance(m, CustomHashMap):
+        return False
+    return m.has(key)
+
+
+def custom_hash_map_remove(m: CustomHashMap, key) -> bool:
+    """Remove key.  Returns True on success."""
+    if not isinstance(m, CustomHashMap):
+        return False
+    return m.remove(key)
+
+
+def custom_hash_map_keys(m: CustomHashMap) -> list:
+    """Return a list of all keys."""
+    if not isinstance(m, CustomHashMap):
+        return []
+    return m.keys()
+
+
+def custom_hash_map_values(m: CustomHashMap) -> list:
+    """Return a list of all values."""
+    if not isinstance(m, CustomHashMap):
+        return []
+    return m.values()
+
+
+def custom_hash_map_items(m: CustomHashMap) -> list:
+    """Return a list of (key, value) tuples."""
+    if not isinstance(m, CustomHashMap):
+        return []
+    return m.items()
+
+
+def custom_hash_map_size(m: CustomHashMap) -> int:
+    """Return the number of entries."""
+    if not isinstance(m, CustomHashMap):
+        return 0
+    return m.size()
+
+
+def custom_hash_map_clear(m: CustomHashMap) -> CustomHashMap:
+    """Remove all entries and return the (empty) map."""
+    if isinstance(m, CustomHashMap):
+        m.clear()
+    return m
+
+
 def register_collections_functions(runtime):
     """Register collection constructors with runtime."""
     runtime.register_function("Vec", Vec)
@@ -740,3 +941,16 @@ def register_collections_functions(runtime):
     runtime.register_function("append", list_append)  # Alias
     runtime.register_function("dict_set", dict_set)
     runtime.register_function("dict_get", dict_get)
+
+    # CustomHashMap — HashMap with user-supplied hash function
+    runtime.register_function("CustomHashMap", CustomHashMap)
+    runtime.register_function("custom_hash_map_create", custom_hash_map_create)
+    runtime.register_function("custom_hash_map_set", custom_hash_map_set)
+    runtime.register_function("custom_hash_map_get", custom_hash_map_get)
+    runtime.register_function("custom_hash_map_has", custom_hash_map_has)
+    runtime.register_function("custom_hash_map_remove", custom_hash_map_remove)
+    runtime.register_function("custom_hash_map_keys", custom_hash_map_keys)
+    runtime.register_function("custom_hash_map_values", custom_hash_map_values)
+    runtime.register_function("custom_hash_map_items", custom_hash_map_items)
+    runtime.register_function("custom_hash_map_size", custom_hash_map_size)
+    runtime.register_function("custom_hash_map_clear", custom_hash_map_clear)

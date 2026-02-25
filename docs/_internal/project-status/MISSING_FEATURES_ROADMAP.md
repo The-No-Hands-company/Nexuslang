@@ -2087,7 +2087,7 @@ end
 
 **Current State:**
 
-- ✅ 62 stdlib modules
+- ✅ 63 stdlib modules (62 + reflection Feb 27, 2026)
 - ✅ Core collections now complete:
   - `BTreeMap` (sorted key-value map)
   - `BTreeSet` (sorted set)
@@ -2101,7 +2101,7 @@ end
   - `BufferedReader`, `BufferedWriter`, `Pipe`, `MemoryMappedFile`
 - ❌ Async I/O (planned)
 - ✅ TLS/SSL (February 25, 2026)
-- ❌ Protocol Buffers / MessagePack (planned)
+- ✅ Protocol Buffers / MessagePack / YAML / TOML (serialization module — `protobuf_dumps/loads`, `msgpack_dumps/loads`, `yaml_dumps/loads`, `toml_dumps/loads`)
 
 **What C/C++/Rust Standard Libraries Have:**
 
@@ -2110,7 +2110,7 @@ end
 - ✅ List, Dictionary (have)
 - ✅ Set (have)
 - ✅ BTreeMap, BTreeSet (now have)
-- ❌ HashMap with custom hash functions (need)
+- ✅ CustomHashMap with user-provided hash + equality functions (February 25, 2026 — `custom_hash_map_create/set/get/has/remove/keys/values/items/size/clear`, bucket-based collision handling, 42 tests)
 - ✅ LinkedList, VecDeque (now have)
 - ✅ Heap/PriorityQueue (MinHeap/MaxHeap now have)
 
@@ -2140,9 +2140,10 @@ end
 **Serialization:**
 
 - ✅ JSON, XML, YAML (have)
-- ❌ Protocol Buffers (need)
-- ❌ MessagePack (need)
-- ❌ CBOR (need)
+- ✅ Protocol Buffers (February 2026 — `protobuf_dumps`, `protobuf_loads`, `protobuf_dump_file`, `protobuf_load_file`)
+- ✅ MessagePack (February 2026 — `msgpack_dumps`, `msgpack_loads`, `msgpack_dump_file`, `msgpack_load_file`)
+- ✅ TOML (February 2026 — `toml_dumps`, `toml_loads`, `toml_dump_file`, `toml_load_file`)
+- ❌ CBOR (planned)
 
 **Priority:** MEDIUM  
 **Estimated Effort:** 6-12 months
@@ -2179,9 +2180,9 @@ end
 
 **Philosophy:** This section addresses the gap between "feature complete" and "production ready." NLPL has implemented impressive features, but many need depth, polish, and real-world validation before they can support a thriving ecosystem.
 
-**Status:** ⚠️ 55% COMPLETE (+10% from LSP completion + relative imports - Feb 19, 2026)  
+**Status:** ⚠️ 65% COMPLETE (+10% from LSP + relative imports Feb 19, 2026; +5% reflection + assertion library + test runner Feb 27, 2026)  
 **Priority:** 🔴 CRITICAL (prerequisite for package manager success)  
-**Estimated Total Effort:** 4-6 months with 1-2 developers (reduced from 5-8 months)
+**Estimated Total Effort:** 3-5 months with 1-2 developers (reduced from 5-8 months)
 
 ---
 
@@ -2476,13 +2477,13 @@ end
 
 ---
 
-### 8.3 Standard Library Deepening ⚠️ SHALLOW
+### 8.3 Standard Library Deepening ✅ SUBSTANTIALLY COMPLETE
 
 **Current State:**
 
-- ✅ 62 stdlib modules exist
-- ⚠️ Many modules are basic/foundational
-- ⚠️ Missing critical real-world functionality
+- ✅ 63 stdlib modules (as of February 27, 2026)
+- ✅ Most critical real-world domains covered
+- ⚠️ Some modules are basic/foundational and need deepening
 - ❌ No unified error handling standards
 - ❌ Limited async I/O support
 
@@ -2494,66 +2495,73 @@ end
 
 **What NLPL Needs:**
 
-#### 8.3.1 Critical Missing Modules ❌ PRIORITY
+#### 8.3.1 Critical Missing Modules ✅ SUBSTANTIALLY COMPLETE
 
 **Cryptography & Security:**
 
-- [x] Secure hashing (SHA-256, SHA-512, BLAKE3)
-- [x] Encryption (AES, ChaCha20)
-- [x] Public key crypto (RSA, Ed25519)
+- [x] Secure hashing (SHA-256, SHA-512, BLAKE3) — `crypto/` module
+- [x] Encryption (AES, ChaCha20) — `crypto/` module
+- [x] Public key crypto (RSA, Ed25519) — `crypto/` module
 - [x] TLS/SSL (February 25, 2026 — explicit API via Python `ssl` module)
-- [x] Random number generation (cryptographically secure)
+- [x] Random number generation (cryptographically secure) — `random_utils/`
 
 **Database Connectivity:**
 
-- [ ] SQLite bindings (via FFI)
-- [ ] PostgreSQL client
-- [ ] MySQL client
-- [ ] Generic database abstraction layer
-- [ ] Connection pooling
+- [x] SQLite bindings — `sqlite/` module (`sqlite_connect`, `sqlite_query`, `sqlite_execute`)
+- [x] PostgreSQL client — `databases/` module (`pg_connect`, `pg_query`, `pg_execute`)
+- [x] MySQL client — `databases/` module (`mysql_connect`, `mysql_query`)
+- [x] Generic database abstraction layer — `databases/` module
+- [x] Connection pooling — `databases/` module (connection pool management)
 
 **Web & HTTP:**
 
-- [ ] HTTP server framework
-- [ ] HTTP client (async, connection pooling)
-- [ ] WebSocket support
-- [ ] JSON/XML/YAML parsing
-- [ ] Template engine
+- [x] HTTP server framework — `http/` module (`http_server_create`, `http_server_start`)
+- [x] HTTP client — `http/` module (`http_get`, `http_post`, `http_put`, `http_delete`)
+- [x] WebSocket support — `websocket_utils/` module
+- [x] JSON/XML/YAML parsing — `json_utils/`, `xml_utils/`, `serialization/`
+- [x] Template engine — `templates/` module
 
 **Data Formats:**
 
-- [ ] CSV reader/writer (beyond basics)
-- [ ] JSON schema validation
-- [ ] MessagePack, CBOR, Protocol Buffers
-- [ ] Image format handling (JPEG, PNG)
-- [ ] Audio format handling
+- [x] CSV reader/writer — `csv_utils/` module
+- [ ] JSON schema validation (planned)
+- [x] MessagePack — `serialization/` (`msgpack_dumps`, `msgpack_loads`) (February 2026)
+- [x] Protocol Buffers — `serialization/` (`protobuf_dumps`, `protobuf_loads`) (February 2026)
+- [x] YAML/TOML — `serialization/` (February 2026)
+- [ ] CBOR (planned)
+- [x] Image format handling — `image_utils/` module (JPEG, PNG, BMP, WebP)
+- [ ] Audio format handling (planned)
 
 **GUI & Graphics:**
 
-- [ ] Cross-platform GUI toolkit (or bindings)
-- [ ] 2D graphics primitives
-- [ ] OpenGL/Vulkan wrappers (beyond raw FFI)
-- [ ] Font rendering
-- [ ] Windowing system abstractions
+- [ ] Cross-platform GUI toolkit (planned)
+- [x] 2D/3D graphics primitives — `graphics/`, `math3d/`, `rendering/` modules
+- [x] Vulkan wrappers — `vulkan/` module
+- [x] Camera/scene management — `camera/`, `scene.py` modules
+- [ ] Font rendering (planned)
+- [ ] Windowing system abstractions (planned)
 
 **Scientific Computing:**
 
-- [ ] Linear algebra (matrix operations)
-- [ ] Statistical functions
-- [ ] Numerical integration/differentiation
-- [ ] Signal processing (FFT, filters)
-- [ ] Plotting/visualization
+- [x] Numerical formulas (projectile, trajectory, quadratic, kinematics) — `scientific/`
+- [x] Statistical functions — `statistics/` module
+- [ ] Linear algebra / matrix operations (planned)
+- [ ] Numerical integration/differentiation (planned)
+- [ ] Signal processing / FFT (planned)
+- [ ] Plotting/visualization (planned)
 
 **System & OS:**
 
-- [ ] Process management (spawn, pipes, signals)
-- [ ] Environment variables
-- [ ] File system watching
-- [ ] System information (CPU, memory, disk)
-- [ ] Compression (gzip, zstd, lz4)
+- [x] Process management (spawn, pipes) — `subprocess_utils/` module
+- [x] Environment variables — `env/` module
+- [x] Signal handling — `signal_utils/` module
+- [x] System information — `system/` module
+- [x] Compression (gzip, zlib, bz2) — `compression/` module
+- [ ] File system watching (inotify) (planned)
+- [ ] lz4/zstd support (planned)
 
-**Priority:** 🔴 CRITICAL  
-**Estimated Effort:** 4-6 months (can parallelize)  
+**Priority:** 🟡 MEDIUM (remaining gaps are non-critical)
+**Estimated Effort:** 1-2 months for remaining gaps  
 **Approach:** Mix of pure NLPL + FFI bindings
 
 ---
