@@ -24,7 +24,7 @@ try:
     from cryptography.hazmat.primitives import hashes, serialization
     from cryptography.hazmat.primitives.asymmetric import rsa, ed25519, padding
     from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-    from cryptography.hazmat.primitives.kdf.argon2 import Argon2
+    from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
     from cryptography.hazmat.backends import default_backend
     HAS_CRYPTOGRAPHY = True
 except ImportError:
@@ -327,8 +327,8 @@ def rsa_generate_keypair(key_size: int = 2048) -> dict:
     if not HAS_CRYPTOGRAPHY:
         raise ImportError("cryptography library required. Install with: pip install cryptography")
     
-    if key_size not in [2048, 3072, 4096]:
-        raise ValueError("Key size must be 2048, 3072, or 4096 bits")
+    if key_size < 1024 or key_size % 256 != 0:
+        raise ValueError("Key size must be a multiple of 256 and at least 1024 bits")
     
     # Generate private key
     private_key = rsa.generate_private_key(
@@ -653,14 +653,13 @@ def argon2_derive_key(password: str, salt: Optional[bytes] = None,
     if salt is None:
         salt = secrets.token_bytes(16)
     
-    # Create Argon2 KDF
-    kdf = Argon2(
+    # Create Argon2id KDF (winner of Password Hashing Competition)
+    kdf = Argon2id(
         salt=salt,
         length=key_length,
         iterations=time_cost,
         lanes=parallelism,
         memory_cost=memory_cost,
-        backend=default_backend()
     )
     
     # Derive key

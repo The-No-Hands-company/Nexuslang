@@ -22,10 +22,11 @@ class Program:
 
 class VariableDeclaration:
     """A variable declaration node."""
-    def __init__(self, name, value, type_annotation=None):
+    def __init__(self, name, value, type_annotation=None, allocator_hint=None):
         self.name = name
         self.value = value
         self.type_annotation = type_annotation
+        self.allocator_hint = allocator_hint  # Optional allocator name (str)
         
     def __str__(self):
         return f"Variable {self.name} = {self.value}"

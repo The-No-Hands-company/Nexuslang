@@ -23,10 +23,9 @@ class TestArithmeticOperators(NLPLTestBase):
         assert self.interpreter.get_variable("x") == 8
     
     def test_addition_symbol(self):
-        """Test addition with + symbol (FUTURE: symbolic operators)."""
-        # TODO: Add support for standalone symbolic operators like +, -, *, /
-        # For now, NLPL requires natural language: "plus", "minus", "times", "divided by"
-        pytest.skip("Symbolic operators not yet supported - natural language required")
+        """Test addition with + symbol."""
+        result = self.parse_and_execute("set x to 5 + 3")
+        assert self.interpreter.get_variable("x") == 8
     
     def test_subtraction(self):
         """Test subtraction operator."""
@@ -54,10 +53,9 @@ class TestArithmeticOperators(NLPLTestBase):
         assert self.interpreter.get_variable("x") == 5.0
     
     def test_division_symbol(self):
-        """Test division with / symbol (FUTURE: symbolic operators)."""
-        # TODO: Add support for standalone symbolic operators
-        # For now, use natural language: "divided by"
-        pytest.skip("Symbolic operators not yet supported - use 'divided by'")
+        """Test division with / symbol."""
+        result = self.parse_and_execute("set x to 15 / 3")
+        assert self.interpreter.get_variable("x") == 5.0
     
     def test_modulo(self):
         """Test modulo operator."""
@@ -65,10 +63,9 @@ class TestArithmeticOperators(NLPLTestBase):
         assert self.interpreter.get_variable("x") == 2
     
     def test_modulo_symbol(self):
-        """Test modulo with % symbol (FUTURE: symbolic operators)."""
-        # TODO: Add support for % symbol
-        # For now, use natural language: "modulo"
-        pytest.skip("Symbolic % operator not yet supported - use 'modulo'")
+        """Test modulo with % symbol."""
+        result = self.parse_and_execute("set x to 17 % 5")
+        assert self.interpreter.get_variable("x") == 2
     
     def test_power(self):
         """Test power operator with natural language."""
@@ -97,26 +94,36 @@ class TestArithmeticOperators(NLPLTestBase):
         assert self.interpreter.get_variable("x") == -4
     
     def test_operator_precedence(self):
-        """Test operator precedence: power > multiply > add (FUTURE: complex expressions)."""
-        # TODO: Implement full expression parsing with operator precedence
-        # This requires parsing "2 + 3 * 4 ** 2" as a single expression
-        pytest.skip("Complex mixed-operator expressions not yet fully supported")
+        """Test operator precedence: multiply > add, power > multiply."""
+        # 2 + 3 * 4 -> 2 + 12 = 14 (multiply before add)
+        result = self.parse_and_execute("set x to 2 + 3 * 4")
+        assert self.interpreter.get_variable("x") == 14
+        # 2 ** 3 + 1 -> 8 + 1 = 9 (power before add)
+        result = self.parse_and_execute("set y to 2 ** 3 + 1")
+        assert self.interpreter.get_variable("y") == 9
     
     def test_parentheses_override_precedence(self):
-        """Test parentheses override operator precedence (FUTURE: complex expressions)."""
-        # TODO: Implement parenthesized expression parsing
-        pytest.skip("Parenthesized expressions with mixed operators not yet fully supported")
+        """Test parentheses override operator precedence."""
+        # (2 + 3) * 4 = 5 * 4 = 20 (parentheses force add-first)
+        result = self.parse_and_execute("set x to (2 + 3) * 4")
+        assert self.interpreter.get_variable("x") == 20
+        # Without parens: 2 + 3 * 4 = 14
+        result = self.parse_and_execute("set y to 2 + 3 * 4")
+        assert self.interpreter.get_variable("y") == 14
     
     def test_division_by_zero(self):
-        """Test division by zero raises error."""
-        # TODO: Implement proper zero division error handling
-        # For now, skip this test
-        pytest.skip("Division by zero error handling not yet implemented")
+        """Test division by zero raises an error."""
+        with pytest.raises((ZeroDivisionError, Exception)):
+            self.parse_and_execute("set x to 5 / 0")
     
     def test_chained_operations(self):
-        """Test chaining multiple arithmetic operations (FUTURE: complex expressions)."""
-        # TODO: Implement full expression parsing with chained operators
-        pytest.skip("Chained mixed-operator expressions not yet fully supported")
+        """Test chaining multiple arithmetic operations in one expression."""
+        # 10 - 3 + 2 - 1 = 8 (left-to-right for same precedence)
+        result = self.parse_and_execute("set x to 10 - 3 + 2 - 1")
+        assert self.interpreter.get_variable("x") == 8
+        # 2 * 3 * 4 = 24
+        result = self.parse_and_execute("set y to 2 * 3 * 4")
+        assert self.interpreter.get_variable("y") == 24
 
 
 class TestBitwiseOperators(NLPLTestBase):

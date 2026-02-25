@@ -63,7 +63,6 @@ class TestAllocatorHintParsing:
         parser = Parser(tokens, source=code)
         return parser.parse()
 
-    @pytest.mark.skip(reason="'as Type with allocator Name' syntax not yet implemented in parser")
     def test_allocator_hint_in_variable_declaration(self):
         code = 'set items to [] as List with allocator arena'
         ast = self._parse(code)

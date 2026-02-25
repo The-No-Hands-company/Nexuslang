@@ -656,7 +656,18 @@ class Parser:
                 self.advance()  # consume 'as'
                 type_annotation = self.parse_type()
 
-            return VariableDeclaration(var_name, value, type_annotation)
+            # Optional allocator hint: ... with allocator <name>
+            allocator_name = None
+            if (self.current_token and self.current_token.type == TokenType.WITH
+                    and self.peek() and self.peek().type == TokenType.ALLOCATOR):
+                self.advance()  # consume 'with'
+                self.advance()  # consume 'allocator'
+                if self.current_token and self.current_token.type in (
+                        TokenType.IDENTIFIER, TokenType.ALLOCATOR):
+                    allocator_name = self.current_token.lexeme
+                    self.advance()  # consume allocator name
+
+            return VariableDeclaration(var_name, value, type_annotation, allocator_name)
     
     def add_statement(self):
         """Parse an add/append statement.
