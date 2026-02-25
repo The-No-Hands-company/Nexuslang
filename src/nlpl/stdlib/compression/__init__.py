@@ -1,17 +1,31 @@
 """
 Compression and archiving for NLPL.
-Supports gzip, zlib, bz2, and tar archives.
+Supports gzip, zlib, bz2, lzma, and tar archives.
+Optional: lz4, zstd (install lz4 and zstandard packages).
 """
 
 import gzip
 import zlib
 import bz2
+import lzma
 import tarfile
 import zipfile
 import io
 from pathlib import Path
 from typing import List, Optional
 from ...runtime.runtime import Runtime
+
+try:
+    import lz4.frame
+    HAS_LZ4 = True
+except ImportError:
+    HAS_LZ4 = False
+
+try:
+    import zstandard
+    HAS_ZSTD = True
+except ImportError:
+    HAS_ZSTD = False
 
 
 # GZIP compression
@@ -92,6 +106,131 @@ def bz2_decompress_file(input_path: str, output_path: str) -> bool:
         return True
     except Exception as e:
         print(f"Decompression failed: {e}")
+        return False
+
+
+# LZMA / XZ compression (stdlib, always available)
+def lzma_compress(data: str, encoding: str = 'utf-8') -> bytes:
+    """Compress string with lzma (xz)."""
+    return lzma.compress(data.encode(encoding))
+
+
+def lzma_decompress(data: bytes, encoding: str = 'utf-8') -> str:
+    """Decompress lzma data to string."""
+    return lzma.decompress(data).decode(encoding)
+
+
+def lzma_compress_file(input_path: str, output_path: Optional[str] = None) -> str:
+    """Compress file with lzma (xz). Returns output path."""
+    if output_path is None:
+        output_path = input_path + '.xz'
+    with open(input_path, 'rb') as f_in:
+        with lzma.open(output_path, 'wb') as f_out:
+            f_out.write(f_in.read())
+    return output_path
+
+
+def lzma_decompress_file(input_path: str, output_path: str) -> bool:
+    """Decompress lzma (xz) file."""
+    try:
+        with lzma.open(input_path, 'rb') as f_in:
+            with open(output_path, 'wb') as f_out:
+                f_out.write(f_in.read())
+        return True
+    except Exception as e:
+        print(f"LZMA decompression failed: {e}")
+        return False
+
+
+# LZ4 compression (requires lz4 package)
+def lz4_compress(data: str, level: int = 0, encoding: str = 'utf-8') -> bytes:
+    """
+    Compress string with lz4.
+    level: 0 = fast (default), 9 = best compression.
+    """
+    if not HAS_LZ4:
+        raise ImportError("lz4 package required: pip install lz4")
+    return lz4.frame.compress(data.encode(encoding), compression_level=level)
+
+
+def lz4_decompress(data: bytes, encoding: str = 'utf-8') -> str:
+    """Decompress lz4 data to string."""
+    if not HAS_LZ4:
+        raise ImportError("lz4 package required: pip install lz4")
+    return lz4.frame.decompress(data).decode(encoding)
+
+
+def lz4_compress_file(input_path: str, output_path: Optional[str] = None) -> str:
+    """Compress file with lz4. Returns output path."""
+    if not HAS_LZ4:
+        raise ImportError("lz4 package required: pip install lz4")
+    if output_path is None:
+        output_path = input_path + '.lz4'
+    with open(input_path, 'rb') as f_in:
+        with lz4.frame.open(output_path, 'wb') as f_out:
+            f_out.write(f_in.read())
+    return output_path
+
+
+def lz4_decompress_file(input_path: str, output_path: str) -> bool:
+    """Decompress lz4 file."""
+    if not HAS_LZ4:
+        raise ImportError("lz4 package required: pip install lz4")
+    try:
+        with lz4.frame.open(input_path, 'rb') as f_in:
+            with open(output_path, 'wb') as f_out:
+                f_out.write(f_in.read())
+        return True
+    except Exception as e:
+        print(f"LZ4 decompression failed: {e}")
+        return False
+
+
+# ZSTD compression (requires zstandard package)
+def zstd_compress(data: str, level: int = 3, encoding: str = 'utf-8') -> bytes:
+    """
+    Compress string with zstd.
+    level: 1-22, default 3 (balanced). Higher = better compression, slower.
+    """
+    if not HAS_ZSTD:
+        raise ImportError("zstandard package required: pip install zstandard")
+    cctx = zstandard.ZstdCompressor(level=level)
+    return cctx.compress(data.encode(encoding))
+
+
+def zstd_decompress(data: bytes, encoding: str = 'utf-8') -> str:
+    """Decompress zstd data to string."""
+    if not HAS_ZSTD:
+        raise ImportError("zstandard package required: pip install zstandard")
+    dctx = zstandard.ZstdDecompressor()
+    return dctx.decompress(data).decode(encoding)
+
+
+def zstd_compress_file(input_path: str, output_path: Optional[str] = None, level: int = 3) -> str:
+    """Compress file with zstd. Returns output path."""
+    if not HAS_ZSTD:
+        raise ImportError("zstandard package required: pip install zstandard")
+    if output_path is None:
+        output_path = input_path + '.zst'
+    cctx = zstandard.ZstdCompressor(level=level)
+    with open(input_path, 'rb') as f_in:
+        with open(output_path, 'wb') as f_out:
+            cctx.copy_stream(f_in, f_out)
+    return output_path
+
+
+def zstd_decompress_file(input_path: str, output_path: str) -> bool:
+    """Decompress zstd file."""
+    if not HAS_ZSTD:
+        raise ImportError("zstandard package required: pip install zstandard")
+    try:
+        dctx = zstandard.ZstdDecompressor()
+        with open(input_path, 'rb') as f_in:
+            with open(output_path, 'wb') as f_out:
+                dctx.copy_stream(f_in, f_out)
+        return True
+    except Exception as e:
+        print(f"Zstd decompression failed: {e}")
         return False
 
 
@@ -214,7 +353,27 @@ def register_compression_functions(runtime: Runtime) -> None:
     runtime.register_function("bz2_decompress", bz2_decompress)
     runtime.register_function("bz2_compress_file", bz2_compress_file)
     runtime.register_function("bz2_decompress_file", bz2_decompress_file)
-    
+
+    # LZMA (always available)
+    runtime.register_function("lzma_compress", lzma_compress)
+    runtime.register_function("lzma_decompress", lzma_decompress)
+    runtime.register_function("lzma_compress_file", lzma_compress_file)
+    runtime.register_function("lzma_decompress_file", lzma_decompress_file)
+
+    # LZ4 (optional)
+    if HAS_LZ4:
+        runtime.register_function("lz4_compress", lz4_compress)
+        runtime.register_function("lz4_decompress", lz4_decompress)
+        runtime.register_function("lz4_compress_file", lz4_compress_file)
+        runtime.register_function("lz4_decompress_file", lz4_decompress_file)
+
+    # ZSTD (optional)
+    if HAS_ZSTD:
+        runtime.register_function("zstd_compress", zstd_compress)
+        runtime.register_function("zstd_decompress", zstd_decompress)
+        runtime.register_function("zstd_compress_file", zstd_compress_file)
+        runtime.register_function("zstd_decompress_file", zstd_decompress_file)
+
     # ZIP
     runtime.register_function("zip_create", zip_create)
     runtime.register_function("zip_extract", zip_extract)

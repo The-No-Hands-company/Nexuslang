@@ -2556,9 +2556,9 @@ end
 - [x] Environment variables — `env/` module
 - [x] Signal handling — `signal_utils/` module
 - [x] System information — `system/` module
-- [x] Compression (gzip, zlib, bz2) — `compression/` module
+- [x] Compression (gzip, zlib, bz2, lzma) — `compression/` module
+- [x] lz4/zstd — `compression/` module (lz4_compress/decompress/file, zstd_compress/decompress/file — 42 tests) (February 25, 2026)
 - [ ] File system watching (inotify) (planned)
-- [ ] lz4/zstd support (planned)
 
 **Priority:** 🟡 MEDIUM (remaining gaps are non-critical)
 **Estimated Effort:** 1-2 months for remaining gaps  
