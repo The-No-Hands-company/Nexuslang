@@ -1852,12 +1852,12 @@ end
 
 ---
 
-### 7.2 Testing Framework ✅ SUBSTANTIALLY COMPLETE
+### 7.2 Testing Framework ✅ COMPLETE (Feb 26, 2026)
 
 **Current State:**
 
-- ✅ 409 test programs
-- ✅ 44 Python test files
+- ✅ 409+ test programs
+- ✅ 44+ Python test files
 - ✅ Native NLPL test framework implemented:
   - Lexer tokens: `TEST`, `DESCRIBE`, `IT`, `EXPECT`, `BEFORE_EACH`, `AFTER_EACH`
   - AST nodes: `TestBlock`, `DescribeBlock`, `ItBlock`, `ParameterizedTestBlock`, `BeforeEachBlock`, `AfterEachBlock`
@@ -1867,7 +1867,10 @@ end
 - ✅ Setup/teardown hooks (`before each`, `after each`) scoped to `describe` blocks
 - ✅ Test failures isolated per test (don't abort the suite)
 - ✅ PASS/FAIL summary output with timing
-- ❌ Parallel test execution (planned)
+- ✅ Parallel test execution (`nlpl.tooling.test_runner.TestRunner(workers=N)`)
+- ✅ Test filtering by name (glob) and filename (regex)
+- ✅ Output formats: verbose, TAP v13, JSON (for CI integration)
+- ✅ Expanded assertion library: be_empty, have_length, start_with, end_with, be_of_type, raise_error
 - ❌ Coverage reporting (planned)
 
 **What Rust Has:**
@@ -1892,18 +1895,19 @@ end
   - Mocking/stubbing
   - Test fixtures
 
-- [ ] **Test Runner**
-  - Parallel test execution
-  - Test filtering
-  - Test output formatting
-  - Coverage reporting
-  - CI integration
+- [x] **Test Runner** (Complete - Feb 26, 2026)
+  - Parallel test execution (ThreadPoolExecutor, configurable --workers)
+  - Test filtering (--filter glob pattern, --file-filter regex)
+  - Test output formatting (verbose, TAP v13, JSON)
+  - Coverage reporting (planned)
+  - CI integration (exit code 0/1, JSON output for pipelines)
 
-- [ ] **Assertion Library**
-  - Value assertions (assertEqual, etc.)
-  - Exception assertions
-  - Float comparison (with epsilon)
-  - Collection assertions
+- [x] **Assertion Library** (Complete - Feb 26, 2026)
+  - Value assertions (equal, greater_than, less_than, gte, lte)
+  - Exception assertions (raise error / not raise error)
+  - Float comparison with epsilon (approximately equal to ... within)
+  - Collection assertions (be_empty, have_length/size, start_with, end_with, contain)
+  - Type assertions (be_of_type "typename", be a "typename")
 
 **Priority:** HIGH  
 **Estimated Effort:** 3-6 months

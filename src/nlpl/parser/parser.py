@@ -9211,6 +9211,15 @@ class Parser:
             expect <actual> to be null
             expect <actual> to not be null
             expect <actual> to be approximately equal to <expected> within <tol>
+            expect <actual> to be empty
+            expect <actual> to have length <n>
+            expect <actual> to have size <n>
+            expect <actual> to start with <expected>
+            expect <actual> to end with <expected>
+            expect <actual> to be of type <typename>
+            expect <actual> to be a <typename>
+            expect <actual> to raise error
+            expect <actual> to not raise error
         """
         line_number = self.current_token.line
         self.advance()  # consume EXPECT
@@ -9317,8 +9326,75 @@ class Parser:
                     self.advance()
                     tolerance_expr = self.expression()
 
+            # "empty" — expect x to be empty
+            elif tok2.type == TokenType.EMPTY:
+                matcher = "be_empty"
+                self.advance()
+
+            # "of type <typename>" — expect x to be of type Integer
+            elif tok2.type == TokenType.OF:
+                self.advance()  # consume "of"
+                # consume optional "type" keyword
+                if self.current_token and self.current_token.type == TokenType.TYPE:
+                    self.advance()
+                matcher = "be_of_type"
+                expected_expr = self.expression()
+
+            # "a <typename>" — expect x to be a Integer
+            elif tok2.type == TokenType.A:
+                self.advance()  # consume "a"
+                matcher = "be_of_type"
+                expected_expr = self.expression()
+
             else:
                 self.error(f"Unknown matcher after 'be': {tok2.value!r}")
+
+        # "have length <n>" / "have size <n>"
+        elif tok.type == TokenType.IDENTIFIER and tok.value == "have":
+            self.advance()  # consume "have"
+            # consume optional "length" (TokenType.LENGTH) / "size" / "count"
+            if self.current_token and self.current_token.type == TokenType.LENGTH:
+                self.advance()
+            elif (self.current_token and self.current_token.type == TokenType.IDENTIFIER
+                    and self.current_token.value in ("size", "count")):
+                self.advance()
+            matcher = "have_length"
+            expected_expr = self.expression()
+
+        # "start with <expected>" — string / collection starts-with assertion
+        elif tok.type == TokenType.IDENTIFIER and tok.value == "start":
+            self.advance()  # consume "start"
+            if self.current_token and self.current_token.type == TokenType.WITH:
+                self.advance()
+            elif (self.current_token and self.current_token.type == TokenType.IDENTIFIER
+                    and self.current_token.value == "with"):
+                self.advance()
+            matcher = "start_with"
+            expected_expr = self.expression()
+
+        # "end with <expected>" — "end" is TokenType.END in NLPL
+        elif tok.type == TokenType.END:
+            self.advance()  # consume "end"
+            if self.current_token and self.current_token.type == TokenType.WITH:
+                self.advance()
+            elif (self.current_token and self.current_token.type == TokenType.IDENTIFIER
+                    and self.current_token.value == "with"):
+                self.advance()
+            matcher = "end_with"
+            expected_expr = self.expression()
+
+        # "raise error" / "raise" / "raise an error" — exception assertion
+        elif tok.type == TokenType.RAISE:
+            self.advance()  # consume "raise"
+            # consume optional "error" (TokenType.ERROR) or "an" + "error"
+            if self.current_token and self.current_token.type == TokenType.ERROR:
+                self.advance()  # consume "error"
+            elif (self.current_token and self.current_token.type == TokenType.IDENTIFIER
+                    and self.current_token.value == "an"):
+                self.advance()  # consume "an"
+                if self.current_token and self.current_token.type == TokenType.ERROR:
+                    self.advance()  # consume "error"
+            matcher = "raise_error"
 
         else:
             self.error(f"Unknown expect matcher: {tok.value!r}")

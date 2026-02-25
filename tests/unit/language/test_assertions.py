@@ -238,3 +238,169 @@ class TestAssertionLibraryInterpreter:
 # Section 17 - Contract programming (require / ensure / guarantee)
 # ============================================================
 
+# ============================================================
+# New assertion matchers: be_empty, have_length, start_with,
+# end_with, be_of_type, raise_error
+# ============================================================
+
+
+class TestNewAssertionMatchers:
+    """
+    Tests for the expanded assertion library added to the interpreter.
+    Covers parser integration AND interpreter execution.
+    """
+
+    def _interp(self, src):
+        from nlpl.interpreter.interpreter import Interpreter
+        from nlpl.runtime.runtime import Runtime
+        from nlpl.stdlib import register_stdlib
+        from nlpl.parser.parser import Parser
+        from nlpl.parser.lexer import Lexer
+        rt = Runtime()
+        register_stdlib(rt)
+        prog = Parser(Lexer(src).tokenize()).parse()
+        i = Interpreter(runtime=rt)
+        i.interpret(prog)
+        return i
+
+    def _parse_matcher(self, src):
+        from nlpl.parser.ast import ExpectStatement
+        from nlpl.parser.parser import Parser
+        from nlpl.parser.lexer import Lexer
+        prog = Parser(Lexer(src).tokenize()).parse()
+        return next(s for s in prog.statements if isinstance(s, ExpectStatement))
+
+    # -- be_empty -----------------------------------------------------------
+
+    def test_parse_be_empty(self):
+        node = self._parse_matcher("set x to []\nexpect x to be empty")
+        assert node.matcher == "be_empty"
+
+    def test_be_empty_passes_on_empty_list(self):
+        self._interp("set x to []\nexpect x to be empty")
+
+    def test_be_empty_passes_on_empty_string(self):
+        self._interp('set s to ""\nexpect s to be empty')
+
+    def test_be_empty_fails_on_non_empty_list(self):
+        with pytest.raises(AssertionError):
+            self._interp("set x to [1, 2]\nexpect x to be empty")
+
+    def test_be_empty_fails_on_non_empty_string(self):
+        with pytest.raises(AssertionError):
+            self._interp('set s to "hello"\nexpect s to be empty')
+
+    def test_not_be_empty_passes_on_non_empty_string(self):
+        self._interp('set s to "hi"\nexpect s to not be empty')
+
+    # -- have_length --------------------------------------------------------
+
+    def test_parse_have_length(self):
+        node = self._parse_matcher("set x to \"abc\"\nexpect x to have length 3")
+        assert node.matcher == "have_length"
+
+    def test_have_length_passes_on_string(self):
+        self._interp('set s to "hello"\nexpect s to have length 5')
+
+    def test_have_length_fails_wrong_count(self):
+        with pytest.raises(AssertionError):
+            self._interp('set s to "hello"\nexpect s to have length 3')
+
+    def test_have_size_is_alias(self):
+        node = self._parse_matcher("set x to \"abc\"\nexpect x to have size 3")
+        assert node.matcher == "have_length"
+
+    def test_have_length_negated(self):
+        self._interp('set s to "hello"\nexpect s to not have length 99')
+
+    # -- start_with ---------------------------------------------------------
+
+    def test_parse_start_with(self):
+        node = self._parse_matcher('set s to "hello"\nexpect s to start with "hel"')
+        assert node.matcher == "start_with"
+
+    def test_start_with_passes_string(self):
+        self._interp('set s to "hello world"\nexpect s to start with "hello"')
+
+    def test_start_with_fails_string(self):
+        with pytest.raises(AssertionError):
+            self._interp('set s to "hello world"\nexpect s to start with "world"')
+
+    def test_start_with_negated(self):
+        self._interp('set s to "hello"\nexpect s to not start with "world"')
+
+    # -- end_with -----------------------------------------------------------
+
+    def test_parse_end_with(self):
+        node = self._parse_matcher('set s to "hello"\nexpect s to end with "lo"')
+        assert node.matcher == "end_with"
+
+    def test_end_with_passes_string(self):
+        self._interp('set s to "hello world"\nexpect s to end with "world"')
+
+    def test_end_with_fails_string(self):
+        with pytest.raises(AssertionError):
+            self._interp('set s to "hello world"\nexpect s to end with "hello"')
+
+    def test_end_with_negated(self):
+        self._interp('set s to "hello"\nexpect s to not end with "xyz"')
+
+    # -- be_of_type ---------------------------------------------------------
+
+    def test_parse_be_of_type(self):
+        node = self._parse_matcher('set x to 5\nexpect x to be of type "Integer"')
+        assert node.matcher == "be_of_type"
+
+    def test_be_of_type_integer_passes(self):
+        self._interp('set x to 42\nexpect x to be of type "int"')
+
+    def test_be_of_type_string_passes(self):
+        self._interp('set s to "hello"\nexpect s to be of type "string"')
+
+    def test_be_of_type_fails_on_wrong_type(self):
+        with pytest.raises(AssertionError):
+            self._interp('set x to 42\nexpect x to be of type "string"')
+
+    def test_be_of_type_negated(self):
+        self._interp('set x to 42\nexpect x to not be of type "string"')
+
+    def test_parse_be_a_type(self):
+        node = self._parse_matcher('set x to 5\nexpect x to be a "int"')
+        assert node.matcher == "be_of_type"
+
+    # -- raise_error --------------------------------------------------------
+
+    def test_parse_raise_error(self):
+        node = self._parse_matcher(
+            "function boom returns Integer\n  stop now\n  return 0\nend\n"
+            "expect boom() to raise error"
+        )
+        assert node.matcher == "raise_error"
+
+    def test_raise_error_passes_when_exception_raised(self):
+        # Access undefined variable inside a function — guaranteed NLPLNameError
+        self._interp(
+            "function boom returns Integer\n"
+            "  set x to 1\n"
+            "  set y to 0\n"
+            "  return x divided by y\n"
+            "end\n"
+            "expect boom() to raise error"
+        )
+
+    def test_raise_error_passes_on_not_raise_when_no_exception(self):
+        self._interp(
+            "function safe returns Integer\n"
+            "  return 42\n"
+            "end\n"
+            "expect safe() to not raise error"
+        )
+
+    def test_raise_error_fails_when_no_exception_raised(self):
+        with pytest.raises(AssertionError):
+            self._interp(
+                "function safe returns Integer\n"
+                "  return 42\n"
+                "end\n"
+                "expect safe() to raise error"
+            )

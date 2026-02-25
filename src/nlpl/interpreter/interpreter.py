@@ -135,6 +135,13 @@ class Interpreter:
         # execute_* methods are also picked up correctly.
         self._dispatch_cache: Dict[str, Any] = {}
 
+        # Accumulated test results from all describe / test / it blocks run
+        # during this interpreter session.  Each entry is a dict produced by
+        # _run_test_body: {"name": str, "passed": bool, "error": str|None,
+        # "duration": float, "suite": str}.  The test runner reads this list
+        # to build its aggregate report.
+        self._collected_test_results: list = []
+
         # Build the class-level string dispatch table once (shared, maps type name -> method name)
         if not Interpreter._DISPATCH_TABLE:
             Interpreter._build_dispatch_table()
@@ -2060,7 +2067,7 @@ class Interpreter:
                 "duration": duration}
 
     def _print_test_summary(self, results: list, suite_name: str = ""):
-        """Print a test-run summary to stdout."""
+        """Print a test-run summary to stdout and accumulate into _collected_test_results."""
         total = len(results)
         passed = sum(1 for r in results if r["passed"])
         failed = total - passed
@@ -2079,6 +2086,13 @@ class Interpreter:
         if failed:
             print(f"FAILURES: {failed} test(s) failed")
         print()
+
+        # Accumulate into the interpreter's result list for the test runner
+        for r in results:
+            entry = dict(r)
+            entry["suite"] = suite_name
+            self._collected_test_results.append(entry)
+
         return {"total": total, "passed": passed, "failed": failed}
 
     def execute_test_block(self, node):
@@ -2172,12 +2186,40 @@ class Interpreter:
         When used outside a test block the AssertionError propagates to the
         caller (normal Python assertion semantics).
         """
-        actual = self.execute(node.actual_expr)
         matcher = node.matcher
         negated = node.negated
 
         def _fail(msg: str):
             raise AssertionError(msg)
+
+        # ------------------------------------------------------------------
+        # raise_error is special: must NOT pre-evaluate the expression so
+        # that we can catch exceptions thrown by the expression itself.
+        # ------------------------------------------------------------------
+        if matcher == "raise_error":
+            raised = False
+            raised_exc = None
+            try:
+                self.execute(node.actual_expr)
+            except AssertionError:
+                raised = True
+                raised_exc = None  # assertion failures are not "raised errors"
+            except Exception as exc:
+                raised = True
+                raised_exc = exc
+            if negated:
+                if raised:
+                    exc_info = f"{type(raised_exc).__name__}: {raised_exc}" if raised_exc else "AssertionError"
+                    _fail(f"Expected expression not to raise an error, but got: {exc_info}")
+            else:
+                if not raised:
+                    _fail("Expected expression to raise an error, but it did not raise")
+            return None
+
+        # ------------------------------------------------------------------
+        # All other matchers: evaluate the actual expression first.
+        # ------------------------------------------------------------------
+        actual = self.execute(node.actual_expr)
 
         if matcher == "equal":
             expected = self.execute(node.expected_expr)
@@ -2279,6 +2321,101 @@ class Interpreter:
                 _fail(
                     f"Expected {actual!r} {qual}to be approximately equal to "
                     f"{expected!r} within {tolerance!r}"
+                )
+
+        elif matcher == "be_empty":
+            try:
+                passed = len(actual) == 0
+            except TypeError:
+                passed = False
+            if negated:
+                passed = not passed
+            if not passed:
+                qual = "not " if negated else ""
+                length = len(actual) if hasattr(actual, "__len__") else "?"
+                _fail(
+                    f"Expected value {qual}to be empty"
+                    + (f", but it has {length} element(s)" if not negated else "")
+                )
+
+        elif matcher == "have_length":
+            expected = self.execute(node.expected_expr)
+            try:
+                actual_len = len(actual)
+                passed = actual_len == expected
+            except TypeError:
+                passed = False
+                actual_len = None
+            if negated:
+                passed = not passed
+            if not passed:
+                qual = "not " if negated else ""
+                _fail(
+                    f"Expected value {qual}to have length {expected!r}"
+                    + (f", but it has length {actual_len!r}" if actual_len is not None else "")
+                )
+
+        elif matcher == "start_with":
+            expected = self.execute(node.expected_expr)
+            try:
+                if isinstance(actual, str):
+                    passed = actual.startswith(str(expected))
+                elif isinstance(actual, (list, tuple)):
+                    passed = len(actual) > 0 and actual[0] == expected
+                else:
+                    passed = False
+            except Exception:
+                passed = False
+            if negated:
+                passed = not passed
+            if not passed:
+                qual = "not " if negated else ""
+                _fail(f"Expected {actual!r} {qual}to start with {expected!r}")
+
+        elif matcher == "end_with":
+            expected = self.execute(node.expected_expr)
+            try:
+                if isinstance(actual, str):
+                    passed = actual.endswith(str(expected))
+                elif isinstance(actual, (list, tuple)):
+                    passed = len(actual) > 0 and actual[-1] == expected
+                else:
+                    passed = False
+            except Exception:
+                passed = False
+            if negated:
+                passed = not passed
+            if not passed:
+                qual = "not " if negated else ""
+                _fail(f"Expected {actual!r} {qual}to end with {expected!r}")
+
+        elif matcher == "be_of_type":
+            expected = self.execute(node.expected_expr)
+            type_name = str(expected).lower()
+            _TYPE_MAP = {
+                "integer": int, "int": int,
+                "float": float, "number": (int, float),
+                "string": str, "str": str,
+                "boolean": bool, "bool": bool,
+                "list": list, "array": list,
+                "dict": dict, "dictionary": dict, "map": dict,
+                "none": type(None), "null": type(None),
+            }
+            expected_type = _TYPE_MAP.get(type_name)
+            if expected_type is not None:
+                passed = isinstance(actual, expected_type)
+            else:
+                # Fall back to matching against the actual type name
+                passed = type(actual).__name__.lower() == type_name
+            if negated:
+                passed = not passed
+            if not passed:
+                actual_type = type(actual).__name__
+                qual = "not " if negated else ""
+                _fail(
+                    f"Expected value of type {expected!r}, but got {actual_type!r}"
+                    if not negated
+                    else f"Expected value {qual}to be of type {expected!r}, but it is {actual_type!r}"
                 )
 
         else:
