@@ -2,7 +2,7 @@
 
 **Document Purpose:** Comprehensive analysis of what NLPL needs to achieve feature parity with industrial-strength general-purpose languages.
 
-**Last Updated:** February 21, 2026  
+**Last Updated:** February 25, 2026  
 **Current NLPL Version:** v1.4-dev (Development build - NOT production-ready)  
 **Target v1.0.0 Release:** Q3 2026 (when 100% feature-complete + production-ready)  
 **Versioning Note:** See [docs/reference/VERSIONING_STRATEGY.md](../reference/VERSIONING_STRATEGY.md) for details
@@ -33,6 +33,13 @@ NLPL has achieved impressive maturity with:
 - ✅ **Parallel Computing stdlib** (parallel map/filter/reduce/sort/find, task graphs) (February 21, 2026)
 - ✅ **OS Kernel Primitives** (process management, pipes, virtual memory, syscalls, scheduler) (February 21, 2026)
 - ✅ **Bootloader & Bare Metal Support** (freestanding mode, linker scripts, entry stubs, multi-arch) (February 21, 2026)
+- ✅ **Control Flow Analysis complete** (CF001 missing returns, CF002 infinite loops, CF003 unreachable code) (February 25, 2026)
+- ✅ **Allocator hint syntax** (`set x to [] as List with allocator arena`) — parser + AST (February 25, 2026)
+- ✅ **Test suite hardened** (65 → 16 structurally-correct skips; crypto Argon2id fix, operator stubs, LSP fixtures) (February 25, 2026)
+- ✅ **TLS/SSL explicit API** (`tls_create_context`, `tls_wrap_socket`, `tls_connect`, `tls_wrap_server_socket`) (February 25, 2026)
+- ✅ **UDP sockets** (`udp_send_to`, `udp_receive_from`) (February 25, 2026)
+- ✅ **Server socket operations** (`socket_bind`, `socket_listen`, `socket_accept`, `socket_set_option`) (February 25, 2026)
+- ✅ **Unix domain sockets** (convenience helpers via `socket_create family: unix`) (February 25, 2026)
 
 **However**, to match C/C++/Rust/ASM as a **truly universal general-purpose language**, NLPL needs:
 
@@ -49,7 +56,7 @@ NLPL has achieved impressive maturity with:
 4. **Concurrency & Parallelism** (95% complete - Threading, Sync, Atomics, Async, Parallel COMPLETE)
 5. **Cross-Platform Support** (30% complete)
 6. **Performance & Optimization** (55% complete)
-7. **Safety & Correctness** (45% complete)
+7. **Safety & Correctness** (60% complete)
 8. **Maturity & Production Readiness** (50% complete - NEW FOCUS AREA)
 
 ---
@@ -1834,11 +1841,11 @@ end
   - Double-free detection
   - Memory leak detection
 
-- [ ] **Control Flow Analysis**
-  - Dead code detection
-  - Unreachable code detection
-  - Missing return statements
-  - Infinite loop detection
+- [x] **Control Flow Analysis** ✅ COMPLETE (February 25, 2026)
+  - Dead code detection (`dead_code.py` — D001/D002)
+  - Unreachable code detection (CF003)
+  - Missing return statements (CF001)
+  - Infinite loop detection (CF002)
 
 **Priority:** HIGH (prevents bugs)  
 **Estimated Effort:** 6-9 months
@@ -2076,7 +2083,7 @@ end
 - ✅ Buffered I/O now complete:
   - `BufferedReader`, `BufferedWriter`, `Pipe`, `MemoryMappedFile`
 - ❌ Async I/O (planned)
-- ❌ TLS/SSL (planned)
+- ✅ TLS/SSL (February 25, 2026)
 - ❌ Protocol Buffers / MessagePack (planned)
 
 **What C/C++/Rust Standard Libraries Have:**
@@ -2108,9 +2115,9 @@ end
 **Networking:**
 
 - ✅ HTTP, WebSocket (have)
-- ❌ TLS/SSL (need)
-- ❌ UDP sockets (need)
-- ❌ Unix domain sockets (need)
+- ✅ TLS/SSL (February 25, 2026 — `tls_create_context`, `tls_wrap_socket`, `tls_connect`, `tls_wrap_server_socket`)
+- ✅ UDP sockets (February 25, 2026 — `udp_send_to`, `udp_receive_from`)
+- ✅ Unix domain sockets (February 25, 2026 — `socket_create family: unix` + bind/listen/accept)
 - ❌ Raw sockets (need)
 
 **Serialization:**
@@ -2474,11 +2481,11 @@ end
 
 **Cryptography & Security:**
 
-- [ ] Secure hashing (SHA-256, SHA-512, BLAKE3)
-- [ ] Encryption (AES, ChaCha20)
-- [ ] Public key crypto (RSA, Ed25519)
-- [ ] TLS/SSL (or FFI bindings to OpenSSL)
-- [ ] Random number generation (cryptographically secure)
+- [x] Secure hashing (SHA-256, SHA-512, BLAKE3)
+- [x] Encryption (AES, ChaCha20)
+- [x] Public key crypto (RSA, Ed25519)
+- [x] TLS/SSL (February 25, 2026 — explicit API via Python `ssl` module)
+- [x] Random number generation (cryptographically secure)
 
 **Database Connectivity:**
 

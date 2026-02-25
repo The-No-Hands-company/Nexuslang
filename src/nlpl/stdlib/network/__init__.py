@@ -36,10 +36,26 @@ def register_network_functions(runtime: Runtime) -> None:
     runtime.register_function("socket_receive", socket_receive)
     runtime.register_function("socket_close", socket_close)
     
+    # Server socket operations
+    runtime.register_function("socket_bind", socket_bind)
+    runtime.register_function("socket_listen", socket_listen)
+    runtime.register_function("socket_accept", socket_accept)
+    runtime.register_function("socket_set_option", socket_set_option)
+
+    # UDP datagram operations
+    runtime.register_function("udp_send_to", udp_send_to)
+    runtime.register_function("udp_receive_from", udp_receive_from)
+
+    # TLS/SSL operations
+    runtime.register_function("tls_create_context", tls_create_context)
+    runtime.register_function("tls_wrap_socket", tls_wrap_socket)
+    runtime.register_function("tls_connect", tls_connect)
+    runtime.register_function("tls_wrap_server_socket", tls_wrap_server_socket)
+
     # DNS operations
     runtime.register_function("dns_lookup", dns_lookup)
     runtime.register_function("dns_reverse_lookup", dns_reverse_lookup)
-    
+
     # JSON operations
     runtime.register_function("json_encode", json_encode)
     runtime.register_function("json_decode", json_decode)
@@ -278,6 +294,292 @@ def socket_close(sock_info):
         return {
             'error': str(e)
         }
+
+
+def socket_bind(sock_info, host_or_path, port=None):
+    """Bind a socket to an address.
+
+    For TCP/UDP sockets pass *host_or_path* as a host string and *port* as an
+    integer.  For Unix-domain sockets pass the socket-file path as
+    *host_or_path* and omit *port*.
+    """
+    if not isinstance(sock_info, dict) or 'socket' not in sock_info:
+        raise TypeError("Expected a socket object")
+    sock = sock_info['socket']
+    try:
+        if sock_info.get('family') == 'unix' or port is None:
+            sock.bind(host_or_path)
+        else:
+            sock.bind((host_or_path, int(port)))
+        sock_info['bound'] = True
+        return sock_info
+    except Exception as e:
+        return {'error': str(e)}
+
+
+def socket_listen(sock_info, backlog=5):
+    """Put the socket into listening mode.
+
+    *backlog* is the maximum number of queued connections (default 5).
+    """
+    if not isinstance(sock_info, dict) or 'socket' not in sock_info:
+        raise TypeError("Expected a socket object")
+    sock = sock_info['socket']
+    try:
+        sock.listen(int(backlog))
+        sock_info['listening'] = True
+        return sock_info
+    except Exception as e:
+        return {'error': str(e)}
+
+
+def socket_accept(sock_info):
+    """Accept an incoming connection on a listening socket.
+
+    Returns a new socket-info dict for the accepted connection together with
+    the remote address as ``{'socket': ..., 'address': (host, port), ...}``.
+    """
+    if not isinstance(sock_info, dict) or 'socket' not in sock_info:
+        raise TypeError("Expected a socket object")
+    sock = sock_info['socket']
+    try:
+        conn, addr = sock.accept()
+        return {
+            'socket': conn,
+            'family': sock_info.get('family', 'inet'),
+            'type': sock_info.get('type', 'stream'),
+            'closed': False,
+            'address': addr,
+        }
+    except Exception as e:
+        return {'error': str(e)}
+
+
+def socket_set_option(sock_info, option, value):
+    """Set a socket-level option using ``setsockopt``.
+
+    Supported *option* strings:
+
+    - ``'reuse_address'`` / ``'reuseaddr'`` — ``SO_REUSEADDR`` (value: bool/int)
+    - ``'reuse_port'`` / ``'reuseport'``   — ``SO_REUSEPORT`` (value: bool/int)
+    - ``'timeout'``                         — sets blocking timeout in seconds
+    - ``'non_blocking'``                    — makes socket non-blocking (value: bool)
+    - ``'keepalive'``                       — ``SO_KEEPALIVE`` (value: bool/int)
+    - ``'nodelay'``                         — ``TCP_NODELAY`` (value: bool/int)
+    - ``'broadcast'``                       — ``SO_BROADCAST`` (value: bool/int)
+    """
+    if not isinstance(sock_info, dict) or 'socket' not in sock_info:
+        raise TypeError("Expected a socket object")
+    sock = sock_info['socket']
+    opt = option.lower().replace('-', '_')
+    try:
+        if opt in ('reuse_address', 'reuseaddr'):
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, int(bool(value)))
+        elif opt in ('reuse_port', 'reuseport'):
+            if hasattr(socket, 'SO_REUSEPORT'):
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, int(bool(value)))
+        elif opt == 'timeout':
+            sock.settimeout(float(value) if value else None)
+        elif opt == 'non_blocking':
+            sock.setblocking(not bool(value))
+        elif opt == 'keepalive':
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, int(bool(value)))
+        elif opt == 'nodelay':
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, int(bool(value)))
+        elif opt == 'broadcast':
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, int(bool(value)))
+        else:
+            raise ValueError(f"Unknown socket option: '{option}'")
+        return sock_info
+    except Exception as e:
+        return {'error': str(e)}
+
+
+# ---------------------------------------------------------------------------
+# UDP datagram operations
+# ---------------------------------------------------------------------------
+
+def udp_send_to(sock_info, data, host, port):
+    """Send a datagram to (host, port) using the given UDP socket.
+
+    Returns the number of bytes sent.
+    """
+    if not isinstance(sock_info, dict) or 'socket' not in sock_info:
+        raise TypeError("Expected a socket object")
+    if sock_info.get('type') not in ('dgram', None) and sock_info.get('type') != 'dgram':
+        pass  # allow caller to pass any socket; sendto works on SOCK_DGRAM
+    sock = sock_info['socket']
+    if isinstance(data, str):
+        data = data.encode('utf-8')
+    try:
+        return sock.sendto(data, (host, int(port)))
+    except Exception as e:
+        return {'error': str(e)}
+
+
+def udp_receive_from(sock_info, buffer_size=4096):
+    """Receive a datagram from the socket.
+
+    Returns ``{'data': str, 'address': (host, port)}``.
+    """
+    if not isinstance(sock_info, dict) or 'socket' not in sock_info:
+        raise TypeError("Expected a socket object")
+    sock = sock_info['socket']
+    try:
+        raw, addr = sock.recvfrom(int(buffer_size))
+        return {
+            'data': raw.decode('utf-8', errors='replace'),
+            'address': addr,
+            'bytes': len(raw),
+        }
+    except Exception as e:
+        return {'error': str(e)}
+
+
+# ---------------------------------------------------------------------------
+# TLS/SSL operations
+# ---------------------------------------------------------------------------
+
+def tls_create_context(verify=True, cafile=None, certfile=None, keyfile=None,
+                       protocol=None, check_hostname=True):
+    """Create an SSL context for use with TLS connections.
+
+    Args:
+        verify:          Verify peer certificate (default True).
+        cafile:          Path to CA certificate bundle (PEM).  Uses system
+                         default CAs when None.
+        certfile:        Path to client/server certificate (PEM).
+        keyfile:         Path to private key (PEM).  Defaults to *certfile*.
+        protocol:        Ignored — always uses TLS 1.2+ (SSLContext default).
+        check_hostname:  Enforce hostname verification (default True, only
+                         meaningful when *verify* is True).
+
+    Returns a dict holding the ``SSLContext`` under the key ``'context'``.
+    """
+    try:
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT if verify else ssl.PROTOCOL_TLS_SERVER)
+
+        if verify:
+            ctx.verify_mode = ssl.CERT_REQUIRED
+            ctx.check_hostname = bool(check_hostname)
+            if cafile:
+                ctx.load_verify_locations(cafile=cafile)
+            else:
+                ctx.load_default_certs()
+        else:
+            ctx.verify_mode = ssl.CERT_NONE
+            ctx.check_hostname = False
+
+        if certfile:
+            ctx.load_cert_chain(certfile=certfile,
+                                keyfile=keyfile or certfile)
+
+        return {
+            'context': ctx,
+            'verify': verify,
+            'cafile': cafile,
+            'certfile': certfile,
+        }
+    except Exception as e:
+        return {'error': str(e)}
+
+
+def tls_wrap_socket(sock_info, context_info, server_hostname=None):
+    """Wrap an existing connected socket with TLS (client side).
+
+    Args:
+        sock_info:        A socket dict as returned by ``socket_create``.
+        context_info:     An SSL-context dict from ``tls_create_context``.
+        server_hostname:  Hostname for SNI / certificate verification.
+
+    Returns an updated socket dict whose ``'socket'`` key holds the wrapped
+    ``SSLSocket`` so all other socket helpers continue to work.
+    """
+    if not isinstance(sock_info, dict) or 'socket' not in sock_info:
+        return {'error': "Expected a socket dict from socket_create()"}
+    if not isinstance(context_info, dict) or 'context' not in context_info:
+        return {'error': "Expected an SSL context dict from tls_create_context()"}
+    ctx: ssl.SSLContext = context_info['context']
+    sock = sock_info['socket']
+    try:
+        wrapped = ctx.wrap_socket(sock, server_hostname=server_hostname)
+        result = dict(sock_info)
+        result['socket'] = wrapped
+        result['tls'] = True
+        result['server_hostname'] = server_hostname
+        result['cipher'] = wrapped.cipher()
+        result['tls_version'] = wrapped.version()
+        return result
+    except Exception as e:
+        return {'error': str(e)}
+
+
+def tls_connect(host, port, cafile=None, certfile=None, keyfile=None, verify=True,
+                timeout=30):
+    """Open a TLS-secured TCP connection to *host*:*port*.
+
+    Convenience wrapper that creates a socket, connects, and wraps with TLS in
+    one call.
+
+    Returns a socket dict (same shape as ``socket_create`` + TLS metadata) on
+    success, or ``{'error': str}`` on failure.
+    """
+    try:
+        ctx_info = tls_create_context(verify=verify, cafile=cafile,
+                                      certfile=certfile, keyfile=keyfile,
+                                      check_hostname=verify)
+        if 'error' in ctx_info:
+            return ctx_info
+
+        raw_sock = socket.create_connection((host, int(port)), timeout=timeout)
+        sock_info = {
+            'socket': raw_sock,
+            'family': 'inet',
+            'type': 'stream',
+            'closed': False,
+        }
+        wrapped = tls_wrap_socket(sock_info, ctx_info, server_hostname=host)
+        return wrapped
+    except Exception as e:
+        return {'error': str(e)}
+
+
+def tls_wrap_server_socket(sock_info, certfile, keyfile, cafile=None,
+                           require_client_cert=False):
+    """Wrap a bound/listening socket with TLS for use as a TLS server.
+
+    Args:
+        sock_info:            Server socket dict (already bound + listening).
+        certfile:             Path to the server certificate (PEM).
+        keyfile:              Path to the server private key (PEM).
+        cafile:               Path to CA bundle for client-cert verification.
+        require_client_cert:  Require and verify client certificates when True.
+
+    Returns an updated socket dict.  Call ``socket_accept`` on the returned
+    dict to get TLS-enabled client connections.
+    """
+    if not isinstance(sock_info, dict) or 'socket' not in sock_info:
+        raise TypeError("Expected a socket object")
+    try:
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ctx.load_cert_chain(certfile=certfile, keyfile=keyfile)
+
+        if require_client_cert and cafile:
+            ctx.verify_mode = ssl.CERT_REQUIRED
+            ctx.load_verify_locations(cafile=cafile)
+        elif cafile:
+            ctx.load_verify_locations(cafile=cafile)
+
+        # Wrap the raw server socket so accept() yields TLS connections
+        wrapped_server = ctx.wrap_socket(sock_info['socket'], server_side=True)
+        result = dict(sock_info)
+        result['socket'] = wrapped_server
+        result['tls'] = True
+        result['certfile'] = certfile
+        return result
+    except Exception as e:
+        return {'error': str(e)}
+
 
 # DNS operations
 def dns_lookup(hostname):
