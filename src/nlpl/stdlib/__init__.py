@@ -77,6 +77,7 @@ from ..stdlib.scientific import register_scientific_functions
 from ..stdlib.parallel import register_parallel_functions
 from ..stdlib.kernel import register_kernel_functions
 from ..stdlib.drivers import register_driver_functions
+from ..stdlib.reflection import register_reflection_functions
 
 def register_stdlib(runtime: Runtime) -> None:
     """Register all standard library functions with the runtime."""
@@ -306,6 +307,9 @@ def register_stdlib(runtime: Runtime) -> None:
     # Register device driver framework
     register_driver_functions(runtime)
 
+    # Register reflection (runtime type introspection)
+    register_reflection_functions(runtime)
+
     # Register module names for importing
     runtime.register_module("math")
     runtime.register_module("string")
@@ -364,4 +368,5 @@ def register_stdlib(runtime: Runtime) -> None:
     runtime.register_module("synchronization")
     runtime.register_module("business")
     runtime.register_module("data")
-    runtime.register_module("scientific") 
+    runtime.register_module("scientific")
+    runtime.register_module("reflection")

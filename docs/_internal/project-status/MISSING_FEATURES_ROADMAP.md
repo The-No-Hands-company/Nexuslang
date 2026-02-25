@@ -1991,12 +1991,22 @@ end
 
 ---
 
-### 8.2 Reflection ❌ MISSING
+### 8.2 Reflection ✅ SUBSTANTIALLY COMPLETE (February 27, 2026)
 
 **Current State:**
 
-- ❌ No runtime type information
-- ❌ No introspection
+- ✅ Runtime type information — `reflect_type_of`, `reflect_class_name`
+- ✅ Type classification — `reflect_is_struct`, `reflect_is_class_instance`
+- ✅ Type compatibility — `reflect_is_instance_of` (exact + alias matching)
+- ✅ Struct introspection — `reflect_fields_of`, `reflect_struct_field_names`, `reflect_struct_size`
+- ✅ Class introspection — `reflect_properties_of`, `reflect_methods_of`
+- ✅ Dynamic field access — `reflect_has_field`, `reflect_get_field`, `reflect_set_field`
+- ✅ Method inspection — `reflect_has_method`
+- ✅ Summary introspection — `reflect_describe` (kind + type + fields/properties + methods)
+- ✅ 88 tests passing (unit + integration)
+- ❌ Dynamic method invocation (`reflect_invoke`) — requires interpreter access, planned
+- ❌ Custom attributes/annotations — planned
+- ❌ Compile-time attributes — planned
 
 **What Java/C#/Python Have:**
 
@@ -2005,28 +2015,31 @@ end
 - Dynamic invocation
 - Attribute/annotation queries
 
-**What NLPL Needs:**
+**Implemented (src/nlpl/stdlib/reflection/__init__.py):**
 
-- [ ] **Type Reflection**
-  - `type_of with value returns Type`
-  - Type equality checks
-  - Type name retrieval
-  - Type hierarchy queries
+- [x] **Type Reflection**
+  - `reflect_type_of with value` returns type name string
+  - `reflect_is_instance_of with value and type_name` — type compatibility with aliases
+  - `reflect_class_name with obj` — struct or class name
+  - `reflect_is_struct with value` / `reflect_is_class_instance with value`
 
-- [ ] **Struct/Class Reflection**
-  - Field enumeration
-  - Method enumeration
-  - Property access by name
-  - Dynamic method invocation
+- [x] **Struct/Class Reflection**
+  - `reflect_fields_of with struct_instance` — dict of field names to values
+  - `reflect_struct_field_names with struct_instance` — list of field names
+  - `reflect_struct_size with struct_instance` — memory layout size
+  - `reflect_properties_of with class_instance` — dict of property names to values
+  - `reflect_methods_of with class_instance` — sorted list of method names
+  - `reflect_has_field with obj and name` / `reflect_get_field` / `reflect_set_field`
+  - `reflect_has_method with obj and name`
+  - `reflect_describe with obj` — full structured summary dict
 
-- [ ] **Attribute System**
+- [ ] **Attribute System** (planned, after compile-time attribute syntax)
   - Custom attributes/annotations
-  - Attribute queries
   - Compile-time attributes
   - Runtime attributes
 
 **Priority:** LOW  
-**Estimated Effort:** 6-9 months
+**Estimated Effort:** 6-9 months (core reflection completed in 1 session Feb 27, 2026)
 
 ---
 

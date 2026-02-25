@@ -1,0 +1,439 @@
+"""
+NLPL Reflection Module.
+
+Provides runtime introspection of NLPL types, struct instances, and class instances.
+
+Registered functions (callable from NLPL programs):
+    reflect_type_of(value) -> String
+        Return the NLPL type name: "Integer", "Float", "String", "Boolean",
+        "Null", "Bytes", "List", "Dictionary", struct name, or class name.
+
+    reflect_class_name(obj) -> String
+        Return the class or struct name for an object instance.
+        Returns the raw type name for primitive values.
+
+    reflect_is_struct(value) -> Boolean
+        True when value is a StructureInstance (struct or union).
+
+    reflect_is_class_instance(value) -> Boolean
+        True when value is an Object (class instance created via 'new ClassName').
+
+    reflect_fields_of(struct_instance) -> Dictionary
+        Return a dict mapping field names to current values for a struct.
+        Returns {"error": "..."} if value is not a struct instance.
+
+    reflect_struct_field_names(struct_instance) -> List
+        Return a list of field name strings for a struct instance.
+        Returns [] if value is not a struct instance.
+
+    reflect_properties_of(class_instance) -> Dictionary
+        Return a dict mapping property names to current values for a class instance.
+        Returns {"error": "..."} if value is not a class instance.
+
+    reflect_methods_of(class_instance) -> List
+        Return a list of method name strings for a class instance.
+        Returns [] if value is not a class instance.
+
+    reflect_has_field(obj, field_name) -> Boolean
+        True when a struct or class instance has the named field/property.
+
+    reflect_get_field(obj, field_name) -> Any
+        Get a field/property by name from a struct or class instance.
+        Returns {"error": "..."} on failure.
+
+    reflect_set_field(obj, field_name, value) -> Boolean
+        Set a field/property by name on a struct or class instance.
+        Returns True on success, False on failure.
+
+    reflect_has_method(obj, method_name) -> Boolean
+        True when a class instance has the named method.
+
+    reflect_is_instance_of(value, type_name) -> Boolean
+        Check if value matches the named NLPL type (case-insensitive).
+        Understands aliases: "int"/"Integer", "str"/"String", etc.
+
+    reflect_describe(obj) -> Dictionary
+        Return a structured description: type, class_name, fields/properties,
+        methods, and size (for structs).
+"""
+
+from typing import Any, Dict, List
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+def _get_type_name(value: Any) -> str:
+    """Return the canonical NLPL type name for any runtime value."""
+    # Import lazily to avoid circular imports at module load time.
+    try:
+        from ...runtime.structures import StructureInstance
+        if isinstance(value, StructureInstance):
+            return value.definition.name
+    except ImportError:
+        pass
+
+    try:
+        from ...runtime.runtime import Object
+        if isinstance(value, Object):
+            return value.class_name
+    except ImportError:
+        pass
+
+    if value is None:
+        return "Null"
+    # bool must come before int because bool is a subclass of int in Python.
+    if isinstance(value, bool):
+        return "Boolean"
+    if isinstance(value, int):
+        return "Integer"
+    if isinstance(value, float):
+        return "Float"
+    if isinstance(value, str):
+        return "String"
+    if isinstance(value, bytes):
+        return "Bytes"
+    if isinstance(value, list):
+        return "List"
+    if isinstance(value, dict):
+        return "Dictionary"
+    if callable(value):
+        return "Function"
+    # Fallback: use the Python runtime type's name.
+    return type(value).__name__
+
+
+def _is_struct(value: Any) -> bool:
+    try:
+        from ...runtime.structures import StructureInstance
+        return isinstance(value, StructureInstance)
+    except ImportError:
+        return False
+
+
+def _is_object(value: Any) -> bool:
+    try:
+        from ...runtime.runtime import Object
+        return isinstance(value, Object)
+    except ImportError:
+        return False
+
+
+# ---------------------------------------------------------------------------
+# Type introspection
+# ---------------------------------------------------------------------------
+
+def reflect_type_of(runtime, value: Any) -> str:
+    """Return the NLPL type name of value as a String."""
+    return _get_type_name(value)
+
+
+def reflect_class_name(runtime, obj: Any) -> str:
+    """Return the class or struct name for an object instance.
+
+    For structs: the struct definition name.
+    For class instances: the class name from Object.class_name.
+    For primitives: same as reflect_type_of.
+    """
+    return _get_type_name(obj)
+
+
+def reflect_is_struct(runtime, value: Any) -> bool:
+    """Return True when value is a StructureInstance."""
+    return _is_struct(value)
+
+
+def reflect_is_class_instance(runtime, value: Any) -> bool:
+    """Return True when value is a class Object instance."""
+    return _is_object(value)
+
+
+def reflect_is_instance_of(runtime, value: Any, type_name: str) -> bool:
+    """Check if value is an instance of the named NLPL type.
+
+    Performs case-insensitive matching and understands aliases such as
+    "int" for "Integer" and "str" for "String".
+    """
+    actual = _get_type_name(value)
+    # Direct match (case-insensitive).
+    if actual.lower() == type_name.lower():
+        return True
+
+    # Aliases map: canonical lower -> set of accepted lower aliases.
+    _aliases: Dict[str, List[str]] = {
+        "integer": ["int", "integer", "long", "number"],
+        "float": ["float", "double", "real", "number"],
+        "string": ["str", "string", "text"],
+        "boolean": ["bool", "boolean"],
+        "null": ["null", "none", "nil"],
+        "list": ["list", "array"],
+        "dictionary": ["dictionary", "dict", "map"],
+        "bytes": ["bytes", "bytearray", "binary"],
+        "function": ["function", "callable", "func"],
+    }
+
+    actual_lower = actual.lower()
+    type_lower = type_name.lower()
+
+    for canonical, aliases in _aliases.items():
+        if actual_lower in aliases and type_lower in aliases:
+            return True
+
+    return False
+
+
+# ---------------------------------------------------------------------------
+# Struct introspection
+# ---------------------------------------------------------------------------
+
+def reflect_fields_of(runtime, obj: Any) -> Dict[str, Any]:
+    """Return a dict mapping field names to current values for a struct instance.
+
+    Returns {"error": "<message>"} if obj is not a StructureInstance.
+    """
+    if not _is_struct(obj):
+        return {"error": f"Not a struct instance (got {_get_type_name(obj)})"}
+
+    result: Dict[str, Any] = {}
+    for name in obj.definition.fields:
+        try:
+            result[name] = obj.get_field(name)
+        except Exception:
+            result[name] = None
+    return result
+
+
+def reflect_struct_field_names(runtime, obj: Any) -> List[str]:
+    """Return a list of field name strings for a struct instance.
+
+    Returns [] if obj is not a StructureInstance.
+    """
+    if not _is_struct(obj):
+        return []
+    return list(obj.definition.fields.keys())
+
+
+def reflect_struct_size(runtime, obj: Any) -> int:
+    """Return the total size in bytes of the struct instance's memory layout.
+
+    Returns 0 if obj is not a StructureInstance.
+    """
+    if not _is_struct(obj):
+        return 0
+    return obj.definition.size
+
+
+# ---------------------------------------------------------------------------
+# Class instance introspection
+# ---------------------------------------------------------------------------
+
+def reflect_properties_of(runtime, obj: Any) -> Dict[str, Any]:
+    """Return a dict mapping property names to current values for a class instance.
+
+    Returns {"error": "<message>"} if obj is not an Object.
+    """
+    if not _is_object(obj):
+        return {"error": f"Not a class instance (got {_get_type_name(obj)})"}
+    return dict(obj.properties)
+
+
+def reflect_methods_of(runtime, obj: Any) -> List[str]:
+    """Return a sorted list of method name strings for a class instance.
+
+    Returns [] if obj is not an Object.
+    """
+    if not _is_object(obj):
+        return []
+    return sorted(obj.methods.keys())
+
+
+# ---------------------------------------------------------------------------
+# Common field/property access
+# ---------------------------------------------------------------------------
+
+def reflect_has_field(runtime, obj: Any, field_name: str) -> bool:
+    """Return True when a struct or class instance has the named field/property."""
+    if _is_struct(obj):
+        return field_name in obj.definition.fields
+    if _is_object(obj):
+        return field_name in obj.properties
+    return False
+
+
+def reflect_get_field(runtime, obj: Any, field_name: str) -> Any:
+    """Get a field/property value by name from a struct or class instance.
+
+    Returns {"error": "<message>"} on failure.
+    """
+    if _is_struct(obj):
+        try:
+            return obj.get_field(field_name)
+        except AttributeError:
+            return {"error": f"Struct '{obj.definition.name}' has no field '{field_name}'"}
+        except Exception as exc:
+            return {"error": str(exc)}
+
+    if _is_object(obj):
+        if field_name not in obj.properties:
+            return {"error": f"Class '{obj.class_name}' has no property '{field_name}'"}
+        return obj.properties[field_name]
+
+    return {"error": f"Not an object (got {_get_type_name(obj)})"}
+
+
+def reflect_set_field(runtime, obj: Any, field_name: str, value: Any) -> bool:
+    """Set a field/property value by name on a struct or class instance.
+
+    Returns True on success, False on failure.
+    """
+    if _is_struct(obj):
+        try:
+            obj.set_field(field_name, value)
+            return True
+        except (AttributeError, TypeError, RuntimeError):
+            return False
+
+    if _is_object(obj):
+        obj.set_property(field_name, value)
+        return True
+
+    return False
+
+
+# ---------------------------------------------------------------------------
+# Method inspection
+# ---------------------------------------------------------------------------
+
+def reflect_has_method(runtime, obj: Any, method_name: str) -> bool:
+    """Return True when a class instance has the named method."""
+    if _is_object(obj):
+        return method_name in obj.methods
+    return False
+
+
+# ---------------------------------------------------------------------------
+# Describe — combined introspection summary
+# ---------------------------------------------------------------------------
+
+def reflect_describe(runtime, obj: Any) -> Dict[str, Any]:
+    """Return a structured description of any NLPL value.
+
+    For struct instances::
+        {
+            "kind": "struct",
+            "type_name": "<StructName>",
+            "fields": {"field1": value1, ...},
+            "size_bytes": <int>
+        }
+
+    For class instances::
+        {
+            "kind": "class",
+            "type_name": "<ClassName>",
+            "properties": {"prop1": value1, ...},
+            "methods": ["method1", ...]
+        }
+
+    For primitives and other values::
+        {
+            "kind": "primitive",
+            "type_name": "<TypeName>",
+            "value": <value>
+        }
+    """
+    if _is_struct(obj):
+        fields: Dict[str, Any] = {}
+        for name in obj.definition.fields:
+            try:
+                fields[name] = obj.get_field(name)
+            except Exception:
+                fields[name] = None
+        return {
+            "kind": "struct",
+            "type_name": obj.definition.name,
+            "fields": fields,
+            "size_bytes": obj.definition.size,
+        }
+
+    if _is_object(obj):
+        return {
+            "kind": "class",
+            "type_name": obj.class_name,
+            "properties": dict(obj.properties),
+            "methods": sorted(obj.methods.keys()),
+        }
+
+    return {
+        "kind": "primitive",
+        "type_name": _get_type_name(obj),
+        "value": obj,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Registration
+# ---------------------------------------------------------------------------
+
+def register_reflection_functions(runtime) -> None:
+    """Register all reflection functions with the NLPL runtime."""
+    runtime.register_function("reflect_type_of",
+                              lambda v: reflect_type_of(runtime, v))
+    runtime.register_function("reflect_class_name",
+                              lambda v: reflect_class_name(runtime, v))
+    runtime.register_function("reflect_is_struct",
+                              lambda v: reflect_is_struct(runtime, v))
+    runtime.register_function("reflect_is_class_instance",
+                              lambda v: reflect_is_class_instance(runtime, v))
+    runtime.register_function("reflect_is_instance_of",
+                              lambda v, t: reflect_is_instance_of(runtime, v, t))
+
+    # Struct introspection
+    runtime.register_function("reflect_fields_of",
+                              lambda v: reflect_fields_of(runtime, v))
+    runtime.register_function("reflect_struct_field_names",
+                              lambda v: reflect_struct_field_names(runtime, v))
+    runtime.register_function("reflect_struct_size",
+                              lambda v: reflect_struct_size(runtime, v))
+
+    # Class instance introspection
+    runtime.register_function("reflect_properties_of",
+                              lambda v: reflect_properties_of(runtime, v))
+    runtime.register_function("reflect_methods_of",
+                              lambda v: reflect_methods_of(runtime, v))
+
+    # Common field access
+    runtime.register_function("reflect_has_field",
+                              lambda v, f: reflect_has_field(runtime, v, f))
+    runtime.register_function("reflect_get_field",
+                              lambda v, f: reflect_get_field(runtime, v, f))
+    runtime.register_function("reflect_set_field",
+                              lambda v, f, val: reflect_set_field(runtime, v, f, val))
+
+    # Method inspection
+    runtime.register_function("reflect_has_method",
+                              lambda v, m: reflect_has_method(runtime, v, m))
+
+    # Summary
+    runtime.register_function("reflect_describe",
+                              lambda v: reflect_describe(runtime, v))
+
+
+__all__ = [
+    "reflect_type_of",
+    "reflect_class_name",
+    "reflect_is_struct",
+    "reflect_is_class_instance",
+    "reflect_is_instance_of",
+    "reflect_fields_of",
+    "reflect_struct_field_names",
+    "reflect_struct_size",
+    "reflect_properties_of",
+    "reflect_methods_of",
+    "reflect_has_field",
+    "reflect_get_field",
+    "reflect_set_field",
+    "reflect_has_method",
+    "reflect_describe",
+    "register_reflection_functions",
+]
