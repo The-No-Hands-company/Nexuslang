@@ -81,6 +81,7 @@ from ..stdlib.plot import register_plot_functions
 from ..stdlib.audio import register_audio_functions
 from ..stdlib.result_utils import register_result_utils_functions
 from ..stdlib.property_testing import register_property_testing_functions
+from ..stdlib.coverage_utils import register_coverage_utils_functions
 from ..stdlib.parallel import register_parallel_functions
 from ..stdlib.kernel import register_kernel_functions
 from ..stdlib.drivers import register_driver_functions
@@ -285,6 +286,9 @@ def register_stdlib(runtime: Runtime) -> None:
     # Register property-based testing (generators, property_test, shrinking)
     register_property_testing_functions(runtime)
 
+    # Register coverage measurement (line/branch/function coverage via sys.settrace)
+    register_coverage_utils_functions(runtime)
+
     # Register bit manipulation operations (ASM/C essential)
     register_bit_ops_functions(runtime)
     
@@ -417,4 +421,6 @@ def register_stdlib(runtime: Runtime) -> None:
     runtime.register_module("error_handling")
     runtime.register_module("property_testing")
     runtime.register_module("prop_test")
+    runtime.register_module("coverage_utils")
+    runtime.register_module("coverage")
     runtime.register_module("reflection")

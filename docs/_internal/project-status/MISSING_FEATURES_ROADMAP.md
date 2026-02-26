@@ -2637,13 +2637,9 @@ end
 
 **What's Needed:**
 
-#### 8.4.1 Test Coverage Analysis ❌ MISSING
+#### 8.4.1 Test Coverage Analysis ⚠️ PARTIAL
 
-- [ ] **Coverage Tooling**
-  - Line coverage measurement
-  - Branch coverage
-  - Function coverage
-  - Integration with LLVM coverage tools
+- [x] **Coverage Tooling** — `coverage_utils/` (coverage_start/stop/pause/resume/reset/destroy/is_active/list_sessions; coverage_get/files/lines_hit/lines_total/line_rate/functions/function_rate/branches/branch_count/call_count/line_count; coverage_summary/report/report_text/to_dict/merge/diff; coverage_measure/measure_line_rate — 27 functions, sys.settrace-based line+branch+function tracking, named sessions, include/exclude patterns, merge/diff between sessions, JSON-serializable output — 105 tests) (February 27, 2026)
 
 - [ ] **Target: 90%+ Coverage**
   - Parser/lexer: 95%+ (critical path)
