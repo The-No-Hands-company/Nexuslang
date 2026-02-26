@@ -76,6 +76,7 @@ from ..stdlib.data import register_data_functions
 from ..stdlib.scientific import register_scientific_functions
 from ..stdlib.linalg import register_linalg_functions
 from ..stdlib.numint import register_numint_functions
+from ..stdlib.dsp import register_dsp_functions
 from ..stdlib.parallel import register_parallel_functions
 from ..stdlib.kernel import register_kernel_functions
 from ..stdlib.drivers import register_driver_functions
@@ -265,6 +266,9 @@ def register_stdlib(runtime: Runtime) -> None:
     # Register numerical integration, differentiation, root finding, optimization
     register_numint_functions(runtime)
 
+    # Register digital signal processing (FFT, filtering, spectral analysis)
+    register_dsp_functions(runtime)
+
     # Register bit manipulation operations (ASM/C essential)
     register_bit_ops_functions(runtime)
     
@@ -385,4 +389,7 @@ def register_stdlib(runtime: Runtime) -> None:
     runtime.register_module("linear_algebra")
     runtime.register_module("numint")
     runtime.register_module("numerical")
+    runtime.register_module("dsp")
+    runtime.register_module("signal_proc")
+    runtime.register_module("fft")
     runtime.register_module("reflection")

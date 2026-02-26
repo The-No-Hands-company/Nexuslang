@@ -2547,7 +2547,7 @@ end
 - [x] Statistical functions — `statistics/` module
 - [x] Linear algebra / matrix operations — `linalg/` (mat_zeros/ones/identity/diagonal/from_list/random, mat_add/sub/scale/negate/element_mul, mat_transpose/mul/pow, mat_trace/determinant/inverse/rank/is_symmetric/frobenius_norm, mat_solve/least_squares, vec_dot/cross/norm/norm_l1/normalize/add/sub/scale/angle/project/outer — 37 functions, 117 tests) (February 26, 2026)
 - [x] Numerical integration/differentiation — `numint/` (integrate_midpoint/trapezoid/simpson/simpson38/romberg/gauss/adaptive/data, diff_forward/backward/central/second/nth/partial/gradient/jacobian/hessian, root_bisection/newton/secant, minimize_golden/brent — 24 functions, 95 tests) (February 26, 2026)
-- [ ] Signal processing / FFT (planned)
+- [x] Signal processing / FFT — `dsp/` (fft/ifft/rfft/irfft/fft_magnitude/fft_phase/fft_power/fft_freqs, window_rectangular/hann/hamming/blackman/bartlett/apply_window, convolve/fft_convolve/correlate/fir_filter/moving_average, stft/dominant_frequency/spectral_centroid/snr/zero_crossing_rate, fft_shift/next_power_of_two/db_to_linear/linear_to_db/resample — 29 functions, 145 tests) (February 26, 2026)
 - [ ] Plotting/visualization (planned)
 
 **System & OS:**
