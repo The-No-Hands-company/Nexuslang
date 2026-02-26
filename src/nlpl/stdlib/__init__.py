@@ -77,6 +77,7 @@ from ..stdlib.scientific import register_scientific_functions
 from ..stdlib.linalg import register_linalg_functions
 from ..stdlib.numint import register_numint_functions
 from ..stdlib.dsp import register_dsp_functions
+from ..stdlib.plot import register_plot_functions
 from ..stdlib.parallel import register_parallel_functions
 from ..stdlib.kernel import register_kernel_functions
 from ..stdlib.drivers import register_driver_functions
@@ -269,6 +270,9 @@ def register_stdlib(runtime: Runtime) -> None:
     # Register digital signal processing (FFT, filtering, spectral analysis)
     register_dsp_functions(runtime)
 
+    # Register plotting and visualization (ASCII charts + SVG generation)
+    register_plot_functions(runtime)
+
     # Register bit manipulation operations (ASM/C essential)
     register_bit_ops_functions(runtime)
     
@@ -392,4 +396,7 @@ def register_stdlib(runtime: Runtime) -> None:
     runtime.register_module("dsp")
     runtime.register_module("signal_proc")
     runtime.register_module("fft")
+    runtime.register_module("plot")
+    runtime.register_module("visualization")
+    runtime.register_module("charts")
     runtime.register_module("reflection")

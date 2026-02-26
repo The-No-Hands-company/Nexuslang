@@ -2548,7 +2548,7 @@ end
 - [x] Linear algebra / matrix operations — `linalg/` (mat_zeros/ones/identity/diagonal/from_list/random, mat_add/sub/scale/negate/element_mul, mat_transpose/mul/pow, mat_trace/determinant/inverse/rank/is_symmetric/frobenius_norm, mat_solve/least_squares, vec_dot/cross/norm/norm_l1/normalize/add/sub/scale/angle/project/outer — 37 functions, 117 tests) (February 26, 2026)
 - [x] Numerical integration/differentiation — `numint/` (integrate_midpoint/trapezoid/simpson/simpson38/romberg/gauss/adaptive/data, diff_forward/backward/central/second/nth/partial/gradient/jacobian/hessian, root_bisection/newton/secant, minimize_golden/brent — 24 functions, 95 tests) (February 26, 2026)
 - [x] Signal processing / FFT — `dsp/` (fft/ifft/rfft/irfft/fft_magnitude/fft_phase/fft_power/fft_freqs, window_rectangular/hann/hamming/blackman/bartlett/apply_window, convolve/fft_convolve/correlate/fir_filter/moving_average, stft/dominant_frequency/spectral_centroid/snr/zero_crossing_rate, fft_shift/next_power_of_two/db_to_linear/linear_to_db/resample — 29 functions, 145 tests) (February 26, 2026)
-- [ ] Plotting/visualization (planned)
+- [x] Plotting/visualization — `plot/` (plot_linspace/arange/normalize/scale/stats/color_scheme, plot_line_text/bar_text/scatter_text/hist_text, plot_line_svg/scatter_svg/bar_svg/hist_svg/pie_svg, plot_multi_line_svg/multi_bar_svg, plot_area_svg/step_svg/heatmap_svg/box_svg/annotations_svg, plot_save/to_html/combine_svg/svg_dimensions — 27 functions, ASCII+SVG output, zero dependencies, 134 tests) (February 26, 2026)
 
 **System & OS:**
 
