@@ -79,6 +79,7 @@ from ..stdlib.numint import register_numint_functions
 from ..stdlib.dsp import register_dsp_functions
 from ..stdlib.plot import register_plot_functions
 from ..stdlib.audio import register_audio_functions
+from ..stdlib.result_utils import register_result_utils_functions
 from ..stdlib.parallel import register_parallel_functions
 from ..stdlib.kernel import register_kernel_functions
 from ..stdlib.drivers import register_driver_functions
@@ -277,6 +278,9 @@ def register_stdlib(runtime: Runtime) -> None:
     # Register audio format handling (WAV I/O, PCM manipulation, generation, analysis)
     register_audio_functions(runtime)
 
+    # Register Result/Option types and error-chain helpers
+    register_result_utils_functions(runtime)
+
     # Register bit manipulation operations (ASM/C essential)
     register_bit_ops_functions(runtime)
     
@@ -405,4 +409,6 @@ def register_stdlib(runtime: Runtime) -> None:
     runtime.register_module("charts")
     runtime.register_module("audio")
     runtime.register_module("audio_utils")
+    runtime.register_module("result_utils")
+    runtime.register_module("error_handling")
     runtime.register_module("reflection")
