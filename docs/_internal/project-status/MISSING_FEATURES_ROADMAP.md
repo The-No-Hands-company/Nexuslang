@@ -2530,7 +2530,7 @@ end
 - [x] YAML/TOML — `serialization/` (February 2026)
 - [x] CBOR — `serialization/` (`cbor_dumps`, `cbor_loads`, `cbor_dump_file`, `cbor_load_file`) (February 25, 2026)
 - [x] Image format handling — `image_utils/` module (JPEG, PNG, BMP, WebP)
-- [ ] Audio format handling (planned)
+- [x] Audio format handling — `audio/` (audio_load_wav/save_wav/create/free/info, audio_duration/sample_rate/channels/get_samples/set_samples/from_samples, audio_concat/slice/mix/reverse/normalize/apply_gain/fade/trim_silence/resample, audio_mono_to_stereo/stereo_to_mono, audio_sine_wave/square_wave/sawtooth_wave/noise/silence, audio_peak/rms/to_db/from_db/zero_crossings, audio_detect_format/to_bytes/from_bytes — 35 functions, WAV 8/16/24/32-bit PCM, zero dependencies, 143 tests) (February 26, 2026)
 
 **GUI & Graphics:**
 
