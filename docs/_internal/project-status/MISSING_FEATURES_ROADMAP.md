@@ -2558,7 +2558,7 @@ end
 - [x] System information — `system/` module
 - [x] Compression (gzip, zlib, bz2, lzma) — `compression/` module
 - [x] lz4/zstd — `compression/` module (lz4_compress/decompress/file, zstd_compress/decompress/file — 42 tests) (February 25, 2026)
-- [ ] File system watching (inotify) (planned)
+- [x] File system watching — `fs_watch/` (fs_watch_start/stop/poll/list/is_active/path/clear/stop_all — watchdog, cross-platform inotify/FSEvents/ReadDirectoryChangesW, 56 tests) (February 26, 2026)
 
 **Priority:** 🟡 MEDIUM (remaining gaps are non-critical)
 **Estimated Effort:** 1-2 months for remaining gaps  

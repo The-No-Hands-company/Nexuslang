@@ -78,6 +78,7 @@ from ..stdlib.parallel import register_parallel_functions
 from ..stdlib.kernel import register_kernel_functions
 from ..stdlib.drivers import register_driver_functions
 from ..stdlib.reflection import register_reflection_functions
+from ..stdlib.fs_watch import register_fs_watch_functions
 
 def register_stdlib(runtime: Runtime) -> None:
     """Register all standard library functions with the runtime."""
@@ -309,6 +310,9 @@ def register_stdlib(runtime: Runtime) -> None:
 
     # Register reflection (runtime type introspection)
     register_reflection_functions(runtime)
+
+    # Register file system watching (inotify/FSEvents/ReadDirectoryChangesW via watchdog)
+    register_fs_watch_functions(runtime)
 
     # Register module names for importing
     runtime.register_module("math")
