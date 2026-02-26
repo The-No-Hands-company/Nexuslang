@@ -2581,11 +2581,7 @@ end
 
 - [x] **Logging Framework** — `logging_utils/` (log_debug/info/warning/error/critical, named loggers, console/stderr/file handlers, configurable format with {time}/{level}/{name}/{message} tokens, in-memory record buffer, log_to/log_configure, log_enable/disable, log_get_records/log_clear_records, backward-compat aliases — 30 functions, 78 tests) (February 26, 2026)
 
-- [ ] **Testing Standards**
-  - Unit test conventions
-  - Integration test patterns
-  - Property-based testing
-  - Benchmark integration
+- [x] **Testing Standards** — `property_testing/` (gen_integer/float/bool/none/constant/choice/from_list/string/text/list/dict/tuple/one_of/optional/fixed_dict/text_lines; gen_positive_integer, gen_non_negative_integer, gen_ascii_string, gen_non_empty_list; strategy_filter, strategy_map, strategy_draw; property_test, property_assert, property_find_counterexample/example, property_statistics, property_shrink, property_report, property_assume — 31 functions, property-based testing with shrinking + seeded reproducibility + assumption filtering, 124 tests) (February 26, 2026)
 
 - [ ] **Documentation Requirements**
   - API doc generation (like Rustdoc)
