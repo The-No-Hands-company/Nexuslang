@@ -2546,7 +2546,7 @@ end
 - [x] Numerical formulas (projectile, trajectory, quadratic, kinematics) — `scientific/`
 - [x] Statistical functions — `statistics/` module
 - [x] Linear algebra / matrix operations — `linalg/` (mat_zeros/ones/identity/diagonal/from_list/random, mat_add/sub/scale/negate/element_mul, mat_transpose/mul/pow, mat_trace/determinant/inverse/rank/is_symmetric/frobenius_norm, mat_solve/least_squares, vec_dot/cross/norm/norm_l1/normalize/add/sub/scale/angle/project/outer — 37 functions, 117 tests) (February 26, 2026)
-- [ ] Numerical integration/differentiation (planned)
+- [x] Numerical integration/differentiation — `numint/` (integrate_midpoint/trapezoid/simpson/simpson38/romberg/gauss/adaptive/data, diff_forward/backward/central/second/nth/partial/gradient/jacobian/hessian, root_bisection/newton/secant, minimize_golden/brent — 24 functions, 95 tests) (February 26, 2026)
 - [ ] Signal processing / FFT (planned)
 - [ ] Plotting/visualization (planned)
 
