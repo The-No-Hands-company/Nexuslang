@@ -5,3 +5,4 @@ cbor2>=5.4.0    # CBOR serialization (RFC 8949) for stdlib/serialization
 lz4>=4.0.0      # LZ4 fast compression for stdlib/compression
 zstandard>=0.21.0  # Zstandard (zstd) compression for stdlib/compression
 watchdog>=3.0.0    # File system watching (inotify/FSEvents/ReadDirectoryChangesW) for stdlib/fs_watch
+jsonschema>=4.17.0  # JSON Schema validation (Draft 4/7/2019/2020) for stdlib/validation

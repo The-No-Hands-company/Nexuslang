@@ -25,8 +25,26 @@ Example usage in NLPL:
 """
 
 from ...runtime.runtime import Runtime
+import json
+import os
 import re
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
+
+try:
+    import jsonschema
+    from jsonschema import Draft4Validator, Draft7Validator, Draft201909Validator, Draft202012Validator
+    from jsonschema.exceptions import ValidationError as _JSValidationError, SchemaError as _JSSchemaError
+    _JSONSCHEMA_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    _JSONSCHEMA_AVAILABLE = False
+
+
+def _require_jsonschema() -> None:
+    if not _JSONSCHEMA_AVAILABLE:
+        raise RuntimeError(
+            "JSON Schema validation requires the 'jsonschema' package. "
+            "Install it with: pip install jsonschema>=4.17.0"
+        )
 
 
 def validate_type(value, expected_type):
@@ -333,6 +351,213 @@ def sanitize_html(value):
     return value
 
 
+# ---------------------------------------------------------------------------
+# JSON Schema validation (RFC-compliant, powered by the jsonschema library)
+# ---------------------------------------------------------------------------
+
+# Map of $schema URI substrings to validator class names for version detection
+_SCHEMA_DRAFT_MAP = [
+    ("2020-12", "Draft 2020-12"),
+    ("2019-09", "Draft 2019-09"),
+    ("draft-07", "Draft 7"),
+    ("draft-06", "Draft 6"),
+    ("draft-04", "Draft 4"),
+    ("draft-03", "Draft 3"),
+]
+
+
+def _best_validator_for(schema: Dict) -> Any:
+    """Return the most appropriate jsonschema Validator class for *schema*."""
+    _require_jsonschema()
+    meta = schema.get("$schema", "") if isinstance(schema, dict) else ""
+    if "2020-12" in meta:
+        return Draft202012Validator
+    if "2019-09" in meta:
+        return Draft201909Validator
+    if "draft-07" in meta or "draft-7" in meta:
+        return Draft7Validator
+    # Default to Draft 7 — widest real-world compatibility
+    return Draft7Validator
+
+
+def json_schema_validate(data: Any, schema: Any) -> None:
+    """Validate *data* against a JSON Schema dict.
+
+    Raises RuntimeError with a descriptive message on the first violation.
+    Returns None on success.
+
+    Args:
+        data:   The value to validate (dict, list, scalar, …).
+        schema: A dict representing a valid JSON Schema.
+
+    Example (NLPL):
+        json_schema_validate with data and schema
+    """
+    _require_jsonschema()
+    if isinstance(schema, str):
+        schema = json.loads(schema)
+    try:
+        _best_validator_for(schema)(schema).validate(data)
+    except _JSValidationError as exc:
+        path = " -> ".join(str(p) for p in exc.absolute_path) or "<root>"
+        raise RuntimeError(f"JSON Schema validation failed at '{path}': {exc.message}") from None
+    except _JSSchemaError as exc:
+        raise RuntimeError(f"Invalid JSON Schema: {exc.message}") from None
+
+
+def json_schema_is_valid(data: Any, schema: Any) -> bool:
+    """Return True if *data* conforms to *schema*, False otherwise.
+
+    Does not raise on validation failure.
+
+    Args:
+        data:   Value to validate.
+        schema: JSON Schema dict or JSON string.
+    """
+    _require_jsonschema()
+    if isinstance(schema, str):
+        schema = json.loads(schema)
+    try:
+        return _best_validator_for(schema)(schema).is_valid(data)
+    except Exception:
+        # Catches SchemaError, UnknownType, and any other jsonschema internal error
+        return False
+
+
+def json_schema_errors(data: Any, schema: Any) -> List[str]:
+    """Return a list of human-readable error strings for all violations.
+
+    Returns an empty list when *data* is valid.
+
+    Args:
+        data:   Value to validate.
+        schema: JSON Schema dict or JSON string.
+    """
+    _require_jsonschema()
+    if isinstance(schema, str):
+        schema = json.loads(schema)
+    try:
+        validator = _best_validator_for(schema)(schema)
+        return [e.message for e in validator.iter_errors(data)]
+    except _JSSchemaError as exc:
+        return [f"Invalid JSON Schema: {exc.message}"]
+
+
+def json_schema_first_error(data: Any, schema: Any) -> Optional[str]:
+    """Return the first validation error message, or None if *data* is valid."""
+    _require_jsonschema()
+    if isinstance(schema, str):
+        schema = json.loads(schema)
+    try:
+        errors = list(_best_validator_for(schema)(schema).iter_errors(data))
+        return errors[0].message if errors else None
+    except _JSSchemaError as exc:
+        return f"Invalid JSON Schema: {exc.message}"
+
+
+def json_schema_error_count(data: Any, schema: Any) -> int:
+    """Return the total number of JSON Schema violations in *data*.
+
+    Returns 0 when valid.
+    """
+    _require_jsonschema()
+    if isinstance(schema, str):
+        schema = json.loads(schema)
+    try:
+        return sum(1 for _ in _best_validator_for(schema)(schema).iter_errors(data))
+    except _JSSchemaError:
+        return 1
+
+
+def json_schema_from_file(data: Any, schema_path: str) -> None:
+    """Load a JSON Schema from *schema_path* and validate *data* against it.
+
+    Raises FileNotFoundError if the file is missing.
+    Raises RuntimeError on validation failure (same format as json_schema_validate).
+
+    Args:
+        data:        Value to validate.
+        schema_path: Path to a .json file containing a JSON Schema object.
+    """
+    _require_jsonschema()
+    abs_path = os.path.abspath(str(schema_path))
+    if not os.path.isfile(abs_path):
+        raise FileNotFoundError(f"Schema file not found: {abs_path}")
+    with open(abs_path, encoding="utf-8") as fh:
+        schema = json.load(fh)
+    json_schema_validate(data, schema)
+
+
+def json_schema_draft_version(schema: Any) -> str:
+    """Return the declared JSON Schema draft version string.
+
+    Inspects the ``$schema`` keyword.  Returns ``'unknown'`` when absent.
+
+    Args:
+        schema: JSON Schema dict or JSON string.
+
+    Returns:
+        One of ``'Draft 2020-12'``, ``'Draft 2019-09'``, ``'Draft 7'``,
+        ``'Draft 6'``, ``'Draft 4'``, ``'Draft 3'``, or ``'unknown'``.
+    """
+    if isinstance(schema, str):
+        try:
+            schema = json.loads(schema)
+        except json.JSONDecodeError:
+            return "unknown"
+    if not isinstance(schema, dict):
+        return "unknown"
+    meta = schema.get("$schema", "")
+    for needle, label in _SCHEMA_DRAFT_MAP:
+        if needle in meta:
+            return label
+    return "unknown" if not meta else "unknown"
+
+
+def json_schema_infer(data: Any) -> Dict:
+    """Infer a simple JSON Schema Draft 7 object from a sample *data* value.
+
+    Useful for quick schema bootstrapping.  The returned schema captures
+    ``type``, ``properties`` / ``items``, and marks all top-level dict keys
+    as ``required``.
+
+    Args:
+        data: Any JSON-compatible Python value.
+
+    Returns:
+        A dict representing a JSON Schema.
+    """
+    def _infer(value: Any) -> Dict:
+        if isinstance(value, bool):
+            return {"type": "boolean"}
+        if isinstance(value, int):
+            return {"type": "integer"}
+        if isinstance(value, float):
+            return {"type": "number"}
+        if isinstance(value, str):
+            return {"type": "string"}
+        if value is None:
+            return {"type": "null"}
+        if isinstance(value, list):
+            if value:
+                return {"type": "array", "items": _infer(value[0])}
+            return {"type": "array"}
+        if isinstance(value, dict):
+            props = {k: _infer(v) for k, v in value.items()}
+            schema: Dict = {
+                "type": "object",
+                "properties": props,
+            }
+            if props:
+                schema["required"] = list(props.keys())
+            return schema
+        return {}
+
+    result = _infer(data)
+    result["$schema"] = "http://json-schema.org/draft-07/schema#"
+    return result
+
+
 def register_validation_functions(runtime: Runtime) -> None:
     """Register validation functions with the runtime."""
     
@@ -356,3 +581,13 @@ def register_validation_functions(runtime: Runtime) -> None:
     # Sanitization
     runtime.register_function("sanitize_string", sanitize_string)
     runtime.register_function("sanitize_html", sanitize_html)
+
+    # JSON Schema validation
+    runtime.register_function("json_schema_validate", json_schema_validate)
+    runtime.register_function("json_schema_is_valid", json_schema_is_valid)
+    runtime.register_function("json_schema_errors", json_schema_errors)
+    runtime.register_function("json_schema_first_error", json_schema_first_error)
+    runtime.register_function("json_schema_error_count", json_schema_error_count)
+    runtime.register_function("json_schema_from_file", json_schema_from_file)
+    runtime.register_function("json_schema_draft_version", json_schema_draft_version)
+    runtime.register_function("json_schema_infer", json_schema_infer)

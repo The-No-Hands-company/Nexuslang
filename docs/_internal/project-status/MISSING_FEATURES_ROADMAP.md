@@ -2524,7 +2524,7 @@ end
 **Data Formats:**
 
 - [x] CSV reader/writer — `csv_utils/` module
-- [ ] JSON schema validation (planned)
+- [x] JSON schema validation — `validation/` (`json_schema_validate`, `json_schema_is_valid`, `json_schema_errors`, `json_schema_first_error`, `json_schema_error_count`, `json_schema_from_file`, `json_schema_draft_version`, `json_schema_infer` — Draft 4/7/2019-09/2020-12, powered by `jsonschema>=4.17.0`, 72 tests) (February 26, 2026)
 - [x] MessagePack — `serialization/` (`msgpack_dumps`, `msgpack_loads`) (February 2026)
 - [x] Protocol Buffers — `serialization/` (`protobuf_dumps`, `protobuf_loads`) (February 2026)
 - [x] YAML/TOML — `serialization/` (February 2026)
