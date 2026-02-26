@@ -2583,11 +2583,7 @@ end
   - Error chaining and context
   - try/catch best practices
 
-- [ ] **Logging Framework**
-  - Structured logging support
-  - Log levels (debug, info, warn, error)
-  - Configurable outputs
-  - Performance-conscious (zero-cost when disabled)
+- [x] **Logging Framework** — `logging_utils/` (log_debug/info/warning/error/critical, named loggers, console/stderr/file handlers, configurable format with {time}/{level}/{name}/{message} tokens, in-memory record buffer, log_to/log_configure, log_enable/disable, log_get_records/log_clear_records, backward-compat aliases — 30 functions, 78 tests) (February 26, 2026)
 
 - [ ] **Testing Standards**
   - Unit test conventions
