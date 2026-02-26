@@ -2003,8 +2003,8 @@ end
 - ✅ Dynamic field access — `reflect_has_field`, `reflect_get_field`, `reflect_set_field`
 - ✅ Method inspection — `reflect_has_method`
 - ✅ Summary introspection — `reflect_describe` (kind + type + fields/properties + methods)
-- ✅ 88 tests passing (unit + integration)
-- ❌ Dynamic method invocation (`reflect_invoke`) — requires interpreter access, planned
+- ✅ Dynamic method invocation — `reflect_invoke`, `reflect_invoke_safe`, `reflect_call` (February 26, 2026 — 39 tests)
+- ✅ 127 tests passing (88 original + 39 dynamic invocation)
 - ❌ Custom attributes/annotations — planned
 - ❌ Compile-time attributes — planned
 

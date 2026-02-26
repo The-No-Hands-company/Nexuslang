@@ -48,6 +48,20 @@ Registered functions (callable from NLPL programs):
     reflect_has_method(obj, method_name) -> Boolean
         True when a class instance has the named method.
 
+    reflect_invoke(obj, method_name, args) -> Any
+        Dynamically invoke a named method on a class instance.
+        args must be a List (or empty list for no arguments).
+        Returns the method's return value, or {"error": "..."} on failure.
+
+    reflect_invoke_safe(obj, method_name, args, default) -> Any
+        Like reflect_invoke but returns default instead of raising on any error.
+
+    reflect_call(func_name, args) -> Any
+        Call any registered NLPL runtime function by name.
+        args must be a List (or empty list for no arguments).
+        Returns the function's return value, or {"error": "..."} if the
+        function is not found or raises.
+
     reflect_is_instance_of(value, type_name) -> Boolean
         Check if value matches the named NLPL type (case-insensitive).
         Understands aliases: "int"/"Integer", "str"/"String", etc.
@@ -313,6 +327,99 @@ def reflect_has_method(runtime, obj: Any, method_name: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Dynamic invocation
+# ---------------------------------------------------------------------------
+
+def reflect_invoke(runtime, obj: Any, method_name: str, args: list = None) -> Any:
+    """Dynamically invoke a named method on a class instance.
+
+    Parameters
+    ----------
+    obj:
+        A class instance (Object).  Struct instances are not supported since
+        structs have fields, not callable methods.
+    method_name:
+        The name of the method to call.
+    args:
+        A list of positional arguments to pass.  Pass [] or None for no args.
+
+    Returns
+    -------
+    The method's return value on success, or ``{"error": "<message>"}``
+    if obj is not a class instance, the method does not exist, or the invocation
+    raises an exception.
+    """
+    if args is None:
+        args = []
+    if not isinstance(args, list):
+        args = list(args)
+
+    if not _is_object(obj):
+        return {"error": f"reflect_invoke: expected a class instance, got {_get_type_name(obj)}"}
+
+    if method_name not in obj.methods:
+        available = sorted(obj.methods.keys())
+        return {
+            "error": (
+                f"reflect_invoke: '{obj.class_name}' has no method '{method_name}'. "
+                f"Available: {available}"
+            )
+        }
+
+    try:
+        return obj.invoke_method(method_name, *args)
+    except Exception as exc:
+        return {"error": f"reflect_invoke: {method_name}() raised {type(exc).__name__}: {exc}"}
+
+
+def reflect_invoke_safe(runtime, obj: Any, method_name: str, args: list = None, default: Any = None) -> Any:
+    """Like reflect_invoke but returns *default* on any failure instead of an error dict.
+
+    Useful when the caller does not need to distinguish between a missing method
+    and a method that raised—they just want a fallback value.
+    """
+    result = reflect_invoke(runtime, obj, method_name, args)
+    if isinstance(result, dict) and "error" in result:
+        return default
+    return result
+
+
+def reflect_call(runtime, func_name: str, args: list = None) -> Any:
+    """Call any registered NLPL runtime function by name.
+
+    Parameters
+    ----------
+    func_name:
+        The name under which the function was registered with the runtime.
+    args:
+        A list of positional arguments to pass.  Pass [] or None for no args.
+
+    Returns
+    -------
+    The function's return value on success, or ``{"error": "<message>"}``
+    if the function is not registered or raises.
+    """
+    if args is None:
+        args = []
+    if not isinstance(args, list):
+        args = list(args)
+
+    if func_name not in runtime.functions:
+        registered = sorted(runtime.functions.keys())
+        return {
+            "error": (
+                f"reflect_call: no registered function named '{func_name}'. "
+                f"({len(registered)} functions registered)"
+            )
+        }
+
+    try:
+        return runtime.functions[func_name](*args)
+    except Exception as exc:
+        return {"error": f"reflect_call: {func_name}() raised {type(exc).__name__}: {exc}"}
+
+
+# ---------------------------------------------------------------------------
 # Describe — combined introspection summary
 # ---------------------------------------------------------------------------
 
@@ -414,6 +521,14 @@ def register_reflection_functions(runtime) -> None:
     runtime.register_function("reflect_has_method",
                               lambda v, m: reflect_has_method(runtime, v, m))
 
+    # Dynamic invocation
+    runtime.register_function("reflect_invoke",
+                              lambda obj, name, args=None: reflect_invoke(runtime, obj, name, args))
+    runtime.register_function("reflect_invoke_safe",
+                              lambda obj, name, args=None, default=None: reflect_invoke_safe(runtime, obj, name, args, default))
+    runtime.register_function("reflect_call",
+                              lambda name, args=None: reflect_call(runtime, name, args))
+
     # Summary
     runtime.register_function("reflect_describe",
                               lambda v: reflect_describe(runtime, v))
@@ -434,6 +549,9 @@ __all__ = [
     "reflect_get_field",
     "reflect_set_field",
     "reflect_has_method",
+    "reflect_invoke",
+    "reflect_invoke_safe",
+    "reflect_call",
     "reflect_describe",
     "register_reflection_functions",
 ]
