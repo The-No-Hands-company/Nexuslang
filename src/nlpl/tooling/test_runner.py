@@ -51,7 +51,8 @@ __all__ = [
 #     "duration": float, "errored_files": [...] }
 
 
-def _run_file_collect(path: str, name_filter: Optional[str]) -> Dict:
+def _run_file_collect(path: str, name_filter: Optional[str],
+                      coverage_enabled: bool = False) -> Dict:
     """
     Parse and execute one NLPL source file, collecting its test results.
 
@@ -80,6 +81,7 @@ def _run_file_collect(path: str, name_filter: Optional[str]) -> Dict:
         return {
             "file": path, "results": [], "error": f"Cannot read file: {exc}",
             "duration": 0.0, "passed": 0, "failed": 0, "total": 0,
+            "coverage_hits": {},
         }
 
     # -- Set up interpreter chain -------------------------------------------
@@ -110,9 +112,22 @@ def _run_file_collect(path: str, name_filter: Optional[str]) -> Dict:
         preprocess_ast(ast, target=host_target())
 
         interpreter = Interpreter(runtime, source=source)
+
+        # Attach coverage collector if requested
+        _cov_collector = None
+        if coverage_enabled:
+            from nlpl.tooling.coverage import CoverageCollector
+            _cov_collector = CoverageCollector()
+            interpreter._coverage_collector = _cov_collector
+
         interpreter.interpret(ast)
 
         raw_results = interpreter._collected_test_results
+        coverage_hits = {}
+        if _cov_collector is not None:
+            coverage_hits = {
+                p: sorted(lines) for p, lines in _cov_collector._hits.items()
+            }
 
     except Exception as exc:
         duration = time.time() - start
@@ -124,6 +139,7 @@ def _run_file_collect(path: str, name_filter: Optional[str]) -> Dict:
             "passed": 0,
             "failed": 0,
             "total": 0,
+            "coverage_hits": {},
         }
 
     # -- Apply name filter --------------------------------------------------
@@ -148,6 +164,7 @@ def _run_file_collect(path: str, name_filter: Optional[str]) -> Dict:
         "passed": passed,
         "failed": failed,
         "total": len(filtered),
+        "coverage_hits": coverage_hits,
     }
 
 
@@ -181,11 +198,15 @@ class TestRunner:
         pattern: str = "test_*.nlpl",
         name_filter: Optional[str] = None,
         quiet: bool = False,
+        coverage_enabled: bool = False,
+        coverage_output_dir: str = "coverage",
     ):
         self.workers = max(1, workers)
         self.pattern = pattern
         self.name_filter = name_filter
         self.quiet = quiet
+        self.coverage_enabled = coverage_enabled
+        self.coverage_output_dir = coverage_output_dir
 
     # ------------------------------------------------------------------
     # Discovery
@@ -221,7 +242,8 @@ class TestRunner:
         if self.workers == 1:
             # Sequential — preserves output ordering
             for path in paths:
-                fr = _run_file_collect(path, self.name_filter)
+                fr = _run_file_collect(path, self.name_filter,
+                                       coverage_enabled=self.coverage_enabled)
                 file_results.append(fr)
                 if fr["error"]:
                     errored.append(path)
@@ -229,7 +251,8 @@ class TestRunner:
             # Parallel — submit all then collect in completion order
             with ThreadPoolExecutor(max_workers=self.workers) as pool:
                 future_map = {
-                    pool.submit(_run_file_collect, p, self.name_filter): p
+                    pool.submit(_run_file_collect, p, self.name_filter,
+                                self.coverage_enabled): p
                     for p in paths
                 }
                 # Preserve input ordering for consistent output
@@ -242,6 +265,7 @@ class TestRunner:
                         fr = {
                             "file": path, "results": [], "error": str(exc),
                             "duration": 0.0, "passed": 0, "failed": 0, "total": 0,
+                            "coverage_hits": {},
                         }
                     ordered[path] = fr
                     if fr["error"]:
@@ -266,6 +290,52 @@ class TestRunner:
         """Discover all test files in *directory* and run them."""
         paths = self.discover(directory)
         return self.run_files(paths)
+
+    def build_coverage_report(self, summary: Dict):
+        """
+        Build a ``CoverageReport`` from the coverage_hits data in *summary*.
+
+        Each file result in ``summary["files"]`` may contain a
+        ``"coverage_hits"`` dict mapping source-file path to a sorted list
+        of hit line numbers.  This method merges all hits across all files
+        and builds a ``CoverageReport`` with executable-line analysis.
+
+        Returns ``None`` when no coverage data is available (i.e. the runner
+        was not configured with ``coverage_enabled=True``).
+        """
+        from nlpl.tooling.coverage import CoverageCollector
+
+        # Merge all hits from all file results
+        collector = CoverageCollector()
+        collector.start()
+        for fr in summary.get("files", []):
+            for src_path, hit_lines in fr.get("coverage_hits", {}).items():
+                for line in hit_lines:
+                    collector.record(src_path, line)
+
+        if not collector._hits:
+            return None
+
+        return collector.build_report()
+
+    def write_coverage(self, summary: Dict, output_dir: Optional[str] = None) -> None:
+        """
+        Build and write coverage report files (JSON + HTML) from *summary*.
+
+        Args:
+            summary: RunSummary dict returned by ``run_files()``.
+            output_dir: Directory to write into.  Defaults to
+                        ``self.coverage_output_dir``.
+        """
+        import os
+        report = self.build_coverage_report(summary)
+        if report is None:
+            return
+        out = output_dir or self.coverage_output_dir
+        os.makedirs(out, exist_ok=True)
+        report.write_json(os.path.join(out, "coverage.json"))
+        report.write_html(out)
+        print(report.summary())
 
     # ------------------------------------------------------------------
     # Formatters
@@ -420,6 +490,10 @@ def _cli():
                     default="verbose", help="Output format (default: verbose)")
     ap.add_argument("--quiet", "-q", action="store_true",
                     help="Suppress per-test output lines")
+    ap.add_argument("--coverage", action="store_true",
+                    help="Collect and report line coverage for executed .nlpl files")
+    ap.add_argument("--coverage-dir", dest="coverage_dir", default="coverage",
+                    help="Output directory for coverage report (default: coverage/)")
 
     args = ap.parse_args()
 
@@ -428,6 +502,8 @@ def _cli():
         pattern=args.pattern,
         name_filter=args.name_filter,
         quiet=args.quiet,
+        coverage_enabled=args.coverage,
+        coverage_output_dir=args.coverage_dir,
     )
 
     # Separate directories from explicit file paths
@@ -456,6 +532,9 @@ def _cli():
         print(runner.format_json(summary))
     else:
         print(runner.format_verbose(summary))
+
+    if args.coverage:
+        runner.write_coverage(summary)
 
     sys.exit(0 if summary["failed"] == 0 and not summary["errored_files"] else 1)
 

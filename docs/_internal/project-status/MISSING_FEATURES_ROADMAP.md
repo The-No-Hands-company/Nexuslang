@@ -1870,7 +1870,7 @@ end
 - ✅ Test filtering by name (glob) and filename (regex)
 - ✅ Output formats: verbose, TAP v13, JSON (for CI integration)
 - ✅ Expanded assertion library: be_empty, have_length, start_with, end_with, be_of_type, raise_error
-- ❌ Coverage reporting (planned)
+- ✅ Coverage reporting (`src/nlpl/tooling/coverage.py` wired): `CoverageCollector` attached to interpreter `execute()` via `_coverage_collector` hook; `run_program(coverage_collector=)` param; `TestRunner(coverage_enabled=True)` collects per-file hits and merges via `build_coverage_report()`; `write_coverage()` writes JSON+HTML; `--coverage`/`--coverage-dir` flags in `nlpl-test` CLI; `nlpl-cover` standalone CLI (`src/nlpl/cli/nlplcover.py`) with `--fail-under`, `--no-json`, `--no-html`; 96 tests (February 27, 2026)
 
 **What Rust Has:**
 
@@ -1898,7 +1898,7 @@ end
   - Parallel test execution (ThreadPoolExecutor, configurable --workers)
   - Test filtering (--filter glob pattern, --file-filter regex)
   - Test output formatting (verbose, TAP v13, JSON)
-  - Coverage reporting (planned)
+  - Coverage reporting: `--coverage`/`--coverage-dir` flags, JSON+HTML output, `nlpl-cover` CLI with `--fail-under`
   - CI integration (exit code 0/1, JSON output for pipelines)
 
 - [x] **Assertion Library** (Complete - Feb 26, 2026)

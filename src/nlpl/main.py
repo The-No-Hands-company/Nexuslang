@@ -17,7 +17,8 @@ from .tools import get_profiler, enable_profiling, disable_profiling
 from .errors import NLPLError, NLPLTypeError, NLPLRuntimeError
 
 def run_program(source_code, debug=False, type_check=True, profiler=None, optimize=0,
-               file_path=None, freestanding_config=None, target=None):
+               file_path=None, freestanding_config=None, target=None,
+               coverage_collector=None):
     """
     Run an NLPL program from source code.
 
@@ -30,6 +31,8 @@ def run_program(source_code, debug=False, type_check=True, profiler=None, optimi
         file_path (str): Absolute or relative path of the source file (enables relative imports)
         freestanding_config: Optional FreestandingConfig for bare-metal builds
         target: Optional CompileTarget for conditional compilation; defaults to host_target()
+        coverage_collector: Optional CoverageCollector instance; when provided the interpreter
+                            will record every executed line into it.
 
     Returns:
         The result of the program execution
@@ -103,6 +106,10 @@ def run_program(source_code, debug=False, type_check=True, profiler=None, optimi
     # Attach profiler if provided
     if profiler:
         interpreter.profiler = profiler
+
+    # Attach coverage collector if provided
+    if coverage_collector is not None:
+        interpreter._coverage_collector = coverage_collector
     
     try:
         result = interpreter.interpret(ast, optimization_level=optimize)

@@ -130,6 +130,9 @@ class Interpreter:
         self.current_file = None
         self.current_line = None
 
+        # Coverage collector (optional) — set by CoverageCollector.attach()
+        self._coverage_collector = None
+
         # Per-instance dispatch cache: node_type -> bound method (avoids repeated getattr).
         # Built lazily on first call to execute() so that subclasses that override
         # execute_* methods are also picked up correctly.
@@ -312,13 +315,18 @@ class Interpreter:
             
     def execute(self, node):
         """Execute a node in the AST."""
-        # Debugger hook: trace execution if debugger attached
-        if self.debugger and hasattr(node, 'line'):
-            file = getattr(node, 'file', self.current_file or '<unknown>')
-            line = getattr(node, 'line', self.current_line or 0)
-            self.current_file = file
-            self.current_line = line
-            self.debugger.trace_line(file, line)
+        # Track execution position (coverage, debugger, and error reporting)
+        if hasattr(node, 'line'):
+            _exec_file = getattr(node, 'file', self.current_file or '<unknown>')
+            _exec_line = getattr(node, 'line', self.current_line or 0)
+            self.current_file = _exec_file
+            self.current_line = _exec_line
+            # Debugger hook
+            if self.debugger:
+                self.debugger.trace_line(_exec_file, _exec_line)
+            # Coverage hook
+            if self._coverage_collector is not None and _exec_line > 0:
+                self._coverage_collector.record(_exec_file, _exec_line)
 
         # Get node type key (prefer node_type attr; fall back to class name)
         if hasattr(node, 'node_type'):
