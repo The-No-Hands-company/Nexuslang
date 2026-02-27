@@ -1792,7 +1792,7 @@ end
 
 ## PART 7: Safety & Correctness
 
-### 7.1 Static Analysis ✅ SUBSTANTIALLY COMPLETE
+### 7.1 Static Analysis ✅ COMPLETE
 
 **Current State:**
 
@@ -1803,8 +1803,8 @@ end
 - ✅ Security checks: unsafe memory access, injection patterns, unvalidated input
 - ✅ Data-flow analysis: uninitialized variables, dead assignments, unused results
 - ✅ `StaticAnalyzer` integrates all three checker categories
-- ❌ Auto-fix capabilities (planned)
-- ❌ IDE integration hooks (planned)
+- ✅ Auto-fix capabilities (`src/nlpl/tooling/analyzer/autofix.py`): `TextEdit` structured patches, `FixSuggestion`, `FixResult`, `AutoFixer` with 7 built-in generators (`W-STYLE-TRAIL`, `W-STYLE-EOF`, `W-DEAD-ASSIGN`, `W-UNINIT-USE`, `P003`, `P005`, `S-INJECT`); `--fix` and `--dry-run` wired into `nlpl-analyze` CLI (113 tests) (February 27, 2026)
+- ✅ IDE integration hooks (`src/nlpl/tooling/analyzer/ide_hooks.py`): LSP 3.17-compatible `IDEHooks` (diagnostics, `publishDiagnostics`, `codeAction` quickfix, workspace diagnostics); `LspFormatter` facade; `lsp_position`/`lsp_range`/`severity_to_lsp` helpers (February 27, 2026)
 
 **What Rust Has:**
 

@@ -1,4 +1,4 @@
-"""
+""" 
 NLPL Static Analyzer
 ====================
 
@@ -18,9 +18,20 @@ Catches bugs before runtime:
 from .analyzer import StaticAnalyzer
 from .checks import *
 from .report import AnalysisReport, Issue
+from .autofix import AutoFixer, FixSuggestion, FixResult, TextEdit
+from .ide_hooks import IDEHooks, LspFormatter, lsp_position, lsp_range, severity_to_lsp
 
 __all__ = [
     'StaticAnalyzer',
     'AnalysisReport',
     'Issue',
+    'AutoFixer',
+    'FixSuggestion',
+    'FixResult',
+    'TextEdit',
+    'IDEHooks',
+    'LspFormatter',
+    'lsp_position',
+    'lsp_range',
+    'severity_to_lsp',
 ]

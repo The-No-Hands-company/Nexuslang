@@ -31,6 +31,8 @@ from nlpl.tooling.analyzer.analyzer import (
     create_minimal_analyzer
 )
 from nlpl.tooling.analyzer.report import Severity
+from nlpl.tooling.analyzer.autofix import AutoFixer
+from nlpl.tooling.analyzer.ide_hooks import IDEHooks, LspFormatter
 
 
 def main():
@@ -75,7 +77,13 @@ def main():
         action='store_true',
         help='Automatically fix issues where possible'
     )
-    
+
+    parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help='Show what --fix would change without writing files'
+    )
+
     parser.add_argument(
         '--no-color',
         action='store_true',
@@ -127,6 +135,11 @@ def main():
         print(f"Error during analysis: {e}", file=sys.stderr)
         return 1
     
+    # Auto-fix pass (runs before output so the summary reflects remaining issues)
+    if args.fix or getattr(args, 'dry_run', False):
+        dry_run = getattr(args, 'dry_run', False)
+        _apply_fixes(reports, dry_run=dry_run, use_colors=not getattr(args, 'no_color', False))
+
     # Output results
     use_colors = not args.no_color and sys.stdout.isatty()
     
@@ -134,6 +147,51 @@ def main():
         output_json(reports)
     else:
         return output_text(reports, use_colors, args.errors_only, args.max_issues)
+
+
+def _apply_fixes(
+    reports: List[AnalysisReport],
+    dry_run: bool = False,
+    use_colors: bool = True,
+) -> None:
+    """
+    Run the AutoFixer over every report and print a summary.
+    In dry-run mode the modified source is printed instead of written.
+    """
+    fixer = AutoFixer()
+    bold = '\033[1m' if use_colors else ''
+    green = '\033[92m' if use_colors else ''
+    yellow = '\033[93m' if use_colors else ''
+    reset = '\033[0m' if use_colors else ''
+
+    mode_label = "[dry-run] " if dry_run else ""
+    total_applied = 0
+    total_skipped = 0
+
+    for report in reports:
+        if not report.issues:
+            continue
+        try:
+            result = fixer.apply_to_file(
+                report.file_path, report.issues, dry_run=dry_run
+            )
+        except (OSError, IOError) as exc:
+            print(f"{yellow}Warning: could not fix {report.file_path}: {exc}{reset}")
+            continue
+
+        if result.applied:
+            print(f"{bold}{mode_label}Fixed {result.applied} issue(s) in "
+                  f"{report.file_path}{reset}")
+            for change in result.changes:
+                print(f"  {green}+ {change}{reset}")
+            if dry_run:
+                print(f"  {yellow}(dry-run: file not written){reset}")
+        total_applied += result.applied
+        total_skipped += result.skipped
+
+    if total_applied or total_skipped:
+        print(f"\n{bold}Fix summary:{reset} applied={total_applied} "
+              f"no-structured-fix={total_skipped}\n")
 
 
 def output_text(reports: List[AnalysisReport], 
