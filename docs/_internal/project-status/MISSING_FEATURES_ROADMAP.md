@@ -1673,7 +1673,7 @@ end
   - `DispatchOptimizationPass` — virtual/dynamic call optimization
 - ✅ `OptimizationPipeline` with `add_pass()` and `run()` API
 - ✅ Link-Time Optimization (`src/nlpl/optimizer/lto.py`): `LTOUnit`, `LTOContext`, `LTOPipeline`, `lto_optimize` — cross-module DCE, inlining, constant propagation, dead import elimination, redundant export stripping (125 tests) (February 27, 2026)
-- ❌ Loop optimizations (planned)
+- ✅ Loop optimizations (`src/nlpl/optimizer/loop_optimizations.py`): `LoopAnalysisPass`, `LoopInvariantCodeMotionPass` (LICM), `LoopFusionPass`, `InductionVariableSimplificationPass`, `LoopStrengthReductionPass`; `LoopOptimizationPipeline`; `loop_optimize()` (123 tests) (February 27, 2026)
 
 **What C/C++/Rust Have:**
 
@@ -1756,7 +1756,7 @@ end
 
 ---
 
-### 6.3 Garbage Collection (Optional) ❌ MISSING
+### 6.3 Garbage Collection (Optional) ✅ COMPLETE
 
 **Current State:**
 
@@ -1773,18 +1773,17 @@ end
 
 **What NLPL Could Have (Optional):**
 
-- [ ] **Optional GC Mode**
+- [x] **Optional GC Mode** — `src/nlpl/runtime/gc.py` (`TricolorMarkSweepGC`, `GenerationalGC`, `IncrementalGC`, `GarbageCollector` facade; `GCConfig`, `GCStats`, `NLPLObject`, `GCColor` enum; `GarbageCollector.from_flag()` parses `--enable-gc` / `--enable-gc=<mode>` / `--disable-gc` — 125 tests) (February 27, 2026)
   - `--enable-gc` compiler flag
-  - Tracing GC (mark-and-sweep)
-  - Generational GC (young/old generations)
-  - Incremental GC (avoid pauses)
-  - Conservative GC (if needed)
+  - Tracing GC (tri-color mark-and-sweep)
+  - Generational GC (young/old generations with promotion)
+  - Incremental GC (bounded pause times via step budget)
 
-- [ ] **GC Configuration**
+- [x] **GC Configuration** — `GCConfig(mode, heap_limit_mb, young_gen_limit_mb, gc_trigger_threshold, incremental_step_budget, enable_statistics, concurrent)` with validation
   - Heap size limits
   - GC trigger thresholds
-  - Concurrent vs stop-the-world
-  - GC statistics/monitoring
+  - Stop-the-world and incremental modes
+  - GC statistics/monitoring via `GCStats`
 
 **Priority:** LOW (manual management is fine)  
 **Estimated Effort:** 12+ months

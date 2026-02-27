@@ -210,6 +210,16 @@ __all__ = [
     'LTOPipeline',
     'lto_optimize',
     'lto_stats_report',
+    # Loop Optimizations
+    'LoopOptimizationStats',
+    'LoopInfo',
+    'LoopAnalysisPass',
+    'LoopInvariantCodeMotionPass',
+    'LoopFusionPass',
+    'InductionVariableSimplificationPass',
+    'LoopStrengthReductionPass',
+    'LoopOptimizationPipeline',
+    'loop_optimize',
 ]
 
 
@@ -241,8 +251,30 @@ def _import_lto():
     }
 
 
+def _import_loop_opts():
+    """Lazy import helper for loop optimization names."""
+    from ..optimizer.loop_optimizations import (  # noqa: F401
+        LoopOptimizationStats, LoopInfo,
+        LoopAnalysisPass, LoopInvariantCodeMotionPass,
+        LoopFusionPass, InductionVariableSimplificationPass,
+        LoopStrengthReductionPass, LoopOptimizationPipeline,
+        loop_optimize,
+    )
+    return {
+        'LoopOptimizationStats': LoopOptimizationStats,
+        'LoopInfo': LoopInfo,
+        'LoopAnalysisPass': LoopAnalysisPass,
+        'LoopInvariantCodeMotionPass': LoopInvariantCodeMotionPass,
+        'LoopFusionPass': LoopFusionPass,
+        'InductionVariableSimplificationPass': InductionVariableSimplificationPass,
+        'LoopStrengthReductionPass': LoopStrengthReductionPass,
+        'LoopOptimizationPipeline': LoopOptimizationPipeline,
+        'loop_optimize': loop_optimize,
+    }
+
+
 def __getattr__(name: str):
-    """Module-level __getattr__ for lazy LTO imports."""
+    """Module-level __getattr__ for lazy LTO and loop optimization imports."""
     lto_names = {
         'LTOStats', 'LTOUnit', 'LTOContext', 'LTOPipeline',
         'lto_optimize', 'lto_stats_report',
@@ -250,6 +282,15 @@ def __getattr__(name: str):
         'CrossModuleInliningPass', 'ConstantPropagationPass',
         'DeadImportEliminationPass', 'RedundantExportPass',
     }
+    loop_names = {
+        'LoopOptimizationStats', 'LoopInfo',
+        'LoopAnalysisPass', 'LoopInvariantCodeMotionPass',
+        'LoopFusionPass', 'InductionVariableSimplificationPass',
+        'LoopStrengthReductionPass', 'LoopOptimizationPipeline',
+        'loop_optimize',
+    }
     if name in lto_names:
         return _import_lto()[name]
+    if name in loop_names:
+        return _import_loop_opts()[name]
     raise AttributeError(f"module 'nlpl.optimizer' has no attribute {name!r}")
