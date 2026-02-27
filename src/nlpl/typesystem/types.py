@@ -22,9 +22,15 @@ class TypeKind(Enum):
     FUNCTION = auto()
     UNION = auto()
     ANY = auto()
-    GENERIC_PARAMETER = auto()  # New: For T in List<T>
-    GENERIC = auto()  # New: For generic types
-    TRAIT = auto()  # New: For trait/interface types
+    GENERIC_PARAMETER = auto()  # For T in List<T>
+    GENERIC = auto()  # For generic types
+    TRAIT = auto()  # For trait/interface types
+    # 8.3 Advanced Type Features
+    TYPE_CONSTRUCTOR = auto()   # Type constructor parameter (F :: * -> *)
+    TYPE_APPLICATION = auto()   # Applied type constructor: F<A>
+    ASSOCIATED = auto()         # Associated type declaration within a trait
+    TYPE_PROJECTION = auto()    # Type projection T::Item
+    ALIAS = auto()              # Named type alias
 
 class Type(ABC):
     """Base class for all types in NLPL."""
@@ -797,15 +803,48 @@ class ExistentialType(Type):
 
 class TraitType(Type):
     """Represents a trait/interface that types can implement."""
-    
-    def __init__(self, name: str, methods: Dict[str, FunctionType], 
-                 parent_traits: Optional[List[str]] = None,
-                 associated_types: Optional[List[str]] = None):
+
+    def __init__(
+        self,
+        name: str,
+        methods: Dict[str, 'FunctionType'],
+        parent_traits: Optional[List[str]] = None,
+        associated_types: Optional[Union[List[str], Dict[str, Any]]] = None,
+    ) -> None:
         self.name = name
         self.methods = methods
         self.parent_traits = parent_traits or []
-        self.associated_types = associated_types or []  # Phase 4b: Associated types
-    
+        # 8.3: Support both legacy List[str] and new Dict[str, AssociatedTypeDecl]
+        if associated_types is None:
+            self.associated_types: Dict[str, Any] = {}
+        elif isinstance(associated_types, list):
+            # Convert legacy string list for backwards compatibility
+            try:
+                from nlpl.typesystem.associated_types import AssociatedTypeDecl  # type: ignore[import]
+                self.associated_types = {
+                    at_name: AssociatedTypeDecl(at_name) for at_name in associated_types
+                }
+            except ImportError:
+                self.associated_types = {at_name: at_name for at_name in associated_types}
+        else:
+            self.associated_types = associated_types
+
+    # ------------------------------------------------------------------
+    # Associated type helpers (8.3)
+    # ------------------------------------------------------------------
+
+    def get_associated_type(self, assoc_name: str) -> Optional[Any]:
+        """Return the AssociatedTypeDecl for the given name, or None."""
+        return self.associated_types.get(assoc_name)
+
+    def declare_associated_type(self, decl: Any) -> None:
+        """Add or replace an associated type declaration in this trait."""
+        self.associated_types[decl.name] = decl
+
+    def associated_type_names(self) -> List[str]:
+        """Return the names of all declared associated types."""
+        return list(self.associated_types.keys())
+
     def is_implemented_by(self, type_: Type) -> bool:
         """Check if a type implements this trait."""
         if isinstance(type_, ClassType):
@@ -940,16 +979,26 @@ ITERATOR_TRAIT = TraitType("Iterator", {
     )
 })
 
-def get_type_by_name(name: str) -> Type:
+def get_type_by_name(name: str) -> 'Type':
     """Get a type by its name.
-    
+
     Args:
         name: Name of the type
-        
+
     Returns:
-        The corresponding Type object, or None if not found
+        The corresponding Type object, or ANY_TYPE if not found
     """
     name_lower = name.lower()
+
+    # 8.3: Check global type alias registry first
+    try:
+        from nlpl.typesystem.type_alias_registry import GLOBAL_ALIAS_REGISTRY  # type: ignore[import]
+        if GLOBAL_ALIAS_REGISTRY.has(name):
+            expanded = GLOBAL_ALIAS_REGISTRY.expand(name)
+            if expanded is not None:
+                return expanded
+    except (ImportError, Exception):
+        pass
 
     # Handle primitive types and 'any'
     if name_lower == 'integer' or name_lower == 'int':
