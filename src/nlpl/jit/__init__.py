@@ -37,6 +37,7 @@ from .jit_compiler import JITCompiler, JITStats
 from .hot_function_detector import HotFunctionDetector
 from .tiered_compiler import TieredCompiler, ExecutionTier, FunctionTierState
 from .type_feedback import TypeFeedbackCollector, FunctionFeedback, Polymorphism
+from .code_gen import NLPLCodeGenerator, JITGuardFailed, CodeGenError
 
 def enable_jit(interpreter, hot_threshold=100, optimization_level=2):
     """
@@ -105,4 +106,7 @@ __all__ = [
     'FunctionFeedback',
     'Polymorphism',
     'enable_tiered_jit',
+    'NLPLCodeGenerator',
+    'JITGuardFailed',
+    'CodeGenError',
 ]

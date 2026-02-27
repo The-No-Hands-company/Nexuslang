@@ -1716,7 +1716,7 @@ end
 
 ---
 
-### 6.2 JIT Compilation ✅ SUBSTANTIALLY COMPLETE
+### 6.2 JIT Compilation ✅ COMPLETE
 
 **Current State:**
 
@@ -1724,7 +1724,7 @@ end
 - ✅ Tiered compilation implemented (`TieredCompiler`, `ExecutionTier`: INTERPRETER / BASELINE_JIT / OPTIMIZING_JIT)
 - ✅ Runtime type feedback implemented (`FunctionFeedback`, `TypeFeedbackCollector`, `Polymorphism`)
 - ✅ Deoptimization support (`deoptimize()` method)
-- ❌ Full runtime code generation (hot paths still interpreted)
+- ✅ Full runtime code generation (`src/nlpl/jit/code_gen.py`): `NLPLCodeGenerator` emits Python source from NLPL AST, compiles with `compile()`, returns real callables; `JITGuardFailed` for type-guard deoptimization; `JITCompiler.compile_function()` wires `TieredCompiler` to the code generator (122 tests) (February 27, 2026)
 
 **What Java/JavaScript/C# Have:**
 

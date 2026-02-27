@@ -10,6 +10,7 @@ from typing import Dict, Optional, Any, Callable
 from dataclasses import dataclass, field
 
 from .hot_function_detector import HotFunctionDetector
+from .code_gen import NLPLCodeGenerator, JITGuardFailed, CodeGenError
 
 
 @dataclass
@@ -171,21 +172,57 @@ class JITCompiler:
             self.stats.compilation_failures += 1
             return False
     
+    def compile_function(
+        self,
+        function_name: str,
+        function_def: Any,
+        opt_level: int = 1,
+        type_hints: Optional[Dict[str, str]] = None,
+    ) -> Optional[Callable]:
+        """
+        Compile an NLPL function definition to a Python callable.
+
+        Called by TieredCompiler at Tier-1 (opt_level=1) and Tier-2
+        (opt_level=3, with type_hints).  Uses NLPLCodeGenerator to emit
+        Python source and compile it with Python's built-in compile().
+
+        Args:
+            function_name: The function's name (used for diagnostics).
+            function_def:  NLPL FunctionDefinition AST node.
+            opt_level:     1 = baseline (no guards), 2+ = insert type guards.
+            type_hints:    Type-feedback dict from TypeFeedbackCollector.
+
+        Returns:
+            A compiled Python callable, or None if compilation fails.
+        """
+        gen = NLPLCodeGenerator()
+        # Map JIT opt levels (which go up to 3) to code-gen levels (1 or 2)
+        codegen_level = 1 if opt_level < 2 else 2
+        try:
+            return gen.compile_function(
+                function_def,
+                self.interpreter,
+                type_hints=type_hints or {},
+                opt_level=codegen_level,
+            )
+        except (CodeGenError, Exception):
+            return None
+
     def _compile_with_llvm(self, function_def) -> Callable:
         """
-        Compile function to LLVM IR and then to machine code.
-        
-        This would use llvmlite to:
-        1. Generate LLVM IR from NLPL function
-        2. Optimize the IR
-        3. Compile to machine code
-        4. Return executable function
-        
-        Note: Requires full implementation with llvmlite
+        Compile a function to a Python callable using NLPLCodeGenerator.
+
+        Emits Python source from the NLPL AST, compiles it with
+        Python's built-in compile(), and returns the resulting function
+        object.  Falls back to the optimized-interpreter wrapper if code
+        generation fails (e.g., the function body contains an AST node
+        type that the current generator does not yet handle).
         """
-        # TODO: Implement LLVM IR generation
-        # For now, fall back to optimized interpreter
-        return self._create_optimized_interpreter_function(function_def)
+        gen = NLPLCodeGenerator()
+        try:
+            return gen.compile_function(function_def, self.interpreter, opt_level=1)
+        except (CodeGenError, Exception):
+            return self._create_optimized_interpreter_function(function_def)
     
     def _create_optimized_interpreter_function(self, function_def) -> Callable:
         """
