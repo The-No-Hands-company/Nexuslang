@@ -1762,7 +1762,7 @@ end
 
 - ✅ Manual memory management (malloc/free)
 - ✅ Rc<T> reference counting
-- ❌ No garbage collector option
+- ✅ Optional garbage collector (`src/nlpl/runtime/gc.py`): tri-color mark-and-sweep, generational, incremental modes; `GarbageCollector.from_flag()` CLI integration (February 27, 2026)
 
 **What Java/C#/Go Have:**
 
