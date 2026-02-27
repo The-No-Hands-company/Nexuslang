@@ -1659,7 +1659,7 @@ end
 
 ## PART 6: Performance & Optimization
 
-### 6.1 Compiler Optimizations ✅ SUBSTANTIALLY COMPLETE
+### 6.1 Compiler Optimizations ✅ COMPLETE
 
 **Current State:**
 
@@ -1672,7 +1672,7 @@ end
   - `TypeSpecializationPass` — monomorphic dispatch specialization
   - `DispatchOptimizationPass` — virtual/dynamic call optimization
 - ✅ `OptimizationPipeline` with `add_pass()` and `run()` API
-- ❌ Link-Time Optimization (cross-module, planned)
+- ✅ Link-Time Optimization (`src/nlpl/optimizer/lto.py`): `LTOUnit`, `LTOContext`, `LTOPipeline`, `lto_optimize` — cross-module DCE, inlining, constant propagation, dead import elimination, redundant export stripping (125 tests) (February 27, 2026)
 - ❌ Loop optimizations (planned)
 
 **What C/C++/Rust Have:**
@@ -1694,7 +1694,7 @@ end
   - `-O3` (maximum optimization)
   - `-Os` (optimize for size)
 
-- [ ] **Link-Time Optimization**
+- [x] **Link-Time Optimization** — `lto.py` (`LTOUnit`, `LTOContext`, `LTOPipeline`, `lto_optimize`, `lto_stats_report`; passes: `SymbolReferenceAnalysisPass`, `CrossModuleDCEPass`, `CrossModuleInliningPass`, `ConstantPropagationPass`, `DeadImportEliminationPass`, `RedundantExportPass` — whole-program optimization, cross-module inlining, cross-module constant propagation, dead import elimination, redundant export stripping — 125 tests) (February 27, 2026)
   - Whole-program optimization
   - Cross-module inlining
   - Dead code elimination across modules

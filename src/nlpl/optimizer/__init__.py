@@ -203,4 +203,53 @@ __all__ = [
     'OptimizationPipeline',
     'create_optimization_pipeline',
     'int_to_opt_level',
+    # Link-Time Optimization
+    'LTOStats',
+    'LTOUnit',
+    'LTOContext',
+    'LTOPipeline',
+    'lto_optimize',
+    'lto_stats_report',
 ]
+
+
+# ---------------------------------------------------------------------------
+# Link-Time Optimization convenience re-exports
+# ---------------------------------------------------------------------------
+def _import_lto():
+    """Lazy import helper — avoids circular imports during pipeline setup."""
+    from ..optimizer.lto import (  # noqa: F401
+        LTOStats, LTOUnit, LTOContext, LTOPipeline,
+        lto_optimize, lto_stats_report,
+        SymbolReferenceAnalysisPass, CrossModuleDCEPass,
+        CrossModuleInliningPass, ConstantPropagationPass,
+        DeadImportEliminationPass, RedundantExportPass,
+    )
+    return {
+        'LTOStats': LTOStats,
+        'LTOUnit': LTOUnit,
+        'LTOContext': LTOContext,
+        'LTOPipeline': LTOPipeline,
+        'lto_optimize': lto_optimize,
+        'lto_stats_report': lto_stats_report,
+        'SymbolReferenceAnalysisPass': SymbolReferenceAnalysisPass,
+        'CrossModuleDCEPass': CrossModuleDCEPass,
+        'CrossModuleInliningPass': CrossModuleInliningPass,
+        'ConstantPropagationPass': ConstantPropagationPass,
+        'DeadImportEliminationPass': DeadImportEliminationPass,
+        'RedundantExportPass': RedundantExportPass,
+    }
+
+
+def __getattr__(name: str):
+    """Module-level __getattr__ for lazy LTO imports."""
+    lto_names = {
+        'LTOStats', 'LTOUnit', 'LTOContext', 'LTOPipeline',
+        'lto_optimize', 'lto_stats_report',
+        'SymbolReferenceAnalysisPass', 'CrossModuleDCEPass',
+        'CrossModuleInliningPass', 'ConstantPropagationPass',
+        'DeadImportEliminationPass', 'RedundantExportPass',
+    }
+    if name in lto_names:
+        return _import_lto()[name]
+    raise AttributeError(f"module 'nlpl.optimizer' has no attribute {name!r}")
