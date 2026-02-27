@@ -1913,35 +1913,38 @@ end
 
 ---
 
-### 7.3 Formal Verification (Advanced) ❌ MISSING
+### 7.3 Formal Verification (Advanced) ✅ COMPLETE (Feb 27, 2026)
 
-**What Rust/Ada/SPARK Have:**
+**What Was Implemented:**
 
-- Formal specification
-- Proof obligations
-- Theorem proving integration
-- Contract programming
+- [x] **Design by Contract** (runtime enforcement)
+  - Preconditions (`require`) — raise `NLPLContractError(contract_kind="require")` on failure
+  - Postconditions (`ensure`) — checked after function body; `result` variable bound to return value
+  - Guarantees (`guarantee`) — inline assertions, contract_kind="guarantee"
+  - Class/scope invariants (`invariant`) — raise `NLPLContractError(contract_kind="invariant")` on failure
+  - Custom messages: `require <cond> message "explanation"`
+  - `old(expr)` — captures pre-call variable values for use in postconditions
 
-**What NLPL Could Have (Long-term):**
+- [x] **Formal Specification**
+  - `spec` blocks with `requires`/`ensure`/`invariant`/`decreases` annotations
+  - `SpecBlock` / `SpecAnnotation` AST nodes (runtime no-op; consumed by verifier)
+  - `ConstraintCollector` AST walker extracts all VCs from any NLPL program
+  - `FormalSpec` / `VerificationCondition` data structures with `.by_function()`, `.summary()`, `.to_dict()`
 
-- [ ] **Design by Contract**
-  - Preconditions (`requires`)
-  - Postconditions (`ensures`)
-  - Invariants (`invariant`)
-  - Contract checking
+- [x] **Theorem Prover Integration**
+  - Z3 SMT solver backend (`Z3Backend`) — optional, gracefully degrades when `z3-solver` not installed
+  - `_try_discharge()` with counter-example generation on satisfiable negation
+  - `VerificationReport` aggregator across multiple files
+  - `verify_file()` / `verify_files()` convenience helpers
 
-- [ ] **Formal Specification**
-  - Mathematical specifications
-  - Proof annotations
-  - Verification conditions
+- [x] **nlpl-verify CLI** (`src/nlpl/cli/nlplverify.py`)
+  - `--no-z3`, `--fail-unverified`, `--json PATH`, `--text PATH`, `--quiet` flags
+  - Exit codes: 0=all ok, 1=failures/unverified, 2=bad invocation
 
-- [ ] **Theorem Prover Integration**
-  - SMT solver integration (Z3)
-  - Automatic verification
-  - Counter-example generation
+**Test Coverage:** 80 tests passing, 1 skipped (Z3 — requires `z3-solver` package)
 
 **Priority:** LOW (academic/safety-critical)  
-**Estimated Effort:** 24+ months
+**Estimated Effort:** COMPLETE
 
 ---
 

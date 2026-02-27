@@ -80,7 +80,6 @@ class FunctionDefinition(ASTNode):
         self.variadic = variadic  # True if function accepts variable arguments (...)
         self.is_exported = is_exported
         self.decorators = decorators or []  # List of decorators applied to this function
-
 class Decorator(ASTNode):
     """Represents a decorator (@decorator_name or @decorator_name with args)."""
     def __init__(self, name, arguments=None, line_number=None):
@@ -445,7 +444,8 @@ class MemoryDeallocation(ASTNode):
 class ClassDefinition(ASTNode):
     """Represents a class definition with inheritance and interface implementation."""
     def __init__(self, name, properties=None, methods=None, parent_classes=None, 
-                 implemented_interfaces=None, generic_parameters=None, is_exported=False, line_number=None):
+                 implemented_interfaces=None, generic_parameters=None, is_exported=False,
+                 invariants=None, line_number=None):
         super().__init__("class_definition", line_number)
         self.name = name
         self.properties = properties or []
@@ -454,6 +454,7 @@ class ClassDefinition(ASTNode):
         self.implemented_interfaces = implemented_interfaces or []
         self.generic_parameters = generic_parameters or []
         self.is_exported = is_exported
+        self.invariants = invariants or []  # List of InvariantStatement nodes
 
 class StructDefinition(ASTNode):
     """Represents a C-style struct definition with memory layout control.
@@ -1643,3 +1644,102 @@ class GuaranteeStatement(ASTNode):
     def __str__(self):
         return f"GuaranteeStatement(<condition>)"
 
+
+class InvariantStatement(ASTNode):
+    """
+    Class or scope invariant assertion.
+
+    Syntax:
+        invariant <condition>
+        invariant <condition> message "explanation"
+
+    When used inside a class body, invariants are collected and checked
+    automatically after every method call.  In any other scope the
+    behaviour is identical to ``guarantee``: checked immediately.
+
+    Raises ContractError (contract_kind="invariant") when the condition
+    evaluates to False.
+    """
+    def __init__(self, condition, message_expr=None, line_number=None):
+        super().__init__("invariant_statement", line_number)
+        self.condition = condition
+        self.message_expr = message_expr
+
+    def __str__(self):
+        return "InvariantStatement(<condition>)"
+
+
+class OldExpression(ASTNode):
+    """
+    Pre-call value capture for use in postconditions.
+
+    Syntax:
+        old(expr)
+
+    The interpreter evaluates ``expr`` once *before* the function body
+    executes and stores the result.  When the postcondition (``ensure``)
+    is later evaluated, ``old(expr)`` returns the stored pre-call value.
+
+    Example::
+
+        function increment with counter as Integer returns Integer
+            ensure result equals old(counter) plus 1
+            return counter plus 1
+        end
+    """
+    def __init__(self, expr, line_number=None):
+        super().__init__("old_expression", line_number)
+        self.expr = expr
+
+    def __str__(self):
+        return "OldExpression(<expr>)"
+
+
+class SpecAnnotation(ASTNode):
+    """
+    A single annotation line inside a ``spec`` block.
+
+    Syntax:
+        requires <condition>
+        ensures  <condition>
+        invariant <condition>
+        decreases <expression>
+
+    Attributes:
+        kind      (str): "requires", "ensures", "invariant", or "decreases".
+        condition (ASTNode): The condition/expression to annotate.
+        label     (str|None): Optional human-readable label for the VC.
+    """
+    def __init__(self, kind, condition, label=None, line_number=None):
+        super().__init__("spec_annotation", line_number)
+        self.kind = kind
+        self.condition = condition
+        self.label = label
+
+    def __str__(self):
+        return f"SpecAnnotation({self.kind})"
+
+
+class SpecBlock(ASTNode):
+    """
+    Formal specification block grouping multiple spec annotations.
+
+    Syntax:
+        spec "optional name"
+            requires  <cond>
+            ensures   <cond>
+            invariant <cond>
+            decreases <expr>
+        end spec
+
+    Spec blocks are consumed by the ``nlpl-verify`` tool for static
+    verification.  At runtime they are treated as no-ops so that
+    programs with formal annotations still execute normally.
+    """
+    def __init__(self, name=None, annotations=None, line_number=None):
+        super().__init__("spec_block", line_number)
+        self.name = name           # Optional label string (e.g. "sort_postcond")
+        self.annotations = annotations or []
+
+    def __str__(self):
+        return f"SpecBlock({self.name!r})"

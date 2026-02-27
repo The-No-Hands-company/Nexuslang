@@ -57,6 +57,7 @@ from nlpl.parser.ast import (
     ExpectStatement,
     # Contract programming
     RequireStatement, EnsureStatement, GuaranteeStatement,
+    InvariantStatement, OldExpression, SpecAnnotation, SpecBlock,
 )
 
 class Parser:
@@ -444,6 +445,12 @@ class Parser:
 
             elif token.type == TokenType.GUARANTEE:
                 return self.parse_guarantee_statement()
+
+            elif token.type == TokenType.INVARIANT:
+                return self.parse_invariant_statement()
+
+            elif token.type == TokenType.SPEC:
+                return self.parse_spec_block()
 
             elif token.type == TokenType.EOF:
                 # End of file - return None to stop parsing
@@ -5250,7 +5257,22 @@ class Parser:
         elif token.type == TokenType.NULL:
             self.advance()
             return Literal('null', None)
-            
+
+        elif token.type == TokenType.OLD:
+            # old(expr) — pre-call value capture for use in postconditions
+            line_num = token.line if hasattr(token, 'line') else 0
+            self.advance()  # consume 'old'
+            # Expect opening paren
+            if self.current_token and self.current_token.type == TokenType.LPAREN:
+                self.advance()  # consume '('
+                inner_expr = self.expression()
+                if self.current_token and self.current_token.type == TokenType.RPAREN:
+                    self.advance()  # consume ')'
+                return OldExpression(inner_expr, line_number=line_num)
+            else:
+                # Treat as identifier if no paren follows (graceful fallback)
+                return Identifier('old', line_num)
+
         elif token.type == TokenType.IDENTIFIER or self._can_be_identifier(token):
             # Accept IDENTIFIER or keywords that can be used as variable names
             name = token.lexeme if hasattr(token, 'lexeme') else str(token.type)
@@ -9416,8 +9438,14 @@ class Parser:
         """Parse condition and optional 'message <expr>' for contract stmts."""
         condition = self.expression()
         message_expr = None
-        if (self.current_token and self.current_token.type == TokenType.IDENTIFIER
-                and self.current_token.value == "message"):
+        # 'message' may be tokenized as TokenType.MESSAGE or as an IDENTIFIER
+        # depending on lexer version; handle both.
+        tok = self.current_token
+        is_message_token = tok is not None and (
+            tok.type == TokenType.MESSAGE
+            or (tok.type == TokenType.IDENTIFIER and tok.value == "message")
+        )
+        if is_message_token:
             self.advance()  # consume "message"
             message_expr = self.expression()
         return condition, message_expr
@@ -9461,3 +9489,111 @@ class Parser:
         return GuaranteeStatement(condition=condition, message_expr=message_expr,
                                   line_number=line_number)
 
+    def parse_invariant_statement(self):
+        """Parse an 'invariant <condition>' class/scope invariant.
+
+        Syntax:
+            invariant <condition>
+            invariant <condition> message "explanation"
+
+        Inside a class body the invariant is collected and checked after
+        every method call.  In any other scope it fires immediately like
+        ``guarantee``.
+        """
+        line_number = self.current_token.line
+        self.advance()  # consume INVARIANT
+        condition, message_expr = self._parse_contract_body("invariant")
+        return InvariantStatement(condition=condition, message_expr=message_expr,
+                                  line_number=line_number)
+
+    def parse_spec_block(self):
+        """Parse a formal ``spec`` block containing spec annotations.
+
+        Syntax:
+            spec
+                requires  <cond>
+                ensures   <cond>
+                invariant <cond>
+                decreases <expr>
+            end spec
+
+        Or with an optional name label::
+
+            spec "label"
+                requires  <cond>
+            end spec
+
+        Spec blocks are no-ops at runtime; they are consumed by the
+        ``nlpl-verify`` static verification tool.
+        """
+        line_number = self.current_token.line
+        self.advance()  # consume SPEC
+
+        # Optional string label
+        name = None
+        if (self.current_token
+                and self.current_token.type == TokenType.STRING_LITERAL):
+            name = self.current_token.value
+            self.advance()
+
+        annotations = []
+
+        # Skip trailing newline before INDENT
+        while self.current_token and self.current_token.type == TokenType.NEWLINE:
+            self.advance()
+
+        if self.current_token and self.current_token.type == TokenType.INDENT:
+            self.advance()  # consume INDENT
+
+            while (self.current_token
+                   and self.current_token.type not in (TokenType.DEDENT, TokenType.EOF)):
+
+                tok = self.current_token
+
+                if tok.type in (TokenType.NEWLINE,):
+                    self.advance()
+                    continue
+
+                # "requires <cond>", "ensures <cond>", "invariant <cond>"
+                # Accept both keyword tokens (require/ensure) and identifier
+                # variants (requires/ensures) commonly used in spec blocks.
+                _tok_val = getattr(tok, "value", "") or getattr(tok, "lexeme", "")
+                if (tok.type == TokenType.REQUIRE
+                        or (tok.type == TokenType.IDENTIFIER
+                            and _tok_val.lower() in ("requires", "require"))):
+                    ann_line = tok.line
+                    self.advance()
+                    cond, _ = self._parse_contract_body("requires")
+                    annotations.append(SpecAnnotation("requires", cond, line_number=ann_line))
+                elif (tok.type == TokenType.ENSURE
+                        or (tok.type == TokenType.IDENTIFIER
+                            and _tok_val.lower() in ("ensures", "ensure"))):
+                    ann_line = tok.line
+                    self.advance()
+                    cond, _ = self._parse_contract_body("ensures")
+                    annotations.append(SpecAnnotation("ensures", cond, line_number=ann_line))
+                elif tok.type == TokenType.INVARIANT:
+                    ann_line = tok.line
+                    self.advance()
+                    cond, _ = self._parse_contract_body("invariant")
+                    annotations.append(SpecAnnotation("invariant", cond, line_number=ann_line))
+                elif (tok.type == TokenType.IDENTIFIER
+                      and tok.lexeme.lower() == "decreases"):
+                    ann_line = tok.line
+                    self.advance()
+                    expr = self.expression()
+                    annotations.append(SpecAnnotation("decreases", expr, line_number=ann_line))
+                else:
+                    # Skip unrecognised tokens gracefully
+                    self.advance()
+
+            if self.current_token and self.current_token.type == TokenType.DEDENT:
+                self.advance()  # consume DEDENT
+
+        # Consume optional "end spec" / "end"
+        if self.current_token and self.current_token.type == TokenType.END:
+            self.advance()  # consume END
+            if (self.current_token and self.current_token.type == TokenType.SPEC):
+                self.advance()  # consume SPEC (part of "end spec")
+
+        return SpecBlock(name=name, annotations=annotations, line_number=line_number)

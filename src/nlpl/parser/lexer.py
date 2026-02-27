@@ -249,6 +249,9 @@ class TokenType(Enum):
     REQUIRE = auto()     # `require condition`
     ENSURE = auto()      # `ensure condition`
     GUARANTEE = auto()   # `guarantee condition`
+    INVARIANT = auto()   # `invariant condition` (class/scope invariant)
+    OLD = auto()         # `old(expr)` (pre-call value capture in postconditions)
+    SPEC = auto()        # `spec` block (formal specification annotation)
 
     # Literals
     IDENTIFIER = auto()
@@ -628,6 +631,9 @@ class Lexer:
             "require": TokenType.REQUIRE,
             "ensure": TokenType.ENSURE,
             "guarantee": TokenType.GUARANTEE,
+            "invariant": TokenType.INVARIANT,
+            "old": TokenType.OLD,
+            "spec": TokenType.SPEC,
         }
     
     def scan_tokens(self) -> List[Token]:

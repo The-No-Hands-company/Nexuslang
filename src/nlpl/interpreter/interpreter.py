@@ -133,6 +133,11 @@ class Interpreter:
         # Coverage collector (optional) — set by CoverageCollector.attach()
         self._coverage_collector = None
 
+        # Pre-call value map for old(expr) postcondition capture.
+        # Keyed by id(OldExpression node) → pre-call evaluated value.
+        # Populated before each user-function body and cleared after.
+        self._old_values: Dict[int, Any] = {}
+
         # Per-instance dispatch cache: node_type -> bound method (avoids repeated getattr).
         # Built lazily on first call to execute() so that subclasses that override
         # execute_* methods are also picked up correctly.
@@ -213,24 +218,54 @@ class Interpreter:
                 kwargs,
                 function_def.name
             )
-            
+
+            # Separate ensure postconditions from the main body so they can
+            # be executed AFTER the body with `result` bound in scope.
+            from ..parser.ast import EnsureStatement as _EnsureStmt
+            main_body = [s for s in function_def.body
+                         if not isinstance(s, _EnsureStmt)]
+            ensure_stmts = [s for s in function_def.body
+                            if isinstance(s, _EnsureStmt)]
+
+            # Capture old() pre-call values before entering the new scope.
+            saved_old_values = self._old_values
+            self._old_values = {}
+            if ensure_stmts:
+                for _es in ensure_stmts:
+                    for _old_node in self._collect_old_refs(_es.condition):
+                        self._old_values[id(_old_node)] = self.execute(_old_node.expr)
+                    if _es.message_expr is not None:
+                        for _old_node in self._collect_old_refs(_es.message_expr):
+                            self._old_values[id(_old_node)] = self.execute(_old_node.expr)
+
             # Create a new scope
             self.enter_scope()
 
+            return_value = None
             try:
                 # Bind parameters
                 for param, value in zip(function_def.parameters, resolved_args):
                     self.set_variable(param.name, value)
-                
-                # Execute body
-                result = None
-                for statement in function_def.body:
-                    result = self.execute(statement)
-            except ReturnException as ret:
-                return ret.value
+
+                # Execute main body (excluding ensure statements)
+                try:
+                    for statement in main_body:
+                        self.execute(statement)
+                except ReturnException as ret:
+                    return_value = ret.value
+
+                # Bind `result` for postcondition evaluation.
+                self.set_variable("result", return_value)
+
+                # Execute ensure postconditions.
+                for _es in ensure_stmts:
+                    self.execute(_es)
+
             finally:
+                self._old_values = saved_old_values
                 self.exit_scope()
-            return result
+
+            return return_value
         return wrapper
 
     def _get_module_loader(self):
@@ -2480,6 +2515,64 @@ class Interpreter:
             raise NLPLContractError(msg, contract_kind="guarantee")
         return None
 
+    def execute_invariant_statement(self, node):
+        """Execute an 'invariant' contract assertion.
+
+        Semantically identical to ``guarantee`` at runtime.  The
+        ``nlpl-verify`` static verification tool distinguishes invariants
+        from one-shot guarantees when generating verification conditions.
+
+        Raises NLPLContractError (contract_kind="invariant") on failure.
+        """
+        from ..errors import NLPLContractError
+        cond = self.execute(node.condition)
+        if not cond:
+            if node.message_expr is not None:
+                msg = str(self.execute(node.message_expr))
+            else:
+                msg = "Invariant violated"
+            raise NLPLContractError(msg, contract_kind="invariant")
+        return None
+
+    def execute_old_expression(self, node):
+        """Return the pre-call captured value of an old(expr) expression.
+
+        The value is pre-populated by the function-call executor before the
+        function body runs.  Returns None gracefully when called outside a
+        function context (e.g., in interactive mode or top-level ensures).
+        """
+        return self._old_values.get(id(node))
+
+    def execute_spec_block(self, node):
+        """Spec blocks are no-ops at runtime.
+
+        They carry formal specification annotations consumed by the
+        ``nlpl-verify`` static analysis tool.  Executing them during normal
+        interpretation does nothing.
+        """
+        return None
+
+    # ------------------------------------------------------------------
+    # Formal-verification helpers
+    # ------------------------------------------------------------------
+
+    def _collect_old_refs(self, node):
+        """Recursively collect all OldExpression nodes in an AST subtree."""
+        from ..parser.ast import OldExpression
+        results = []
+        if isinstance(node, OldExpression):
+            results.append(node)
+        for attr in vars(node).values():
+            if attr is node:
+                continue
+            if hasattr(attr, 'node_type'):
+                results.extend(self._collect_old_refs(attr))
+            elif isinstance(attr, list):
+                for item in attr:
+                    if hasattr(item, 'node_type'):
+                        results.extend(self._collect_old_refs(item))
+        return results
+
     def _run_parameterized_cases(self, node, setup_stmts: list,
                                   teardown_stmts: list) -> list:
         """Run each case of a parameterized test block and return result list."""
@@ -3163,20 +3256,52 @@ class Interpreter:
                     if hasattr(param, 'default_value') and param.default_value:
                         default_value = self.execute(param.default_value)
                     self.set_variable(param.name, default_value)
-            
-            # Execute the function body
+
+            # Separate ensure postconditions from the main function body.
+            # This lets us bind `result` and run old()-aware postconditions
+            # AFTER the body has fully executed.
+            from ..parser.ast import EnsureStatement as _EnsureStmt
+            main_body = [s for s in function_def.body
+                         if not isinstance(s, _EnsureStmt)]
+            ensure_stmts = [s for s in function_def.body
+                            if isinstance(s, _EnsureStmt)]
+
+            # Pre-call snapshot: evaluate every old(expr) sub-expression that
+            # appears in postconditions so we remember the pre-call values.
+            saved_old_values = self._old_values
+            self._old_values = {}
+            for _es in ensure_stmts:
+                for _old_node in self._collect_old_refs(_es.condition):
+                    self._old_values[id(_old_node)] = self.execute(_old_node.expr)
+                if _es.message_expr is not None:
+                    for _old_node in self._collect_old_refs(_es.message_expr):
+                        self._old_values[id(_old_node)] = self.execute(_old_node.expr)
+
+            # Execute the function body and postconditions
             result = None
             try:
-                for statement in function_def.body:
-                    result = self.execute(statement)
-            except ReturnException as ret:
-                # Properly capture the return value
-                result = ret.value
+                try:
+                    for statement in main_body:
+                        result = self.execute(statement)
+                except ReturnException as ret:
+                    # Properly capture the return value
+                    result = ret.value
+
+                # Bind `result` variable so ensure postconditions can reference it
+                self.set_variable("result", result)
+
+                # Execute ensure postconditions with result in scope
+                for _es in ensure_stmts:
+                    self.execute(_es)
+
             finally:
                 # Debugger hook: trace function return
                 if self.debugger:
                     self.debugger.trace_return(function_name, result)
-                
+
+                # Restore old_values from the enclosing call frame
+                self._old_values = saved_old_values
+
                 # Always clean up the function scope
                 self.exit_scope()
             
