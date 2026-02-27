@@ -92,10 +92,14 @@ def retry(max_attempts: int = 3):
     return decorator
 
 
-def validate_args(**validators):
-    """Argument validation decorator."""
-    def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
+def validate_args(func=None, **validators):
+    """Argument validation decorator.
+
+    Can be used as @validate_args (no parens) or
+    as @validate_args(arg_name="positive") with keyword validators.
+    """
+    def decorator(f: Callable) -> Callable:
+        @functools.wraps(f)
         def wrapper(*args, **kwargs):
             for arg_name, validator in validators.items():
                 if arg_name in kwargs:
@@ -104,9 +108,65 @@ def validate_args(**validators):
                         raise ValueError(f"{arg_name} must be positive")
                     elif validator == "non_zero" and value == 0:
                         raise ValueError(f"{arg_name} must not be zero")
-            return func(*args, **kwargs)
+            return f(*args, **kwargs)
         return wrapper
+
+    if callable(func):
+        # Called as @validate_args with no parentheses — func is the decorated function
+        return decorator(func)
+
+    # Called as @validate_args(key="type") — return the decorator factory
     return decorator
+
+
+def singleton(func):
+    """Decorator that ensures a factory function returns the same instance every call."""
+    _state = {"instance": None}
+
+    def wrapper(*args, **kwargs):
+        if _state["instance"] is None:
+            _state["instance"] = func(*args, **kwargs)
+        return _state["instance"]
+
+    wrapper.__name__ = getattr(func, "__name__", "singleton_wrapper")
+    wrapper._is_singleton = True
+    return wrapper
+
+
+def cached_property(func):
+    """Decorator that computes a method's result once and caches it on the instance."""
+    cache_attr = f"_cached_{getattr(func, '__name__', 'prop')}"
+
+    def wrapper(self, *args, **kwargs):
+        if not hasattr(self, cache_attr) or getattr(self, cache_attr) is None:
+            object.__setattr__(self, cache_attr, func(self, *args, **kwargs))
+        return getattr(self, cache_attr)
+
+    wrapper.__name__ = getattr(func, "__name__", "cached_property_wrapper")
+    wrapper._is_cached_property = True
+    return wrapper
+
+
+def pure(func):
+    """Documentation-only marker asserting a function has no side effects."""
+    func._is_pure = True
+    return func
+
+
+def once(func):
+    """Decorator that raises RuntimeError if the function is called more than once."""
+    _state = {"called": False}
+
+    def wrapper(*args, **kwargs):
+        if _state["called"]:
+            name = getattr(func, "__name__", "function")
+            raise RuntimeError(f"Function '{name}' decorated with @once was called more than once")
+        _state["called"] = True
+        return func(*args, **kwargs)
+
+    wrapper.__name__ = getattr(func, "__name__", "once_wrapper")
+    wrapper._is_once = True
+    return wrapper
 
 
 BUILTIN_DECORATORS = {
@@ -116,6 +176,10 @@ BUILTIN_DECORATORS = {
     "timer": timer,
     "retry": retry,
     "validate_args": validate_args,
+    "singleton": singleton,
+    "cached_property": cached_property,
+    "pure": pure,
+    "once": once,
 }
 
 

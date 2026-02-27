@@ -38,6 +38,8 @@ from nlpl.parser.ast import (
     AllocatorHint, ParallelForLoop,
     # Lifetime-annotated borrow expressions
     BorrowExpressionWithLifetime,
+    # Metaprogramming / compile-time AST nodes
+    ComptimeExpression, ComptimeConst, ComptimeAssert,
 )
 import concurrent.futures as _cf
 from nlpl.runtime import Runtime
@@ -103,6 +105,8 @@ class Interpreter:
         self.functions = {}
         self.classes = {}
         self.macros = {}  # Registry for macro definitions
+        self.comptime_constants = {}  # Registry for compile-time constants
+        self.derived_method_registry = {}  # class_name -> {method_name -> callable}
         self.last_exception = None  # To support re-raising
         self.module_loader = None  # Will be initialized lazily
 
@@ -153,6 +157,9 @@ class Interpreter:
         # Build the class-level string dispatch table once (shared, maps type name -> method name)
         if not Interpreter._DISPATCH_TABLE:
             Interpreter._build_dispatch_table()
+
+        # Register metaprogramming introspection functions that need interpreter access
+        self._register_metaprogramming_functions()
     
     @staticmethod
     def _build_dispatch_table():
@@ -284,7 +291,52 @@ class Interpreter:
                     search_paths.insert(0, file_dir)
             self.module_loader = ModuleLoader(self.runtime, search_paths)
         return self.module_loader
-        
+
+    def _register_metaprogramming_functions(self):
+        """Register metaprogramming introspection functions on the runtime.
+
+        These closures capture the interpreter instance so NLPL programs can
+        query macro and compile-time constant registries at runtime.
+        """
+        interpreter = self
+
+        def meta_macro_names():
+            """Return a list of all defined macro names."""
+            return list(interpreter.macros.keys())
+
+        def meta_macro_exists(name):
+            """Return True if a macro with the given name is defined."""
+            return name in interpreter.macros
+
+        def meta_macro_arg_count(name):
+            """Return the parameter count of a macro, or -1 if undefined."""
+            macro = interpreter.macros.get(name)
+            if macro is None:
+                return -1
+            return len(macro.parameters)
+
+        def meta_comptime_const_names():
+            """Return a list of all compile-time constant names."""
+            return list(interpreter.comptime_constants.keys())
+
+        def meta_comptime_const_value(name):
+            """Return the value of a compile-time constant, or None."""
+            return interpreter.comptime_constants.get(name)
+
+        def meta_comptime_const_exists(name):
+            """Return True if a compile-time constant with the given name exists."""
+            return name in interpreter.comptime_constants
+
+        for fn_name, fn in (
+            ("meta_macro_names", meta_macro_names),
+            ("meta_macro_exists", meta_macro_exists),
+            ("meta_macro_arg_count", meta_macro_arg_count),
+            ("meta_comptime_const_names", meta_comptime_const_names),
+            ("meta_comptime_const_value", meta_comptime_const_value),
+            ("meta_comptime_const_exists", meta_comptime_const_exists),
+        ):
+            self.runtime.register_function(fn_name, fn)
+
     def interpret(self, ast_or_source, optimization_level=0):
         """Interpret the AST and execute the program.
 
@@ -713,9 +765,30 @@ class Interpreter:
         for arg_name, arg_expr in decorator_node.arguments.items():
             args[arg_name] = self.execute(arg_expr)
         
-        # Get the decorator implementation
+        # Get the decorator implementation (built-in first, then user-defined NLPL function)
         decorator_func = get_decorator(decorator_node.name)
         if decorator_func is None:
+            # Try user-defined NLPL function as decorator
+            nlpl_func = self.functions.get(decorator_node.name)
+            if nlpl_func is None:
+                try:
+                    nlpl_func = self.get_variable(decorator_node.name)
+                except Exception:
+                    nlpl_func = None
+            if nlpl_func is not None and hasattr(nlpl_func, 'body'):
+                self.enter_scope()
+                try:
+                    if nlpl_func.parameters:
+                        self.set_variable(nlpl_func.parameters[0].name, function_value)
+                    result = None
+                    try:
+                        for stmt in nlpl_func.body:
+                            result = self.execute(stmt)
+                    except ReturnException as ret:
+                        result = ret.value
+                    return result if result is not None else function_value
+                finally:
+                    self.exit_scope()
             raise NLPLRuntimeError(
                 f"Unknown decorator: @{decorator_node.name}",
                 line=decorator_node.line,
@@ -1269,7 +1342,100 @@ class Interpreter:
         """Execute a class definition."""
         # Store the AST node. It contains generic_parameters if defined.
         self.classes[node.name] = node
+        # Apply class-level decorators (e.g., @derive, @singleton)
+        if hasattr(node, 'decorators') and node.decorators:
+            for decorator in reversed(node.decorators):
+                self._apply_class_decorator(decorator, node)
         return node.name
+
+    def _apply_class_decorator(self, decorator_node, class_node):
+        """Apply a decorator to a class definition."""
+        name = decorator_node.name
+        if name == "derive":
+            self._apply_derive_to_class(decorator_node, class_node)
+        elif name == "singleton":
+            # Mark class for singleton instantiation
+            class_node._singleton_instance = None
+            class_node._is_singleton = True
+        else:
+            # Try user-defined class decorator function
+            nlpl_func = self.functions.get(name)
+            if nlpl_func is not None and hasattr(nlpl_func, 'body'):
+                # Pass the class node (as a string name) to the decorator
+                self.enter_scope()
+                try:
+                    if nlpl_func.parameters:
+                        self.set_variable(nlpl_func.parameters[0].name, class_node.name)
+                    for stmt in nlpl_func.body:
+                        self.execute(stmt)
+                finally:
+                    self.exit_scope()
+
+    def _apply_derive_to_class(self, decorator_node, class_node):
+        """Generate methods for @derive(Trait1, Trait2, ...) on a class."""
+        if not hasattr(class_node, '_derived_methods'):
+            class_node._derived_methods = {}
+
+        # Collect trait names from decorator arguments
+        traits = []
+        # Handle @derive(Trait1, Trait2) style - parser stores as {"_args": ["Trait1", "Trait2"]}
+        if "_args" in decorator_node.arguments:
+            for t in decorator_node.arguments["_args"]:
+                if isinstance(t, str):
+                    traits.append(t)
+        else:
+            # Legacy: @derive with TraitName value (keyword-style args)
+            for arg_name, arg_expr in decorator_node.arguments.items():
+                traits.append(arg_name)
+        # Also handle positional args stored as list (in case parser uses positional)
+        if hasattr(decorator_node, 'positional_args') and decorator_node.positional_args:
+            for arg_expr in decorator_node.positional_args:
+                try:
+                    val = self.execute(arg_expr)
+                    if isinstance(val, str):
+                        traits.append(val)
+                except Exception:
+                    pass
+
+        for trait in traits:
+            if trait == "DebugPrint":
+                def make_to_string(cn):
+                    def to_string(obj, *args):
+                        props = ", ".join(f"{k}={v!r}" for k, v in obj.properties.items())
+                        return f"{cn}({props})"
+                    return to_string
+                def make_debug_print(cn):
+                    def debug_print(obj, *args):
+                        props = ", ".join(f"{k}={v!r}" for k, v in obj.properties.items())
+                        print(f"{cn}({props})")
+                        return None
+                    return debug_print
+                class_node._derived_methods["to_string"] = make_to_string(class_node.name)
+                class_node._derived_methods["debug_print"] = make_debug_print(class_node.name)
+            elif trait == "Equality":
+                def equals(obj, other, *args):
+                    if not hasattr(other, 'properties'):
+                        return False
+                    return obj.properties == other.properties
+                class_node._derived_methods["equals"] = equals
+            elif trait == "Clone":
+                def clone(obj, *args):
+                    import copy
+                    return copy.deepcopy(obj)
+                class_node._derived_methods["clone"] = clone
+            elif trait == "Hash":
+                def hash_code(obj, *args):
+                    try:
+                        return hash(tuple(sorted(obj.properties.items())))
+                    except TypeError:
+                        return id(obj)
+                class_node._derived_methods["hash_code"] = hash_code
+            elif trait == "Default":
+                def default(obj, *args):
+                    for key in obj.properties:
+                        obj.properties[key] = None
+                    return obj
+                class_node._derived_methods["default"] = default
     
     def execute_interface_definition(self, node):
         """Execute an interface definition.
@@ -3762,6 +3928,17 @@ class Interpreter:
         if hasattr(class_def, 'methods'):
             for method in class_def.methods:
                 instance.add_method(method.name, method)
+
+        # Add derived methods generated by @derive decorator
+        if hasattr(class_def, '_derived_methods'):
+            for mname, mcallable in class_def._derived_methods.items():
+                instance.add_method(mname, mcallable)
+
+        # Singleton support: return existing instance if @singleton class
+        if getattr(class_def, '_is_singleton', False):
+            if class_def._singleton_instance is None:
+                class_def._singleton_instance = instance
+            return class_def._singleton_instance
                 
         return instance
     
@@ -3787,7 +3964,14 @@ class Interpreter:
                 # Method call
                 if member_name in obj.methods:
                     method_def = obj.methods[member_name]
-                    
+
+                    # Handle native Python callables (e.g., methods generated by @derive)
+                    if callable(method_def) and not hasattr(method_def, 'node_type'):
+                        call_args = []
+                        if hasattr(node, 'arguments') and node.arguments:
+                            call_args = [self.execute(arg) for arg in node.arguments]
+                        return method_def(obj, *call_args)
+
                     # Enter new scope for method execution
                     self.enter_scope()
                     
@@ -4194,14 +4378,50 @@ class Interpreter:
         """Execute a macro definition - store it in registry."""
         self.macros[node.name] = node
         return None
+
+    # ------------------------------------------------------------------
+    # Compile-time evaluation
+    # ------------------------------------------------------------------
+
+    def execute_comptime_expression(self, node):
+        """Execute a comptime eval expression - evaluate at runtime (current implementation)."""
+        return self.execute(node.expr)
+
+    def execute_comptime_const(self, node):
+        """Execute a comptime const declaration - store as global compile-time constant."""
+        value = self.execute(node.expr)
+        self.comptime_constants[node.name] = value
+        # Also register in global scope so NLPL code can reference it
+        self.current_scope[0][node.name] = value
+        return value
+
+    def execute_comptime_assert(self, node):
+        """Execute a comptime assert - raise at 'compile time' (early in execution)."""
+        condition = self.execute(node.condition)
+        if not condition:
+            message = "Compile-time assertion failed"
+            if node.message_expr is not None:
+                try:
+                    msg_val = self.execute(node.message_expr)
+                    message = f"Compile-time assertion failed: {msg_val}"
+                except Exception:
+                    pass
+            raise NLPLRuntimeError(
+                message,
+                line=node.line_number,
+                error_type_key="runtime_error",
+                full_source=self.source,
+            )
+        return condition
     
     def execute_macro_expansion(self, node):
         """Execute a macro expansion - substitute parameters and execute body."""
         # Get macro definition
+        _macro_line = getattr(node, 'line_number', getattr(node, 'line', None))
         if node.name not in self.macros:
             raise NLPLRuntimeError(
                 f"Undefined macro: {node.name}",
-                line=node.line,
+                line=_macro_line,
                 error_type_key="undefined_function",
                 full_source=self.source,
             )
@@ -4213,28 +4433,33 @@ class Interpreter:
         for arg_name, arg_expr in node.arguments.items():
             evaluated_args[arg_name] = self.execute(arg_expr)
         
-        # Create a new scope for macro expansion
-        old_scope = self.current_scope.copy()
+        # Hygienic scope: save outer scope, run macro in isolation
+        saved_scope = self.current_scope
+        # Start from globals only so macro cannot see caller's local variables
+        self.current_scope = [self.current_scope[0]]
+        self.enter_scope()
         
-        # Bind macro parameters to argument values
-        for i, param_name in enumerate(macro_def.parameters):
-            if param_name in evaluated_args:
-                self.set_variable(param_name, evaluated_args[param_name])
-            else:
-                raise NLPLRuntimeError(
-                    f"Macro {node.name} missing argument: {param_name}",
-                    line=node.line,
-                    error_type_key="wrong_argument_count",
-                    full_source=self.source,
-                )
-        
-        # Execute macro body
-        result = None
-        for stmt in macro_def.body:
-            result = self.execute(stmt)
-        
-        # Restore scope
-        self.current_scope = old_scope
+        try:
+            # Bind macro parameters to argument values
+            for param_name in macro_def.parameters:
+                if param_name in evaluated_args:
+                    self.set_variable(param_name, evaluated_args[param_name])
+                else:
+                    raise NLPLRuntimeError(
+                        f"Macro {node.name} missing argument: {param_name}",
+                        line=_macro_line,
+                        error_type_key="wrong_argument_count",
+                        full_source=self.source,
+                    )
+            
+            # Execute macro body
+            result = None
+            for stmt in macro_def.body:
+                result = self.execute(stmt)
+        finally:
+            # Restore original scope (macro variables cannot leak to caller)
+            self.exit_scope()
+            self.current_scope = saved_scope
         
         return result
 

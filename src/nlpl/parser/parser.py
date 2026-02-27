@@ -41,6 +41,7 @@ from nlpl.parser.ast import (
     InlineAssembly,
     # Decorators and Macros
     Decorator, MacroDefinition, MacroExpansion,
+    ComptimeExpression, ComptimeConst, ComptimeAssert,
     # Pattern matching
     MatchExpression, MatchCase, Pattern, LiteralPattern, IdentifierPattern, 
     WildcardPattern, VariantPattern, TuplePattern, ListPattern,
@@ -475,19 +476,33 @@ class Parser:
             elif token.type == TokenType.EXPAND:
                 return self.macro_expansion()
             
+            elif token.type == TokenType.COMPTIME:
+                return self.comptime_statement()
+            
             elif token.type == TokenType.AT:
-                # Decorator - collect decorators and apply to next function
+                # Decorator - collect decorators and apply to next function or class
                 decorators = []
-                while self.current_token.type == TokenType.AT:
+                while self.current_token and self.current_token.type == TokenType.AT:
                     decorators.append(self.parse_decorator())
+                    # Skip newlines between stacked decorators
+                    while self.current_token and self.current_token.type == TokenType.NEWLINE:
+                        self.advance()
                 
-                # Next statement should be a function definition
-                if self.current_token.type == TokenType.FUNCTION:
+                # Skip trailing newlines before function/class keyword
+                while self.current_token and self.current_token.type == TokenType.NEWLINE:
+                    self.advance()
+                
+                # Next statement should be a function or class definition
+                if self.current_token and self.current_token.type == TokenType.FUNCTION:
                     func_def = self.function_definition_short()
                     func_def.decorators = decorators
                     return func_def
+                elif self.current_token and self.current_token.type == TokenType.CLASS:
+                    class_def = self.class_definition()
+                    class_def.decorators = decorators
+                    return class_def
                 else:
-                    self.error("Decorators can only be applied to functions")
+                    self.error("Decorators can only be applied to functions or classes")
                 
             else:
                 # Try to parse as expression statement (function call, etc.)
@@ -8818,7 +8833,7 @@ class Parser:
         return UnsafeBlock(body=body, line_number=line_number)
 
     def parse_decorator(self):
-        """Parse a decorator: @name or @name with arg1 value1, arg2 value2"""
+        """Parse a decorator: @name, @name(arg1, arg2), or @name with arg1 value1"""
         self.eat(TokenType.AT)
         
         # Get decorator name
@@ -8831,7 +8846,22 @@ class Parser:
         
         # Check for decorator arguments
         arguments = {}
-        if self.current_token and self.current_token.type == TokenType.WITH:
+        if self.current_token and self.current_token.type == TokenType.LEFT_PAREN:
+            # Parenthesis-style args: @name(Arg1, Arg2, ...)
+            self.advance()  # consume '('
+            args_list = []
+            while self.current_token and self.current_token.type not in (TokenType.RIGHT_PAREN, TokenType.EOF, TokenType.NEWLINE):
+                if self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
+                    args_list.append(self.current_token.lexeme)
+                    self.advance()
+                elif self.current_token.type == TokenType.COMMA:
+                    self.advance()
+                else:
+                    break
+            if self.current_token and self.current_token.type == TokenType.RIGHT_PAREN:
+                self.advance()  # consume ')'
+            arguments["_args"] = args_list
+        elif self.current_token and self.current_token.type == TokenType.WITH:
             self.advance()  # consume 'with'
             
             # Parse arguments: arg1 value1, arg2 value2, ...
@@ -8933,6 +8963,69 @@ class Parser:
                     break
         
         return MacroExpansion(macro_name, arguments, line_number)
+
+    def comptime_statement(self):
+        """Parse a comptime statement.
+
+        Supported forms:
+            comptime eval EXPR            -- evaluate expression at load time
+            comptime const NAME is EXPR   -- define immutable compile-time constant
+            comptime assert COND          -- check condition at load time
+            comptime assert COND message MSG
+        """
+        line_number = self.current_token.line
+        self.eat(TokenType.COMPTIME)
+
+        tok = self.current_token
+        # Determine sub-form by inspecting the next identifier keyword
+        sub = tok.lexeme if tok and tok.type == TokenType.IDENTIFIER else None
+
+        if sub == "eval":
+            self.advance()  # consume 'eval'
+            expr = self.expression()
+            return ComptimeExpression(expr, line_number)
+
+        elif sub == "const":
+            self.advance()  # consume 'const'
+            # Expect: NAME is EXPR  (or NAME to EXPR)
+            if not (self.current_token and (
+                    self.current_token.type == TokenType.IDENTIFIER
+                    or self._can_be_identifier(self.current_token))):
+                self.error("Expected constant name after 'comptime const'")
+            const_name = self.current_token.lexeme
+            self.advance()
+            # Consume 'is' or 'to'
+            if self.current_token and self.current_token.type in (TokenType.IS, TokenType.TO):
+                self.advance()
+            elif self.current_token and self.current_token.type == TokenType.IDENTIFIER \
+                    and self.current_token.lexeme in ("is", "to", "equals"):
+                self.advance()
+            expr = self.expression()
+            return ComptimeConst(const_name, expr, line_number)
+
+        elif sub == "assert":
+            self.advance()  # consume 'assert'
+            condition = self.expression()
+            message_expr = None
+            # Optional:  message EXPR  or  with message EXPR
+            if self.current_token and self.current_token.type == TokenType.MESSAGE:
+                self.advance()
+                message_expr = self.expression()
+            elif self.current_token and self.current_token.type == TokenType.WITH:
+                self.advance()
+                if self.current_token and self.current_token.type == TokenType.MESSAGE:
+                    self.advance()
+                    message_expr = self.expression()
+                elif self.current_token and self.current_token.type == TokenType.IDENTIFIER \
+                        and self.current_token.lexeme == "message":
+                    self.advance()
+                    message_expr = self.expression()
+            return ComptimeAssert(condition, message_expr, line_number)
+
+        else:
+            # Default: treat bare expression as 'comptime eval EXPR'
+            expr = self.expression()
+            return ComptimeExpression(expr, line_number)
 
     # ---------------------------------------------------------------------------
     # Native test framework parsing

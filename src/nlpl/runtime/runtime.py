@@ -102,6 +102,10 @@ class Runtime:
     def register_function(self, name: str, func: Callable) -> None:
         """Register a function with the runtime."""
         self.functions[name] = func
+
+    def get_function(self, name: str):
+        """Retrieve a registered function by name. Returns None if not found."""
+        return self.functions.get(name)
     
     def register_global(self, name: str, value: Any) -> None:
         """Register a global constant or variable with the runtime."""

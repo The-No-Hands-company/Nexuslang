@@ -102,6 +102,26 @@ class MacroExpansion(ASTNode):
         self.name = name
         self.arguments = arguments or {}  # Dict of parameter name -> value expression
 
+class ComptimeExpression(ASTNode):
+    """comptime eval EXPR -- evaluates the expression at load time."""
+    def __init__(self, expr, line_number=None):
+        super().__init__("comptime_expression", line_number)
+        self.expr = expr
+
+class ComptimeConst(ASTNode):
+    """comptime const NAME is EXPR -- defines an immutable compile-time constant."""
+    def __init__(self, name, expr, line_number=None):
+        super().__init__("comptime_const", line_number)
+        self.name = name
+        self.expr = expr
+
+class ComptimeAssert(ASTNode):
+    """comptime assert COND [message MSG] -- assertion checked at load time."""
+    def __init__(self, condition, message_expr=None, line_number=None):
+        super().__init__("comptime_assert", line_number)
+        self.condition = condition
+        self.message_expr = message_expr
+
 class TypeAlias(ASTNode):
     """A type alias definition node."""
     def __init__(self, name, target_type, type_parameters=None, constraints=None, line_number=None):
@@ -443,9 +463,9 @@ class MemoryDeallocation(ASTNode):
 
 class ClassDefinition(ASTNode):
     """Represents a class definition with inheritance and interface implementation."""
-    def __init__(self, name, properties=None, methods=None, parent_classes=None, 
+    def __init__(self, name, properties=None, methods=None, parent_classes=None,
                  implemented_interfaces=None, generic_parameters=None, is_exported=False,
-                 invariants=None, line_number=None):
+                 invariants=None, decorators=None, line_number=None):
         super().__init__("class_definition", line_number)
         self.name = name
         self.properties = properties or []
@@ -455,6 +475,7 @@ class ClassDefinition(ASTNode):
         self.generic_parameters = generic_parameters or []
         self.is_exported = is_exported
         self.invariants = invariants or []  # List of InvariantStatement nodes
+        self.decorators = decorators or []  # List of Decorator nodes
 
 class StructDefinition(ASTNode):
     """Represents a C-style struct definition with memory layout control.

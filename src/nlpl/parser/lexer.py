@@ -252,6 +252,7 @@ class TokenType(Enum):
     INVARIANT = auto()   # `invariant condition` (class/scope invariant)
     OLD = auto()         # `old(expr)` (pre-call value capture in postconditions)
     SPEC = auto()        # `spec` block (formal specification annotation)
+    COMPTIME = auto()    # `comptime` compile-time evaluation keyword
 
     # Literals
     IDENTIFIER = auto()
@@ -634,6 +635,7 @@ class Lexer:
             "invariant": TokenType.INVARIANT,
             "old": TokenType.OLD,
             "spec": TokenType.SPEC,
+            "comptime": TokenType.COMPTIME,
         }
     
     def scan_tokens(self) -> List[Token]:
