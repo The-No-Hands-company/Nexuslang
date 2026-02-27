@@ -41,7 +41,7 @@ from nlpl.parser.ast import (
     InlineAssembly,
     # Decorators and Macros
     Decorator, MacroDefinition, MacroExpansion,
-    ComptimeExpression, ComptimeConst, ComptimeAssert,
+    ComptimeExpression, ComptimeConst, ComptimeAssert, AttributeDeclaration,
     # Pattern matching
     MatchExpression, MatchCase, Pattern, LiteralPattern, IdentifierPattern, 
     WildcardPattern, VariantPattern, TuplePattern, ListPattern,
@@ -478,7 +478,10 @@ class Parser:
             
             elif token.type == TokenType.COMPTIME:
                 return self.comptime_statement()
-            
+
+            elif token.type == TokenType.ATTRIBUTE:
+                return self.attribute_declaration()
+
             elif token.type == TokenType.AT:
                 # Decorator - collect decorators and apply to next function or class
                 decorators = []
@@ -9026,6 +9029,58 @@ class Parser:
             # Default: treat bare expression as 'comptime eval EXPR'
             expr = self.expression()
             return ComptimeExpression(expr, line_number)
+
+    def attribute_declaration(self):
+        """Parse: attribute Name [with prop1 as Type1, prop2 as Type2, ...]
+
+        Syntax::
+
+            attribute Serializable
+            attribute JsonProperty with key as String
+            attribute Range with min as Integer, max as Integer
+        """
+        line_number = self.current_token.line
+        self.eat(TokenType.ATTRIBUTE)
+
+        # Structural tokens that can never be a name/type token in this context
+        _non_name = {
+            TokenType.EOF, TokenType.NEWLINE, TokenType.END,
+            TokenType.COMMA, TokenType.DOT, TokenType.SEMICOLON,
+            TokenType.WITH, TokenType.AS, TokenType.AND,
+        }
+
+        def _is_name_tok(tok):
+            return tok is not None and tok.type not in _non_name and tok.lexeme
+
+        # Get attribute name — accept any non-structural token (keywords included)
+        if not _is_name_tok(self.current_token):
+            self.error("Expected attribute name after 'attribute'")
+        attr_name = self.current_token.lexeme
+        self.advance()
+
+        # Optional: with prop1 as Type1, prop2 as Type2
+        properties = []
+        if self.current_token and self.current_token.type == TokenType.WITH:
+            self.advance()
+            while _is_name_tok(self.current_token):
+                prop_name = self.current_token.lexeme
+                self.advance()
+                prop_type = "Any"
+                if self.current_token and self.current_token.type == TokenType.AS:
+                    self.advance()
+                    if _is_name_tok(self.current_token):
+                        prop_type = self.current_token.lexeme
+                        self.advance()
+                properties.append((prop_name, prop_type))
+                # Allow comma OR 'and' as property separators
+                if self.current_token and self.current_token.type == TokenType.COMMA:
+                    self.advance()
+                elif self.current_token and self.current_token.type == TokenType.AND:
+                    self.advance()
+                else:
+                    break
+
+        return AttributeDeclaration(attr_name, properties, line_number)
 
     # ---------------------------------------------------------------------------
     # Native test framework parsing

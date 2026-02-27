@@ -1970,7 +1970,7 @@ end
 
 ---
 
-### 8.2 Reflection ✅ SUBSTANTIALLY COMPLETE (February 27, 2026)
+### 8.2 Reflection ✅ COMPLETE (February 27, 2026)
 
 **Current State:**
 
@@ -1983,9 +1983,8 @@ end
 - ✅ Method inspection — `reflect_has_method`
 - ✅ Summary introspection — `reflect_describe` (kind + type + fields/properties + methods)
 - ✅ Dynamic method invocation — `reflect_invoke`, `reflect_invoke_safe`, `reflect_call` (February 26, 2026 — 39 tests)
-- ✅ 127 tests passing (88 original + 39 dynamic invocation)
-- ❌ Custom attributes/annotations — planned
-- ❌ Compile-time attributes — planned
+- ✅ Attribute System — `attribute` declarations, `@Attr` on classes, `reflect_has_attribute`, `reflect_list_attributes`, `reflect_get_attribute`, `reflect_attribute_value` (February 27, 2026 — 43 tests)
+- ✅ 170 tests passing (127 original + 43 attribute system)
 
 **What Java/C#/Python Have:**
 
@@ -2012,13 +2011,16 @@ end
   - `reflect_has_method with obj and name`
   - `reflect_describe with obj` — full structured summary dict
 
-- [ ] **Attribute System** (planned, after compile-time attribute syntax)
-  - Custom attributes/annotations
-  - Compile-time attributes
-  - Runtime attributes
+- [x] **Attribute System** (February 27, 2026)
+  - `attribute Name [with prop1 as Type1, ...]` — declare custom attribute types
+  - `@AttributeName [with prop value]` on class definitions — apply attributes
+  - `reflect_has_attribute with obj and "Name"` — test attribute presence
+  - `reflect_list_attributes with obj` — list all applied attribute names
+  - `reflect_get_attribute with obj and "Name"` — get property dict for an attribute
+  - `reflect_attribute_value with obj and "Name" and "prop"` — get single property value
 
 **Priority:** LOW  
-**Estimated Effort:** 6-9 months (core reflection completed in 1 session Feb 27, 2026)
+**Estimated Effort:** 6-9 months (core reflection completed in 1 session Feb 27, 2026; attribute system completed same session)
 
 ---
 

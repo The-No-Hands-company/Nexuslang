@@ -115,6 +115,14 @@ class ComptimeConst(ASTNode):
         self.name = name
         self.expr = expr
 
+
+class AttributeDeclaration(ASTNode):
+    """attribute Name [with prop1 as Type1, prop2 as Type2] -- declares a custom attribute type."""
+    def __init__(self, name, properties=None, line_number=None):
+        super().__init__("attribute_declaration", line_number)
+        self.name = name
+        self.properties = properties or []  # list of (prop_name, type_str) tuples
+
 class ComptimeAssert(ASTNode):
     """comptime assert COND [message MSG] -- assertion checked at load time."""
     def __init__(self, condition, message_expr=None, line_number=None):

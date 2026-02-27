@@ -69,6 +69,10 @@ class Runtime:
         self.executor = concurrent.futures.ThreadPoolExecutor()
         # Low-level memory manager for pointer operations
         self.memory_manager = MemoryManager()
+        # Attribute metadata storage: class_name -> {attr_name -> {prop_name: value}}
+        self._class_attributes: dict = {}
+        # Function attribute metadata: func_name -> {attr_name -> {prop_name: value}}
+        self._function_attributes: dict = {}
     
     def allocate(self, value: Any) -> MemoryPointer:
         """Allocate memory for a value and return a pointer to it."""

@@ -479,6 +479,64 @@ def reflect_describe(runtime, obj: Any) -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Attribute reflection helpers
+# ---------------------------------------------------------------------------
+
+
+def _get_applied_attributes(runtime, obj) -> dict:
+    """Internal helper: return the dict of applied attributes for *obj*.
+
+    Checks in this order:
+
+    1. Class instance (Object) -> ``runtime._class_attributes[obj.class_name]``
+    2. Any object with ``_applied_attributes`` directly set on it (e.g. function
+       values/AST nodes that had attribute decorators applied).
+    """
+    if _is_object(obj):
+        class_name = obj.class_name
+        return getattr(runtime, '_class_attributes', {}).get(class_name, {})
+    if hasattr(obj, '_applied_attributes'):
+        return obj._applied_attributes
+    return {}
+
+
+def reflect_has_attribute(runtime, obj: Any, attr_name: str) -> bool:
+    """Return True if *obj* has the named attribute applied.
+
+    Works for class instances, or any value that had an attribute decorator
+    applied to it.
+    """
+    return attr_name in _get_applied_attributes(runtime, obj)
+
+
+def reflect_list_attributes(runtime, obj: Any) -> List[str]:
+    """Return a sorted list of attribute names applied to *obj*."""
+    return sorted(_get_applied_attributes(runtime, obj).keys())
+
+
+def reflect_get_attribute(runtime, obj: Any, attr_name: str) -> Dict[str, Any]:
+    """Return the property dict for the named attribute applied to *obj*.
+
+    Returns ``{"error": "<message>"}`` if the attribute is not present.
+    """
+    attrs = _get_applied_attributes(runtime, obj)
+    if attr_name not in attrs:
+        return {"error": f"Attribute '{attr_name}' not found on object"}
+    return dict(attrs[attr_name])
+
+
+def reflect_attribute_value(runtime, obj: Any, attr_name: str, prop_name: str) -> Any:
+    """Return the value of a single property within a named attribute application.
+
+    Returns ``None`` if the attribute or property does not exist.
+    """
+    attrs = _get_applied_attributes(runtime, obj)
+    if attr_name not in attrs:
+        return None
+    return attrs[attr_name].get(prop_name)
+
+
+# ---------------------------------------------------------------------------
 # Registration
 # ---------------------------------------------------------------------------
 
@@ -533,6 +591,16 @@ def register_reflection_functions(runtime) -> None:
     runtime.register_function("reflect_describe",
                               lambda v: reflect_describe(runtime, v))
 
+    # Attribute reflection
+    runtime.register_function("reflect_has_attribute",
+                              lambda v, a: reflect_has_attribute(runtime, v, a))
+    runtime.register_function("reflect_list_attributes",
+                              lambda v: reflect_list_attributes(runtime, v))
+    runtime.register_function("reflect_get_attribute",
+                              lambda v, a: reflect_get_attribute(runtime, v, a))
+    runtime.register_function("reflect_attribute_value",
+                              lambda v, a, p: reflect_attribute_value(runtime, v, a, p))
+
 
 __all__ = [
     "reflect_type_of",
@@ -553,5 +621,9 @@ __all__ = [
     "reflect_invoke_safe",
     "reflect_call",
     "reflect_describe",
+    "reflect_has_attribute",
+    "reflect_list_attributes",
+    "reflect_get_attribute",
+    "reflect_attribute_value",
     "register_reflection_functions",
 ]

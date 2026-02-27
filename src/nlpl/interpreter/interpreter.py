@@ -106,6 +106,7 @@ class Interpreter:
         self.classes = {}
         self.macros = {}  # Registry for macro definitions
         self.comptime_constants = {}  # Registry for compile-time constants
+        self.attribute_definitions = {}  # Registry for declared attribute types
         self.derived_method_registry = {}  # class_name -> {method_name -> callable}
         self.last_exception = None  # To support re-raising
         self.module_loader = None  # Will be initialized lazily
@@ -768,6 +769,28 @@ class Interpreter:
         # Get the decorator implementation (built-in first, then user-defined NLPL function)
         decorator_func = get_decorator(decorator_node.name)
         if decorator_func is None:
+            # Check if this is a declared attribute type
+            if decorator_node.name in self.attribute_definitions:
+                prop_vals = {}
+                prop_defs = self.attribute_definitions[decorator_node.name]["properties"]
+                if "_args" in decorator_node.arguments:
+                    positional = [self.execute(a) for a in decorator_node.arguments["_args"]]
+                    for i, val in enumerate(positional):
+                        if i < len(prop_defs):
+                            prop_vals[prop_defs[i][0]] = val
+                for arg_name, arg_expr in decorator_node.arguments.items():
+                    if arg_name != "_args":
+                        prop_vals[arg_name] = self.execute(arg_expr)
+                if not hasattr(function_value, '_applied_attributes'):
+                    function_value._applied_attributes = {}
+                function_value._applied_attributes[decorator_node.name] = prop_vals
+                # Mirror to runtime for reflection
+                fname = getattr(function_def, 'name', None) or getattr(function_value, 'name', None)
+                if fname:
+                    if fname not in self.runtime._function_attributes:
+                        self.runtime._function_attributes[fname] = {}
+                    self.runtime._function_attributes[fname][decorator_node.name] = prop_vals
+                return function_value
             # Try user-defined NLPL function as decorator
             nlpl_func = self.functions.get(decorator_node.name)
             if nlpl_func is None:
@@ -1357,6 +1380,25 @@ class Interpreter:
             # Mark class for singleton instantiation
             class_node._singleton_instance = None
             class_node._is_singleton = True
+        elif name in self.attribute_definitions:
+            # Store attribute metadata on class node and mirror to runtime for reflection
+            if not hasattr(class_node, '_applied_attributes'):
+                class_node._applied_attributes = {}
+            prop_vals = {}
+            prop_defs = self.attribute_definitions[name]["properties"]
+            if "_args" in decorator_node.arguments:
+                positional = [self.execute(a) for a in decorator_node.arguments["_args"]]
+                for i, val in enumerate(positional):
+                    if i < len(prop_defs):
+                        prop_vals[prop_defs[i][0]] = val
+            for arg_name, arg_expr in decorator_node.arguments.items():
+                if arg_name != "_args":
+                    prop_vals[arg_name] = self.execute(arg_expr)
+            class_node._applied_attributes[name] = prop_vals
+            # Mirror to runtime for reflection queries (keyed by class name)
+            if class_node.name not in self.runtime._class_attributes:
+                self.runtime._class_attributes[class_node.name] = {}
+            self.runtime._class_attributes[class_node.name][name] = prop_vals
         else:
             # Try user-defined class decorator function
             nlpl_func = self.functions.get(name)
@@ -4413,7 +4455,14 @@ class Interpreter:
                 full_source=self.source,
             )
         return condition
-    
+
+    def execute_attribute_declaration(self, node):
+        """Register an attribute type definition in the attribute registry."""
+        self.attribute_definitions[node.name] = {
+            "properties": node.properties,  # list of (prop_name, type_str) tuples
+        }
+        return node.name
+
     def execute_macro_expansion(self, node):
         """Execute a macro expansion - substitute parameters and execute body."""
         # Get macro definition

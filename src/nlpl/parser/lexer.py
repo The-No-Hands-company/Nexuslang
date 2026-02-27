@@ -253,6 +253,7 @@ class TokenType(Enum):
     OLD = auto()         # `old(expr)` (pre-call value capture in postconditions)
     SPEC = auto()        # `spec` block (formal specification annotation)
     COMPTIME = auto()    # `comptime` compile-time evaluation keyword
+    ATTRIBUTE = auto()   # `attribute` declaration keyword
 
     # Literals
     IDENTIFIER = auto()
@@ -636,6 +637,7 @@ class Lexer:
             "old": TokenType.OLD,
             "spec": TokenType.SPEC,
             "comptime": TokenType.COMPTIME,
+            "attribute": TokenType.ATTRIBUTE,
         }
     
     def scan_tokens(self) -> List[Token]:
