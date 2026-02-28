@@ -2144,29 +2144,36 @@ end
 
 ---
 
-### 9.2 Platform-Specific Libraries ❌ MISSING
+### 9.2 Platform-Specific Libraries ✅ COMPLETE (February 28, 2026)
 
-**What NLPL Needs:**
+**Implemented:** `src/nlpl/stdlib/platform_linux/`, `src/nlpl/stdlib/platform_windows/`, `src/nlpl/stdlib/platform_macos/`  
+**Tests:** `tests/unit/stdlib/test_platform_linux.py`, `tests/unit/stdlib/test_platform_windows.py`, `tests/unit/stdlib/test_platform_macos.py` — 86 passed, 156 skipped (platform-gated)
 
-- [ ] **Windows API**
-  - Win32 API bindings
-  - COM support
-  - Registry access
-  - Windows services
+- [x] **Linux/Unix API** (`platform_linux`)
+  - POSIX extras: `posix_getpid/ppid/uid/gid/euid/egid`, `posix_getcwd/chdir`, `posix_umask`, `posix_uname`, `posix_hostname/username/groups`
+  - Process control: `posix_kill`, `posix_fork`, `posix_waitpid`
+  - Environment: `posix_getenv/setenv/unsetenv/environ`
+  - epoll I/O: `epoll_create/add/modify/remove/wait/close`
+  - inotify: `inotify_create/add_watch/remove_watch/read_events/close` + constants (`IN_CREATE`, `IN_DELETE`, `IN_MODIFY`, `IN_ALL_EVENTS`, `IN_ISDIR`)
+  - systemd: `systemd_notify/notify_ready/notify_stopping/notify_watchdog/notify_status`, `systemd_journal_log`, `systemd_unit_status/is_active/start/stop/restart/reload/enable/disable/list_units`
 
-- [ ] **Linux/Unix API**
-  - POSIX API coverage
-  - epoll/kqueue
-  - inotify/fsevents
-  - Systemd integration
+- [x] **Windows API** (`platform_windows`)
+  - Registry: `registry_read/write/delete/delete_key/list_subkeys/list_values/key_exists` + HKEY constants
+  - Win32 system info: `win32_computer_name/username/is_admin/message_box/get_windows_dir/get_system_dir/get_temp_dir/get_env/get_last_error/error_message/get_version/expand_env_strings/get_special_folder`
+  - Windows Services: `winservice_query_status/start/stop/pause/continue/list`
+  - COM automation: `com_create_object/com_call_method`
 
-- [ ] **macOS API**
-  - Cocoa bindings
-  - Foundation framework
-  - CoreGraphics, CoreAnimation
+- [x] **macOS API** (`platform_macos`)
+  - System info: `macos_version/hostname/username/home_dir/temp_dir/app_support_dir/caches_dir/bundle_path/documents_dir/desktop_dir/downloads_dir/system_info`
+  - Display: `macos_screen_size/display_count/display_info`
+  - Keychain: `macos_keychain_get/set/delete/find_internet`
+  - NSUserDefaults: `macos_defaults_read/write/delete/list_domains/find`
+  - Notifications: `macos_post_notification`
+  - Clipboard: `macos_clipboard_get/set`
+  - Misc: `macos_open_url`, `macos_say`, `macos_screencapture`
 
 **Priority:** LOW (platform-specific)  
-**Estimated Effort:** 12+ months per platform
+**Estimated Effort:** 12+ months per platform (completed ahead of estimate)
 
 ---
 

@@ -87,6 +87,9 @@ from ..stdlib.kernel import register_kernel_functions
 from ..stdlib.drivers import register_driver_functions
 from ..stdlib.reflection import register_reflection_functions
 from ..stdlib.fs_watch import register_fs_watch_functions
+from ..stdlib.platform_linux import register_platform_linux_functions
+from ..stdlib.platform_windows import register_platform_windows_functions
+from ..stdlib.platform_macos import register_platform_macos_functions
 
 def register_stdlib(runtime: Runtime) -> None:
     """Register all standard library functions with the runtime."""
@@ -346,6 +349,11 @@ def register_stdlib(runtime: Runtime) -> None:
     # Register file system watching (inotify/FSEvents/ReadDirectoryChangesW via watchdog)
     register_fs_watch_functions(runtime)
 
+    # Register platform-specific libraries
+    register_platform_linux_functions(runtime)
+    register_platform_windows_functions(runtime)
+    register_platform_macos_functions(runtime)
+
     # Register module names for importing
     runtime.register_module("math")
     runtime.register_module("string")
@@ -424,3 +432,9 @@ def register_stdlib(runtime: Runtime) -> None:
     runtime.register_module("coverage_utils")
     runtime.register_module("coverage")
     runtime.register_module("reflection")
+    runtime.register_module("platform_linux")
+    runtime.register_module("platform_unix")
+    runtime.register_module("platform_windows")
+    runtime.register_module("platform_win32")
+    runtime.register_module("platform_macos")
+    runtime.register_module("platform_darwin")
