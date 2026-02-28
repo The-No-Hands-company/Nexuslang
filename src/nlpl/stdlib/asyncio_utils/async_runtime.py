@@ -518,6 +518,355 @@ def async_http_delete(url: str, headers: Optional[dict] = None,
 
 
 # ---------------------------------------------------------------------------
+# Async TCP socket operations
+# ---------------------------------------------------------------------------
+
+def async_tcp_connect(host: str, port: int, timeout: Optional[float] = None) -> NLPLTask:
+    """Asynchronously open a TCP connection.
+
+    Returns a task resolving to a connection dict with keys:
+    'socket', 'host', 'port'.
+    On failure the task raises the underlying socket error.
+    """
+    import socket as _socket
+
+    def _connect():
+        sock = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM)
+        if timeout is not None:
+            sock.settimeout(float(timeout))
+        try:
+            sock.connect((str(host), int(port)))
+        except Exception:
+            sock.close()
+            raise
+        sock.settimeout(None)
+        return {'socket': sock, 'host': str(host), 'port': int(port)}
+
+    return spawn_async(_connect)
+
+
+def async_tcp_listen(host: str, port: int, backlog: int = 5) -> NLPLTask:
+    """Asynchronously create a TCP server socket bound to host:port.
+
+    Returns a task resolving to a server dict with keys: 'socket', 'host', 'port'.
+    """
+    import socket as _socket
+
+    def _listen():
+        srv = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM)
+        srv.setsockopt(_socket.SOL_SOCKET, _socket.SO_REUSEADDR, 1)
+        srv.bind((str(host), int(port)))
+        srv.listen(int(backlog))
+        actual_port = srv.getsockname()[1]
+        return {'socket': srv, 'host': str(host), 'port': actual_port}
+
+    return spawn_async(_listen)
+
+
+def async_tcp_accept(server: dict) -> NLPLTask:
+    """Asynchronously accept an incoming TCP connection on a server socket.
+
+    Returns a task resolving to a connection dict with keys:
+    'socket', 'host', 'port'.
+    """
+    def _accept():
+        srv = server['socket']
+        conn, addr = srv.accept()
+        return {'socket': conn, 'host': addr[0], 'port': addr[1]}
+
+    return spawn_async(_accept)
+
+
+def async_tcp_send(conn: dict, data: Any) -> NLPLTask:
+    """Asynchronously send data over an established TCP connection.
+
+    data may be str, bytes, bytearray, or any value (converted via str).
+    Returns a task resolving to the number of bytes sent.
+    """
+    def _send():
+        sock = conn['socket']
+        if isinstance(data, str):
+            payload = data.encode('utf-8')
+        elif isinstance(data, (bytes, bytearray)):
+            payload = bytes(data)
+        else:
+            payload = str(data).encode('utf-8')
+        sock.sendall(payload)
+        return len(payload)
+
+    return spawn_async(_send)
+
+
+def async_tcp_recv(conn: dict, buffer_size: int = 4096) -> NLPLTask:
+    """Asynchronously receive up to buffer_size bytes from a TCP connection.
+
+    Returns a task resolving to a dict with keys:
+    'data' (str, UTF-8 decoded), 'bytes' (raw bytes), 'length' (int), 'eof' (bool).
+    """
+    def _recv():
+        sock = conn['socket']
+        raw = sock.recv(int(buffer_size))
+        return {
+            'data': raw.decode('utf-8', errors='replace'),
+            'bytes': raw,
+            'length': len(raw),
+            'eof': len(raw) == 0,
+        }
+
+    return spawn_async(_recv)
+
+
+def async_tcp_recv_exactly(conn: dict, n: int) -> NLPLTask:
+    """Asynchronously receive exactly n bytes from a TCP connection.
+
+    Loops until all bytes are received or EOF is reached.
+    Returns a task resolving to a dict with keys: 'data', 'bytes', 'length'.
+    """
+    def _recv():
+        sock = conn['socket']
+        buf = bytearray()
+        remaining = int(n)
+        while remaining > 0:
+            chunk = sock.recv(remaining)
+            if not chunk:
+                break
+            buf.extend(chunk)
+            remaining -= len(chunk)
+        raw = bytes(buf)
+        return {
+            'data': raw.decode('utf-8', errors='replace'),
+            'bytes': raw,
+            'length': len(raw),
+        }
+
+    return spawn_async(_recv)
+
+
+def async_tcp_close(conn: dict) -> None:
+    """Close a TCP connection dict (synchronous, instant)."""
+    sock = conn.get('socket')
+    if sock is not None:
+        try:
+            sock.close()
+        except Exception:
+            pass
+
+
+# ---------------------------------------------------------------------------
+# Async UDP socket operations
+# ---------------------------------------------------------------------------
+
+def async_udp_open(bind_host: str = '', bind_port: int = 0) -> NLPLTask:
+    """Asynchronously create and optionally bind a UDP socket.
+
+    Returns a task resolving to a socket dict with keys: 'socket', 'port'.
+    When bind_port=0 the OS assigns a free ephemeral port.
+    """
+    import socket as _socket
+
+    def _open():
+        sock = _socket.socket(_socket.AF_INET, _socket.SOCK_DGRAM)
+        if bind_host or bind_port:
+            sock.bind((str(bind_host), int(bind_port)))
+        else:
+            sock.bind(('', 0))
+        actual_port = sock.getsockname()[1]
+        return {'socket': sock, 'port': actual_port}
+
+    return spawn_async(_open)
+
+
+def async_udp_send_to(conn: dict, data: Any, host: str, port: int) -> NLPLTask:
+    """Asynchronously send a UDP datagram to host:port.
+
+    Returns a task resolving to the number of bytes sent.
+    """
+    def _send():
+        sock = conn['socket']
+        if isinstance(data, str):
+            payload = data.encode('utf-8')
+        elif isinstance(data, (bytes, bytearray)):
+            payload = bytes(data)
+        else:
+            payload = str(data).encode('utf-8')
+        return sock.sendto(payload, (str(host), int(port)))
+
+    return spawn_async(_send)
+
+
+def async_udp_recv_from(conn: dict, buffer_size: int = 65535) -> NLPLTask:
+    """Asynchronously receive a UDP datagram.
+
+    Returns a task resolving to a dict with keys:
+    'data' (str), 'bytes' (raw bytes), 'length', 'from_host', 'from_port'.
+    """
+    def _recv():
+        sock = conn['socket']
+        raw, addr = sock.recvfrom(int(buffer_size))
+        return {
+            'data': raw.decode('utf-8', errors='replace'),
+            'bytes': raw,
+            'length': len(raw),
+            'from_host': addr[0],
+            'from_port': addr[1],
+        }
+
+    return spawn_async(_recv)
+
+
+def async_udp_close(conn: dict) -> None:
+    """Close a UDP socket dict (synchronous, instant)."""
+    sock = conn.get('socket')
+    if sock is not None:
+        try:
+            sock.close()
+        except Exception:
+            pass
+
+
+# ---------------------------------------------------------------------------
+# Async subprocess
+# ---------------------------------------------------------------------------
+
+def async_subprocess(
+    cmd: str,
+    args: Optional[list] = None,
+    stdin_data: Optional[str] = None,
+    timeout: Optional[float] = None,
+) -> NLPLTask:
+    """Asynchronously run a subprocess and wait for completion.
+
+    Returns a task resolving to a dict with keys:
+    'stdout', 'stderr', 'returncode', 'success'.
+    On timeout or missing command the dict also contains an 'error' key.
+    """
+    import subprocess as _sp
+
+    def _run():
+        argv = [str(cmd)] + [str(a) for a in (args or [])]
+        inp = stdin_data.encode('utf-8') if isinstance(stdin_data, str) else None
+        try:
+            result = _sp.run(argv, input=inp, capture_output=True, timeout=timeout)
+            return {
+                'stdout': result.stdout.decode('utf-8', errors='replace'),
+                'stderr': result.stderr.decode('utf-8', errors='replace'),
+                'returncode': result.returncode,
+                'success': result.returncode == 0,
+            }
+        except _sp.TimeoutExpired:
+            return {'error': 'timeout', 'returncode': -1,
+                    'success': False, 'stdout': '', 'stderr': ''}
+        except FileNotFoundError:
+            return {'error': f'command not found: {cmd}', 'returncode': -1,
+                    'success': False, 'stdout': '', 'stderr': ''}
+
+    return spawn_async(_run)
+
+
+def async_subprocess_output(cmd: str, args: Optional[list] = None) -> NLPLTask:
+    """Asynchronously run a subprocess and return just its stdout string.
+
+    Returns a task resolving to the stdout string, or a dict with 'error'
+    if the command fails or is not found.
+    """
+    import subprocess as _sp
+
+    def _run():
+        argv = [str(cmd)] + [str(a) for a in (args or [])]
+        try:
+            out = _sp.check_output(argv, stderr=_sp.DEVNULL)
+            return out.decode('utf-8', errors='replace')
+        except _sp.CalledProcessError as e:
+            return {'error': str(e), 'returncode': e.returncode}
+        except FileNotFoundError:
+            return {'error': f'command not found: {cmd}'}
+
+    return spawn_async(_run)
+
+
+# ---------------------------------------------------------------------------
+# Async DNS resolution
+# ---------------------------------------------------------------------------
+
+def async_dns_resolve(hostname: str) -> NLPLTask:
+    """Asynchronously resolve a hostname to its IP addresses.
+
+    Returns a task resolving to a dict with keys:
+    'hostname', 'addresses' (list), 'primary' (first IP or None).
+    On failure the dict contains an 'error' key.
+    """
+    import socket as _socket
+
+    def _resolve():
+        try:
+            infos = _socket.getaddrinfo(str(hostname), None)
+            addresses = list(dict.fromkeys(info[4][0] for info in infos))
+            return {
+                'hostname': str(hostname),
+                'addresses': addresses,
+                'primary': addresses[0] if addresses else None,
+            }
+        except _socket.gaierror as e:
+            return {'error': str(e), 'hostname': str(hostname)}
+
+    return spawn_async(_resolve)
+
+
+def async_dns_reverse(ip_address: str) -> NLPLTask:
+    """Asynchronously perform a reverse DNS lookup (IP to hostname).
+
+    Returns a task resolving to a dict with keys: 'ip', 'hostname'.
+    On failure the dict contains an 'error' key.
+    """
+    import socket as _socket
+
+    def _resolve():
+        try:
+            hostname, _, _ = _socket.gethostbyaddr(str(ip_address))
+            return {'ip': str(ip_address), 'hostname': hostname}
+        except (_socket.herror, _socket.gaierror) as e:
+            return {'error': str(e), 'ip': str(ip_address)}
+
+    return spawn_async(_resolve)
+
+
+# ---------------------------------------------------------------------------
+# Async file readline / readlines
+# ---------------------------------------------------------------------------
+
+def async_readlines(path: str, encoding: str = "utf-8") -> NLPLTask:
+    """Asynchronously read all lines from a file.
+
+    Returns a task resolving to a list of line strings (newlines preserved).
+    """
+    def _read():
+        with open(path, "r", encoding=encoding) as f:
+            return f.readlines()
+
+    return spawn_async(_read)
+
+
+def async_readline_chunks(path: str, chunk_size: int = 100,
+                          encoding: str = "utf-8") -> NLPLTask:
+    """Asynchronously read up to chunk_size lines from a file.
+
+    Returns a task resolving to a list of up to chunk_size line strings.
+    Useful for streaming large files in manageable batches.
+    """
+    def _read():
+        lines = []
+        with open(path, "r", encoding=encoding) as f:
+            for _ in range(int(chunk_size)):
+                line = f.readline()
+                if not line:
+                    break
+                lines.append(line)
+        return lines
+
+    return spawn_async(_read)
+
+
+# ---------------------------------------------------------------------------
 # Registration
 # ---------------------------------------------------------------------------
 
@@ -558,3 +907,47 @@ def register_async_runtime_functions(runtime) -> None:
     runtime.register_function("async_http_post", lambda rt, *args: async_http_post(*args))
     runtime.register_function("async_http_put", lambda rt, *args: async_http_put(*args))
     runtime.register_function("async_http_delete", lambda rt, *args: async_http_delete(*args))
+
+    # Async TCP
+    runtime.register_function("async_tcp_connect",
+                               lambda rt, *args: async_tcp_connect(*args))
+    runtime.register_function("async_tcp_listen",
+                               lambda rt, *args: async_tcp_listen(*args))
+    runtime.register_function("async_tcp_accept",
+                               lambda rt, server: async_tcp_accept(server))
+    runtime.register_function("async_tcp_send",
+                               lambda rt, conn, data: async_tcp_send(conn, data))
+    runtime.register_function("async_tcp_recv",
+                               lambda rt, *args: async_tcp_recv(*args))
+    runtime.register_function("async_tcp_recv_exactly",
+                               lambda rt, conn, n: async_tcp_recv_exactly(conn, n))
+    runtime.register_function("async_tcp_close",
+                               lambda rt, conn: async_tcp_close(conn))
+
+    # Async UDP
+    runtime.register_function("async_udp_open",
+                               lambda rt, *args: async_udp_open(*args))
+    runtime.register_function("async_udp_send_to",
+                               lambda rt, conn, data, host, port: async_udp_send_to(conn, data, host, port))
+    runtime.register_function("async_udp_recv_from",
+                               lambda rt, *args: async_udp_recv_from(*args))
+    runtime.register_function("async_udp_close",
+                               lambda rt, conn: async_udp_close(conn))
+
+    # Async subprocess
+    runtime.register_function("async_subprocess",
+                               lambda rt, *args: async_subprocess(*args))
+    runtime.register_function("async_subprocess_output",
+                               lambda rt, *args: async_subprocess_output(*args))
+
+    # Async DNS
+    runtime.register_function("async_dns_resolve",
+                               lambda rt, hostname: async_dns_resolve(hostname))
+    runtime.register_function("async_dns_reverse",
+                               lambda rt, ip: async_dns_reverse(ip))
+
+    # Async readlines
+    runtime.register_function("async_readlines",
+                               lambda rt, *args: async_readlines(*args))
+    runtime.register_function("async_readline_chunks",
+                               lambda rt, *args: async_readline_chunks(*args))

@@ -2070,7 +2070,7 @@ end
 
 **Current State:**
 
-- ✅ 63 stdlib modules (62 + reflection Feb 27, 2026)
+- ✅ 63 stdlib modules + async I/O + raw socket extensions (February 28, 2026)
 - ✅ Core collections now complete:
   - `BTreeMap` (sorted key-value map)
   - `BTreeSet` (sorted set)
@@ -2082,7 +2082,18 @@ end
   - String: `algo_kmp_search`, `algo_rabin_karp`
 - ✅ Buffered I/O now complete:
   - `BufferedReader`, `BufferedWriter`, `Pipe`, `MemoryMappedFile`
-- ❌ Async I/O (planned)
+- ✅ Async I/O (February 28, 2026):
+  - TCP: `async_tcp_connect`, `async_tcp_listen`, `async_tcp_accept`, `async_tcp_send`, `async_tcp_recv`, `async_tcp_recv_exactly`, `async_tcp_close`
+  - UDP: `async_udp_open`, `async_udp_send_to`, `async_udp_recv_from`, `async_udp_close`
+  - Subprocess: `async_subprocess`, `async_subprocess_output`
+  - DNS: `async_dns_resolve`, `async_dns_reverse`
+  - File: `async_readlines`, `async_readline_chunks`
+- ✅ Raw sockets (February 28, 2026):
+  - `raw_socket_create` (icmp/tcp/udp/ip/igmp/ospf/sctp/all + integer protocol)
+  - `raw_socket_create_icmp`, `raw_socket_create_ethernet` (AF_PACKET, Linux)
+  - `raw_socket_bind`, `raw_socket_send`, `raw_socket_recv`, `raw_socket_close`
+  - `raw_socket_set_ip_hdrincl`, `raw_socket_set_timeout`
+  - `raw_socket_sniff` (packet capture on AF_PACKET)
 - ✅ TLS/SSL (February 25, 2026)
 - ✅ Protocol Buffers / MessagePack / YAML / TOML (serialization module — `protobuf_dumps/loads`, `msgpack_dumps/loads`, `yaml_dumps/loads`, `toml_dumps/loads`)
 
@@ -2109,7 +2120,7 @@ end
 - ✅ File I/O (have)
 - ✅ Buffered I/O (now have)
 - ✅ Memory-mapped files (now have)
-- ❌ Async I/O (need)
+- ✅ Async I/O (February 28, 2026 — TCP, UDP, subprocess, DNS, readlines)
 - ✅ Pipe/FIFO (now have)
 
 **Networking:**
@@ -2118,7 +2129,7 @@ end
 - ✅ TLS/SSL (February 25, 2026 — `tls_create_context`, `tls_wrap_socket`, `tls_connect`, `tls_wrap_server_socket`)
 - ✅ UDP sockets (February 25, 2026 — `udp_send_to`, `udp_receive_from`)
 - ✅ Unix domain sockets (February 25, 2026 — `socket_create family: unix` + bind/listen/accept)
-- ❌ Raw sockets (need)
+- ✅ Raw sockets (February 28, 2026 — `raw_socket_create`, `raw_socket_create_ethernet`, `raw_socket_bind`, `raw_socket_send`, `raw_socket_recv`, `raw_socket_close`, `raw_socket_sniff`)
 
 **Serialization:**
 

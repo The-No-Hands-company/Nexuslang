@@ -60,6 +60,18 @@ def register_network_functions(runtime: Runtime) -> None:
     runtime.register_function("json_encode", json_encode)
     runtime.register_function("json_decode", json_decode)
 
+    # Raw socket operations
+    runtime.register_function("raw_socket_create", raw_socket_create)
+    runtime.register_function("raw_socket_create_icmp", raw_socket_create_icmp)
+    runtime.register_function("raw_socket_create_ethernet", raw_socket_create_ethernet)
+    runtime.register_function("raw_socket_bind", raw_socket_bind)
+    runtime.register_function("raw_socket_set_ip_hdrincl", raw_socket_set_ip_hdrincl)
+    runtime.register_function("raw_socket_set_timeout", raw_socket_set_timeout)
+    runtime.register_function("raw_socket_send", raw_socket_send)
+    runtime.register_function("raw_socket_recv", raw_socket_recv)
+    runtime.register_function("raw_socket_close", raw_socket_close)
+    runtime.register_function("raw_socket_sniff", raw_socket_sniff)
+
 # HTTP operations
 def http_get(url, headers=None, timeout=30):
     """Send an HTTP GET request to the specified URL."""
@@ -620,4 +632,275 @@ def json_decode(json_str):
     except json.JSONDecodeError as e:
         return {
             'error': str(e)
-        } 
+        }
+
+
+# ---------------------------------------------------------------------------
+# Raw socket operations
+# ---------------------------------------------------------------------------
+
+_RAW_PROTOCOL_MAP: Dict[str, int] = {
+    'icmp':  socket.IPPROTO_ICMP,
+    'tcp':   socket.IPPROTO_TCP,
+    'udp':   socket.IPPROTO_UDP,
+    'ip':    socket.IPPROTO_IP,
+    'igmp':  getattr(socket, 'IPPROTO_IGMP', 2),
+    'ospf':  getattr(socket, 'IPPROTO_OSPF', 89),
+    'sctp':  getattr(socket, 'IPPROTO_SCTP', 132),
+    'all':   socket.IPPROTO_RAW,
+    'raw':   socket.IPPROTO_RAW,
+}
+
+
+def raw_socket_create(protocol: Any = 'icmp') -> dict:
+    """Create a raw IP socket for the given protocol.
+
+    protocol: one of 'icmp', 'tcp', 'udp', 'ip', 'igmp', 'ospf', 'sctp',
+              'all', 'raw', or an integer protocol number.
+
+    Returns a dict with keys: 'socket', 'type', 'protocol', 'protocol_num', 'af'.
+    Raises PermissionError if the process lacks CAP_NET_RAW.
+    Raises ValueError for unknown protocol names.
+    """
+    if isinstance(protocol, int):
+        proto_num = protocol
+        proto_name = str(protocol)
+    else:
+        proto_lower = str(protocol).lower()
+        if proto_lower not in _RAW_PROTOCOL_MAP:
+            raise ValueError(
+                f"Unknown protocol '{protocol}'. "
+                f"Valid options: {sorted(_RAW_PROTOCOL_MAP.keys())}"
+            )
+        proto_num = _RAW_PROTOCOL_MAP[proto_lower]
+        proto_name = proto_lower
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, proto_num)
+    except PermissionError:
+        raise PermissionError(
+            f"Creating a raw socket requires CAP_NET_RAW (root or sudo). "
+            f"Protocol: {proto_name}"
+        )
+    return {
+        'socket': sock,
+        'type': 'raw',
+        'protocol': proto_name,
+        'protocol_num': proto_num,
+        'af': 'inet',
+    }
+
+
+def raw_socket_create_icmp() -> dict:
+    """Convenience: create an ICMP raw socket (AF_INET/SOCK_RAW/IPPROTO_ICMP)."""
+    return raw_socket_create('icmp')
+
+
+def raw_socket_create_ethernet() -> dict:
+    """Create a Layer-2 raw socket (AF_PACKET/SOCK_RAW) on Linux.
+
+    Captures all Ethernet frames when bound to an interface.
+    Requires CAP_NET_RAW. Raises OSError on non-Linux platforms.
+    """
+    if not hasattr(socket, 'AF_PACKET'):
+        raise OSError(
+            "AF_PACKET is not available on this platform (Linux only). "
+            "Use raw_socket_create() for IP-level raw sockets on other platforms."
+        )
+    try:
+        ETH_P_ALL = socket.htons(0x0003)
+        sock = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, ETH_P_ALL)
+    except PermissionError:
+        raise PermissionError(
+            "Creating a packet socket requires CAP_NET_RAW (root or sudo)."
+        )
+    return {
+        'socket': sock,
+        'type': 'raw_ethernet',
+        'protocol': 'ethernet',
+        'protocol_num': 0x0003,
+        'af': 'packet',
+    }
+
+
+def raw_socket_bind(sock_dict: dict, addr: str = '',
+                    interface: str = '') -> dict:
+    """Bind a raw socket to an IP address or network interface.
+
+    For AF_INET sockets: pass addr as an IP string (e.g. '0.0.0.0').
+    For AF_PACKET sockets: pass interface as an interface name (e.g. 'eth0').
+    Returns an updated copy of sock_dict with 'bound' and 'bound_addr' keys,
+    or 'error' on failure.
+    """
+    sock = sock_dict['socket']
+    try:
+        if sock_dict.get('af') == 'packet':
+            sock.bind((str(interface), 0))
+            bound_identifier = interface
+        else:
+            bind_addr = str(addr) if addr else ''
+            sock.bind((bind_addr, 0))
+            bound_identifier = addr or ''
+        return dict(sock_dict, bound=True, bound_addr=bound_identifier)
+    except OSError as e:
+        return dict(sock_dict, error=str(e))
+
+
+def raw_socket_set_ip_hdrincl(sock_dict: dict, enabled: bool = True) -> None:
+    """Set IP_HDRINCL on the raw socket.
+
+    When enabled=True the caller is responsible for constructing the full
+    IP header in each packet passed to raw_socket_send().
+    """
+    sock = sock_dict['socket']
+    sock.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, int(bool(enabled)))
+
+
+def raw_socket_set_timeout(sock_dict: dict, timeout: Optional[float]) -> None:
+    """Set a receive timeout (seconds) on a raw socket. Pass None to disable."""
+    sock = sock_dict['socket']
+    sock.settimeout(float(timeout) if timeout is not None else None)
+
+
+def raw_socket_send(sock_dict: dict, data: Any, addr: str = '',
+                    port: int = 0) -> int:
+    """Send raw data via the socket.
+
+    data: str (encoded as latin-1 to preserve byte values), bytes, bytearray,
+          or list of ints.
+    addr: destination IP for AF_INET sockets (ignored for AF_PACKET).
+    port: used only when addr is provided (most raw sockets ignore it).
+    Returns the number of bytes transmitted.
+    """
+    sock = sock_dict['socket']
+    if isinstance(data, str):
+        payload = data.encode('latin-1')
+    elif isinstance(data, (bytes, bytearray)):
+        payload = bytes(data)
+    elif isinstance(data, list):
+        payload = bytes(data)
+    else:
+        raise TypeError(
+            f"data must be bytes, bytearray, list[int], or str; "
+            f"got {type(data).__name__}"
+        )
+    if sock_dict.get('af') == 'packet':
+        return sock.send(payload)
+    dest = (str(addr), int(port)) if addr else ('0.0.0.0', 0)
+    return sock.sendto(payload, dest)
+
+
+def raw_socket_recv(sock_dict: dict, buffer_size: int = 65535) -> dict:
+    """Receive one raw packet from the socket.
+
+    Returns a dict with keys:
+    'data' (raw bytes), 'hex' (hex string), 'from_addr', 'from_port', 'length'.
+    On timeout returns a dict with 'error': 'timeout'.
+    On other OS errors returns a dict with 'error': <message>.
+    """
+    sock = sock_dict['socket']
+    try:
+        raw_data, addr = sock.recvfrom(int(buffer_size))
+        from_ip = addr[0] if addr else ''
+        from_port = addr[1] if len(addr) > 1 else 0
+        return {
+            'data': raw_data,
+            'hex': raw_data.hex(),
+            'from_addr': from_ip,
+            'from_port': from_port,
+            'length': len(raw_data),
+        }
+    except socket.timeout:
+        return {'error': 'timeout', 'data': b'', 'length': 0}
+    except OSError as e:
+        return {'error': str(e), 'data': b'', 'length': 0}
+
+
+def raw_socket_close(sock_dict: dict) -> None:
+    """Close a raw socket. Safe to call on already-closed or None sockets."""
+    if sock_dict is None:
+        return
+    sock = sock_dict.get('socket')
+    if sock is not None:
+        try:
+            sock.close()
+        except Exception:
+            pass
+
+
+def raw_socket_sniff(
+    interface: str = '',
+    count: int = 10,
+    filter_proto: Optional[str] = None,
+    buffer_size: int = 65535,
+    timeout: float = 5.0,
+) -> list:
+    """Capture raw network packets from an interface (Linux only).
+
+    Creates a temporary AF_PACKET socket, captures up to `count` packets,
+    and returns them as a list of dicts.
+
+    interface: network interface name (e.g. 'eth0', 'lo'). Empty = any.
+    count: maximum number of packets to capture.
+    filter_proto: optional protocol name to filter: 'icmp', 'tcp', 'udp',
+                  'igmp', 'ospf', 'sctp'. None = capture all.
+    buffer_size: per-packet receive buffer in bytes.
+    timeout: per-recv timeout; stops when first timeout occurs.
+
+    Each returned dict has keys: 'data', 'hex', 'length', 'interface',
+    'ip_protocol', 'src_ip', 'dst_ip'.
+
+    Requires CAP_NET_RAW (root or sudo). Linux only.
+    """
+    if not hasattr(socket, 'AF_PACKET'):
+        raise OSError("raw_socket_sniff requires AF_PACKET (Linux only).")
+
+    _FILTER_PROTOS: Dict[str, int] = {
+        'icmp': 1, 'igmp': 2, 'tcp': 6, 'udp': 17,
+        'ospf': 89, 'sctp': 132,
+    }
+    proto_filter_num: Optional[int] = None
+    if filter_proto:
+        key = str(filter_proto).lower()
+        proto_filter_num = _FILTER_PROTOS.get(key)
+
+    try:
+        ETH_P_ALL = socket.htons(0x0003)
+        sniff_sock = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, ETH_P_ALL)
+        if interface:
+            sniff_sock.bind((str(interface), 0))
+        sniff_sock.settimeout(float(timeout))
+    except PermissionError:
+        raise PermissionError(
+            "raw_socket_sniff requires CAP_NET_RAW (root or sudo)."
+        )
+
+    captured = []
+    try:
+        for _ in range(int(count)):
+            try:
+                raw, addr = sniff_sock.recvfrom(int(buffer_size))
+                from_iface = addr[0] if addr else ''
+                if len(raw) >= 20:
+                    ip_proto = raw[9]
+                    src_ip = '.'.join(str(b) for b in raw[12:16])
+                    dst_ip = '.'.join(str(b) for b in raw[16:20])
+                else:
+                    ip_proto = 0
+                    src_ip = dst_ip = ''
+                if proto_filter_num is not None and ip_proto != proto_filter_num:
+                    continue
+                captured.append({
+                    'data': raw,
+                    'hex': raw.hex(),
+                    'length': len(raw),
+                    'interface': from_iface,
+                    'ip_protocol': ip_proto,
+                    'src_ip': src_ip,
+                    'dst_ip': dst_ip,
+                })
+            except socket.timeout:
+                break
+    finally:
+        sniff_sock.close()
+
+    return captured
