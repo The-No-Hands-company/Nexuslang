@@ -90,6 +90,7 @@ from ..stdlib.fs_watch import register_fs_watch_functions
 from ..stdlib.platform_linux import register_platform_linux_functions
 from ..stdlib.platform_windows import register_platform_windows_functions
 from ..stdlib.platform_macos import register_platform_macos_functions
+from ..stdlib.gui import register_gui_functions
 
 def register_stdlib(runtime: Runtime) -> None:
     """Register all standard library functions with the runtime."""
@@ -354,6 +355,9 @@ def register_stdlib(runtime: Runtime) -> None:
     register_platform_windows_functions(runtime)
     register_platform_macos_functions(runtime)
 
+    # Register GUI, windowing, and font rendering
+    register_gui_functions(runtime)
+
     # Register module names for importing
     runtime.register_module("math")
     runtime.register_module("string")
@@ -438,3 +442,6 @@ def register_stdlib(runtime: Runtime) -> None:
     runtime.register_module("platform_win32")
     runtime.register_module("platform_macos")
     runtime.register_module("platform_darwin")
+    runtime.register_module("gui")
+    runtime.register_module("windowing")
+    runtime.register_module("font")

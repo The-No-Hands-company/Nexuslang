@@ -2511,15 +2511,15 @@ end
 
 ---
 
-### 8.3 Standard Library Deepening ✅ SUBSTANTIALLY COMPLETE
+### 8.3 Standard Library Deepening ✅ SUBSTANTIALLY COMPLETE (February 28, 2026)
 
 **Current State:**
 
-- ✅ 63 stdlib modules (as of February 27, 2026)
+- ✅ 64 stdlib modules (as of February 28, 2026) — GUI/windowing/font module added
 - ✅ Most critical real-world domains covered
 - ⚠️ Some modules are basic/foundational and need deepening
 - ❌ No unified error handling standards
-- ❌ Limited async I/O support
+- ✅ Async I/O complete (TCP, UDP, subprocess, DNS, readlines — February 28, 2026)
 
 **What Established Languages Have:**
 
@@ -2568,12 +2568,12 @@ end
 
 **GUI & Graphics:**
 
-- [ ] Cross-platform GUI toolkit (planned)
+- [x] Cross-platform GUI toolkit — `gui/` module (`window_create/show/hide/destroy/is_open/set_title/set_size/get_size/set_position/get_position/set_background/fullscreen/minimize/maximize/update/mainloop/screenshot/set_resizable/set_min_size/set_max_size/set_icon/set_alpha`; graceful fallback when no display available) (February 28, 2026)
 - [x] 2D/3D graphics primitives — `graphics/`, `math3d/`, `rendering/` modules
 - [x] Vulkan wrappers — `vulkan/` module
 - [x] Camera/scene management — `camera/`, `scene.py` modules
-- [ ] Font rendering (planned)
-- [ ] Windowing system abstractions (planned)
+- [x] Font rendering — `gui/` module (`font_create/destroy/families/list/measure/metrics/actual/configure`; tkinter.font backend, 0 extra dependencies) (February 28, 2026)
+- [x] Windowing system abstractions — `gui/` module (canvas 2D drawing: `canvas_create/clear/update/draw_line/draw_rect/draw_oval/draw_arc/draw_polygon/draw_text/draw_image_from_file/delete_item/move_item/item_coords/tag_raise/tag_lower/configure_item`; widget toolkit: `widget_label/button/entry/checkbox/listbox/slider/progressbar/text_area/frame/separator`; event system: `event_bind/unbind/poll/wait_ms/gui_after`; 171 tests passing) (February 28, 2026)
 
 **Scientific Computing:**
 
