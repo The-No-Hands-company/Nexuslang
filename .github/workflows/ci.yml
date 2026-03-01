@@ -67,15 +67,36 @@ jobs:
       - name: Run tests with coverage
         run: |
           pytest tests/ -q --maxfail=1 --disable-warnings \
-            --cov=src/nlpl --cov-report=xml:coverage-${{ matrix.python-version }}.xml \
-            --cov-report=term --cov-fail-under=75 --timeout=30 \
+            --cov=src/nlpl \
+            --cov-config=.coveragerc \
+            --cov-report=xml:coverage-${{ matrix.python-version }}.xml \
+            --cov-report=json:coverage-${{ matrix.python-version }}.json \
+            --cov-report=term-missing:skip-covered \
+            --cov-fail-under=80 \
+            --timeout=30 \
             --junitxml=junit-${{ matrix.python-version }}.xml
 
-      - name: Upload coverage
+      - name: Check per-component coverage thresholds
+        run: |
+          python scripts/check_coverage_thresholds.py \
+            --json coverage-${{ matrix.python-version }}.json
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage-${{ matrix.python-version }}.xml
+          flags: python-${{ matrix.python-version }}
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+          verbose: false
+
+      - name: Upload coverage artifacts
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ matrix.python-version }}
-          path: coverage-${{ matrix.python-version }}.xml
+          path: |
+            coverage-${{ matrix.python-version }}.xml
+            coverage-${{ matrix.python-version }}.json
           retention-days: 14
 
       - name: Upload junit results
@@ -213,7 +234,46 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-timeout
 
-      - name: Smoke tests
+      - name: Smoke tests with coverage
         run: |
-          pytest tests/ -q --maxfail=1 --disable-warnings --timeout=30
+          pytest tests/ -q --maxfail=1 --disable-warnings --timeout=30 \
+            --cov=src/nlpl --cov-config=.coveragerc \
+            --cov-report=json:coverage-macos.json \
+            --cov-fail-under=80
+
+  coverage-gates:
+    name: Coverage gates (component thresholds)
+    needs: [tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Download coverage artifact (py3.11)
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-3.11
+          path: .
+
+      - name: Install pytest-cov
+        run: pip install pytest-cov
+
+      - name: Check per-component thresholds
+        run: |
+          python scripts/check_coverage_thresholds.py --json coverage-3.11.json
+
+      - name: Write step summary
+        if: always()
+        run: |
+          echo "## Coverage Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          python scripts/check_coverage_thresholds.py --json coverage-3.11.json \
+            --no-fail >> $GITHUB_STEP_SUMMARY || true

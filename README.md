@@ -5,6 +5,8 @@
 [![Status](https://img.shields.io/badge/status-pre--v1.0-yellow)](docs/STATUS.md)
 [![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![CI](https://github.com/Zajfan/NLPL/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Zajfan/NLPL/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/Zajfan/NLPL/graph/badge.svg?token=CODECOV_TOKEN)](https://codecov.io/gh/Zajfan/NLPL)
 
 ---
 
