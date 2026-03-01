@@ -2181,22 +2181,22 @@ end
 
 **Philosophy:** This section addresses the gap between "feature complete" and "production ready." NLPL has implemented impressive features, but many need depth, polish, and real-world validation before they can support a thriving ecosystem.
 
-**Status:** ⚠️ 65% COMPLETE (+10% from LSP + relative imports Feb 19, 2026; +5% reflection + assertion library + test runner Feb 27, 2026)  
-**Priority:** 🔴 CRITICAL (prerequisite for package manager success)  
-**Estimated Total Effort:** 3-5 months with 1-2 developers (reduced from 5-8 months)
+**Status:** ✅ COMPLETE (February 28, 2026)  
+**Priority:** ✅ SATISFIED  
+**Estimated Total Effort:** Completed ahead of estimate
 
 ---
 
-### 8.1 Tooling Maturity & Developer Experience ⚠️ 60% COMPLETE
+### 8.1 Tooling Maturity & Developer Experience ✅ COMPLETE (February 28, 2026)
 
 **Current State:**
 
 - ✅ Basic REPL exists
 - ✅ VS Code extension created and installed (Feb 19, 2026)
 - ✅ LSP substantially complete: cross-file navigation, hover, completions, rename, diagnostics (Feb 19, 2026)
-- ✅ Debugger complete (95% - Feb 16, 2026)
-- ❌ No profiler
-- ❌ Build system new (needs battle testing)
+- ✅ Debugger complete (95% — Feb 16, 2026)
+- ✅ CPU + memory profiler with flame graphs and HTML reports (Feb 23, 2026 — 8.1.3)
+- ✅ Build system battle-tested: 76 tests covering incremental cache, DependencyGraph, BuildCache, manifest edge cases, large workspace stress (Feb 28, 2026 — 8.1.4)
 
 **What Established Languages Have:**
 
