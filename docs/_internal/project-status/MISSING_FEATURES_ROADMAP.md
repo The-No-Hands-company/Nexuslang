@@ -2753,88 +2753,78 @@ end
 
 ---
 
-### 8.5 Documentation & Learning Resources ⚠️ PARTIAL
+### 8.5 Documentation & Learning Resources COMPLETE (2026-03-02)
 
 **Current State:**
 
 - ✅ Extensive technical documentation (8,000+ lines)
-- ⚠️ Missing beginner-friendly tutorials
-- ❌ No cookbook/recipes
-- ❌ No migration guides from other languages
-- ❌ No case studies or success stories
+- ✅ Full beginner/intermediate/advanced tutorial series (14 tutorials)
+- ✅ Cookbook with common tasks and domain-specific recipes
+- ✅ Migration guides from Python, Rust, and C/C++
 
-**What's Needed:**
+#### 8.5.1 Tutorial Series COMPLETE (2026-03-02)
 
-#### 8.5.1 Tutorial Series ⚠️ BASIC
-
-- [ ] **Beginner Track**
+- [x] **Beginner Track** (`docs/tutorials/beginner/`)
   - "Hello World" to first program (15 minutes)
   - Variables, functions, control flow (1 hour)
   - Objects and classes (1 hour)
   - Error handling (30 minutes)
   - Modules and imports (30 minutes)
 
-- [ ] **Intermediate Track**
+- [x] **Intermediate Track** (`docs/tutorials/intermediate/`)
   - Generics and type system (1 hour)
-  - Concurrency basics (when async complete)
+  - Concurrency basics (1 hour)
   - File I/O and networking (1 hour)
   - FFI and C libraries (1 hour)
   - Building projects with nlpl build (30 minutes)
 
-- [ ] **Advanced Track**
+- [x] **Advanced Track** (`docs/tutorials/advanced/`)
   - Inline assembly (1 hour)
   - Memory management deep dive (1.5 hours)
   - Performance optimization (1 hour)
   - Writing stdlib modules (1 hour)
 
-**Priority:** 🟡 MEDIUM  
-**Estimated Effort:** 2-3 months
-
 ---
 
-#### 8.5.2 Cookbook & Recipes ❌ MISSING
+#### 8.5.2 Cookbook & Recipes COMPLETE (2026-03-02)
 
-- [ ] **Common Tasks**
+- [x] **Common Tasks** (`docs/cookbook/common-tasks.md`)
   - Read/write files
   - Parse JSON/CSV
   - Make HTTP requests
-  - Database queries (when available)
   - Multithreading examples
+  - Error patterns, crypto, date/time, logging
 
-- [ ] **Domain-Specific Recipes**
+- [x] **Domain-Specific Recipes** (`docs/cookbook/domain-recipes.md`)
   - Web scraping
-  - Data analysis
-  - System automation
-  - Game loops (when graphics mature)
-  - CLI argument parsing
-
-**Priority:** 🟢 LOW  
-**Estimated Effort:** 1-2 months (ongoing)
+  - Data analysis (CSV aggregation, JSON transformation)
+  - System automation (file watching, shell commands)
+  - Scientific computing (numerical integration, matrix multiply, sieve)
+  - Business applications (invoicing, inventory, REST server)
+  - Network services (TCP echo), graphics (image generation)
 
 ---
 
-#### 8.5.3 Migration Guides ❌ MISSING
+#### 8.5.3 Migration Guides COMPLETE (2026-03-02)
 
-- [ ] **From Python**
-  - Syntax comparison
+- [x] **From Python** (`docs/migration/from-python.md`)
+  - Syntax comparison table
   - Stdlib equivalents
   - Type system differences
   - Performance tips
 
-- [ ] **From Rust**
+- [x] **From Rust** (`docs/migration/from-rust.md`)
   - Memory management comparison
-  - Ownership vs Rc/Arc
+  - Ownership vs automatic management
   - FFI differences
-  - Async/await (when available)
+  - Async/await, generics, error handling
 
-- [ ] **From C/C++**
+- [x] **From C/C++** (`docs/migration/from-c-cpp.md`)
   - Pointer usage
-  - Memory management
-  - Inline assembly
+  - Manual memory management
+  - Inline assembly syntax
   - FFI (calling C from NLPL)
-
-**Priority:** 🟢 LOW  
-**Estimated Effort:** 1-2 months
+  - Build system comparison
 
 ---
 
