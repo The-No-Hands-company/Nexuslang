@@ -187,3 +187,14 @@ vscode-extension/*.vsix
 # Extension backup archives
 vscode-extension-backup-*.tar.gz
 NLPL.code-workspace
+
+# Fuzzing artifacts (generated at runtime, never committed)
+fuzzing/crashes/
+fuzzing/corpus_generated/
+# libFuzzer crash artifacts (crash-*, slow-*, timeout-*, oom-*)
+crash-*
+slow-*
+timeout-*
+oom-*
+# Atheris/coverage intermediate dump
+.atheris_report/
