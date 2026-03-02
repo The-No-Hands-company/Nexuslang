@@ -2718,38 +2718,36 @@ end
 
 ---
 
-#### 8.4.3 Security Hardening ⚠️ BASIC
+#### 8.4.3 Security Hardening -- COMPLETE (2026-03-02)
 
-**Current Concerns:**
+**Completed:**
 
-- FFI allows arbitrary C code execution
-- Inline assembly allows arbitrary instructions
-- No sandboxing for untrusted code
-- No memory safety beyond Rc/Arc
+- [x] **Static Analysis** (`src/nlpl/security/analysis.py`)
+  - Taint analysis with `TaintTracker`, `TaintLabel`, `TaintSink`
+  - Control flow integrity with `CFIChecker` and `CallGraph`
+  - Memory safety validation: bounds, use-after-free, type confusion
 
-**What's Needed:**
+- [x] **Runtime Protections** (`src/nlpl/security/runtime_protections.py`)
+  - Stack canaries with `StackCanary` (per-thread, `secrets.randbits(64)`)
+  - ASLR awareness: `aslr_level()`, `check_and_warn_aslr()`
+  - Bounds checking with `BoundsChecker` (Python negative index aware)
+  - Integer overflow detection with `IntegerOverflowChecker`
 
-- [ ] **Static Analysis**
-  - Taint analysis for unsafe operations
-  - Control flow integrity checks
-  - Memory safety validation (beyond basic checks)
+- [x] **Sandboxing** (`src/nlpl/security/sandbox.py`)
+  - Restricted mode via `RestrictedMode` + `SandboxPolicy`
+  - Seccomp-BPF syscall filter for Linux x86-64 (`SeccompFilter`)
+  - Resource limits via POSIX `setrlimit` (`ResourceLimits`)
+  - `Sandbox` facade combining all layers; `STRICT_POLICY` preset
 
-- [ ] **Runtime Protections**
-  - Stack canaries in generated code
-  - Address space layout randomization (ASLR) support
-  - Bounds checking (configurable overhead)
+- [x] **Security Documentation** (`docs/reference/`)
+  - Security guide: `docs/reference/security.md`
+  - Threat model: `docs/reference/threat-model.md`
+  - CVE reporting process: `docs/reference/cve-process.md`
 
-- [ ] **Sandboxing Options**
-  - Restricted mode (disable FFI/assembly)
-  - System call filtering (seccomp on Linux)
-  - Resource limits (memory, CPU, file descriptors)
+- [x] **Tests** (`tests/unit/systems/test_security_hardening.py`)
+  - 76 passed, 4 skipped (platform-conditional Linux/x86-64 tests)
 
-- [ ] **Security Documentation**
-  - Security best practices guide
-  - Threat model documentation
-  - CVE reporting process
-
-**Priority:** 🟡 MEDIUM  
+**Priority:** COMPLETE  
 **Estimated Effort:** 2-3 months  
 **Value:** Enable NLPL for security-sensitive domains
 
