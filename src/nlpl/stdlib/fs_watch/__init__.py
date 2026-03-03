@@ -81,6 +81,14 @@ try:
 except ImportError:
     HAS_WATCHDOG = False
 
+    # Provide a minimal stub so that class definitions below don't
+    # raise NameError at module-import time on systems without watchdog.
+    class FileSystemEventHandler:  # type: ignore[no-redef]
+        pass
+
+    class Observer:  # type: ignore[no-redef]
+        pass
+
 
 # ---------------------------------------------------------------------------
 # Internal registry

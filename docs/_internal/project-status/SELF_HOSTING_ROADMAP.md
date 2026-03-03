@@ -1,6 +1,6 @@
 # NLPL Self-Hosting and Tool Rewrite Roadmap
 
-**Current Date:** February 24, 2026  
+**Current Date:** March 2, 2026  
 **Project Status:** 95% toward v1.0 (Q2 2026 target)  
 **Goal:** Rewrite key Python-based tools into NLPL for full self-hosting, enabling a native toolchain independent of Python. Focus on compiler and build tools first, while keeping the interpreter optional.
 
@@ -9,7 +9,7 @@
 - Complete remaining v1.0 milestones:
   - LSP server: Finish testing/documentation (currently 2/6 features working)
   - Performance profiling: Complete the remaining 13% of the framework
-  - Debugger: Final integration and polish
+  - Debugger: ✅ COMPLETE (100%) — 109 tests passing (Mar 3, 2026)
 - Why first? Better IDE support and debugging will make the rewrite process smoother and less error-prone.
 - Optional early prototypes: Port small utilities (e.g., benchmark_performance.py) to NLPL as demos to validate tooling capabilities.
 
