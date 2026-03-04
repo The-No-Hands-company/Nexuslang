@@ -2629,33 +2629,27 @@ end
 
 ---
 
-#### 8.3.3 Async I/O Integration ⚠️ PARTIAL
+#### 8.3.3 Async I/O Integration - COMPLETE (March 3, 2026)
 
 **Current State:**
 
-- Concurrency primitives exist
-- Async/await syntax planned
-- No async stdlib modules yet
+- [x] Async/await runtime with shared event loop in daemon thread (February 21, 2026)
+- [x] Async file I/O: `async_read_file`, `async_write_file`, `async_append_file`, `async_read_file_bytes`, `async_write_file_bytes` (February 21, 2026)
+- [x] Async HTTP: `async_http_get`, `async_http_post`, `async_http_put`, `async_http_delete` (February 21, 2026)
+- [x] Async TCP: `async_tcp_connect`, `async_tcp_listen`, `async_tcp_accept`, `async_tcp_send`, `async_tcp_recv`, `async_tcp_recv_exactly`, `async_tcp_close` (February 28, 2026)
+- [x] Async UDP: `async_udp_open`, `async_udp_send_to`, `async_udp_recv_from`, `async_udp_close` (February 28, 2026)
+- [x] Async subprocess: `async_subprocess`, `async_subprocess_output` (February 28, 2026)
+- [x] Async DNS: `async_dns_resolve`, `async_dns_reverse` (February 28, 2026)
+- [x] Async readline streaming: `async_readlines`, `async_readline_chunks` (February 28, 2026)
+- [x] Async channels (MPMC): `async_channel_create/send/recv/try_recv/close/is_closed/size` (March 3, 2026)
+- [x] Async locks (re-entrant): `async_lock_create/acquire/release/try_acquire` (March 3, 2026)
+- [x] Async semaphores: `async_semaphore_create/acquire/release/try_acquire/value` (March 3, 2026)
+- [x] Test suite: `tests/unit/stdlib/test_asyncio_primitives.py` — 95 tests, all passing (March 3, 2026)
 
-**What's Needed:**
+**Implementation:** `src/nlpl/stdlib/asyncio_utils/async_runtime.py`
 
-- [ ] **Async Networking**
-  - Async TCP/UDP sockets
-  - Async HTTP client/server
-  - Async DNS resolution
-
-- [ ] **Async File I/O**
-  - Async file read/write
-  - Async directory operations
-
-- [ ] **Async Primitives**
-  - Async timers/delays
-  - Async channels
-  - Async locks/semaphores
-
-**Priority:** 🟡 MEDIUM (after async/await completion)  
-**Estimated Effort:** 2-3 months  
-**Dependency:** Requires Part 4 async/await runtime
+**Priority:** COMPLETE
+**Completed:** March 3, 2026
 
 ---
 

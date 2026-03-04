@@ -14,11 +14,15 @@ Full async/await execution engine for NLPL programs:
 - async_read_file, async_write_file - async file I/O
 - async_http_get, async_http_post  - async HTTP (no blocking the event loop)
 - create_future, future_set_result, future_set_error, future_get - manual futures
+- NLPLAsyncChannel  - thread-safe MPMC channel (async_channel_*)
+- NLPLAsyncLock     - re-entrant async-aware lock (async_lock_*)
+- NLPLAsyncSemaphore - counting semaphore (async_semaphore_*)
 """
 
 import asyncio
 import concurrent.futures
 import inspect
+import queue as _queue
 import threading
 import time
 from typing import Any, Callable, List, Optional
@@ -867,6 +871,353 @@ def async_readline_chunks(path: str, chunk_size: int = 100,
 
 
 # ---------------------------------------------------------------------------
+# Async Channel  (thread-safe MPMC queue)
+# ---------------------------------------------------------------------------
+
+class NLPLAsyncChannel:
+    """
+    Thread-safe, optionally bounded multi-producer / multi-consumer channel.
+
+    Backed by :class:`queue.Queue` so it is safe to use from any thread,
+    including the NLPL async event-loop thread and plain interpreter threads.
+
+    NLPL usage::
+
+        set ch to async_channel_create with 0          # unbounded
+        set ch to async_channel_create with 10         # bounded (max 10 items)
+        async_channel_send with ch and "hello"
+        set msg to async_channel_recv with ch
+        set ok to async_channel_try_recv with ch       # returns None if empty
+        async_channel_close with ch
+    """
+
+    _SENTINEL = object()  # marks channel closed
+
+    def __init__(self, maxsize: int = 0) -> None:
+        self._q: _queue.Queue = _queue.Queue(maxsize=int(maxsize))
+        self._closed = threading.Event()
+
+    # ---- producer ----
+
+    def send(self, value: Any, timeout: Optional[float] = None) -> None:
+        """
+        Put *value* into the channel.
+
+        Blocks if the channel is bounded and full, up to *timeout* seconds.
+        Raises :class:`RuntimeError` if the channel is closed.
+        Raises :class:`TimeoutError` if the send does not complete in time.
+        """
+        if self._closed.is_set():
+            raise RuntimeError("Cannot send to a closed channel")
+        try:
+            self._q.put(value, block=True, timeout=timeout)
+        except _queue.Full:
+            raise TimeoutError("async_channel_send timed out after {} seconds".format(timeout))
+
+    # ---- consumer ----
+
+    def recv(self, timeout: Optional[float] = None) -> Any:
+        """
+        Remove and return the next value from the channel.
+
+        Blocks until an item is available or *timeout* seconds elapse.
+        Raises :class:`StopIteration` when the channel is closed and empty.
+        Raises :class:`TimeoutError` on timeout.
+        """
+        while True:
+            try:
+                item = self._q.get(block=True, timeout=0.05)
+                if item is NLPLAsyncChannel._SENTINEL:
+                    # Put the sentinel back for other waiting receivers.
+                    try:
+                        self._q.put_nowait(NLPLAsyncChannel._SENTINEL)
+                    except _queue.Full:
+                        pass
+                    raise StopIteration("Channel closed")
+                return item
+            except _queue.Empty:
+                if self._closed.is_set() and self._q.empty():
+                    raise StopIteration("Channel closed and empty")
+                if timeout is not None:
+                    timeout -= 0.05
+                    if timeout <= 0:
+                        raise TimeoutError("async_channel_recv timed out")
+
+    def try_recv(self) -> Optional[Any]:
+        """
+        Non-blocking receive.  Returns the next item or ``None`` if the channel
+        is currently empty.  Returns ``None`` (not an error) when the channel is
+        closed and empty.
+        """
+        try:
+            item = self._q.get_nowait()
+            if item is NLPLAsyncChannel._SENTINEL:
+                try:
+                    self._q.put_nowait(NLPLAsyncChannel._SENTINEL)
+                except _queue.Full:
+                    pass
+                return None
+            return item
+        except _queue.Empty:
+            return None
+
+    def close(self) -> None:
+        """
+        Signal that no more items will be sent.
+
+        Pending and future receivers will eventually get :class:`StopIteration`.
+        """
+        if not self._closed.is_set():
+            self._closed.set()
+            try:
+                self._q.put_nowait(NLPLAsyncChannel._SENTINEL)
+            except _queue.Full:
+                pass
+
+    @property
+    def is_closed(self) -> bool:
+        return self._closed.is_set()
+
+    @property
+    def size(self) -> int:
+        return self._q.qsize()
+
+    def __repr__(self) -> str:
+        state = "closed" if self._closed.is_set() else "open"
+        return "AsyncChannel<{}, size={}>".format(state, self._q.qsize())
+
+
+# Public wrappers (called from NLPL registration lambdas)
+
+def async_channel_create(maxsize: int = 0) -> NLPLAsyncChannel:
+    """Create and return a new async channel with optional capacity bound."""
+    return NLPLAsyncChannel(maxsize=maxsize)
+
+
+def async_channel_send(channel: NLPLAsyncChannel, value: Any,
+                       timeout: Optional[float] = None) -> None:
+    """Send *value* into *channel*, blocking up to *timeout* seconds."""
+    if not isinstance(channel, NLPLAsyncChannel):
+        raise TypeError("async_channel_send: expected an AsyncChannel, got {}".format(type(channel)))
+    channel.send(value, timeout=timeout)
+
+
+def async_channel_recv(channel: NLPLAsyncChannel,
+                       timeout: Optional[float] = None) -> Any:
+    """Receive and return the next value from *channel*."""
+    if not isinstance(channel, NLPLAsyncChannel):
+        raise TypeError("async_channel_recv: expected an AsyncChannel, got {}".format(type(channel)))
+    return channel.recv(timeout=timeout)
+
+
+def async_channel_try_recv(channel: NLPLAsyncChannel) -> Optional[Any]:
+    """Non-blocking receive; returns ``None`` if the channel is empty."""
+    if not isinstance(channel, NLPLAsyncChannel):
+        raise TypeError("async_channel_try_recv: expected an AsyncChannel, got {}".format(type(channel)))
+    return channel.try_recv()
+
+
+def async_channel_close(channel: NLPLAsyncChannel) -> None:
+    """Close *channel*; subsequent senders raise RuntimeError."""
+    if not isinstance(channel, NLPLAsyncChannel):
+        raise TypeError("async_channel_close: expected an AsyncChannel, got {}".format(type(channel)))
+    channel.close()
+
+
+def async_channel_is_closed(channel: NLPLAsyncChannel) -> bool:
+    """Return True if the channel has been closed."""
+    if not isinstance(channel, NLPLAsyncChannel):
+        raise TypeError("async_channel_is_closed: expected an AsyncChannel, got {}".format(type(channel)))
+    return channel.is_closed
+
+
+def async_channel_size(channel: NLPLAsyncChannel) -> int:
+    """Return the number of items currently queued in the channel."""
+    if not isinstance(channel, NLPLAsyncChannel):
+        raise TypeError("async_channel_size: expected an AsyncChannel, got {}".format(type(channel)))
+    return channel.size
+
+
+# ---------------------------------------------------------------------------
+# Async Lock  (re-entrant, timeout-capable)
+# ---------------------------------------------------------------------------
+
+class NLPLAsyncLock:
+    """
+    Re-entrant, timeout-capable lock safe to use from any thread.
+
+    NLPL usage::
+
+        set lk to async_lock_create
+        async_lock_acquire with lk
+        # ... critical section ...
+        async_lock_release with lk
+
+        set acquired to async_lock_try_acquire with lk   # returns True/False
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.RLock()
+
+    def acquire(self, timeout: Optional[float] = None) -> bool:
+        """
+        Acquire the lock.
+
+        Blocks up to *timeout* seconds.  Returns True on success, False on
+        timeout.  If *timeout* is None, blocks indefinitely.
+        """
+        if timeout is None:
+            self._lock.acquire()
+            return True
+        return self._lock.acquire(timeout=timeout)
+
+    def release(self) -> None:
+        """Release the lock.  Raises :class:`RuntimeError` if not held."""
+        self._lock.release()
+
+    def try_acquire(self) -> bool:
+        """Non-blocking attempt; returns True if acquired, False otherwise."""
+        return self._lock.acquire(blocking=False)
+
+    def __repr__(self) -> str:
+        return "AsyncLock<RLock>"
+
+
+def async_lock_create() -> NLPLAsyncLock:
+    """Create and return a new async re-entrant lock."""
+    return NLPLAsyncLock()
+
+
+def async_lock_acquire(lock: NLPLAsyncLock,
+                       timeout: Optional[float] = None) -> bool:
+    """
+    Acquire *lock*, blocking up to *timeout* seconds.
+
+    Returns True on success; raises TimeoutError if timeout elapses.
+    """
+    if not isinstance(lock, NLPLAsyncLock):
+        raise TypeError("async_lock_acquire: expected an AsyncLock, got {}".format(type(lock)))
+    acquired = lock.acquire(timeout=timeout)
+    if not acquired:
+        raise TimeoutError("async_lock_acquire timed out after {} seconds".format(timeout))
+    return True
+
+
+def async_lock_release(lock: NLPLAsyncLock) -> None:
+    """Release *lock*."""
+    if not isinstance(lock, NLPLAsyncLock):
+        raise TypeError("async_lock_release: expected an AsyncLock, got {}".format(type(lock)))
+    lock.release()
+
+
+def async_lock_try_acquire(lock: NLPLAsyncLock) -> bool:
+    """Non-blocking acquire attempt.  Returns True if acquired, False if not."""
+    if not isinstance(lock, NLPLAsyncLock):
+        raise TypeError("async_lock_try_acquire: expected an AsyncLock, got {}".format(type(lock)))
+    return lock.try_acquire()
+
+
+# ---------------------------------------------------------------------------
+# Async Semaphore  (counting, timeout-capable)
+# ---------------------------------------------------------------------------
+
+class NLPLAsyncSemaphore:
+    """
+    Counting semaphore safe to use from any thread.
+
+    NLPL usage::
+
+        set sem to async_semaphore_create with 3    # initial count = 3
+        async_semaphore_acquire with sem            # blocks if count = 0
+        async_semaphore_release with sem            # increments count
+        set ok to async_semaphore_try_acquire with sem
+        set n to async_semaphore_value with sem     # current count
+    """
+
+    def __init__(self, value: int = 1) -> None:
+        if value < 0:
+            raise ValueError("Semaphore initial value must be >= 0")
+        self._sem = threading.Semaphore(int(value))
+        self._lock = threading.Lock()
+        self._value = int(value)
+
+    def acquire(self, timeout: Optional[float] = None) -> bool:
+        """Decrement the counter; block if zero.  Returns True on success."""
+        if timeout is None:
+            acquired = self._sem.acquire(blocking=True)
+        else:
+            acquired = self._sem.acquire(blocking=True, timeout=timeout)
+        if acquired:
+            with self._lock:
+                self._value -= 1
+        return acquired
+
+    def release(self) -> None:
+        """Increment the counter, potentially unblocking a waiting acquirer."""
+        with self._lock:
+            self._value += 1
+        self._sem.release()
+
+    def try_acquire(self) -> bool:
+        """Non-blocking decrement.  Returns True if successful."""
+        acquired = self._sem.acquire(blocking=False)
+        if acquired:
+            with self._lock:
+                self._value -= 1
+        return acquired
+
+    @property
+    def value(self) -> int:
+        """Current semaphore count (approximate under contention)."""
+        with self._lock:
+            return self._value
+
+    def __repr__(self) -> str:
+        return "AsyncSemaphore<value={}>".format(self.value)
+
+
+def async_semaphore_create(value: int = 1) -> NLPLAsyncSemaphore:
+    """Create and return a new counting semaphore with initial *value*."""
+    return NLPLAsyncSemaphore(value=value)
+
+
+def async_semaphore_acquire(semaphore: NLPLAsyncSemaphore,
+                             timeout: Optional[float] = None) -> bool:
+    """
+    Decrement *semaphore*, blocking up to *timeout* seconds.
+
+    Raises :class:`TimeoutError` if the timeout elapses without acquiring.
+    """
+    if not isinstance(semaphore, NLPLAsyncSemaphore):
+        raise TypeError("async_semaphore_acquire: expected an AsyncSemaphore, got {}".format(type(semaphore)))
+    acquired = semaphore.acquire(timeout=timeout)
+    if not acquired:
+        raise TimeoutError("async_semaphore_acquire timed out after {} seconds".format(timeout))
+    return True
+
+
+def async_semaphore_release(semaphore: NLPLAsyncSemaphore) -> None:
+    """Increment *semaphore*, releasing one waiting acquirer if any."""
+    if not isinstance(semaphore, NLPLAsyncSemaphore):
+        raise TypeError("async_semaphore_release: expected an AsyncSemaphore, got {}".format(type(semaphore)))
+    semaphore.release()
+
+
+def async_semaphore_try_acquire(semaphore: NLPLAsyncSemaphore) -> bool:
+    """Non-blocking decrement.  Returns True if acquired, False if zero."""
+    if not isinstance(semaphore, NLPLAsyncSemaphore):
+        raise TypeError("async_semaphore_try_acquire: expected an AsyncSemaphore, got {}".format(type(semaphore)))
+    return semaphore.try_acquire()
+
+
+def async_semaphore_value(semaphore: NLPLAsyncSemaphore) -> int:
+    """Return the current count of *semaphore*."""
+    if not isinstance(semaphore, NLPLAsyncSemaphore):
+        raise TypeError("async_semaphore_value: expected an AsyncSemaphore, got {}".format(type(semaphore)))
+    return semaphore.value
+
+
+# ---------------------------------------------------------------------------
 # Registration
 # ---------------------------------------------------------------------------
 
@@ -951,3 +1302,41 @@ def register_async_runtime_functions(runtime) -> None:
                                lambda rt, *args: async_readlines(*args))
     runtime.register_function("async_readline_chunks",
                                lambda rt, *args: async_readline_chunks(*args))
+
+    # Async channel (MPMC, thread-safe)
+    runtime.register_function("async_channel_create",
+                               lambda rt, *args: async_channel_create(*args))
+    runtime.register_function("async_channel_send",
+                               lambda rt, ch, val, *args: async_channel_send(ch, val, *args))
+    runtime.register_function("async_channel_recv",
+                               lambda rt, ch, *args: async_channel_recv(ch, *args))
+    runtime.register_function("async_channel_try_recv",
+                               lambda rt, ch: async_channel_try_recv(ch))
+    runtime.register_function("async_channel_close",
+                               lambda rt, ch: async_channel_close(ch))
+    runtime.register_function("async_channel_is_closed",
+                               lambda rt, ch: async_channel_is_closed(ch))
+    runtime.register_function("async_channel_size",
+                               lambda rt, ch: async_channel_size(ch))
+
+    # Async lock (re-entrant, timeout-capable)
+    runtime.register_function("async_lock_create",
+                               lambda rt: async_lock_create())
+    runtime.register_function("async_lock_acquire",
+                               lambda rt, lk, *args: async_lock_acquire(lk, *args))
+    runtime.register_function("async_lock_release",
+                               lambda rt, lk: async_lock_release(lk))
+    runtime.register_function("async_lock_try_acquire",
+                               lambda rt, lk: async_lock_try_acquire(lk))
+
+    # Async semaphore (counting, timeout-capable)
+    runtime.register_function("async_semaphore_create",
+                               lambda rt, *args: async_semaphore_create(*args))
+    runtime.register_function("async_semaphore_acquire",
+                               lambda rt, sem, *args: async_semaphore_acquire(sem, *args))
+    runtime.register_function("async_semaphore_release",
+                               lambda rt, sem: async_semaphore_release(sem))
+    runtime.register_function("async_semaphore_try_acquire",
+                               lambda rt, sem: async_semaphore_try_acquire(sem))
+    runtime.register_function("async_semaphore_value",
+                               lambda rt, sem: async_semaphore_value(sem))
