@@ -4852,12 +4852,37 @@ class Parser:
         expr = self.factor()
         
         while self.current_token and self.current_token.type in [TokenType.PLUS, TokenType.MINUS, TokenType.CONCATENATE]:
+            # When inside a function argument context (e.g. "fib with n minus 1 plus fib with n minus 2"),
+            # stop consuming arithmetic operators if the right-hand side would start a new 'with'-style
+            # function call.  Without this guard the parser greedily pulls "fib(n-2)" into the first
+            # call's argument list, producing "fib((n-1) + fib(n-2))" instead of
+            # "fib(n-1) + fib(n-2)".
+            if self._in_argument_context and self._operator_followed_by_with_call():
+                break
             operator = self.current_token
             self.advance()
             right = self.factor()
             expr = BinaryOperation(expr, operator, right)
             
         return expr
+
+    def _operator_followed_by_with_call(self) -> bool:
+        """Return True when the look-ahead pattern is:  <operator> <identifier> WITH
+        
+        Used by term() to decide whether to stop accumulating arithmetic inside a
+        function-argument expression so that the next 'funcname with ...' becomes a
+        sibling expression rather than being folded into the current argument.
+        """
+        # current_token is the PLUS/MINUS/CONCATENATE operator – peek forward.
+        next1 = self.peek(1)   # should be the identifier (function name)
+        next2 = self.peek(2)   # should be WITH
+        if next1 is None or next2 is None:
+            return False
+        is_identifier = (next1.type == TokenType.IDENTIFIER or self._can_be_identifier(next1))
+        is_with = (next2.type == TokenType.WITH or
+                   (next2.type == TokenType.IDENTIFIER and
+                    hasattr(next2, 'lexeme') and next2.lexeme.lower() == 'with'))
+        return is_identifier and is_with
 
     def factor(self):
         """Parse a factor."""
