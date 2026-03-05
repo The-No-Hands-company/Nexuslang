@@ -10463,7 +10463,14 @@ class LLVMIRGenerator(CodeGenerator):
                 # Comparison operators return i1 (boolean)
                 if op in ('==', '!=', '<', '<=', '>', '>=', 'equal to', 'not equal to',
                          'less than', 'less than or equal to', 'greater than',
-                         'greater than or equal to'):
+                         'greater than or equal to',
+                         # Natural language NLPL comparison operators
+                         'equals', 'is', 'is equal to', 'is not', 'is not equal to',
+                         'is less than', 'is less than or equal to',
+                         'is greater than', 'is greater than or equal to',
+                         # TokenType name forms (lowercased)
+                         'equal_to', 'not_equal_to', 'less_than', 'greater_than',
+                         'less_than_or_equal_to', 'greater_than_or_equal_to'):
                     return 'i1'
                 # Logical operators return i1 (boolean)
                 if op in ('and', '&&', 'or', '||'):

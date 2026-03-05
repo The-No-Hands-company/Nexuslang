@@ -18,7 +18,9 @@
       "O1": "Basic: constant folding + DCE",
       "O2": "Standard: O1 + strength reduction + loop unrolling + inlining",
       "O3": "Aggressive: O2 + CSE + TCO + aggressive inlining"
-    }
+    },
+    "compiled_benchmark_date": "2026-03-05T14:47:21.011735",
+    "compiled_benchmark_commit": "60d229e"
   },
   "dispatch_speedup_x": 18.0,
   "baseline": {
@@ -35,7 +37,15 @@
       "nlpl_vs_python_ratio": 191.029,
       "nlpl_vs_rust_ratio": 9239.0,
       "nlpl_O3_vs_O0_speedup": 0.738,
-      "errors": []
+      "errors": [],
+      "interpreter_ms": 0.003,
+      "interpreter_output": "",
+      "compiled_O0_ms": 0.753,
+      "compiled_O0_output": "817770325994397771",
+      "compiled_O3_ms": 0.778,
+      "compiled_O3_output": "817770325994397771",
+      "compiled_O0_speedup_vs_interp": 0.0,
+      "compiled_O3_speedup_vs_interp": 0.0
     },
     "matrix_sum": {
       "description": "Matrix sum (200x200) - nested loops, arithmetic",
@@ -50,7 +60,15 @@
       "nlpl_vs_python_ratio": 206.792,
       "nlpl_vs_rust_ratio": 4016122.8,
       "nlpl_O3_vs_O0_speedup": 1.025,
-      "errors": []
+      "errors": [],
+      "interpreter_ms": 0.002,
+      "interpreter_output": "",
+      "compiled_O0_ms": 0.982,
+      "compiled_O0_output": "799980000",
+      "compiled_O3_ms": 1.061,
+      "compiled_O3_output": "799980000",
+      "compiled_O0_speedup_vs_interp": 0.0,
+      "compiled_O3_speedup_vs_interp": 0.0
     },
     "sieve_of_eratosthenes": {
       "description": "Prime sieve up to 1000 - array access, conditional branching",
@@ -65,7 +83,58 @@
       "nlpl_vs_python_ratio": 16818.636,
       "nlpl_vs_rust_ratio": 490729.4,
       "nlpl_O3_vs_O0_speedup": 0.921,
-      "errors": []
+      "errors": [],
+      "interpreter_ms": 0.001,
+      "interpreter_output": "",
+      "compiled_O0_ms": 0.756,
+      "compiled_O0_output": "999",
+      "compiled_O3_ms": 0.764,
+      "compiled_O3_output": "999",
+      "compiled_O0_speedup_vs_interp": 0.0,
+      "compiled_O3_speedup_vs_interp": 0.0
+    },
+    "fibonacci_iterative_40": {
+      "description": "Iterative Fibonacci(40) -- loop + integer arithmetic",
+      "interpreter_ms": 0.436,
+      "interpreter_output": "102334155",
+      "compiled_O0_ms": 0.755,
+      "compiled_O0_output": "102334155",
+      "compiled_O3_ms": 0.753,
+      "compiled_O3_output": "102334155",
+      "compiled_O0_speedup_vs_interp": 0.6,
+      "compiled_O3_speedup_vs_interp": 0.6,
+      "compiled_O3_vs_O0": 1.0
+    },
+    "matrix_sum_200x200": {
+      "description": "Matrix sum 200x200 -- nested loops + arithmetic",
+      "interpreter_ms": 437.81,
+      "interpreter_output": "799980000",
+      "compiled_O0_ms": 1.004,
+      "compiled_O0_output": "799980000",
+      "compiled_O3_ms": 1.04,
+      "compiled_O3_output": "799980000",
+      "compiled_O0_speedup_vs_interp": 436.1,
+      "compiled_O3_speedup_vs_interp": 421.0,
+      "compiled_O3_vs_O0": 0.97
+    },
+    "prime_count_naive_200": {
+      "description": "Naive prime counting up to 200 -- divisibility check loops",
+      "interpreter_ms": 25.165,
+      "interpreter_output": "2",
+      "compiled_O0_ms": null,
+      "compiled_O3_ms": null
+    },
+    "prime_count_200": {
+      "description": "Naive prime counting up to 200 -- divisibility check loops",
+      "interpreter_ms": 17.661,
+      "interpreter_output": "46",
+      "compiled_O0_ms": 0.783,
+      "compiled_O0_output": "46",
+      "compiled_O3_ms": 0.77,
+      "compiled_O3_output": "46",
+      "compiled_O0_speedup_vs_interp": 22.6,
+      "compiled_O3_speedup_vs_interp": 22.9,
+      "compiled_O3_vs_O0": 1.02
     }
   }
 }
