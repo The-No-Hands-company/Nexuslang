@@ -19,8 +19,8 @@
       "O2": "Standard: O1 + strength reduction + loop unrolling + inlining",
       "O3": "Aggressive: O2 + CSE + TCO + aggressive inlining"
     },
-    "compiled_benchmark_date": "2026-03-05T14:47:21.011735",
-    "compiled_benchmark_commit": "60d229e"
+    "compiled_benchmark_date": "2026-03-05T15:14:41.028130",
+    "compiled_benchmark_commit": "ef96c38"
   },
   "dispatch_speedup_x": 18.0,
   "baseline": {
@@ -95,27 +95,27 @@
     },
     "fibonacci_iterative_40": {
       "description": "Iterative Fibonacci(40) -- loop + integer arithmetic",
-      "interpreter_ms": 0.436,
+      "interpreter_ms": 0.435,
       "interpreter_output": "102334155",
-      "compiled_O0_ms": 0.755,
+      "compiled_O0_ms": 0.909,
       "compiled_O0_output": "102334155",
-      "compiled_O3_ms": 0.753,
+      "compiled_O3_ms": 0.818,
       "compiled_O3_output": "102334155",
-      "compiled_O0_speedup_vs_interp": 0.6,
-      "compiled_O3_speedup_vs_interp": 0.6,
-      "compiled_O3_vs_O0": 1.0
+      "compiled_O0_speedup_vs_interp": 0.5,
+      "compiled_O3_speedup_vs_interp": 0.5,
+      "compiled_O3_vs_O0": 1.11
     },
     "matrix_sum_200x200": {
       "description": "Matrix sum 200x200 -- nested loops + arithmetic",
-      "interpreter_ms": 437.81,
+      "interpreter_ms": 445.891,
       "interpreter_output": "799980000",
       "compiled_O0_ms": 1.004,
       "compiled_O0_output": "799980000",
-      "compiled_O3_ms": 1.04,
+      "compiled_O3_ms": 0.851,
       "compiled_O3_output": "799980000",
-      "compiled_O0_speedup_vs_interp": 436.1,
-      "compiled_O3_speedup_vs_interp": 421.0,
-      "compiled_O3_vs_O0": 0.97
+      "compiled_O0_speedup_vs_interp": 444.1,
+      "compiled_O3_speedup_vs_interp": 524.0,
+      "compiled_O3_vs_O0": 1.18
     },
     "prime_count_naive_200": {
       "description": "Naive prime counting up to 200 -- divisibility check loops",
@@ -126,15 +126,15 @@
     },
     "prime_count_200": {
       "description": "Naive prime counting up to 200 -- divisibility check loops",
-      "interpreter_ms": 17.661,
+      "interpreter_ms": 17.77,
       "interpreter_output": "46",
-      "compiled_O0_ms": 0.783,
+      "compiled_O0_ms": 1.102,
       "compiled_O0_output": "46",
-      "compiled_O3_ms": 0.77,
+      "compiled_O3_ms": 0.809,
       "compiled_O3_output": "46",
-      "compiled_O0_speedup_vs_interp": 22.6,
-      "compiled_O3_speedup_vs_interp": 22.9,
-      "compiled_O3_vs_O0": 1.02
+      "compiled_O0_speedup_vs_interp": 16.1,
+      "compiled_O3_speedup_vs_interp": 22.0,
+      "compiled_O3_vs_O0": 1.36
     }
   }
 }

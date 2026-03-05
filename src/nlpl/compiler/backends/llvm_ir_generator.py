@@ -11370,37 +11370,55 @@ class LLVMIRGenerator(CodeGenerator):
             True if linking succeeded, False otherwise
         """
         # Find LLVM tools
+        opt_tool = self._find_llvm_tool('opt')
         llc = self._find_llvm_tool('llc')
         clang = self._find_llvm_tool('clang')
-        
+
         if not llc or not clang:
             print(" LLVM tools not found. Install LLVM toolchain.")
             return False
-        
+
+        def _apply_opt(ll_file_in: str, opt_lvl: int) -> str:
+            """Run opt middle-end passes on an IR file; returns path to result."""
+            if not opt_tool:
+                return ll_file_in
+            out = ll_file_in.replace('.ll', '_opt.ll')
+            if opt_lvl > 0:
+                passes = f"default<O{opt_lvl}>,coro-early,coro-split,coro-elide,coro-cleanup"
+            else:
+                passes = "coro-early,coro-split,coro-elide,coro-cleanup"
+            r = subprocess.run(
+                [opt_tool, f'--passes={passes}', ll_file_in, '-S', '-o', out],
+                capture_output=True, text=True,
+            )
+            return out if r.returncode == 0 else ll_file_in
+
         try:
             # Compile all .ll files to object files
             obj_files = []
-            
-            # Compile main module
+
+            # Compile main module (with opt middle-end pass first)
+            main_ll_opt = _apply_opt(main_ll, opt_level)
             main_obj = main_ll.replace('.ll', '.o')
             print(f"Compiling main module: {main_ll}")
-            llc_cmd = [llc, '-filetype=obj', main_ll, '-o', main_obj]
+            llc_cmd = [llc, '-filetype=obj', main_ll_opt, '-o', main_obj]
             if opt_level > 0:
                 llc_cmd.append(f'-O{opt_level}')
             result = subprocess.run(llc_cmd, capture_output=True, text=True)
-            
+
             if result.returncode != 0:
                 print(f" Failed to compile main module:")
                 print(result.stderr)
                 return False
-            
+
             obj_files.append(main_obj)
-            
-            # Compile imported modules
+
+            # Compile imported modules (with opt middle-end pass first)
             for module_name, ll_file in self.imported_modules.items():
+                ll_file_opt = _apply_opt(ll_file, opt_level)
                 obj_file = ll_file.replace('.ll', '.o')
                 print(f"Compiling module: {module_name}")
-                llc_cmd = [llc, '-filetype=obj', ll_file, '-o', obj_file]
+                llc_cmd = [llc, '-filetype=obj', ll_file_opt, '-o', obj_file]
                 if opt_level > 0:
                     llc_cmd.append(f'-O{opt_level}')
                 result = subprocess.run(llc_cmd, capture_output=True, text=True)
@@ -11412,7 +11430,6 @@ class LLVMIRGenerator(CodeGenerator):
                 
                 obj_files.append(obj_file)
             
-            # Link all object files
             # Link all object files
             print(f"Linking {len(obj_files)} modules...")
             
@@ -11482,21 +11499,29 @@ class LLVMIRGenerator(CodeGenerator):
                 ll_file = f.name
                 f.write('\n'.join(self.ir_lines))
             
-            # Run coroutine passes with opt
-            print(f"Running coroutine lowering passes...")
+            # Run optimization passes with opt.
+            # When opt_level > 0 we use the full LLVM middle-end pipeline
+            # (default<ON>) which includes inlining, loop vectorization, SROA,
+            # GVN, LICM, constant propagation, dead code elimination, etc.
+            # Coroutine lowering passes (coro-*) are appended so that async
+            # functions using llvm.coro.* intrinsics are lowered correctly
+            # after middle-end optimization.
+            # At opt_level == 0 we run only coro lowering (no optimization).
             opt_output = ll_file.replace('.ll', '_opt.ll')
-            
-            # Coroutine passes are needed to lower llvm.coro.* intrinsics
-            opt_cmd = [
-                opt_tool, 
-                '--passes=coro-early,coro-split,coro-elide,coro-cleanup',
-                ll_file, '-S', '-o', opt_output
-            ]
-            
+
+            if opt_level > 0:
+                passes = f"default<O{opt_level}>,coro-early,coro-split,coro-elide,coro-cleanup"
+                print(f"Running LLVM O{opt_level} optimization passes...")
+            else:
+                passes = "coro-early,coro-split,coro-elide,coro-cleanup"
+                print(f"Running coroutine lowering passes (O0)...")
+
+            opt_cmd = [opt_tool, f'--passes={passes}', ll_file, '-S', '-o', opt_output]
+
             result = subprocess.run(opt_cmd, capture_output=True, text=True)
-            
+
             if result.returncode != 0:
-                print(f" opt coroutine pass failed:")
+                print(f" opt pass failed:")
                 print(result.stderr)
                 # Fall back to using original file (may fail with llc)
                 opt_output = ll_file
