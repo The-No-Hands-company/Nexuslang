@@ -3,6 +3,22 @@ JIT Compiler for NLPL
 ======================
 
 Compiles hot NLPL functions to native machine code using LLVM.
+
+Tier architecture
+-----------------
+
+Tier 0 – Pure interpreter (AST walker).
+
+Tier 1 – Python-bytecode JIT (NLPLCodeGenerator).
+    NLPL AST -> Python source -> compile() -> Python bytecode callable.
+    Fast to compile (~1ms); eliminates interpreter tree-walk overhead.
+
+Tier 2 – Native machine-code JIT (NativeFunctionJIT).
+    NLPL AST -> LLVMIRGenerator -> LLVM IR -> opt O3 -> llc -> .so ->
+    ctypes callable.  Eliminates Python runtime overhead entirely.
+    Only available when LLVM tools (opt, llc, clang) are installed.
+    Falls back to Tier 1 for functions using unsupported types (strings,
+    lists) or when LLVM tools are absent.
 """
 
 import time
@@ -11,6 +27,7 @@ from dataclasses import dataclass, field
 
 from .hot_function_detector import HotFunctionDetector
 from .code_gen import NLPLCodeGenerator, JITGuardFailed, CodeGenError
+from .native_jit import NativeFunctionJIT, NativeCompileError, _tools_available as _tools_available_check
 
 
 @dataclass
@@ -63,25 +80,27 @@ class JITCompiler:
         self.stats = JITStats()
         self.interpreter = None
         self.enabled = True
-        
-        # Try to import llvmlite for actual JIT compilation
-        self.llvm_available = False
-        try:
-            import llvmlite
-            self.llvm_available = True
-        except ImportError:
-            pass  # Will use interpreter fallback
+
+        # Native JIT backend (Tier-2): compiles via LLVMIRGenerator -> .so -> ctypes.
+        # Instantiated lazily after attach_to_interpreter() so it can access
+        # the interpreter for callee resolution.
+        self._native_jit: Optional[NativeFunctionJIT] = None
+        self.llvm_available = _tools_available_check()
     
     def attach_to_interpreter(self, interpreter):
         """
         Attach JIT compiler to an interpreter instance.
-        
+
         This hooks into the interpreter's function call mechanism to:
         1. Track function call counts
         2. Compile hot functions
         3. Replace interpreted execution with JIT execution
         """
         self.interpreter = interpreter
+
+        # Instantiate the native JIT backend now that we have an interpreter
+        # reference for callee resolution.
+        self._native_jit = NativeFunctionJIT(interpreter, opt_level=self.optimization_level)
         
         # Store original function call handler
         if hasattr(interpreter, 'call_function'):
@@ -210,14 +229,28 @@ class JITCompiler:
 
     def _compile_with_llvm(self, function_def) -> Callable:
         """
-        Compile a function to a Python callable using NLPLCodeGenerator.
+        Compile a function to a native machine-code callable.
 
-        Emits Python source from the NLPL AST, compiles it with
-        Python's built-in compile(), and returns the resulting function
-        object.  Falls back to the optimized-interpreter wrapper if code
-        generation fails (e.g., the function body contains an AST node
-        type that the current generator does not yet handle).
+        Pipeline:
+          1. Try NativeFunctionJIT (Tier-2): LLVM IR -> opt O3 -> llc -> .so ->
+             ctypes wrapper.  This is true native compilation.
+          2. Fall back to NLPLCodeGenerator (Tier-1, Python bytecode) if the
+             native path fails (unsupported types, missing LLVM tools, etc.).
+          3. Fall back to the optimized interpreter wrapper if code generation
+             also fails.
         """
+        func_name = getattr(function_def, "name", "unknown")
+
+        # Tier-2: try native LLVM compilation first
+        if self._native_jit is not None and self._native_jit.available:
+            try:
+                native = self._native_jit.compile(func_name, function_def)
+                if native is not None:
+                    return native
+            except Exception:
+                pass  # Fall through to Python bytecode tier
+
+        # Tier-1: Python bytecode JIT
         gen = NLPLCodeGenerator()
         try:
             return gen.compile_function(function_def, self.interpreter, opt_level=1)
@@ -306,7 +339,7 @@ class JITCompiler:
         print(f"  JIT: {self.stats.total_jit_execution_time:.3f}s")
         print(f"  Interpreter: {self.stats.total_interpreter_execution_time:.3f}s")
         print(f"  Speedup: {self.stats.speedup_factor:.2f}x")
-        print(f"\nLLVM Available: {'Yes' if self.llvm_available else 'No (using optimized interpreter)'}")
+        print(f"\nLLVM Native JIT: {'Available' if self.llvm_available else 'Not available (using Python bytecode JIT)'}")
         print("="*70)
         
         # Print hot function detector report
