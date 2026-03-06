@@ -14,6 +14,15 @@ from ..typesystem.type_inference import TypeInferenceEngine
 from ..typesystem.generic_types import GenericTypeRegistry, GenericTypeContext
 from ..typesystem.user_types import TypeRegistry
 from ..typesystem.integration_enhanced import IntegratedTypeSystem, get_type_system, reset_type_system
+from ..typesystem.hkt import (
+    Kind, StarKind, ArrowKind,
+    STAR, STAR_TO_STAR, STAR_TO_STAR_TO_STAR, HO_FUNCTOR_KIND,
+    TypeConstructorParam, TypeApplication, HigherKindedType, HKTRegistry,
+    GLOBAL_HKT_REGISTRY,
+    FUNCTOR_HKT, APPLICATIVE_HKT, MONAD_HKT, FOLDABLE_HKT, TRAVERSABLE_HKT,
+    HKT_TRAITS,
+    kind_arity, kinds_equal, kind_of_application,
+)
 
 __all__ = [
     # Core types
@@ -33,4 +42,12 @@ __all__ = [
     'TypeRegistry',
     # Integrated system
     'IntegratedTypeSystem', 'get_type_system', 'reset_type_system',
-] 
+    # Higher-Kinded Types
+    'Kind', 'StarKind', 'ArrowKind',
+    'STAR', 'STAR_TO_STAR', 'STAR_TO_STAR_TO_STAR', 'HO_FUNCTOR_KIND',
+    'TypeConstructorParam', 'TypeApplication', 'HigherKindedType', 'HKTRegistry',
+    'GLOBAL_HKT_REGISTRY',
+    'FUNCTOR_HKT', 'APPLICATIVE_HKT', 'MONAD_HKT', 'FOLDABLE_HKT', 'TRAVERSABLE_HKT',
+    'HKT_TRAITS',
+    'kind_arity', 'kinds_equal', 'kind_of_application',
+]

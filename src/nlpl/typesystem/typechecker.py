@@ -35,6 +35,10 @@ from ..typesystem.generics_system import (
     GenericContext, GenericTypeInference, Monomorphizer,
     TypeConstraint as GenericConstraint, TypeParameterInfo
 )
+from ..typesystem.hkt import (
+    GLOBAL_HKT_REGISTRY, HigherKindedType, TypeConstructorParam,
+    TypeApplication, STAR, STAR_TO_STAR,
+)
 
 class TypeCheckError(Exception):
     """Exception raised for type checking errors."""
@@ -191,6 +195,9 @@ class TypeChecker:
         self.monomorphizer = Monomorphizer()
         self.generic_inference = GenericTypeInference()
         self.generic_functions: Dict[str, FunctionDefinition] = {}  # Track generic function templates
+
+        # HKT registry: used to validate higher-kinded type constraints
+        self.hkt_registry = GLOBAL_HKT_REGISTRY
     
     def check_program(self, program: Program) -> List[str]:
         """Check the types in a program and return any errors."""
@@ -1254,6 +1261,12 @@ class TypeChecker:
                                 f"Line {definition.line_number}: Type error: Class '{definition.name}' "
                                 f"does not implement methods required by interface '{interface}': {methods_str}"
                             )
+
+                    # If this interface is a known HKT trait, validate HKT method requirements.
+                    if self.hkt_registry.get(interface) is not None:
+                        self.check_hkt_implementation(
+                            definition.name, interface, definition.line_number
+                        )
             
             # Create or retrieve class type
             class_type = self.type_registry.create_class_type(
@@ -1443,7 +1456,85 @@ class TypeChecker:
         for method_name in trait_methods:
             if method_name not in class_type.methods:
                 raise TypeError(f"Class {class_name} does not implement trait method {method_name} from trait {trait_name}")
-    
+
+    # ------------------------------------------------------------------
+    # Higher-Kinded Type (HKT) constraint checking
+    # ------------------------------------------------------------------
+
+    def check_hkt_implementation(
+        self,
+        class_name: str,
+        hkt_name: str,
+        line_number: Optional[int] = None,
+    ) -> None:
+        """Verify that *class_name* supplies every method required by the HKT trait *hkt_name*.
+
+        When a class declares e.g. ``implements Functor``, this method checks that
+        the class provides a ``map`` method.  Errors are appended to ``self.errors``
+        rather than raised so the full program can be type-checked in one pass.
+
+        Also recursively checks parent HKTs (e.g. Monad extends Applicative extends
+        Functor), providing a single clear error per missing method.
+        """
+        hkt = self.hkt_registry.get(hkt_name)
+        if hkt is None:
+            # Not a known HKT — nothing to check.
+            return
+
+        prefix = f"Line {line_number}: " if line_number is not None else ""
+
+        # Collect expected method names from this HKT and its parents.
+        expected_methods: Dict[str, str] = {}  # method_name -> source HKT name
+        queue = [hkt]
+        visited: set = set()
+        while queue:
+            current = queue.pop(0)
+            if current.name in visited:
+                continue
+            visited.add(current.name)
+            for method_name in current.methods:
+                if method_name not in expected_methods:
+                    expected_methods[method_name] = current.name
+            queue.extend(current.parent_hkt)
+
+        # Look up the class type.
+        class_type = None
+        if hasattr(self.type_registry, 'get_class_type'):
+            class_type = self.type_registry.get_class_type(class_name)
+        elif class_name in self.type_registry:
+            class_type = self.type_registry[class_name]
+
+        if class_type is None:
+            # Class not registered yet — skip silently.
+            return
+
+        class_methods = getattr(class_type, 'methods', {}) or {}
+
+        for method_name, source_hkt in expected_methods.items():
+            if method_name not in class_methods:
+                self.errors.append(
+                    f"{prefix}Type error: Class '{class_name}' implements "
+                    f"HKT trait '{hkt_name}' but is missing required method "
+                    f"'{method_name}' (required by '{source_hkt}')"
+                )
+
+        # Register the implementation so other code can query it later.
+        self.hkt_registry.register_implementation(class_name, hkt_name)
+
+    def check_hkt_constraint(self, constructor_name: str, hkt_name: str) -> bool:
+        """Return True if *constructor_name* is known to implement *hkt_name*.
+
+        This queries the global HKT registry.  Returns False (without emitting an
+        error) if the HKT is unknown, leaving the caller to decide whether to raise.
+        """
+        if self.hkt_registry.get(hkt_name) is None:
+            return False
+        return self.hkt_registry.implements(constructor_name, hkt_name)
+
+    def get_implemented_hkts(self, type_name: str) -> List[str]:
+        """Return the list of HKT trait names that *type_name* has been registered to implement."""
+        return self.hkt_registry.get_implementations(type_name)
+
     def resolve_type(self, type_name: str) -> Type:
         """Resolve a type name to its actual type."""
         if type_name in self.type_registry:
@@ -1760,7 +1851,20 @@ class TypeChecker:
             trait_names = constraints[param_name]
             
             for trait_name in trait_names:
-                # Get the trait type
+                # First check: is this a Higher-Kinded Type constraint?
+                if self.hkt_registry.get(trait_name) is not None:
+                    constructor_name = self._type_name(type_arg)
+                    if not self.check_hkt_constraint(constructor_name, trait_name):
+                        self.errors.append(
+                            f"Type error in {context}: Type constructor '{constructor_name}' "
+                            f"does not implement HKT trait '{trait_name}'. "
+                            f"Register it via HKTRegistry.register_implementation() or ensure "
+                            f"the class declares and implements all required methods."
+                        )
+                        all_satisfied = False
+                    continue
+
+                # Get the trait type from the standard trait map
                 trait = TRAIT_MAP.get(trait_name)
                 
                 if trait is None:
