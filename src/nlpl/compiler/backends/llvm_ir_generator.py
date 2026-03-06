@@ -49,6 +49,8 @@ class LLVMIRGenerator(CodeGenerator):
         self.local_vars: Dict[str, Tuple[str, str]] = {}  # var_name -> (llvm_type, %alloca_name)
         self.array_sizes: Dict[str, int] = {}  # var_name -> array_size (for tracking lengths)
         self.runtime_array_sizes: Dict[str, str] = {}  # var_name -> size_register (runtime size tracking)
+        self.array_size_allocas: Dict[str, str] = {}  # var_name -> alloca_name (persistent size alloca for dynamically-grown arrays)
+        self.entry_block_end_idx: int = 0  # Index in ir_lines right after entry block parameter allocas
         self.struct_types: Dict[str, List[Tuple[str, str]]] = {}  # struct_name -> [(field_name, field_type), ...]
         self.union_types: Dict[str, List[Tuple[str, str]]] = {}  # union_name -> [(field_name, field_type), ...]
         self.class_types: Dict[str, Dict] = {}  # class_name -> {properties: [...], methods: [...], parent: str}
@@ -1943,6 +1945,38 @@ class LLVMIRGenerator(CodeGenerator):
         self.emit('}')
         self.emit('')
         
+        # arrpush_i8: like arrpush but for 1-byte element arrays (booleans, chars).
+        # Elements are stored as i8 (1 byte each) for compatibility with i1/i8 arrays.
+        self.emit('define i8* @arrpush_i8(i8* %arr, i64 %count, i8 %elem) {')
+        self.emit('entry:')
+        self.emit('  %new_count = add i64 %count, 1')
+        self.emit('  %new_arr_i8 = call i8* @malloc(i64 %new_count)')
+        self.emit('  ; Copy old elements (1 byte each)')
+        self.emit('  %i = alloca i64')
+        self.emit('  store i64 0, i64* %i')
+        self.emit('  br label %loop_i8')
+        self.emit('')
+        self.emit('loop_i8:')
+        self.emit('  %idx = load i64, i64* %i')
+        self.emit('  %continue = icmp ult i64 %idx, %count')
+        self.emit('  br i1 %continue, label %copy_i8, label %add_new_i8')
+        self.emit('')
+        self.emit('copy_i8:')
+        self.emit('  %src_ptr = getelementptr inbounds i8, i8* %arr, i64 %idx')
+        self.emit('  %val = load i8, i8* %src_ptr')
+        self.emit('  %dst_ptr = getelementptr inbounds i8, i8* %new_arr_i8, i64 %idx')
+        self.emit('  store i8 %val, i8* %dst_ptr')
+        self.emit('  %next_idx = add i64 %idx, 1')
+        self.emit('  store i64 %next_idx, i64* %i')
+        self.emit('  br label %loop_i8')
+        self.emit('')
+        self.emit('add_new_i8:')
+        self.emit('  %last_ptr = getelementptr inbounds i8, i8* %new_arr_i8, i64 %count')
+        self.emit('  store i8 %elem, i8* %last_ptr')
+        self.emit('  ret i8* %new_arr_i8')
+        self.emit('}')
+        self.emit('')
+        
         # arrpop(array_ptr, elem_count) -> new_array_ptr
         self.emit('define i64* @arrpop(i64* %arr, i64 %count) {')
         self.emit('entry:')
@@ -2055,7 +2089,14 @@ class LLVMIRGenerator(CodeGenerator):
         size_is_runtime = False
         array_size_value = None
         
-        if array_name in self.array_sizes:
+        if array_name in self.array_size_allocas:
+            # Persistent size alloca - load current size at runtime (correct across loop iterations)
+            size_alloca = self.array_size_allocas[array_name]
+            loaded_size = self._new_temp()
+            self.emit(f'{indent}{loaded_size} = load i64, i64* {size_alloca}, align 8')
+            array_size_value = loaded_size
+            size_is_runtime = True
+        elif array_name in self.array_sizes:
             # Compile-time known size
             array_size_value = self.array_sizes[array_name]
             size_is_runtime = False
@@ -2336,6 +2377,12 @@ class LLVMIRGenerator(CodeGenerator):
                         
                         # Store in runtime_array_sizes
                         self.runtime_array_sizes[array_param_name] = size_reg
+        
+        # Track insertion point for deferred entry-block allocas.
+        # Size allocas for dynamically-grown arrays must live in the entry block
+        # (not inside loop bodies) so they dominate all uses.
+        self.entry_block_end_idx = len(self.ir_lines)
+        self.array_size_allocas = {}  # reset per-function: var_name -> alloca_name
         
         # Generate function body
         if hasattr(node, 'body'):
@@ -2876,6 +2923,9 @@ class LLVMIRGenerator(CodeGenerator):
         self.emit('; Main function')
         self.emit('define i32 @main(i32 %argc, i8** %argv) personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*) {')
         self.emit('entry:')
+        # Reset entry-block tracking for dynamic array size allocas
+        self.entry_block_end_idx = len(self.ir_lines)
+        self.array_size_allocas = {}
         
         if has_nlpl_main:
             # Wrap NLPL main call in try-catch for uncaught exception handling
@@ -8110,8 +8160,8 @@ class LLVMIRGenerator(CodeGenerator):
         # Allocate result register for non-logical operations
         result_reg = self._new_temp()
         
-        # Integer operations
-        if result_type in ('i64', 'i32', 'i16', 'i8'):
+        # Integer operations (includes i1 booleans)
+        if result_type in ('i64', 'i32', 'i16', 'i8', 'i1'):
             if op in ('+', 'plus'):
                 self.emit(f'{indent}{result_reg} = add nsw {result_type} {left_reg}, {right_reg}')
             elif op in ('-', 'minus'):
@@ -8570,7 +8620,12 @@ class LLVMIRGenerator(CodeGenerator):
         if func_name in ['strlen', 'substr', 'charat', 'indexof', 'strcpy', 'replace', 'split', 'join', 'trim', 'toupper', 'tolower']:
             return self._generate_string_function_call(func_name, expr, indent)
         
-        # Built-in array functions
+        # Built-in array functions ('length' is the NLPL user-facing alias for 'arrlen')
+        # 'list_append' is the parser's internal name for 'append X to arr' statements
+        if func_name == 'length':
+            func_name = 'arrlen'
+        if func_name == 'list_append':
+            func_name = 'arrpush'
         if func_name in ['arrlen', 'arrpush', 'arrpop', 'arrslice', 'map', 'filter', 'reduce', 'foreach']:
             return self._generate_array_function_call(func_name, expr, indent)
         
@@ -8898,6 +8953,9 @@ class LLVMIRGenerator(CodeGenerator):
         
         elif func_name == 'arrpush':
             # arrpush(array, elem) -> new_array
+            # Also handles 'list_append' (append X to arr) which is the NLPL append statement.
+            # Arrays grown via append get a persistent size alloca so their size is correct
+            # across loop iterations.
             if len(args) < 2:
                 raise ValueError("arrpush requires 2 arguments: array, element")
             
@@ -8911,25 +8969,87 @@ class LLVMIRGenerator(CodeGenerator):
             
             if type(args[0]).__name__ == 'Identifier':
                 arr_name = args[0].name
-                if arr_name in self.array_sizes:
-                    # Compile-time size
-                    arr_size = self.array_sizes[arr_name]
+                if arr_name in self.array_size_allocas:
+                    # Already has a persistent size alloca - load current size from it
+                    size_alloca = self.array_size_allocas[arr_name]
+                    arr_size_reg = self._new_temp()
+                    self.emit(f'{indent}{arr_size_reg} = load i64, i64* {size_alloca}, align 8')
+                elif arr_name in self.array_sizes:
+                    # First append to a compile-time-sized array.
+                    # Create a persistent size alloca in the function entry block so it
+                    # dominates all uses (including later iterations of loop bodies).
+                    initial_size = self.array_sizes[arr_name]
+                    size_alloca = f'%{arr_name}_size_alloca'
+                    # Insert alloca + initial store into the entry block so the alloca
+                    # dominates its uses regardless of which loop/block calls arrpush first.
+                    entry_lines = [
+                        f'  {size_alloca} = alloca i64, align 8',
+                        f'  store i64 {initial_size}, i64* {size_alloca}, align 8',
+                    ]
+                    for offset, line in enumerate(entry_lines):
+                        self.ir_lines.insert(self.entry_block_end_idx + offset, line)
+                    self.entry_block_end_idx += len(entry_lines)
+                    self.array_size_allocas[arr_name] = size_alloca
+                    # Remove from static tracking; bounds check will use alloca going forward
+                    del self.array_sizes[arr_name]
+                    arr_size_reg = self._new_temp()
+                    self.emit(f'{indent}{arr_size_reg} = load i64, i64* {size_alloca}, align 8')
                 elif arr_name in self.runtime_array_sizes:
-                    # Runtime size - load it
+                    # Runtime size - use it directly
                     arr_size_reg = self.runtime_array_sizes[arr_name]
             
-            result_reg = self._new_temp()
-            if arr_size_reg:
-                # Use runtime size
+            # Determine if this is a byte-sized array (i1/i8 booleans/chars)
+            # that needs arrpush_i8 instead of arrpush (which uses i64 strides).
+            arr_elem_type = 'i64'  # default
+            arr_ptr_type = 'i64*'  # default
+            if arr_name and arr_name in self.local_vars:
+                arr_var_type, _ = self.local_vars[arr_name]
+                arr_ptr_type = arr_var_type  # e.g. 'i1*' or 'i64*'
+                arr_elem_type = arr_var_type[:-1] if arr_var_type.endswith('*') else 'i64'
+            
+            use_i8_variant = arr_elem_type in ('i1', 'i8')
+            
+            if use_i8_variant:
+                # Convert element to i8, bitcast array ptr to i8*
+                arr_i8_reg = self._new_temp()
+                self.emit(f'{indent}{arr_i8_reg} = bitcast {arr_ptr_type} {arr_reg} to i8*')
+                elem_i8_reg = self._new_temp()
+                if arr_elem_type == 'i1':
+                    self.emit(f'{indent}{elem_i8_reg} = zext i1 {elem_reg} to i8')
+                else:
+                    self.emit(f'{indent}{elem_i8_reg} = and i8 {elem_reg}, {elem_reg}  ; noop, keep as i8')
+                result_i8 = self._new_temp()
+                if arr_size_reg:
+                    self.emit(f'{indent}{result_i8} = call i8* @arrpush_i8(i8* {arr_i8_reg}, i64 {arr_size_reg}, i8 {elem_i8_reg})')
+                else:
+                    self.emit(f'{indent}{result_i8} = call i8* @arrpush_i8(i8* {arr_i8_reg}, i64 {arr_size}, i8 {elem_i8_reg})')
+                # Bitcast result back to original element pointer type
+                result_reg = self._new_temp()
+                self.emit(f'{indent}{result_reg} = bitcast i8* {result_i8} to {arr_ptr_type}')
+            elif arr_size_reg:
+                # Use runtime/alloca size with i64 variant
+                result_reg = self._new_temp()
                 self.emit(f'{indent}{result_reg} = call i64* @arrpush(i64* {arr_reg}, i64 {arr_size_reg}, i64 {elem_reg})')
             else:
-                # Use compile-time size
+                # Use compile-time size (no arr_name tracking, or arr_name not tracked)
+                result_reg = self._new_temp()
                 self.emit(f'{indent}{result_reg} = call i64* @arrpush(i64* {arr_reg}, i64 {arr_size}, i64 {elem_reg})')
             
-            # Update array size
+            # Update array size and store new pointer
             if arr_name:
-                if arr_name in self.array_sizes:
-                    # Update compile-time size
+                if arr_name in self.array_size_allocas:
+                    # Update persistent size alloca: size += 1
+                    size_alloca = self.array_size_allocas[arr_name]
+                    new_size_reg = self._new_temp()
+                    self.emit(f'{indent}{new_size_reg} = add i64 {arr_size_reg}, 1')
+                    self.emit(f'{indent}store i64 {new_size_reg}, i64* {size_alloca}, align 8')
+                    # Store new array pointer back into the variable's alloca
+                    # so subsequent accesses (and bounds checks) use the grown array
+                    if arr_name in self.local_vars:
+                        arr_type, arr_alloca = self.local_vars[arr_name]
+                        self.emit(f'{indent}store {arr_type} {result_reg}, {arr_type}* {arr_alloca}, align 8')
+                elif arr_name in self.array_sizes:
+                    # Untouched compile-time array (no alloca created yet) - increment static size
                     self.array_sizes[arr_name] = arr_size + 1
                 elif arr_name in self.runtime_array_sizes:
                     # Update runtime size: new_size = old_size + 1
