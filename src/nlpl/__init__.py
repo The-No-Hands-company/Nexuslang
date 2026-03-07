@@ -5,55 +5,38 @@ A truly universal programming language that combines natural English-like syntax
 with low-level capabilities.
 """
 
-import sys
-
 __version__ = "0.1.0"
 __author__ = "The No Hands Company"
 
-# Python 3.14 has import system bugs - use compatibility layer
-if False: # sys.version_info >= (3, 14): # Forced disabled for debugging
-    from .py314_compat import load_module_direct
-    from pathlib import Path
-    
-    # Load modules directly to avoid import hang
-    _nlpl_dir = Path(__file__).parent
-    _lexer_module = load_module_direct(
-        str(_nlpl_dir / 'parser' / 'lexer.py'),
-        'nlpl.parser.lexer'
-    )
-    Lexer = _lexer_module.Lexer
-    Token = _lexer_module.Token
-    TokenType = _lexer_module.TokenType
-    
-    _parser_module = load_module_direct(
-        str(_nlpl_dir / 'parser' / 'parser.py'),
-        'nlpl.parser.parser'
-    )
-    Parser = _parser_module.Parser
-    
-    _interp_module = load_module_direct(
-        str(_nlpl_dir / 'interpreter' / 'interpreter.py'),
-        'nlpl.interpreter.interpreter'
-    )
-    Interpreter = _interp_module.Interpreter
-    
-    _runtime_module = load_module_direct(
-        str(_nlpl_dir / 'runtime' / 'runtime.py'),
-        'nlpl.runtime.runtime'
-    )
-    Runtime = _runtime_module.Runtime
-else:
-    # Normal import for Python < 3.14
-    from .parser.lexer import Lexer, Token, TokenType
-    from .parser.parser import Parser
-    from .interpreter.interpreter import Interpreter
-    from .runtime.runtime import Runtime
+# All imports are lazy to prevent circular import deadlocks caused by
+# submodules (e.g. runtime.py) importing from nlpl.runtime.memory which
+# re-enters this __init__.py before it has finished executing.
+# This is particularly problematic under Python 3.14's revised import system.
 
 __all__ = [
     "Lexer",
-    "Token", 
+    "Token",
     "TokenType",
     "Parser",
     "Interpreter",
     "Runtime",
 ]
+
+def __getattr__(name: str):
+    if name in ("Lexer", "Token", "TokenType"):
+        from nlpl.parser.lexer import Lexer, Token, TokenType  # noqa: PLC0415
+        globals().update({"Lexer": Lexer, "Token": Token, "TokenType": TokenType})
+        return globals()[name]
+    if name == "Parser":
+        from nlpl.parser.parser import Parser  # noqa: PLC0415
+        globals()["Parser"] = Parser
+        return Parser
+    if name == "Interpreter":
+        from nlpl.interpreter.interpreter import Interpreter  # noqa: PLC0415
+        globals()["Interpreter"] = Interpreter
+        return Interpreter
+    if name == "Runtime":
+        from nlpl.runtime.runtime import Runtime  # noqa: PLC0415
+        globals()["Runtime"] = Runtime
+        return Runtime
+    raise AttributeError(f"module 'nlpl' has no attribute {name!r}")
