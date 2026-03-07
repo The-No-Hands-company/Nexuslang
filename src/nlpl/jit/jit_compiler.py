@@ -199,23 +199,46 @@ class JITCompiler:
         type_hints: Optional[Dict[str, str]] = None,
     ) -> Optional[Callable]:
         """
-        Compile an NLPL function definition to a Python callable.
+        Compile an NLPL function definition to a callable.
 
         Called by TieredCompiler at Tier-1 (opt_level=1) and Tier-2
-        (opt_level=3, with type_hints).  Uses NLPLCodeGenerator to emit
-        Python source and compile it with Python's built-in compile().
+        (opt_level=3, with type_hints).
+
+        Tier-2 (opt_level >= 3) first attempts native machine-code
+        compilation via NativeFunctionJIT (LLVM IR -> opt -> llc -> .so
+        -> ctypes).  If native compilation is unavailable or fails for
+        this function (unsupported types, missing tools), it falls back
+        to the Python-bytecode JIT (NLPLCodeGenerator).
+
+        Tier-1 (opt_level < 3) always uses the Python-bytecode JIT
+        because it is faster to compile and the native backend is not
+        worth the latency cost for functions that are merely "warm".
 
         Args:
             function_name: The function's name (used for diagnostics).
             function_def:  NLPL FunctionDefinition AST node.
-            opt_level:     1 = baseline (no guards), 2+ = insert type guards.
+            opt_level:     1 = baseline (Python bytecode, no guards).
+                           2 = Python bytecode + type guards.
+                           3 = native LLVM code with Python-bytecode fallback.
             type_hints:    Type-feedback dict from TypeFeedbackCollector.
+                           Passed to the Python-bytecode code generator
+                           when native compilation is not available.
 
         Returns:
-            A compiled Python callable, or None if compilation fails.
+            A compiled callable, or None if compilation fails entirely.
         """
+        # Tier-2: attempt native LLVM compilation for the highest opt level.
+        if opt_level >= 3 and self._native_jit is not None and self._native_jit.available:
+            try:
+                native = self._native_jit.compile(function_name, function_def)
+                if native is not None:
+                    return native
+            except Exception:
+                pass  # Fall through to Python-bytecode JIT
+
+        # Tier-1 / Tier-2 fallback: Python-bytecode JIT via NLPLCodeGenerator.
         gen = NLPLCodeGenerator()
-        # Map JIT opt levels (which go up to 3) to code-gen levels (1 or 2)
+        # Map JIT opt levels to code-gen specialization levels (1 or 2)
         codegen_level = 1 if opt_level < 2 else 2
         try:
             return gen.compile_function(

@@ -356,16 +356,23 @@ class NativeFunctionJIT:
             return None
 
         ir_lines = gen.ir_lines
-
-        # Rename the target function symbol from "main" / func_name to
-        # "nlpl_<func_name>" so we can reliably look it up in the .so.
-        # The function is defined as "@func_name" in the IR.
         ir_text = "\n".join(ir_lines)
-        # Add an alias so the function is exported under the "nlpl_*" name.
-        # In LLVM 14+ the alias must use ptr type (opaque pointers).
-        # The alias keeps the function alive through LTO/DCE.
-        ir_text += f"\n\n; JIT export alias\n"
-        ir_text += f'@nlpl_{func_name} = alias i64 (i64), ptr @{func_name}\n'
+
+        # Rename every reference of the form "@func_name" (followed by "("
+        # or whitespace) to "@nlpl_func_name" so the compiled shared library
+        # exports the symbol under a predictable, non-conflicting name without
+        # needing an alias whose type signature would have to be hand-crafted.
+        #
+        # A regex word-boundary is not used because LLVM IR identifiers may
+        # contain characters not covered by \b; instead we match the token
+        # boundary characters that always follow a function reference in IR:
+        # "(" for call/define/declare, or whitespace for attributes/metadata.
+        import re as _re
+        ir_text = _re.sub(
+            r'@' + _re.escape(func_name) + r'(?=[\s(])',
+            '@nlpl_' + func_name,
+            ir_text,
+        )
 
         return ir_text
 
