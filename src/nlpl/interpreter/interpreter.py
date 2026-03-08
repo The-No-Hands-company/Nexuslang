@@ -369,7 +369,7 @@ class Interpreter:
                 3: OptimizationLevel.O3,
             }
             opt_level = _level_map.get(optimization_level, OptimizationLevel.O1)
-            pipeline = create_optimization_pipeline(opt_level)
+            pipeline = create_optimization_pipeline(opt_level, interpreter_mode=True)
             ast = pipeline.run(ast)
 
         # Run type checking if enabled

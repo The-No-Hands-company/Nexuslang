@@ -102,7 +102,11 @@ class OptimizationPipeline:
         print(self.stats)
 
 
-def create_optimization_pipeline(level: OptimizationLevel, verbose: bool = False) -> OptimizationPipeline:
+def create_optimization_pipeline(
+    level: OptimizationLevel,
+    verbose: bool = False,
+    interpreter_mode: bool = False,
+) -> OptimizationPipeline:
     """
     Create a standard optimization pipeline for the given level.
 
@@ -112,10 +116,18 @@ def create_optimization_pipeline(level: OptimizationLevel, verbose: bool = False
     O3: O2 + aggressive inlining, CSE, tail call optimization, all NLPL opts
     Os: Optimize for code size (small inline threshold, aggressive DCE)
 
-    NLPL-specific passes added at each level:
+    NLPL-specific passes added at each level (compiled mode only):
     - O1+: DispatchOptimizationPass (inline-cache hints, builtin lowering)
     - O1+: StringInterningPass (intern repeated string literals)
     - O2+: TypeSpecializationPass (specialize generics for known types)
+
+    interpreter_mode:
+        When True, restricts the pipeline to passes that actually reduce
+        work for the AST-walking interpreter.  Passes that inflate the AST
+        (FunctionInlining, LoopUnrolling, TypeSpecialization) or annotate
+        nodes the interpreter never reads (DispatchOptimization,
+        StringInterning) are skipped because their pre-processing cost
+        outweighs any execution benefit in a single-pass interpreter.
     """
     from ..optimizer.dead_code_elimination import DeadCodeEliminationPass
     from ..optimizer.constant_folding import ConstantFoldingPass
@@ -135,6 +147,33 @@ def create_optimization_pipeline(level: OptimizationLevel, verbose: bool = False
         # No optimizations – fastest compile, easiest debugging
         return pipeline
 
+    if interpreter_mode:
+        # --- Interpreter-safe pipeline ---
+        # Only include passes that reduce the number of AST nodes the
+        # interpreter must evaluate.  Passes that:
+        #   - deepcopy/duplicate nodes (inlining, unrolling, specialization)
+        #   - attach metadata the interpreter never reads (dispatch hints,
+        #     string interning)
+        # are excluded because their transformation overhead exceeds any
+        # runtime benefit when the AST is walked exactly once per execution.
+        if level.value >= OptimizationLevel.O1.value:
+            pipeline.add_pass(ConstantFoldingPass())
+            pipeline.add_pass(DeadCodeEliminationPass(aggressive=False))
+
+        if level.value >= OptimizationLevel.O2.value:
+            pipeline.add_pass(StrengthReductionPass())
+            # Second fold after strength reduction can collapse new constants.
+            pipeline.add_pass(ConstantFoldingPass())
+            pipeline.add_pass(DeadCodeEliminationPass(aggressive=True))
+
+        if level == OptimizationLevel.O3:
+            pipeline.add_pass(CommonSubexpressionEliminationPass())
+            pipeline.add_pass(TailCallOptimizationPass())
+            pipeline.add_pass(ConstantFoldingPass())
+
+        return pipeline
+
+    # --- Compiled-output pipeline (default) ---
     # O1 and above: basic optimizations
     if level.value >= OptimizationLevel.O1.value:
         pipeline.add_pass(ConstantFoldingPass())

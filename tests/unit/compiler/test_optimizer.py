@@ -158,6 +158,120 @@ class TestOptimizationLevel:
 
 
 # ============================================================
+# Section 15b - Interpreter-mode pipeline (Priority 8 regression guard)
+# ============================================================
+
+class TestInterpreterModePipeline:
+    """Verify that interpreter_mode=True excludes AST-inflating passes.
+
+    Root cause of the O3>O0 regression (perf-baseline.json Feb 2026):
+    TypeSpecializationPass, FunctionInliningPass, LoopUnrollingPass, and
+    DispatchOptimizationPass all add or duplicate AST nodes that the
+    interpreter walks on every execution.  StringInterningPass at
+    min_occurrences=1 annotates every string literal without benefit.
+    None of these annotations are read by the interpreter.
+
+    The fix: create_optimization_pipeline(level, interpreter_mode=True)
+    restricts the pipeline to passes that reduce interpretation work
+    (ConstantFolding, DCE, StrengthReduction, CSE, TCO).
+    """
+
+    def _pass_names(self, mode, level_int):
+        from nlpl.optimizer import create_optimization_pipeline, OptimizationLevel
+        lvl_map = {0: OptimizationLevel.O0, 1: OptimizationLevel.O1,
+                   2: OptimizationLevel.O2, 3: OptimizationLevel.O3}
+        pipeline = create_optimization_pipeline(lvl_map[level_int], interpreter_mode=mode)
+        return [p.name for p in pipeline.passes]
+
+    # --- interpreter_mode=True: forbidden passes must be absent ---
+
+    @pytest.mark.parametrize("level", [1, 2, 3])
+    def test_no_function_inlining_in_interpreter_mode(self, level):
+        names = self._pass_names(True, level)
+        assert not any("inlin" in n.lower() for n in names), (
+            f"FunctionInliningPass must not run at O{level} in interpreter mode; got {names}"
+        )
+
+    @pytest.mark.parametrize("level", [1, 2, 3])
+    def test_no_loop_unrolling_in_interpreter_mode(self, level):
+        names = self._pass_names(True, level)
+        assert not any("unroll" in n.lower() for n in names), (
+            f"LoopUnrollingPass must not run at O{level} in interpreter mode; got {names}"
+        )
+
+    @pytest.mark.parametrize("level", [1, 2, 3])
+    def test_no_type_specialization_in_interpreter_mode(self, level):
+        names = self._pass_names(True, level)
+        assert not any("specializ" in n.lower() for n in names), (
+            f"TypeSpecializationPass must not run at O{level} in interpreter mode; got {names}"
+        )
+
+    @pytest.mark.parametrize("level", [1, 2, 3])
+    def test_no_dispatch_optimization_in_interpreter_mode(self, level):
+        names = self._pass_names(True, level)
+        assert not any("dispatch" in n.lower() for n in names), (
+            f"DispatchOptimizationPass must not run at O{level} in interpreter mode; got {names}"
+        )
+
+    # --- interpreter_mode=True: beneficial passes must be present ---
+
+    @pytest.mark.parametrize("level", [1, 2, 3])
+    def test_constant_folding_present_in_interpreter_mode(self, level):
+        names = self._pass_names(True, level)
+        assert any("constant" in n.lower() or "fold" in n.lower() for n in names), (
+            f"ConstantFoldingPass must run at O{level} in interpreter mode; got {names}"
+        )
+
+    @pytest.mark.parametrize("level", [1, 2, 3])
+    def test_dce_present_in_interpreter_mode(self, level):
+        names = self._pass_names(True, level)
+        assert any("dead" in n.lower() or "dce" in n.lower() or "eliminat" in n.lower() for n in names), (
+            f"DeadCodeEliminationPass must run at O{level} in interpreter mode; got {names}"
+        )
+
+    # --- compiled mode still includes the full pipeline ---
+
+    def test_compiled_mode_includes_inlining_at_o2(self):
+        names = self._pass_names(False, 2)
+        assert any("inlin" in n.lower() for n in names), (
+            f"FunctionInliningPass must be present in compiled mode O2; got {names}"
+        )
+
+    def test_compiled_mode_includes_type_specialization_at_o2(self):
+        names = self._pass_names(False, 2)
+        assert any("specializ" in n.lower() for n in names), (
+            f"TypeSpecializationPass must be present in compiled mode O2; got {names}"
+        )
+
+    def test_compiled_mode_includes_loop_unrolling_at_o2(self):
+        names = self._pass_names(False, 2)
+        assert any("unroll" in n.lower() for n in names), (
+            f"LoopUnrollingPass must be present in compiled mode O2; got {names}"
+        )
+
+    # --- O0 is empty regardless of mode ---
+
+    def test_o0_pipeline_empty_interpreter_mode(self):
+        names = self._pass_names(True, 0)
+        assert names == [], f"O0 pipeline must be empty; got {names}"
+
+    def test_o0_pipeline_empty_compiled_mode(self):
+        names = self._pass_names(False, 0)
+        assert names == [], f"O0 pipeline must be empty; got {names}"
+
+    # --- interpreter calls pipeline with interpreter_mode=True ---
+
+    def test_interpreter_passes_interpreter_mode(self):
+        """Verify the interpreter.interpret() passes interpreter_mode=True to the pipeline."""
+        import inspect
+        from nlpl.interpreter.interpreter import Interpreter
+        source = inspect.getsource(Interpreter.interpret)
+        assert "interpreter_mode=True" in source, (
+            "Interpreter.interpret() must call create_optimization_pipeline(..., interpreter_mode=True)"
+        )
+
+
+# ============================================================
 # Section 16 - Assertion library (ExpectStatement)
 # ============================================================
 
