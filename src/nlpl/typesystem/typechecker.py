@@ -467,6 +467,49 @@ class TypeChecker:
                 for stmt in statement.else_body:
                     self.check_statement(stmt, branch_env)
             return ANY_TYPE
+        elif statement.__class__.__name__ == 'RcCreation':
+            # Rc/Arc/Weak creation: Rc of T with value
+            # Type-check the inner value expression if present.
+            if hasattr(statement, 'value') and statement.value is not None:
+                self.check_statement(statement.value, env)
+            return ANY_TYPE
+        elif statement.__class__.__name__ == 'DowngradeExpression':
+            # downgrade rc_value -> Weak
+            if hasattr(statement, 'rc_expr') and statement.rc_expr is not None:
+                self.check_statement(statement.rc_expr, env)
+            return ANY_TYPE
+        elif statement.__class__.__name__ == 'UpgradeExpression':
+            # upgrade weak_value -> Rc or None
+            if hasattr(statement, 'weak_expr') and statement.weak_expr is not None:
+                self.check_statement(statement.weak_expr, env)
+            return ANY_TYPE
+        elif statement.__class__.__name__ == 'MoveExpression':
+            # move x -> transfers ownership; source becomes inaccessible
+            var_name = getattr(statement, 'var_name', None)
+            if var_name is not None:
+                try:
+                    return env.get_variable_type(var_name)
+                except Exception:
+                    pass
+            return ANY_TYPE
+        elif statement.__class__.__name__ in ('BorrowExpression', 'BorrowExpressionWithLifetime'):
+            # borrow x / borrow mutable x / borrow x with lifetime L
+            var_name = getattr(statement, 'var_name', None)
+            if var_name is not None:
+                try:
+                    return env.get_variable_type(var_name)
+                except Exception:
+                    pass
+            return ANY_TYPE
+        elif statement.__class__.__name__ == 'DropBorrowStatement':
+            # drop borrow x / drop borrow mutable x
+            return ANY_TYPE
+        elif statement.__class__.__name__ == 'LifetimeAnnotation':
+            # Lifetime annotation node (pure metadata at runtime)
+            return ANY_TYPE
+        elif statement.__class__.__name__ == 'MovedValue':
+            # Sentinel value placed after a move — accessing this is a runtime error.
+            return ANY_TYPE
         else:
             raise TypeCheckError(f"Unsupported statement type: {statement.__class__.__name__}")
             return ANY_TYPE

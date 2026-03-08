@@ -725,7 +725,7 @@ class Parser:
         
         # Create a function call to list_append
         # This translates "add X to Y" into "list_append(Y, X)"
-        return FunctionCall("list_append", [target, value], [], line_num)
+        return FunctionCall("list_append", [target, value], [], line_number=line_num)
     
     def create_statement(self):
         """Parse a create statement for variable initialization.
@@ -5398,7 +5398,7 @@ class Parser:
                     
                     # If func_name_or_expr is already a parsed expression (Identifier), create FunctionCall
                     if isinstance(func_name_or_expr, str):
-                        expr = FunctionCall(func_name_or_expr, arguments, call_type_arguments, line_num)
+                        expr = FunctionCall(func_name_or_expr, arguments, call_type_arguments, line_number=line_num)
                     else:
                         # It's already an expression node, just return it
                         expr = func_name_or_expr
@@ -5406,7 +5406,7 @@ class Parser:
                 elif func_name_or_expr:
                     # "call <function_name>" or "call (<expr>)" without "with" - no args
                     if isinstance(func_name_or_expr, str):
-                        expr = FunctionCall(func_name_or_expr, [], call_type_arguments if 'call_type_arguments' in locals() else [], line_num)
+                        expr = FunctionCall(func_name_or_expr, [], call_type_arguments if 'call_type_arguments' in locals() else [], line_number=line_num)
                     else:
                         # Already parsed as expression (e.g., member access)
                         expr = func_name_or_expr
