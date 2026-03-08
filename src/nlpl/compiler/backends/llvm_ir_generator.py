@@ -11672,7 +11672,20 @@ class LLVMIRGenerator(CodeGenerator):
             # panic_o = os.path.join(runtime_dir, 'panic.o')
             
             link_objs = [obj_file]
-            
+
+            # Attempt to build/locate the NLPL native runtime library (libNLPL.a).
+            # The library provides nlpl_* runtime functions and supplements the
+            # inline IR helper definitions.  If cmake / cc are missing we fall
+            # back gracefully -- the inline IR definitions remain sufficient.
+            try:
+                from nlpl.stdlib_native import build_if_needed, get_library_path
+                build_if_needed(verbose=False)
+                stdlib_native_lib = get_library_path()
+                if stdlib_native_lib and os.path.isfile(stdlib_native_lib):
+                    link_objs.append(stdlib_native_lib)
+            except Exception:
+                pass  # Non-fatal: inline IR helpers cover all needed symbols
+
             # Build clang command with optimization and FFI library flags
             # Use clang++ to link C++ runtime for exception handling
             clang_cmd = [clang, '-lstdc++'] + link_objs + ['-o', output_file, '-lm', '-no-pie']
