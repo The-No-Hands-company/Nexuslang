@@ -95,6 +95,8 @@ class NLPLLanguageServer:
         from ..lsp.references import ReferencesProvider
         from ..lsp.rename import RenameProvider
         from ..lsp.semantic_tokens import SemanticTokensProvider
+        from ..lsp.code_lens import CodeLensProvider
+        from ..lsp.inlay_hints import InlayHintsProvider
         
         self.completion_provider = CompletionProvider(self)
         self.definition_provider = DefinitionProvider(self)
@@ -107,6 +109,8 @@ class NLPLLanguageServer:
         self.signature_help_provider = SignatureHelpProvider(self)
         self.rename_provider = RenameProvider(self)
         self.semantic_tokens_provider = SemanticTokensProvider(self)
+        self.code_lens_provider = CodeLensProvider(self)
+        self.inlay_hints_provider = InlayHintsProvider(self)
         
         logger.info("NLPL Language Server initialized")
     
@@ -247,6 +251,15 @@ class NLPLLanguageServer:
         elif method == 'textDocument/semanticTokens/full':
             return self._handle_semantic_tokens_full(msg_id, params)
         
+        elif method == 'textDocument/codeLens':
+            return self._handle_code_lens(msg_id, params)
+        
+        elif method == 'codeLens/resolve':
+            return self._handle_code_lens_resolve(msg_id, params)
+        
+        elif method == 'textDocument/inlayHint':
+            return self._handle_inlay_hint(msg_id, params)
+        
         elif method == 'shutdown':
             logger.info("Shutdown requested")
             return {"jsonrpc": "2.0", "id": msg_id, "result": None}
@@ -339,7 +352,11 @@ class NLPLLanguageServer:
             "semanticTokensProvider": {
                 "legend": self.semantic_tokens_provider.get_semantic_tokens_legend(),
                 "full": True
-            }
+            },
+            "codeLensProvider": {
+                "resolveProvider": True
+            },
+            "inlayHintProvider": True
         }
         
         return {
@@ -581,6 +598,46 @@ class NLPLLanguageServer:
             }
         }
     
+    # ------------------------------------------------------------------
+    # Code Lens handlers
+    # ------------------------------------------------------------------
+
+    def _handle_code_lens(self, msg_id: int, params: Dict) -> Dict:
+        """Handle textDocument/codeLens request."""
+        uri = params['textDocument']['uri']
+        text = self.documents.get(uri, '')
+        try:
+            lenses = self.code_lens_provider.get_code_lenses(uri, text)
+        except Exception as e:
+            logger.error(f"Error getting code lenses for {uri}: {e}", exc_info=True)
+            lenses = []
+        return {"jsonrpc": "2.0", "id": msg_id, "result": lenses}
+
+    def _handle_code_lens_resolve(self, msg_id: int, params: Dict) -> Dict:
+        """Handle codeLens/resolve request."""
+        try:
+            lens = self.code_lens_provider.resolve_code_lens(params)
+        except Exception as e:
+            logger.error(f"Error resolving code lens: {e}", exc_info=True)
+            lens = params
+        return {"jsonrpc": "2.0", "id": msg_id, "result": lens}
+
+    # ------------------------------------------------------------------
+    # Inlay Hints handler
+    # ------------------------------------------------------------------
+
+    def _handle_inlay_hint(self, msg_id: int, params: Dict) -> Dict:
+        """Handle textDocument/inlayHint request."""
+        uri = params['textDocument']['uri']
+        text = self.documents.get(uri, '')
+        range_ = params.get('range')
+        try:
+            hints = self.inlay_hints_provider.get_inlay_hints(uri, text, range_)
+        except Exception as e:
+            logger.error(f"Error getting inlay hints for {uri}: {e}", exc_info=True)
+            hints = []
+        return {"jsonrpc": "2.0", "id": msg_id, "result": hints}
+
     def _handle_document_symbol(self, msg_id: int, params: Dict) -> Dict:
         """Handle textDocument/documentSymbol request."""
         uri = params['textDocument']['uri']
