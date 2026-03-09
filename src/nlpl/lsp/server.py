@@ -97,6 +97,7 @@ class NLPLLanguageServer:
         from ..lsp.semantic_tokens import SemanticTokensProvider
         from ..lsp.code_lens import CodeLensProvider
         from ..lsp.inlay_hints import InlayHintsProvider
+        from ..lsp.dead_code import DeadCodeProvider
         
         self.completion_provider = CompletionProvider(self)
         self.definition_provider = DefinitionProvider(self)
@@ -111,6 +112,7 @@ class NLPLLanguageServer:
         self.semantic_tokens_provider = SemanticTokensProvider(self)
         self.code_lens_provider = CodeLensProvider(self)
         self.inlay_hints_provider = InlayHintsProvider(self)
+        self.dead_code_provider = DeadCodeProvider(self)
         
         logger.info("NLPL Language Server initialized")
     
@@ -380,8 +382,12 @@ class NLPLLanguageServer:
         self.documents[uri] = text
         logger.info(f"Opened document: {uri}")
         
-        # Send diagnostics
+        # Send diagnostics (syntax + type errors merged with dead-code warnings)
         diagnostics = self.diagnostics_provider.get_diagnostics(uri, text)
+        try:
+            diagnostics += self.dead_code_provider.get_diagnostics(uri, text)
+        except Exception as e:
+            logger.error(f"Dead code analysis error for {uri}: {e}", exc_info=True)
         self._publish_diagnostics(uri, diagnostics)
     
     def _handle_did_change(self, params: Dict):
@@ -402,8 +408,12 @@ class NLPLLanguageServer:
                 except Exception as e:
                     logger.error(f"Error re-indexing file {uri}: {e}")
             
-            # Send diagnostics
+            # Send diagnostics (syntax + dead-code warnings)
             diagnostics = self.diagnostics_provider.get_diagnostics(uri, changes[0]['text'])
+            try:
+                diagnostics += self.dead_code_provider.get_diagnostics(uri, changes[0]['text'])
+            except Exception as e:
+                logger.error(f"Dead code analysis error for {uri}: {e}", exc_info=True)
             self._publish_diagnostics(uri, diagnostics)
     
     def _handle_did_close(self, params: Dict):

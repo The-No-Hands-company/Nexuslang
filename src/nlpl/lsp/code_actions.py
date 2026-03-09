@@ -5,6 +5,7 @@ Code Actions Provider
 Provides quick fixes and refactoring actions using AST-based analysis.
 """
 
+import re
 from typing import List, Dict, Optional
 from ..parser.lexer import Lexer
 from ..parser.parser import Parser
@@ -71,19 +72,19 @@ class CodeActionsProvider:
         # Build symbol table
         symbol_table = self._get_or_build_symbol_table(text, uri)
         
-        # Add organize imports action
-        actions.append({
-            "title": "Organize imports",
-            "kind": self.KIND_SOURCE_ORGANIZE_IMPORTS,
-            "command": {
-                "title": "Organize imports",
-                "command": "nlpl.organizeImports",
-                "arguments": [uri]
-            }
-        })
-        
+        # Organize imports (actual document edit, not just a command dispatch)
+        organize_action = self._organize_imports(uri, text)
+        if organize_action:
+            actions.append(organize_action)
+
+        # Toggle comment for the selected / cursor range
+        toggle_action = self._toggle_comment(uri, text, range_params)
+        if toggle_action:
+            actions.append(toggle_action)
+
         # Check if we have a selection for extract actions
         if self._has_selection(range_params):
+            # Extract selection into a function (command dispatch)
             actions.append({
                 "title": "Extract function",
                 "kind": self.KIND_REFACTOR_EXTRACT,
@@ -93,10 +94,19 @@ class CodeActionsProvider:
                     "arguments": [uri, range_params]
                 }
             })
+            # Extract selection into a named variable
+            extract_var = self._extract_variable(uri, text, range_params)
+            if extract_var:
+                actions.append(extract_var)
         
+        # Inline variable when cursor sits on a single-use variable declaration
+        start = range_params["start"]
+        inline_action = self._inline_variable(uri, text, start["line"], start["character"])
+        if inline_action:
+            actions.append(inline_action)
+
         # Get symbol at cursor for targeted actions
         if symbol_table:
-            start = range_params["start"]
             symbol = symbol_table.get_symbol_at_position(uri, start["line"], start["character"])
             
             if symbol and not symbol.type_annotation:
@@ -142,7 +152,6 @@ class CodeActionsProvider:
             
             # Fix undefined variable
             if 'undefined' in message.lower():
-                import re
                 match = re.search(r"'(\w+)'", message)
                 if match:
                     var_name = match.group(1)
@@ -243,7 +252,6 @@ class CodeActionsProvider:
                 continue
 
             if "undefined" in message_lower and ("declare" in fix_lower or "define" in fix_lower or "initialize" in fix_lower):
-                import re
                 match = re.search(r"'(\w+)'", message)
                 if match:
                     action = self._declare_variable_action(uri, diag_range, match.group(1), diagnostic)
@@ -296,7 +304,6 @@ class CodeActionsProvider:
     def _add_type_annotation(self, uri: str, text: str, diag_range: Dict, message: str) -> Optional[Dict]:
         """Add missing type annotation."""
         # Extract expected type from error message
-        import re
         type_match = re.search(r"expected '([^']+)'", message, re.IGNORECASE)
         if not type_match:
             return None
@@ -374,9 +381,242 @@ class CodeActionsProvider:
     
     def _extract_variable_name(self, message: str) -> Optional[str]:
         """Extract variable name from diagnostic message."""
-        import re
         match = re.search(r"variable '([^']+)'", message)
         return match.group(1) if match else None
+
+    # ------------------------------------------------------------------
+    # New Week-5 refactoring actions
+    # ------------------------------------------------------------------
+
+    def _organize_imports(self, uri: str, text: str) -> Optional[Dict]:
+        """
+        Sort import statements alphabetically, preserving their relative
+        block (contiguous import lines are treated as a group).
+
+        Only produces an action when the order would actually change.
+        """
+        lines = text.split("\n")
+        # Collect contiguous import blocks with their line ranges
+        blocks: List[Dict] = []  # [{start, end, lines:[...]}]
+        i = 0
+        while i < len(lines):
+            stripped = lines[i].strip()
+            if re.match(r"^(import|from)\b", stripped, re.IGNORECASE):
+                block_start = i
+                block_lines = [lines[i]]
+                j = i + 1
+                while j < len(lines) and re.match(
+                    r"^(import|from)\b", lines[j].strip(), re.IGNORECASE
+                ):
+                    block_lines.append(lines[j])
+                    j += 1
+                blocks.append({"start": block_start, "end": j - 1, "lines": block_lines})
+                i = j
+            else:
+                i += 1
+
+        if not blocks:
+            return None
+
+        # Build the edit changes
+        changes = []
+        changed = False
+        for block in blocks:
+            sorted_lines = sorted(block["lines"], key=lambda l: l.strip().lower())
+            if sorted_lines != block["lines"]:
+                changed = True
+                changes.append({
+                    "range": {
+                        "start": {"line": block["start"], "character": 0},
+                        "end": {"line": block["end"] + 1, "character": 0},
+                    },
+                    "newText": "\n".join(sorted_lines) + "\n",
+                })
+
+        if not changed:
+            return None
+
+        return {
+            "title": "Organize imports",
+            "kind": self.KIND_SOURCE_ORGANIZE_IMPORTS,
+            "edit": {"changes": {uri: changes}},
+        }
+
+    def _toggle_comment(self, uri: str, text: str, range_params: Dict) -> Optional[Dict]:
+        """
+        Comment or uncomment every line in the range.
+
+        If ALL non-empty lines in the range are already commented, the action
+        removes the leading `# `.  Otherwise it adds `# `.
+        """
+        lines = text.split("\n")
+        start_line = range_params["start"]["line"]
+        end_line = range_params["end"]["line"]
+
+        target_lines = [
+            (i, lines[i])
+            for i in range(start_line, min(end_line + 1, len(lines)))
+        ]
+        non_empty = [(i, l) for i, l in target_lines if l.strip()]
+        if not non_empty:
+            return None
+
+        all_commented = all(l.lstrip().startswith("#") for _, l in non_empty)
+        edits = []
+        for i, line in non_empty:
+            if all_commented:
+                # Remove the leading `# ` (or `#`)
+                new_line = re.sub(r"^(\s*)#\s?", r"\1", line)
+            else:
+                # Add `# ` at the indent level
+                indent = len(line) - len(line.lstrip())
+                new_line = line[:indent] + "# " + line[indent:]
+            edits.append({
+                "range": {
+                    "start": {"line": i, "character": 0},
+                    "end": {"line": i, "character": len(line)},
+                },
+                "newText": new_line,
+            })
+
+        title = "Uncomment lines" if all_commented else "Comment lines"
+        return {
+            "title": title,
+            "kind": self.KIND_REFACTOR,
+            "edit": {"changes": {uri: edits}},
+        }
+
+    def _extract_variable(self, uri: str, text: str, range_params: Dict) -> Optional[Dict]:
+        """
+        Wrap the selected expression in a new named variable.
+
+        Inserts  ``set newValue to <selection>``  on the line above the
+        selection start, and replaces the selection with ``newValue``.
+        """
+        lines = text.split("\n")
+        start = range_params["start"]
+        end = range_params["end"]
+        start_line = start["line"]
+        start_char = start["character"]
+        end_char = end["character"]
+
+        # Only handle single-line selections for simplicity
+        if start["line"] != end["line"]:
+            return None
+
+        if start_line >= len(lines):
+            return None
+
+        selected = lines[start_line][start_char:end_char].strip()
+        if not selected or len(selected) < 2:
+            return None
+
+        indent = len(lines[start_line]) - len(lines[start_line].lstrip())
+        new_var = "newValue"
+        insert_text = " " * indent + f"set {new_var} to {selected}\n"
+
+        return {
+            "title": f"Extract '{selected}' to variable",
+            "kind": self.KIND_REFACTOR_EXTRACT,
+            "edit": {
+                "changes": {
+                    uri: [
+                        # Insert the new variable declaration above
+                        {
+                            "range": {
+                                "start": {"line": start_line, "character": 0},
+                                "end": {"line": start_line, "character": 0},
+                            },
+                            "newText": insert_text,
+                        },
+                        # Replace the selection with the variable name
+                        # (line number shifts +1 after the insertion)
+                        {
+                            "range": {
+                                "start": {"line": start_line + 1, "character": start_char},
+                                "end": {"line": start_line + 1, "character": end_char},
+                            },
+                            "newText": new_var,
+                        },
+                    ]
+                }
+            },
+        }
+
+    def _inline_variable(self, uri: str, text: str, line_num: int, char_num: int) -> Optional[Dict]:
+        """
+        Replace all uses of a variable with its initializer value and remove
+        the declaration.
+
+        Triggered when the cursor is on the variable name in a
+        ``set varname to value`` declaration line.
+        Only acts when the variable has exactly one assignment.
+        """
+        lines = text.split("\n")
+        if line_num >= len(lines):
+            return None
+
+        line = lines[line_num]
+        m = re.match(r"^(\s*)set\s+(\w+)\s+to\s+(.+)$", line, re.IGNORECASE)
+        if not m:
+            return None
+
+        var_name = m.group(2)
+        value = m.group(3).strip()
+        # Strip trailing comment
+        value = re.sub(r"\s*#.*$", "", value).strip()
+
+        # Cursor must be on the variable name
+        indent_len = len(m.group(1))
+        name_start = indent_len + len("set ")
+        name_end = name_start + len(var_name)
+        if not (name_start <= char_num < name_end):
+            return None
+
+        # Count all assignments to this variable (should be exactly 1)
+        assign_pattern = re.compile(
+            rf"^\s*set\s+{re.escape(var_name)}\s+to\b", re.IGNORECASE
+        )
+        assignments = sum(1 for l in lines if assign_pattern.match(l))
+        if assignments != 1:
+            return None
+
+        # Build replacement edits:
+        # 1. Delete the declaration line
+        # 2. Replace each non-declaration use of var_name with value
+        use_pattern = re.compile(rf"\b{re.escape(var_name)}\b")
+        edits: List[Dict] = []
+
+        for i, l in enumerate(lines):
+            if i == line_num:
+                # Delete the declaration
+                edits.append({
+                    "range": {
+                        "start": {"line": i, "character": 0},
+                        "end": {"line": i + 1, "character": 0},
+                    },
+                    "newText": "",
+                })
+                continue
+            # Replace every occurrence of the variable name on this line
+            if use_pattern.search(l):
+                new_line = use_pattern.sub(value, l)
+                edits.append({
+                    "range": {
+                        "start": {"line": i, "character": 0},
+                        "end": {"line": i, "character": len(l)},
+                    },
+                    "newText": new_line,
+                })
+
+        if not edits:
+            return None
+
+        return {
+            "title": f"Inline variable '{var_name}'",
+            "kind": self.KIND_REFACTOR,
+            "edit": {"changes": {uri: edits}},
+        }
 
 
 __all__ = ['CodeActionsProvider']
