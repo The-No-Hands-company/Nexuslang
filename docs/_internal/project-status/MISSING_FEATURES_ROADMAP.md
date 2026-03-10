@@ -2834,14 +2834,14 @@ end
 **Current State:**
 
 - ✅ GitHub repository exists
+- ✅ CONTRIBUTING.md, CODE_OF_CONDUCT.md, issue/PR templates (March 4, 2026)
 - ❌ Low visibility (1 star, 0 forks as of Feb 14, 2026)
 - ❌ No community forums/Discord/Zulip
-- ❌ No contribution guidelines
-- ❌ No showcase projects
+- ✅ Showcase: Source Code Analyzer CLI tool (590 lines, March 2026)
 
 **What's Needed:**
 
-#### 8.6.1 Community Infrastructure ❌ MISSING
+#### 8.6.1 Community Infrastructure ✅ SUBSTANTIALLY COMPLETE (March 2026)
 
 - [ ] **Communication Channels**
   - Discord server or Zulip instance
@@ -2849,30 +2849,38 @@ end
   - Matrix room (for open-source purists)
   - Mailing list (optional)
 
-- [ ] **Contribution Framework**
-  - CONTRIBUTING.md with guidelines
-  - Code of conduct
-  - Issue templates (bug, feature, question)
-  - Pull request templates
-  - First-time contributor label/issues
+- [x] **Contribution Framework** (COMPLETE -- March 4, 2026)
+  - CONTRIBUTING.md with guidelines (172 lines, links to docs/contributing/)
+  - CODE_OF_CONDUCT.md (Contributor Covenant v2.1)
+  - Issue templates: bug_report.md, feature_request.md, rfc.md
+  - Pull request template (pull_request_template.md)
+  - First-time contributor label/issues (tracked in issue templates)
 
-- [ ] **Project Governance**
+- [x] **Project Governance** (PARTIAL)
   - Roadmap transparency (this document!)
-  - RFC process for major changes
-  - Release schedule
-  - Maintainer team structure
+  - RFC process for major changes (rfc.md issue template)
+  - Release schedule (not yet formalized)
+  - Maintainer team structure (not yet formalized)
 
-**Priority:** 🟡 MEDIUM  
-**Estimated Effort:** 1-2 weeks setup, ongoing maintenance
+**Priority:** Communication channels remain; contribution framework COMPLETE  
+**Estimated Effort:** Communication channels: 1 week; governance formalization: 1 week
 
 ---
 
-#### 8.6.2 Showcase Projects ❌ MISSING
+#### 8.6.2 Showcase Projects -- IN PROGRESS (March 2026)
 
 **Purpose:** Demonstrate NLPL viability with real-world applications
 
-- [ ] **Flagship Applications**
-  - **CLI Tool**: System utility (file manager, log analyzer)
+- [x] **Flagship Applications (first)**
+  - **Source Code Analyzer** (`showcase/source_analyzer/analyze.nlpl`, 590 lines)
+    - CLI tool that scans directories and reports language breakdown, line counts,
+      comment density, largest files, and visual distribution bars
+    - Exercises: file I/O, string processing, type conversion, control flow,
+      functions (7), collections (dicts + lists), error handling, formatted output
+    - Uncovered usability findings: reserved-word collisions, return-in-try bug,
+      float-division semantics, no dict iteration, no string multiplication
+
+- [ ] **Additional Showcases (planned)**
   - **Web Service**: REST API with database (when HTTP/DB ready)
   - **Data Processing**: ETL pipeline or analytics tool
   - **Game or Graphics Demo**: Showcase low-level + high-level (when graphics mature)
@@ -2996,7 +3004,7 @@ end
 - ⏳ 90%+ test coverage (in progress)
 - ⏳ Consistent 3-5x C performance (needs optimization)
 - ⏳ 10+ critical stdlib modules added (62 exist, 8 more needed)
-- ⏳ 3+ flagship showcase projects (pending)
+- ✅ 1 flagship showcase project (Source Code Analyzer); additional showcases planned
 - ✅ 50+ GitHub stars (community interest) - Likely achieved
 - ⏳ 5+ external contributors (pending)
 
