@@ -316,6 +316,14 @@ def main():
     if args.profile:
         profiler = enable_profiling()
         profiler.start()
+
+    # Warn when type checking is disabled
+    if args.no_type_check:
+        print(
+            "warning: type checking disabled via --no-type-check; "
+            "type errors will only be caught at runtime",
+            file=sys.stderr,
+        )
     
     # Start REPL if no file specified or --repl flag
     if args.file is None or (args.repl and not args.file):

@@ -109,6 +109,18 @@ class Interpreter:
     _DISPATCH_TABLE: Dict[str, str] = {}  # node_type -> method_name (str)
 
     def __init__(self, runtime, enable_type_checking=False, source=None):
+        """Initialize the interpreter.
+
+        Args:
+            runtime: The Runtime environment.
+            enable_type_checking: Whether to run the static type checker before
+                execution.  Defaults to False at the constructor level because
+                the TypeChecker requires stdlib functions to be synced first
+                (done automatically in run_program).  The CLI entry point
+                (main.py) passes True by default so that end-user programs are
+                always type-checked unless --no-type-check is given.
+            source: Full source text (for error context).
+        """
         self.runtime = runtime
         self.source = source  # Store full source for error context
         self.global_scope = {}
@@ -126,6 +138,13 @@ class Interpreter:
         # Ownership / borrow tracking
         # Structure: { var_name: {"immutable_count": int, "is_mutable": bool} }
         self._borrow_tracker: dict = {}
+
+        # Runtime type enforcement: parallel scope stack tracking declared type
+        # annotations for variables.  When a variable is declared with a type
+        # (e.g.  set x as Integer to 5), the annotation is stored here so that
+        # subsequent reassignments (set x to "hello") are caught as type errors
+        # even when the static type checker is disabled.
+        self._type_annotations: list = [{}]  # parallel to current_scope
 
         # Unsafe FFI context depth (0 = safe mode, >0 = inside an 'unsafe' block).
         # When > 0, null-pointer guards, bounds checks, and ownership enforcement
@@ -515,11 +534,90 @@ class Interpreter:
             full_source=self.source
         )
         
+    # ------------------------------------------------------------------
+    # Runtime type map: NLPL type annotation string -> acceptable Python types.
+    # Used by _validate_runtime_type() to enforce declared types at execution.
+    # ------------------------------------------------------------------
+    _RUNTIME_TYPE_MAP: Dict[str, Any] = {
+        "Integer": (int,),
+        "int": (int,),
+        "Float": (int, float),   # int coerces to float
+        "float": (int, float),
+        "String": (str,),
+        "string": (str,),
+        "Text": (str,),
+        "Boolean": (bool,),
+        "bool": (bool,),
+        "List": (list,),
+        "Array": (list,),
+        "Dictionary": (dict,),
+        "Dict": (dict,),
+    }
+
+    def _resolve_type_annotation(self, name: str) -> str | None:
+        """Look up the declared type annotation for *name* across all scopes.
+
+        Searches from innermost scope outward (matching variable resolution).
+        Returns the annotation string, or None if un-typed.
+        """
+        for scope in reversed(self._type_annotations):
+            if name in scope:
+                return scope[name]
+        return None
+
+    def _validate_runtime_type(self, value, type_annotation, var_name, node=None):
+        """Raise NLPLTypeError when *value* does not match *type_annotation*.
+
+        Only string annotations that appear in *_RUNTIME_TYPE_MAP* are enforced;
+        complex/custom types (smart pointers, user classes, generics with args)
+        are left to the static type checker.
+        """
+        if value is None:
+            return  # None / null is accepted for any type (nullable by default)
+        if not isinstance(type_annotation, str):
+            return  # Non-string annotations (AST nodes) handled by static checker
+
+        # Strip generic parameters for map lookup: "List<Integer>" -> "List"
+        base_type = type_annotation.split("<")[0].split(" ")[0]
+
+        expected = self._RUNTIME_TYPE_MAP.get(base_type)
+        if expected is None:
+            return  # Unknown / user-defined type -- skip runtime check
+
+        # bool is a subclass of int in Python; guard against assigning True to Integer.
+        if base_type in ("Integer", "int") and isinstance(value, bool):
+            line = getattr(node, "line_number", getattr(node, "line", None))
+            raise NLPLTypeError(
+                f"Type error: Cannot assign value of type 'Boolean' "
+                f"to variable '{var_name}' declared as '{type_annotation}'",
+                line=line,
+                error_type_key="type_mismatch",
+                full_source=self.source,
+            )
+
+        if not isinstance(value, expected):
+            actual_type = type(value).__name__
+            # Map Python type names back to NLPL names for clearer messages
+            _py_to_nlpl = {"str": "String", "int": "Integer", "float": "Float",
+                           "bool": "Boolean", "list": "List", "dict": "Dictionary"}
+            nlpl_actual = _py_to_nlpl.get(actual_type, actual_type)
+            line = getattr(node, "line_number", getattr(node, "line", None))
+            raise NLPLTypeError(
+                f"Type error: Cannot assign value of type '{nlpl_actual}' "
+                f"to variable '{var_name}' declared as '{type_annotation}'",
+                line=line,
+                error_type_key="type_mismatch",
+                full_source=self.source,
+            )
+
     def set_variable(self, name, value):
         """Set a variable in the current scope.
 
         Raises if the variable is currently borrowed (immutably or mutably),
         since mutation of a borrowed variable violates the borrow contract.
+
+        When the variable has a declared type annotation, validates that the
+        new value matches the expected type (runtime type enforcement).
         """
         borrow = self._borrow_tracker.get(name)
         if borrow and (borrow["immutable_count"] > 0 or borrow["is_mutable"]):
@@ -530,12 +628,19 @@ class Interpreter:
                 error_type_key="runtime_error",
                 full_source=self.source,
             )
+
+        # Runtime type enforcement: check declared annotation if present
+        declared = self._resolve_type_annotation(name)
+        if declared is not None:
+            self._validate_runtime_type(value, declared, name)
+
         self.current_scope[-1][name] = value
         return value
         
     def enter_scope(self):
         """Enter a new scope."""
         self.current_scope.append({})
+        self._type_annotations.append({})
         
     def exit_scope(self):
         """Exit the current scope.
@@ -585,6 +690,8 @@ class Interpreter:
                     pass  # Never let RAII / drop errors abort cleanup
 
             self.current_scope.pop()
+            if len(self._type_annotations) > 1:
+                self._type_annotations.pop()
             
     # Module-related execution methods
     
@@ -724,6 +831,17 @@ class Interpreter:
                 # wrap_collection_with_allocator handles both list and dict
                 # and calls allocator.allocate() for the initial elements.
                 value = wrap_collection_with_allocator(value if value is not None else [], allocator)
+
+        # Store the type annotation for runtime enforcement on reassignment
+        if hasattr(node, 'type_annotation') and node.type_annotation is not None:
+            ann = node.type_annotation
+            if isinstance(ann, AllocatorHint):
+                # The base type inside the allocator hint (if present)
+                ann = getattr(ann, 'base_type', None)
+            if isinstance(ann, str):
+                self._type_annotations[-1][node.name] = ann
+                # Validate the initial value against the declared type
+                self._validate_runtime_type(value, ann, node.name, node)
 
         self.set_variable(node.name, value)
         return value

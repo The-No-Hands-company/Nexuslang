@@ -545,8 +545,9 @@ class TypeChecker:
             )
             
             if not value_type.is_compatible_with(declared_type):
+                _line = getattr(declaration, 'line_number', getattr(declaration, 'line', '?'))
                 self.errors.append(
-                    f"Line {declaration.line_number}: Type error: Cannot assign value of type "
+                    f"Line {_line}: Type error: Cannot assign value of type "
                     f"'{value_type}' to variable '{declaration.name}' of type '{declared_type}'"
                 )
                 # Define the variable with the declared type anyway (for error recovery)
