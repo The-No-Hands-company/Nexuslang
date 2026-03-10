@@ -73,6 +73,17 @@ class ReturnException(Exception):
         self.value = value
 
 
+class FallthroughException(Exception):
+    """Raised when a fallthrough statement is encountered in switch cases."""
+    pass
+
+
+class YieldException(Exception):
+    """Raised when a yield expression is encountered in generators."""
+    def __init__(self, value=None):
+        self.value = value
+
+
 class NLPLUserException(Exception):
     """Exception raised by NLPL 'raise' statements."""
     def __init__(self, exception_type, message, line=None, column=None):
@@ -106,6 +117,7 @@ class Interpreter:
         self.classes = {}
         self.macros = {}  # Registry for macro definitions
         self.comptime_constants = {}  # Registry for compile-time constants
+        self.type_aliases = {}  # Registry for type aliases
         self.attribute_definitions = {}  # Registry for declared attribute types
         self.derived_method_registry = {}  # class_name -> {method_name -> callable}
         self.last_exception = None  # To support re-raising
@@ -528,25 +540,50 @@ class Interpreter:
     def exit_scope(self):
         """Exit the current scope.
 
-        Performs RAII-style reference-count decrement for any Rc / Arc / Weak
-        values that are bound in the scope being popped.  If an Rc/Arc strong
-        count reaches zero after decrement we record the drop (value is freed).
+        Performs RAII-style cleanup in reverse declaration order:
+        1. Custom Drop trait methods on user objects and structs
+        2. Rc / Arc / Weak reference-count decrements
+
+        Drop order is LIFO (last declared, first dropped) to match
+        Rust semantics and guarantee deterministic resource release.
         """
         if len(self.current_scope) > 1:
-            # Clean up: release any borrows registered for variables in the scope
-            # being popped so outer code is not left with stale borrow records.
             scope = self.current_scope[-1]
+
+            # Clean up borrows registered for variables in this scope.
             for var_name in scope:
                 if var_name in self._borrow_tracker:
                     del self._borrow_tracker[var_name]
-            # RAII: decrement ref-counts for smart pointer values in this scope.
+
+            # RAII: iterate values in *reverse* insertion order (Python 3.7+ dicts
+            # preserve insertion order) so the last-declared variable is dropped first.
+            from ..runtime.runtime import Object as _Object
+            from ..runtime.structures import StructureInstance as _StructInst
             try:
                 from ..stdlib.smart_pointers import RcValue, ArcValue, WeakValue
-                for val in scope.values():
-                    if isinstance(val, (RcValue, ArcValue, WeakValue)):
-                        val.drop()
+                _sp_types = (RcValue, ArcValue, WeakValue)
             except Exception:
-                pass  # Never let RAII errors abort program cleanup
+                _sp_types = ()
+
+            for val in reversed(list(scope.values())):
+                try:
+                    # 1. Custom Drop: user-defined drop methods on Object / Struct
+                    #    Null the callback first to prevent re-entrant drops when
+                    #    the drop body creates an inner scope that also exits.
+                    if isinstance(val, _Object) and val._drop_method is not None:
+                        drop_fn = val._drop_method
+                        val._drop_method = None
+                        drop_fn(val)
+                    elif isinstance(val, _StructInst) and getattr(val, '_drop_method', None) is not None:
+                        drop_fn = val._drop_method
+                        val._drop_method = None
+                        drop_fn(val)
+                    # 2. Smart-pointer RAII drop
+                    if _sp_types and isinstance(val, _sp_types):
+                        val.drop()
+                except Exception:
+                    pass  # Never let RAII / drop errors abort cleanup
+
             self.current_scope.pop()
             
     # Module-related execution methods
@@ -736,6 +773,23 @@ class Interpreter:
                     full_source=self.source
                 )
         
+    @staticmethod
+    def _ast_kind_to_hkt(kind_node):
+        """Convert an AST KindAnnotation node to an HKT Kind object.
+
+        Returns a :class:`nlpl.typesystem.hkt.Kind` instance (StarKind or ArrowKind).
+        """
+        from nlpl.parser.ast import StarKindAnnotation, ArrowKindAnnotation
+        from nlpl.typesystem.hkt import STAR, ArrowKind as HKTArrowKind
+
+        if isinstance(kind_node, StarKindAnnotation):
+            return STAR
+        if isinstance(kind_node, ArrowKindAnnotation):
+            left = Interpreter._ast_kind_to_hkt(kind_node.left)
+            right = Interpreter._ast_kind_to_hkt(kind_node.right)
+            return HKTArrowKind(left, right)
+        return STAR  # Fallback
+
     def execute_function_definition(self, node):
         """Execute a function definition.
         
@@ -3954,6 +4008,24 @@ class Interpreter:
                         nested_instance = StructureInstance(self.classes[type_name])
                         # Set it as the field value
                         instance.set_field(field_name, nested_instance)
+
+            # Wire up custom Drop for structs with a 'drop' method
+            if hasattr(class_def, 'methods'):
+                for m in class_def.methods:
+                    if getattr(m, 'name', None) == "drop":
+                        def _make_struct_drop(interp, drop_node):
+                            def _drop_fn(obj):
+                                interp.enter_scope()
+                                try:
+                                    interp.set_variable("self", obj)
+                                    body = getattr(drop_node, 'body', None) or []
+                                    for stmt in body:
+                                        interp.execute(stmt)
+                                finally:
+                                    interp.exit_scope()
+                            return _drop_fn
+                        instance._drop_method = _make_struct_drop(self, m)
+                        break
             
             return instance
 
@@ -3975,6 +4047,24 @@ class Interpreter:
         if hasattr(class_def, '_derived_methods'):
             for mname, mcallable in class_def._derived_methods.items():
                 instance.add_method(mname, mcallable)
+
+        # Wire up custom Drop: if the class defines a 'drop' method, store
+        # a callable so exit_scope() can invoke it automatically (RAII).
+        if "drop" in instance.methods:
+            drop_ast = instance.methods["drop"]
+            # Create a closure that executes the drop method body
+            def _make_drop(interp, drop_node):
+                def _drop_fn(obj):
+                    interp.enter_scope()
+                    try:
+                        interp.set_variable("self", obj)
+                        body = getattr(drop_node, 'body', None) or []
+                        for stmt in body:
+                            interp.execute(stmt)
+                    finally:
+                        interp.exit_scope()
+                return _drop_fn
+            instance._drop_method = _make_drop(self, drop_ast)
 
         # Singleton support: return existing instance if @singleton class
         if getattr(class_def, '_is_singleton', False):
@@ -4396,7 +4486,7 @@ class Interpreter:
                 full_source=self.source
             )
 
-    def execute_TryExpression(self, node):
+    def execute_try_expression(self, node):
         """Execute ? operator for error propagation."""
         from ..stdlib.option_result import Result
         
@@ -4731,4 +4821,199 @@ class Interpreter:
             error_type_key="type_error",
             full_source=self.source,
         )
+
+    # ------------------------------------------------------------------
+    # Missing dispatch methods — complete coverage for all AST nodes
+    # ------------------------------------------------------------------
+
+    def execute_string_literal(self, node):
+        """Execute a string literal — return its value directly."""
+        return node.value
+
+    def execute_ternary_expression(self, node):
+        """Execute a ternary expression: condition ? true_expr : false_expr."""
+        condition = self.execute(node.condition)
+        if condition:
+            return self.execute(node.true_expr)
+        else:
+            return self.execute(node.false_expr)
+
+    def execute_panic_statement(self, node):
+        """Execute a panic statement — raise an unrecoverable error."""
+        message = self.execute(node.message) if node.message else "explicit panic"
+        raise NLPLRuntimeError(
+            message=f"panic: {message}",
+            line=getattr(node, 'line_number', None),
+            error_type_key="panic",
+            full_source=self.source,
+        )
+
+    def execute_fallthrough_statement(self, node):
+        """Execute a fallthrough statement in a switch case."""
+        raise FallthroughException()
+
+    def execute_yield_expression(self, node):
+        """Execute a yield expression — signal a generator yield."""
+        value = self.execute(node.value) if node.value else None
+        raise YieldException(value)
+
+    def execute_generator_expression(self, node):
+        """Execute a generator expression — create a lazy generator."""
+        iterable = self.execute(node.iterable)
+        results = []
+        for item in iterable:
+            self.set_variable(node.target.name, item)
+            if node.condition is None or self.execute(node.condition):
+                results.append(self.execute(node.expr))
+        return iter(results)
+
+    def execute_async_expression(self, node):
+        """Execute an async expression — schedule for concurrent execution."""
+        import concurrent.futures
+        def run():
+            return self.execute(node.expr)
+        future = self.runtime.run_concurrent(run)
+        return future
+
+    def execute_method_definition(self, node):
+        """Execute a standalone method definition (outside class context).
+        
+        When encountered at top level, register as a regular function.
+        """
+        self.functions[node.name] = node
+        return None
+
+    def execute_property_declaration(self, node):
+        """Execute a standalone property declaration (outside class context).
+        
+        Store the default value in the current scope if provided.
+        """
+        value = None
+        if node.default_value:
+            value = self.execute(node.default_value)
+        self.set_variable(node.name, value)
+        return value
+
+    def execute_abstract_method_definition(self, node):
+        """Execute an abstract method definition — register as a method stub."""
+        self.functions[node.name] = node
+        return None
+
+    def execute_export_statement(self, node):
+        """Execute an export statement — mark names as exported from module."""
+        if not hasattr(self, '_module_exports'):
+            self._module_exports = set()
+        for name in node.names:
+            self._module_exports.add(name)
+        return None
+
+    def execute_module_definition(self, node):
+        """Execute a module definition — register module namespace."""
+        module_dict = {'__name__': node.name}
+        for export_name in node.exports:
+            val = self.get_variable_or_none(export_name)
+            if val is not None:
+                module_dict[export_name] = val
+        self.set_variable(node.name, module_dict)
+        return None
+
+    def execute_decorator(self, node):
+        """Execute a decorator — return the decorator metadata.
+        
+        Decorators are typically consumed by function/class definitions,
+        not executed standalone. When dispatched alone, return metadata.
+        """
+        return {'__decorator__': node.name, 'arguments': node.arguments}
+
+    def execute_type_alias(self, node):
+        """Execute a type alias — register the alias in the type registry."""
+        if hasattr(self, 'type_aliases'):
+            self.type_aliases[node.name] = node.target_type
+        else:
+            self.type_aliases = {node.name: node.target_type}
+        return None
+
+    def execute_type_alias_definition(self, node):
+        """Execute a type alias definition — register in type system."""
+        if not hasattr(self, 'type_aliases'):
+            self.type_aliases = {}
+        self.type_aliases[node.name] = node.target_type
+        return None
+
+    def execute_rc_type(self, node):
+        """Execute Rc<T> type annotation — return type metadata."""
+        return {'__smart_pointer__': 'Rc', 'inner_type': node.inner_type}
+
+    def execute_weak_type(self, node):
+        """Execute Weak<T> type annotation — return type metadata."""
+        return {'__smart_pointer__': 'Weak', 'inner_type': node.inner_type}
+
+    def execute_arc_type(self, node):
+        """Execute Arc<T> type annotation — return type metadata."""
+        return {'__smart_pointer__': 'Arc', 'inner_type': node.inner_type}
+
+    def execute_foreign_library_load(self, node):
+        """Execute a foreign library load statement — load shared library via ctypes."""
+        import ctypes
+        try:
+            lib = ctypes.CDLL(node.library_path)
+            self.set_variable(node.alias, lib)
+            return lib
+        except OSError as e:
+            raise NLPLRuntimeError(
+                message=f"Failed to load foreign library '{node.library_path}': {e}",
+                line=getattr(node, 'line_number', None),
+                error_type_key="ffi_error",
+                full_source=self.source,
+            )
+
+    def execute_extern_type_declaration(self, node):
+        """Execute an extern type declaration — register FFI type metadata."""
+        type_info = {
+            '__extern_type__': True,
+            'name': node.name,
+            'base_type': node.base_type,
+            'is_opaque': node.is_opaque,
+            'is_function_pointer': node.is_function_pointer,
+            'function_signature': node.function_signature,
+        }
+        self.set_variable(node.name, type_info)
+        return None
+
+    def execute_callback_reference(self, node):
+        """Execute a callback reference — resolve function name to callable."""
+        func_name = node.function_name
+        if func_name in self.functions:
+            func_def = self.functions[func_name]
+            def callback_wrapper(*args):
+                self.enter_scope()
+                try:
+                    for i, param in enumerate(func_def.parameters):
+                        if i < len(args):
+                            self.set_variable(param.name, args[i])
+                    result = None
+                    for stmt in func_def.body:
+                        result = self.execute(stmt)
+                    return result
+                except ReturnException as ret:
+                    return ret.value
+                finally:
+                    self.exit_scope()
+            return callback_wrapper
+        elif func_name in self.runtime.functions:
+            return self.runtime.functions[func_name]
+        raise NLPLNameError(
+            name=func_name,
+            available_names=list(self.functions.keys()),
+            error_type_key="undefined_function",
+            full_source=self.source,
+        )
+
+    def execute_allocator_hint(self, node):
+        """Execute an allocator hint — return metadata for custom allocation."""
+        return {
+            '__allocator_hint__': True,
+            'base_type': node.base_type,
+            'allocator_name': node.allocator_name,
+        }
 

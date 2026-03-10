@@ -7,7 +7,7 @@
 ## Phase 1: Pre-v1.0 Preparation (1-3 Months, Now → April-June 2026)
 
 - Complete remaining v1.0 milestones:
-  - LSP server: Finish testing/documentation (currently 2/6 features working)
+  - LSP server: ✅ COMPLETE — 13+ features working including code lens, inlay hints, dead code detection, refactoring actions (Weeks 4-5 commits `7e237a1`, `ab5015a`)
   - Performance profiling: Complete the remaining 13% of the framework
   - Debugger: ✅ COMPLETE (100%) — 109 tests passing (Mar 3, 2026)
 - Why first? Better IDE support and debugging will make the rewrite process smoother and less error-prone.

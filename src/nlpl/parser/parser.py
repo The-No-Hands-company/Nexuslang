@@ -59,6 +59,8 @@ from nlpl.parser.ast import (
     # Contract programming
     RequireStatement, EnsureStatement, GuaranteeStatement,
     InvariantStatement, OldExpression, SpecAnnotation, SpecBlock,
+    # Higher-kinded type annotations
+    KindAnnotation, StarKindAnnotation, ArrowKindAnnotation,
 )
 
 class Parser:
@@ -1332,19 +1334,25 @@ class Parser:
         # Check for generic type parameters: function name<T, R> or function name<T: Comparable>
         type_parameters = []
         type_constraints = {}  # Dict mapping parameter name to list of trait names
+        type_param_kinds = {}  # Dict mapping parameter name to KindAnnotation (HKT)
         
         if self.current_token and self.current_token.type == TokenType.LESS_THAN:
             self.advance()  # Eat '<'
             
-            # Parse type parameters with optional trait bounds
-            # Supports: <T>, <T: Comparable>, <T: Comparable + Printable>
+            # Parse type parameters with optional trait bounds or kind annotations
+            # Supports: <T>, <T: Comparable>, <T: Comparable + Printable>, <F :: * -> *>
             while self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
                 param_name = self.current_token.lexeme
                 type_parameters.append(param_name)
                 self.advance()
                 
+                # Check for kind annotation: F :: * -> *
+                if self.current_token and self.current_token.type == TokenType.DOUBLE_COLON:
+                    self.advance()  # Eat '::'
+                    kind = self.parse_kind_annotation()
+                    type_param_kinds[param_name] = kind
                 # Check for trait bounds: T: Comparable or T: Comparable + Printable
-                if self.current_token and self.current_token.type == TokenType.COLON:
+                elif self.current_token and self.current_token.type == TokenType.COLON:
                     self.advance()  # Eat ':'
                     
                     # Parse trait names (one or more, separated by +)
@@ -1522,7 +1530,7 @@ class Parser:
                 (self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() == 'end')):
                 self.advance()
         
-        return FunctionDefinition(function_name, parameters, body, return_type, type_parameters, type_constraints, variadic, line_number=line_number)
+        return FunctionDefinition(function_name, parameters, body, return_type, type_parameters, type_constraints, variadic, type_param_kinds=type_param_kinds, line_number=line_number)
     
     def async_function_definition(self):
         """
@@ -1968,21 +1976,30 @@ class Parser:
                 class_name = self.current_token.lexeme
                 self.advance()
                 
-                # Check for generic type parameters: class Container<T>
+                # Check for generic type parameters: class Container<T> or class Functor<F :: * -> *>
                 generic_parameters = []
+                class_type_param_kinds = {}
                 if self.current_token and self.current_token.type == TokenType.LESS_THAN:
                     self.advance()  # Eat '<'
                     
-                    # Parse type parameter names
+                    # Parse type parameter names with optional kind annotations
                     if self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
-                        generic_parameters.append(self.current_token.lexeme)
+                        pname = self.current_token.lexeme
+                        generic_parameters.append(pname)
                         self.advance()
+                        if self.current_token and self.current_token.type == TokenType.DOUBLE_COLON:
+                            self.advance()  # Eat '::'
+                            class_type_param_kinds[pname] = self.parse_kind_annotation()
                     
                     while self.current_token and self.current_token.type == TokenType.COMMA:
                         self.advance()  # Eat ','
                         if self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
-                            generic_parameters.append(self.current_token.lexeme)
+                            pname = self.current_token.lexeme
+                            generic_parameters.append(pname)
                             self.advance()
+                            if self.current_token and self.current_token.type == TokenType.DOUBLE_COLON:
+                                self.advance()  # Eat '::'
+                                class_type_param_kinds[pname] = self.parse_kind_annotation()
                         else:
                             self.error("Expected type parameter name after comma")
                     
@@ -2180,6 +2197,7 @@ class Parser:
                         parent_classes=parent_classes,
                         implemented_interfaces=implemented_interfaces,
                         generic_parameters=generic_parameters,
+                        type_param_kinds=class_type_param_kinds,
                         line_number=line_number
                     )
                 else:
@@ -5708,6 +5726,8 @@ class Parser:
             # e.g. "function test that takes ...", "function describe ..."
             TokenType.TEST, TokenType.DESCRIBE, TokenType.IT,
             TokenType.EXPECT, TokenType.BEFORE_EACH, TokenType.AFTER_EACH,
+            # RAII / Drop trait: allow 'drop' as a method name inside classes
+            TokenType.DROP,
         }
         return token.type in contextual_keywords
         
@@ -7653,6 +7673,50 @@ class Parser:
                     self.error("Expected bound type after 'and'")
         
         return TypeConstraint(bounds)
+
+    # -----------------------------------------------------------------
+    # Kind annotation parsing for Higher-Kinded Types (HKT)
+    # Grammar:
+    #   kindAnnotation ::= kindAtom ('->' kindAnnotation)?
+    #   kindAtom       ::= '*' | '(' kindAnnotation ')'
+    # -----------------------------------------------------------------
+
+    def parse_kind_annotation(self):
+        """Parse a kind annotation after ``::`` in a generic type parameter.
+
+        Returns a :class:`StarKindAnnotation` or :class:`ArrowKindAnnotation`.
+        """
+        left = self._parse_kind_atom()
+
+        # Check for arrow: * -> *
+        if (self.current_token and
+                self.current_token.type in (TokenType.ARROW, TokenType.ARROW_OP)):
+            self.advance()  # Eat '->'
+            right = self.parse_kind_annotation()  # right-associative
+            return ArrowKindAnnotation(left, right,
+                                       line_number=left.line_number)
+        return left
+
+    def _parse_kind_atom(self):
+        """Parse a single kind atom: ``*`` or ``( kindAnnotation )``."""
+        line = self.current_token.line if self.current_token else None
+
+        # Parenthesized kind
+        if self.current_token and self.current_token.type == TokenType.LEFT_PAREN:
+            self.advance()  # Eat '('
+            inner = self.parse_kind_annotation()
+            if self.current_token and self.current_token.type == TokenType.RIGHT_PAREN:
+                self.advance()  # Eat ')'
+            else:
+                self.error("Expected ')' to close kind annotation")
+            return inner
+
+        # Star kind: *
+        if self.current_token and self.current_token.type == TokenType.TIMES:
+            self.advance()  # Eat '*'
+            return StarKindAnnotation(line_number=line)
+
+        self.error("Expected '*' or '(' in kind annotation")
 
     def parse_type_guard(self):
         """Parse a type guard in an if statement."""

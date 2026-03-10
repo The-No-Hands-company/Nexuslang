@@ -202,3 +202,4 @@ oom-*
 # stdlib_native build artifacts (auto-built on demand by build_if_needed())
 src/nlpl/stdlib_native/_cmake_build/
 src/nlpl/stdlib_native/*.o
+coverage.json

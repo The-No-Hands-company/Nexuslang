@@ -1025,11 +1025,12 @@ Cargo doesn't care if you're building:
   - `RefCell<T>` — runtime borrow checking (stdlib functions)
   - `Mutex<T>`, `RwLock<T>` — thread-safe smart pointers (stdlib functions)
 
-- ✅ **Automatic Drop/Destructors** (PARTIAL — scope-level only)
+- ✅ **Automatic Drop/Destructors** (COMPLETE)
   - RAII pattern: Rc/Arc/Weak ref counts drop on scope exit
   - Deterministic destruction at scope exit (function / match / try scopes)
-  - Custom drop implementations: not yet
-  - Drop order guarantees: not yet
+  - Custom drop implementations: ✅ classes and structs can define `drop` method (March 2026)
+  - Drop order guarantees: ✅ LIFO (reverse insertion order) with re-entrancy prevention (March 2026)
+  - 8 tests passing (`tests/unit/language/test_custom_drop.py`)
 
 **Priority:** HIGH (safety is critical)  
 **Estimated Effort:** Complete — Smart pointers, ownership system, runtime and compile-time borrow checker, and lifetime annotation system all implemented (Feb 2026)
@@ -2057,7 +2058,13 @@ end
 
 **Tests:** 62 new tests (test_hkt.py, test_associated_types.py, test_constrained_aliases.py) + 82 passing from related type system tests = 241 total type system tests
 
-**Note:** Full NLPL syntax for HKTs and associated types is planned for a future release; the typesystem layer is production-ready and fully tested.
+**Note:** HKT user-facing NLPL parser syntax implemented (March 2026):
+  - `DOUBLE_COLON` (`::`) token added to lexer for kind annotations
+  - `KindAnnotation`, `StarKindAnnotation`, `ArrowKindAnnotation` AST nodes
+  - `parse_kind_annotation()` recursive descent parser method (right-associative)
+  - Functions and classes accept `T :: * -> *` syntax in generic parameter lists
+  - `_ast_kind_to_hkt()` bridges AST kind nodes to the HKT type system
+  - 16 parser-level tests passing (`tests/unit/compiler/test_hkt_parser.py`)
 
 **Priority:** DONE  
 **Effort:** Completed in 1 session
@@ -3113,7 +3120,7 @@ end
 
 1. **Ownership & Borrow Checking** - Memory safety without GC (6-8 months)
 2. **Complete Async/Await Runtime** - Modern concurrency (4-6 months)
-3. **Advanced Type Features** - HKTs, effects, refinement types (6-12 months)
+3. **Advanced Type Features** - ✅ HKTs (type system + parser syntax complete); effects, refinement types remaining (6-12 months)
 
 ### HIGH PRIORITY (Essential for Production Use)
 

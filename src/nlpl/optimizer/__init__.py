@@ -154,8 +154,19 @@ def create_optimization_pipeline(
         #   - deepcopy/duplicate nodes (inlining, unrolling, specialization)
         #   - attach metadata the interpreter never reads (dispatch hints,
         #     string interning)
+        #   - insert extra variable declarations (CSE temp vars)
         # are excluded because their transformation overhead exceeds any
         # runtime benefit when the AST is walked exactly once per execution.
+        #
+        # NOTE: CommonSubexpressionEliminationPass is deliberately excluded
+        # at all levels in interpreter mode because it inserts temporary
+        # variable declarations that *increase* the AST node count.  In an
+        # AST-walking interpreter the extra variable lookups are not cheaper
+        # than re-evaluating the expression.
+        #
+        # TailCallOptimizationPass is also excluded because its
+        # transformation only benefits compiled code paths (the interpreter
+        # uses Python's own call stack regardless).
         if level.value >= OptimizationLevel.O1.value:
             pipeline.add_pass(ConstantFoldingPass())
             pipeline.add_pass(DeadCodeEliminationPass(aggressive=False))
@@ -167,9 +178,13 @@ def create_optimization_pipeline(
             pipeline.add_pass(DeadCodeEliminationPass(aggressive=True))
 
         if level == OptimizationLevel.O3:
-            pipeline.add_pass(CommonSubexpressionEliminationPass())
-            pipeline.add_pass(TailCallOptimizationPass())
+            # At O3 in interpreter mode, apply another round of strength
+            # reduction and constant folding to squeeze out remaining
+            # evaluations, plus aggressive DCE for any dead code exposed
+            # by the previous rounds.
+            pipeline.add_pass(StrengthReductionPass())
             pipeline.add_pass(ConstantFoldingPass())
+            pipeline.add_pass(DeadCodeEliminationPass(aggressive=True))
 
         return pipeline
 

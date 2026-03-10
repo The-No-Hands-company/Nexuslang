@@ -274,6 +274,7 @@ class TokenType(Enum):
     COMMA = auto()
     DOT = auto()
     COLON = auto()
+    DOUBLE_COLON = auto()  # :: for kind annotations (HKT)
     SEMICOLON = auto()
     ARROW = auto()
     EQUALS = auto()  # = for enum values and assignments
@@ -785,7 +786,10 @@ class Lexer:
             else:
                 self.add_token(TokenType.DOT)
         elif c == ':':
-            self.add_token(TokenType.COLON)
+            if self.match(':'):
+                self.add_token(TokenType.DOUBLE_COLON)
+            else:
+                self.add_token(TokenType.COLON)
         elif c == ';':
             self.add_token(TokenType.SEMICOLON)
         elif c == '+':

@@ -38,10 +38,12 @@ class Kind:
         return None
 
     def __eq__(self, other: object) -> bool:
-        raise NotImplementedError
+        if not isinstance(other, Kind):
+            return NotImplemented
+        return type(self) is type(other)
 
     def __hash__(self) -> int:
-        raise NotImplementedError
+        return hash(type(self).__name__)
 
 
 class StarKind(Kind):

@@ -69,7 +69,7 @@ class Literal:
 
 class FunctionDefinition(ASTNode):
     """Represents a function definition."""
-    def __init__(self, name, parameters, body=None, return_type=None, type_parameters=None, type_constraints=None, variadic=False, is_exported=False, decorators=None, line_number=None):
+    def __init__(self, name, parameters, body=None, return_type=None, type_parameters=None, type_constraints=None, variadic=False, is_exported=False, decorators=None, type_param_kinds=None, line_number=None):
         super().__init__("function_definition", line_number)
         self.name = name
         self.parameters = parameters or []
@@ -80,6 +80,7 @@ class FunctionDefinition(ASTNode):
         self.variadic = variadic  # True if function accepts variable arguments (...)
         self.is_exported = is_exported
         self.decorators = decorators or []  # List of decorators applied to this function
+        self.type_param_kinds = type_param_kinds or {}  # Dict: param_name -> KindAnnotation (HKT)
 class Decorator(ASTNode):
     """Represents a decorator (@decorator_name or @decorator_name with args)."""
     def __init__(self, name, arguments=None, line_number=None):
@@ -473,7 +474,7 @@ class ClassDefinition(ASTNode):
     """Represents a class definition with inheritance and interface implementation."""
     def __init__(self, name, properties=None, methods=None, parent_classes=None,
                  implemented_interfaces=None, generic_parameters=None, is_exported=False,
-                 invariants=None, decorators=None, line_number=None):
+                 invariants=None, decorators=None, type_param_kinds=None, line_number=None):
         super().__init__("class_definition", line_number)
         self.name = name
         self.properties = properties or []
@@ -484,6 +485,7 @@ class ClassDefinition(ASTNode):
         self.is_exported = is_exported
         self.invariants = invariants or []  # List of InvariantStatement nodes
         self.decorators = decorators or []  # List of Decorator nodes
+        self.type_param_kinds = type_param_kinds or {}  # Dict: param_name -> KindAnnotation (HKT)
 
 class StructDefinition(ASTNode):
     """Represents a C-style struct definition with memory layout control.
@@ -674,7 +676,7 @@ class StringLiteral(ASTNode):
 class FStringExpression(ASTNode):
     """Represents an f-string with interpolation: f"Hello, {name}!" """
     def __init__(self, parts, line_number=None):
-        super().__init__("fstring", line_number)
+        super().__init__("fstring_expression", line_number)
         self.parts = parts  # List of (is_literal, content, format_spec) tuples
         self.line_number = line_number
     
@@ -855,12 +857,41 @@ class TypeAliasDefinition(ASTNode):
         self.generic_parameters = generic_parameters or []
 
 class TypeParameter(ASTNode):
-    """Represents a generic type parameter."""
-    def __init__(self, name, bounds=None, variance=None, line_number=None):
+    """Represents a generic type parameter.
+
+    For ground types (kind ``*``), *kind* is ``None``.
+    For higher-kinded parameters, *kind* is a :class:`KindAnnotation` subtree.
+    """
+    def __init__(self, name, bounds=None, variance=None, kind=None, line_number=None):
         super().__init__("type_parameter", line_number)
         self.name = name
         self.bounds = bounds or []  # List of types that bound this parameter
         self.variance = variance    # 'covariant', 'contravariant', or None for invariant
+        self.kind = kind            # Optional KindAnnotation for HKT
+
+class KindAnnotation(ASTNode):
+    """Base class for kind annotations in higher-kinded type parameters."""
+    def __init__(self, node_type, line_number=None):
+        super().__init__(node_type, line_number)
+
+class StarKindAnnotation(KindAnnotation):
+    """Represents the ground kind ``*`` (fully applied type)."""
+    def __init__(self, line_number=None):
+        super().__init__("star_kind", line_number)
+
+    def __repr__(self):
+        return "*"
+
+class ArrowKindAnnotation(KindAnnotation):
+    """Represents a kind arrow ``left -> right`` (type constructor)."""
+    def __init__(self, left, right, line_number=None):
+        super().__init__("arrow_kind", line_number)
+        self.left = left    # KindAnnotation
+        self.right = right  # KindAnnotation
+
+    def __repr__(self):
+        left_str = f"({repr(self.left)})" if isinstance(self.left, ArrowKindAnnotation) else repr(self.left)
+        return f"{left_str} -> {repr(self.right)}"
 
 class TypeConstraint(ASTNode):
     """Represents a type constraint."""

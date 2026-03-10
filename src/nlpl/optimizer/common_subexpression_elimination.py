@@ -51,42 +51,57 @@ class CommonSubexpressionEliminationPass(OptimizationPass):
         return ast
     
     def _process_function(self, func: FunctionDefinition):
-        """Process a single function."""
-        # Reset expression map for new scope
+        """Process a single function using a two-pass approach.
+
+        Pass 1: Count how many times each complex expression appears.
+        Pass 2: Only extract expressions that appear 2+ times into
+                 temporary variables to avoid inflating the AST.
+        """
+        # --- Pass 1: count expression occurrences ---
+        occurrence_count: Dict[str, int] = {}
+        for stmt in func.body:
+            for expr in self._collect_expressions(stmt):
+                if self._is_complex_expression(expr):
+                    h = self._hash_expression(expr)
+                    occurrence_count[h] = occurrence_count.get(h, 0) + 1
+
+        # Build the set of hashes that actually repeat.
+        repeated = {h for h, cnt in occurrence_count.items() if cnt >= 2}
+        if not repeated:
+            return  # nothing to eliminate
+
+        # --- Pass 2: extract only truly-repeated expressions ---
         old_map = self.expression_map.copy()
         self.expression_map.clear()
-        
-        # Analyze and transform statements
+
         new_body = []
         for stmt in func.body:
-            # Collect expressions in this statement
             expressions = self._collect_expressions(stmt)
-            
-            # Check for common subexpressions
+
             for expr in expressions:
                 expr_hash = self._hash_expression(expr)
+                if expr_hash not in repeated:
+                    continue  # skip non-repeated expressions
+
                 if expr_hash in self.expression_map:
-                    # Found common subexpression
-                    # Replace with reference to temp var
+                    # Second (or later) occurrence -- replace with temp ref
                     temp_var = self.expression_map[expr_hash]
                     self._replace_expression(stmt, expr, Identifier(temp_var))
                     self.expressions_eliminated += 1
                 else:
-                    # New expression - create temp var
-                    if self._is_complex_expression(expr):
-                        temp_var = f"_cse_temp_{self.temp_counter}"
-                        self.temp_counter += 1
-                        self.expression_map[expr_hash] = temp_var
-                        
-                        # Insert temp variable assignment
-                        temp_decl = VariableDeclaration(
-                            name=temp_var,
-                            value=expr
-                        )
-                        new_body.append(temp_decl)
-            
+                    # First occurrence of a repeated expression -- create temp
+                    temp_var = f"_cse_temp_{self.temp_counter}"
+                    self.temp_counter += 1
+                    self.expression_map[expr_hash] = temp_var
+
+                    temp_decl = VariableDeclaration(
+                        name=temp_var,
+                        value=expr,
+                    )
+                    new_body.append(temp_decl)
+
             new_body.append(stmt)
-        
+
         func.body = new_body
         self.expression_map = old_map  # Restore previous scope
     

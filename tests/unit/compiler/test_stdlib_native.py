@@ -556,14 +556,14 @@ class TestCompileToExecutableIntegration:
         assert "hello from native" in r.stdout
 
     def test_executable_links_libNLPL(self, compiled_exe):
-        # Use nm/objdump to confirm libNLPL symbols appear in the binary.
+        # Use nm to confirm libNLPL symbols appear in the binary.
         import shutil
 
         if shutil.which("nm"):
+            # Use plain nm (not -D) so statically-linked symbols are visible.
             r = subprocess.run(
-                ["nm", "-D", compiled_exe], capture_output=True, text=True
+                ["nm", compiled_exe], capture_output=True, text=True
             )
-            # nm on static-linked binary may list the symbols as 'T' not 'U'
             combined = r.stdout + r.stderr
             # At minimum, nlpl_panic or nlpl_print should appear somewhere.
             nlpl_present = any(

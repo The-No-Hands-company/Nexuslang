@@ -30,6 +30,7 @@ class Object:
         self.properties = properties or {}
         self.type_arguments = type_arguments or {}
         self.methods = {}
+        self._drop_method: Optional[Callable] = None
     
     def get_property(self, name: str) -> Any:
         """Get a property value."""
