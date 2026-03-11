@@ -339,6 +339,63 @@ def dict_get(target, key, default=None):
         raise TypeError(f"Cannot get key from type {type(target).__name__}")
 
 
+def keys(target):
+    """Return a list of all keys in a dictionary or map.
+
+    Args:
+        target: dict, HashMap, or any mapping type
+
+    Returns:
+        List of keys
+    """
+    if isinstance(target, dict):
+        return list(target.keys())
+    elif isinstance(target, HashMap):
+        return list(target._data.keys())
+    elif hasattr(target, 'keys'):
+        return list(target.keys())
+    else:
+        raise TypeError(f"Cannot get keys from type {type(target).__name__}")
+
+
+def values(target):
+    """Return a list of all values in a dictionary or map.
+
+    Args:
+        target: dict, HashMap, or any mapping type
+
+    Returns:
+        List of values
+    """
+    if isinstance(target, dict):
+        return list(target.values())
+    elif isinstance(target, HashMap):
+        return list(target._data.values())
+    elif hasattr(target, 'values'):
+        return list(target.values())
+    else:
+        raise TypeError(f"Cannot get values from type {type(target).__name__}")
+
+
+def items(target):
+    """Return a list of [key, value] pairs from a dictionary or map.
+
+    Args:
+        target: dict, HashMap, or any mapping type
+
+    Returns:
+        List of [key, value] lists
+    """
+    if isinstance(target, dict):
+        return [[k, v] for k, v in target.items()]
+    elif isinstance(target, HashMap):
+        return [[k, v] for k, v in target._data.items()]
+    elif hasattr(target, 'items'):
+        return [[k, v] for k, v in target.items()]
+    else:
+        raise TypeError(f"Cannot get items from type {type(target).__name__}")
+
+
 # ---------------------------------------------------------------------------
 # BTreeMap — ordered dictionary (sorted by key)
 # ---------------------------------------------------------------------------
@@ -941,6 +998,12 @@ def register_collections_functions(runtime):
     runtime.register_function("append", list_append)  # Alias
     runtime.register_function("dict_set", dict_set)
     runtime.register_function("dict_get", dict_get)
+    runtime.register_function("keys", keys)
+    runtime.register_function("dict_keys", keys)      # Alias
+    runtime.register_function("values", values)
+    runtime.register_function("dict_values", values)   # Alias
+    runtime.register_function("items", items)
+    runtime.register_function("dict_items", items)     # Alias
 
     # CustomHashMap — HashMap with user-supplied hash function
     runtime.register_function("CustomHashMap", CustomHashMap)

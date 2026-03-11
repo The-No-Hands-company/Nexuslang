@@ -67,21 +67,24 @@ This program demonstrates a wide range of NLPL language capabilities:
 | Feature | Usage |
 |---------|-------|
 | **File I/O** | `walk_directory`, `read_file`, `get_file_size`, `get_extension`, `join_path` |
-| **String Processing** | `strip`, `str_split`, `contains`, `substring`, `length` |
+| **String Processing** | `strip`, `str_split`, `contains`, `substring`, `length`, `repeat` |
 | **Type Conversion** | `convert X to integer`, `convert X to string` |
 | **Control Flow** | `if`/`else`/`end`, `for each`/`end`, `while`/`end` |
 | **Functions** | 7 user-defined functions with typed parameters and return types |
-| **Collections** | Dict literals, dict access/mutation, list literals, `append` |
-| **Error Handling** | `try`/`catch`/`end` for graceful dict-key misses and file I/O errors |
-| **Arithmetic** | Integer math, division, modulo, comparison operators |
+| **Collections** | Dict literals, dict access/mutation, list literals, `append`, `keys`, `dict_get` |
+| **Error Handling** | `try`/`catch`/`end` with `return` inside try blocks |
+| **Arithmetic** | Integer math, `integer divided by`, modulo, comparison operators |
 | **Formatted Output** | Aligned tables, visual bar charts, padded columns |
 
-## Usability Findings
+## Development History
 
-Building this tool revealed several practical NLPL usability insights:
+Building this tool initially revealed 5 usability gaps in NLPL. All 5 were fixed at the
+language implementation level (not worked around):
 
-1. **Reserved word collisions** -- `label`, `split`, `repeat`, `starts_with`, `ends_with` are keywords that conflict with common variable/function names. Workarounds: `str_split()` instead of `split()`, rename variables.
-2. **Return inside try** -- `return` statements inside `try` blocks are caught as exceptions. Workaround: assign to a variable inside `try`, then `return` after the block.
-3. **Float division** -- NLPL uses true division (Python semantics), so integer division requires explicit `convert X to integer` truncation.
-4. **No string multiplication** -- `"#" * 10` is not available; use a while loop to build repeated strings.
-5. **No dict iteration** -- Cannot iterate directly over dict keys; must maintain a parallel list of expected keys.
+| Issue Found | Fix Applied |
+|-------------|-------------|
+| `label`, `split`, `starts_with`, `ends_with` were reserved keywords that collided with common identifiers | Removed unused token reservations; added `LABEL`/`REPEAT` to context-sensitive identifier set |
+| `return` inside `try` blocks was caught as an exception | Made `execute_try_catch` re-raise `ReturnException` before the broad `except Exception` handler |
+| No integer division in natural language syntax | Added `integer divided by` keyword mapping to `FLOOR_DIVIDE` token |
+| `repeat()` stdlib function was shadowed by `REPEAT` keyword | Made `REPEAT` context-sensitive so it works as both keyword and identifier |
+| No way to iterate dict keys | Added `keys()`, `values()`, `items()` stdlib functions |

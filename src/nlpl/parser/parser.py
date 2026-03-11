@@ -5728,6 +5728,9 @@ class Parser:
             TokenType.EXPECT, TokenType.BEFORE_EACH, TokenType.AFTER_EACH,
             # RAII / Drop trait: allow 'drop' as a method name inside classes
             TokenType.DROP,
+            # Statement-level keywords that are also common variable/function names
+            TokenType.LABEL,   # 'label' is a keyword for labeled loops but common as a variable
+            TokenType.REPEAT,  # 'repeat' starts repeat-loops but common as a variable/function
         }
         return token.type in contextual_keywords
         

@@ -49,6 +49,7 @@ def register_string_functions(runtime: Runtime) -> None:
     runtime.register_function("replace", replace)
     runtime.register_function("reverse", reverse)
     runtime.register_function("repeat", repeat)
+    runtime.register_function("str_repeat", repeat)  # Alias for discoverability
     runtime.register_function("split", split)
     runtime.register_function("split_lines", split_lines)
     runtime.register_function("join", join)

@@ -348,7 +348,7 @@ class Debugger:
     
     # ============= Interactive Debugging =============
     
-    def pause(self, file: str, line: int, reason: str = "breakpoint"):
+    def pause(self, file: str, line: int, reason: str = "breakpoint", bp: 'Optional[Breakpoint]' = None):
         """
         Pause execution and enter interactive debugging mode.
         
@@ -356,6 +356,7 @@ class Debugger:
             file: Current file
             line: Current line
             reason: Reason for pause (breakpoint, step, exception)
+            bp: The breakpoint that triggered the pause, if any
         """
         self.current_file = file
         self.current_line = line
@@ -376,7 +377,8 @@ class Debugger:
         
         # Call callback if registered
         if self.on_breakpoint and reason == "breakpoint":
-            bp = self._check_breakpoint(file, line)
+            if bp is None:
+                bp = self._check_breakpoint(file, line)
             if bp:
                 self.on_breakpoint(bp, frame)
         
@@ -527,7 +529,14 @@ class Debugger:
         """
         Wait for resume signal in non-interactive mode (for DAP).
         This blocks until continue/step command is received via DAP.
+        If no DAP client is attached (no on_breakpoint callback), auto-resumes
+        to prevent deadlock.
         """
+        # If no external listener is attached, auto-resume to avoid deadlock
+        if self.on_breakpoint is None and self.on_step is None:
+            self.state = DebuggerState.RUNNING
+            return
+
         # Clear resume event (will be set by continue/step methods)
         self.resume_event.clear()
         
@@ -555,11 +564,22 @@ class Debugger:
         self.current_line = line
         self.total_steps += 1
         
-        # Check if we should pause
-        if self._should_pause(file, line):
-            bp = self._check_breakpoint(file, line)
+        # Check if we should pause (breakpoint check already done inside _should_pause)
+        bp = self._check_breakpoint(file, line)
+        should_pause = bp is not None
+
+        if not should_pause:
+            # Check step modes
+            if self.state in (DebuggerState.STEPPING,):
+                should_pause = True
+            elif self.state == DebuggerState.STEP_OVER:
+                should_pause = self.step_depth <= (self.target_depth or 0)
+            elif self.state == DebuggerState.STEP_OUT:
+                should_pause = self.step_depth < (self.target_depth or 0)
+
+        if should_pause:
             reason = "breakpoint" if bp else "step"
-            self.pause(file, line, reason)
+            self.pause(file, line, reason, bp=bp)
         
         # Call step callback
         if self.on_step:

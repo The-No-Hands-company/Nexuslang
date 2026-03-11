@@ -1960,6 +1960,9 @@ class Interpreter:
                 return result
             else:
                 raise e
+        except (ReturnException, BreakException, ContinueException, YieldException):
+            # Control flow exceptions must propagate -- never catch these
+            raise
         except Exception as e:
             # Handle other Python exceptions (e.g., ZeroDivisionError)
             if node.exception_type and node.exception_type != "Error":
@@ -3877,6 +3880,9 @@ class Interpreter:
         """Execute a try-catch block."""
         try:
             return self.execute(node.try_block)
+        except (ReturnException, BreakException, ContinueException, YieldException):
+            # Control flow exceptions must propagate -- never catch these
+            raise
         except Exception as e:
             # Enter the catch block with the exception bound to the variable
             self.enter_scope()
@@ -3885,7 +3891,7 @@ class Interpreter:
                     self.current_scope[-1][node.exception_var] = str(e)
                 return self.execute(node.catch_block)
             finally:
-                self.exit_scope() 
+                self.exit_scope()
     
     # Low-level pointer operation execution methods
     

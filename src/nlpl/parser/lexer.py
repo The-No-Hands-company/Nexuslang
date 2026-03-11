@@ -176,13 +176,10 @@ class TokenType(Enum):
     READ = auto()
     WRITE = auto()
     APPEND = auto()
-    SPLIT = auto()
     JOIN = auto()
     LENGTH = auto()
     EMPTY = auto()
     CONTAINS = auto()
-    STARTS_WITH = auto()
-    ENDS_WITH = auto()
     
     # Database operations
     DATABASE = auto()
@@ -451,6 +448,7 @@ class Lexer:
             "negative": TokenType.MINUS,  # natural language unary minus alias
             "times": TokenType.TIMES,
             "divided by": TokenType.DIVIDED_BY,
+            "integer divided by": TokenType.FLOOR_DIVIDE,
             "modulo": TokenType.MODULO,
             "to the power of": TokenType.POWER,
             "power": TokenType.POWER,
@@ -552,13 +550,10 @@ class Lexer:
             "read": TokenType.READ,
             "write": TokenType.WRITE,
             "append": TokenType.APPEND,
-            "split": TokenType.SPLIT,
             "join": TokenType.JOIN,
             "length": TokenType.LENGTH,
             "empty": TokenType.EMPTY,
             "contains": TokenType.CONTAINS,
-            "starts with": TokenType.STARTS_WITH,
-            "ends with": TokenType.ENDS_WITH,
             
             # Database operations
             "export": TokenType.EXPORT,

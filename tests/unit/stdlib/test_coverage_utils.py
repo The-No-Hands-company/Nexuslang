@@ -29,6 +29,11 @@ def cu():
         "nlpl", "nlpl.runtime", "nlpl.runtime.runtime",
         "nlpl.stdlib", "nlpl.stdlib.coverage_utils",
     )
+    # Save originals so we can restore after tests
+    _originals = {pkg: sys.modules.get(pkg) for pkg in _pkgs}
+    _had_runtime_cls = hasattr(sys.modules.get("nlpl.runtime.runtime", object()), "Runtime")
+    _orig_runtime_cls = getattr(sys.modules.get("nlpl.runtime.runtime"), "Runtime", None) if _had_runtime_cls else None
+
     for pkg in _pkgs:
         if pkg not in sys.modules:
             sys.modules[pkg] = types.ModuleType(pkg)
@@ -41,7 +46,16 @@ def cu():
     spec = importlib.util.spec_from_file_location("nlpl.stdlib.coverage_utils", _INIT_PATH)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    return mod
+    yield mod
+
+    # Restore original sys.modules state
+    for pkg in _pkgs:
+        if _originals[pkg] is None:
+            sys.modules.pop(pkg, None)
+        else:
+            sys.modules[pkg] = _originals[pkg]
+    if _had_runtime_cls and "nlpl.runtime.runtime" in sys.modules:
+        sys.modules["nlpl.runtime.runtime"].Runtime = _orig_runtime_cls
 
 
 # ---------------------------------------------------------------------------

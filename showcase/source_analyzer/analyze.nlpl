@@ -74,68 +74,46 @@ set comment_prefixes to {
 # ---------------------------------------------------------------------------
 
 function make_bar with filled as Integer and total as Integer and width as Integer returns String
-    # Build a visual bar like [=========>          ] 45%
+    # Build a visual bar like [#########...........] 45%
     if total is equal to 0
         set pct to 0
     else
-        set pct_f to filled times 100 divided by total
-        set pct to convert pct_f to integer
+        set pct to filled times 100 integer divided by total
     end
-    set bar_f to pct times width divided by 100
-    set bar_filled to convert bar_f to integer
+    set bar_filled to pct times width integer divided by 100
     set bar_empty to width minus bar_filled
 
-    set bar_str to "["
-    set idx to 0
-    while idx is less than bar_filled
-        set bar_str to bar_str plus "#"
-        set idx to idx plus 1
-    end
-    set idx to 0
-    while idx is less than bar_empty
-        set bar_str to bar_str plus "."
-        set idx to idx plus 1
-    end
-    set bar_str to bar_str plus "] " plus convert pct to string plus "%"
+    set bar_str to "[" plus repeat("#", bar_filled) plus repeat(".", bar_empty) plus "] " plus convert pct to string plus "%"
     return bar_str
 end
 
 function pad_right with text as String and width as Integer returns String
-    set result to text
-    while length(result) is less than width
-        set result to result plus " "
+    set needed to width minus length(text)
+    if needed is less than or equal to 0
+        return text
     end
-    return result
+    return text plus repeat(" ", needed)
 end
 
 function pad_left with text as String and width as Integer returns String
-    set padding to ""
     set needed to width minus length(text)
-    set idx to 0
-    while idx is less than needed
-        set padding to padding plus " "
-        set idx to idx plus 1
+    if needed is less than or equal to 0
+        return text
     end
-    return padding plus text
+    return repeat(" ", needed) plus text
 end
 
 function format_bytes with num_bytes as Integer returns String
     if num_bytes is greater than or equal to 1048576
-        set mb_f to num_bytes times 10 divided by 1048576
-        set mb to convert mb_f to integer
-        set whole_f to mb divided by 10
-        set whole to convert whole_f to integer
-        set frac_f to mb modulo 10
-        set frac to convert frac_f to integer
+        set mb to num_bytes times 10 integer divided by 1048576
+        set whole to mb integer divided by 10
+        set frac to mb modulo 10
         return convert whole to string plus "." plus convert frac to string plus " MB"
     end
     if num_bytes is greater than or equal to 1024
-        set kb_f to num_bytes times 10 divided by 1024
-        set kb to convert kb_f to integer
-        set whole_f to kb divided by 10
-        set whole to convert whole_f to integer
-        set frac_f to kb modulo 10
-        set frac to convert frac_f to integer
+        set kb to num_bytes times 10 integer divided by 1024
+        set whole to kb integer divided by 10
+        set frac to kb modulo 10
         return convert whole to string plus "." plus convert frac to string plus " KB"
     end
     return convert num_bytes to string plus " B"
@@ -143,13 +121,11 @@ end
 
 function get_language with filepath as String returns String
     set ext to get_extension(filepath)
-    set result_lang to "Other"
     try
-        set result_lang to lang_extensions[ext]
+        return lang_extensions[ext]
     catch err with message
-        set result_lang to "Other"
+        return "Other"
     end
-    return result_lang
 end
 
 function is_comment_line with line as String and lang as String returns Integer
@@ -157,22 +133,19 @@ function is_comment_line with line as String and lang as String returns Integer
     if length(trimmed) is equal to 0
         return 0
     end
-    set is_cmt to 0
     try
         set prefix to comment_prefixes[lang]
-        if contains(trimmed, prefix)
-            set prefix_len to length(prefix)
-            if length(trimmed) is greater than or equal to prefix_len
-                set line_start to substring(trimmed, 0, prefix_len)
-                if line_start is equal to prefix
-                    set is_cmt to 1
-                end
+        set prefix_len to length(prefix)
+        if length(trimmed) is greater than or equal to prefix_len
+            set line_start to substring(trimmed, 0, prefix_len)
+            if line_start is equal to prefix
+                return 1
             end
         end
+        return 0
     catch err with message
-        set is_cmt to 0
+        return 0
     end
-    return is_cmt
 end
 
 # ---------------------------------------------------------------------------
@@ -186,15 +159,9 @@ function analyze_file with filepath as String returns String
 
     set lang to get_language(filepath)
 
-    set content to ""
-    set read_ok to 1
     try
         set content to read_file(filepath)
     catch err with message
-        set read_ok to 0
-    end
-
-    if read_ok is equal to 0
         return "Error|0|0|0|0|0"
     end
 
@@ -329,41 +296,12 @@ for each filepath in all_files
         set analyzed_count to analyzed_count plus 1
 
         # Update per-language counters
-        try
-            set lang_total_lines[lang] to lang_total_lines[lang] plus total_num
-        catch err with message
-            set lang_total_lines[lang] to total_num
-        end
-
-        try
-            set lang_code_lines[lang] to lang_code_lines[lang] plus code_num
-        catch err with message
-            set lang_code_lines[lang] to code_num
-        end
-
-        try
-            set lang_comment_lines[lang] to lang_comment_lines[lang] plus comment_num
-        catch err with message
-            set lang_comment_lines[lang] to comment_num
-        end
-
-        try
-            set lang_blank_lines[lang] to lang_blank_lines[lang] plus blank_num
-        catch err with message
-            set lang_blank_lines[lang] to blank_num
-        end
-
-        try
-            set lang_file_count[lang] to lang_file_count[lang] plus 1
-        catch err with message
-            set lang_file_count[lang] to 1
-        end
-
-        try
-            set lang_total_bytes[lang] to lang_total_bytes[lang] plus size_num
-        catch err with message
-            set lang_total_bytes[lang] to size_num
-        end
+        set lang_total_lines[lang] to dict_get(lang_total_lines, lang, 0) plus total_num
+        set lang_code_lines[lang] to dict_get(lang_code_lines, lang, 0) plus code_num
+        set lang_comment_lines[lang] to dict_get(lang_comment_lines, lang, 0) plus comment_num
+        set lang_blank_lines[lang] to dict_get(lang_blank_lines, lang, 0) plus blank_num
+        set lang_file_count[lang] to dict_get(lang_file_count, lang, 0) plus 1
+        set lang_total_bytes[lang] to dict_get(lang_total_bytes, lang, 0) plus size_num
 
         # Track for largest files list
         set file_entry to convert size_num to string plus "|" plus filepath
@@ -395,9 +333,6 @@ print text ""
 
 # Comment density
 if grand_total_lines is greater than 0
-    set comment_pct to grand_comment_lines times 100 divided by grand_total_lines
-    set code_pct to grand_code_lines times 100 divided by grand_total_lines
-    set blank_pct to grand_blank_lines times 100 divided by grand_total_lines
     print text "  Code:     " plus make_bar(grand_code_lines, grand_total_lines, 30)
     print text "  Comments: " plus make_bar(grand_comment_lines, grand_total_lines, 30)
     print text "  Blank:    " plus make_bar(grand_blank_lines, grand_total_lines, 30)
@@ -427,24 +362,7 @@ print text "  " plus separator
 
 # Get list of languages that were found
 set found_languages to []
-try
-    # Iterate over dict keys -- use a try/catch approach
-    # We know our languages from the extension map
-    set all_lang_names to ["Python", "NLPL", "JavaScript", "TypeScript", "Rust", "C", "C Header", "C++", "C++ Header", "Java", "Go", "Ruby", "Shell", "Markdown", "TOML", "JSON", "YAML", "XML", "HTML", "CSS", "SQL", "Text", "Other"]
-
-    for each lang_name in all_lang_names
-        try
-            set fc to lang_file_count[lang_name]
-            if fc is greater than 0
-                append lang_name to found_languages
-            end
-        catch err with message
-            # Language not found in results, skip
-        end
-    end
-catch err with message
-    print text "  (could not enumerate languages)"
-end
+set found_languages to keys(lang_file_count)
 
 for each lang in found_languages
     set fc to lang_file_count[lang]
@@ -490,9 +408,9 @@ print text ""
 for each lang in found_languages
     set tl to lang_total_lines[lang]
     set bar to make_bar(tl, grand_total_lines, 25)
-    set lbl to pad_right(lang, 16)
+    set label to pad_right(lang, 16)
     set count_str to pad_left(convert tl to string, 8)
-    print text "  " plus lbl plus count_str plus " lines " plus bar
+    print text "  " plus label plus count_str plus " lines " plus bar
 end
 
 # ---------------------------------------------------------------------------
@@ -572,10 +490,9 @@ for each lang in found_languages
     set tl to lang_total_lines[lang]
     set cml to lang_comment_lines[lang]
     if tl is greater than 0
-        set density_pct to cml times 100 divided by tl
-        set lbl to pad_right(lang, 16)
+        set label to pad_right(lang, 16)
         set bar to make_bar(cml, tl, 20)
-        print text "  " plus lbl plus bar
+        print text "  " plus label plus bar
     end
 end
 

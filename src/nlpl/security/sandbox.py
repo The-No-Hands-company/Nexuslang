@@ -299,9 +299,11 @@ class ResourceLimits:
                 soft, hard = _resource_module.getrlimit(res_id)
                 saved_limits[res_id] = (soft, hard)
                 new_soft = int(soft_val)
-                # Never exceed the hard limit
-                new_hard = min(hard, new_soft) if hard != _resource_module.RLIM_INFINITY else new_soft
-                _resource_module.setrlimit(res_id, (new_soft, new_hard))
+                # Only lower the soft limit; preserve the hard limit so
+                # exit() can restore the original values.
+                if hard != _resource_module.RLIM_INFINITY:
+                    new_soft = min(new_soft, hard)
+                _resource_module.setrlimit(res_id, (new_soft, hard))
                 logger.debug(
                     "ResourceLimits: set %s to %d (was soft=%d, hard=%d)",
                     description, new_soft, soft, hard,
