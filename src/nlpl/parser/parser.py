@@ -5065,96 +5065,7 @@ class Parser:
         
         # Handle 'new ClassName' for object instantiation
         if token.type == TokenType.NEW:
-            line_num = token.line if hasattr(token, 'line') else 0
-            self.advance()  # consume 'new'
-            
-            # Get class name - allow any token with a lexeme (identifier or contextual keyword)
-            # This allows: new Point, new Number, new String, etc.
-            if not self.current_token or not self.current_token.lexeme:
-                self.error("Expected class name after 'new'")
-            
-            # Get the base class name without generic parameters
-            # Generic parameters will be parsed separately below
-            class_name = self.current_token.lexeme
-            self.advance()
-            
-            # Check for generic type arguments: new Container<Integer>
-            # (Note: parse_type might have already handled 'of' generics)
-            type_arguments = []
-            if self.current_token and self.current_token.type == TokenType.LESS_THAN:
-                self.advance()  # Eat '<'
-                
-                # Type names can be identifiers or type keywords (Integer, String, List, etc.)
-                type_token_types = [
-                    TokenType.IDENTIFIER, TokenType.INTEGER, TokenType.STRING,
-                    TokenType.FLOAT, TokenType.BOOLEAN, TokenType.LIST,
-                    TokenType.DICTIONARY
-                ]
-                
-                # Parse first type argument - can be simple or nested generic
-                if self.current_token.type in type_token_types:
-                    type_arg = self._parse_generic_type_argument()
-                    type_arguments.append(type_arg)
-                else:
-                    self.error("Expected type argument name")
-                
-                # Parse additional type arguments separated by commas
-                while self.current_token and self.current_token.type == TokenType.COMMA:
-                    self.advance()  # Eat ','
-                    if self.current_token.type in type_token_types:
-                        type_arg = self._parse_generic_type_argument()
-                        type_arguments.append(type_arg)
-                    else:
-                        self.error("Expected type argument name after comma")
-                
-                # Expect '>'
-                if self.current_token and self.current_token.type == TokenType.GREATER_THAN:
-                    self.advance()  # Eat '>'
-                elif self.current_token and self.current_token.type == TokenType.RIGHT_SHIFT:
-                    # Handle >> as > > for nested cases
-                    from ..parser.lexer import Token
-                    self.current_token = Token(TokenType.GREATER_THAN, '>', None,
-                                              self.current_token.line, self.current_token.column + 1)
-                else:
-                    self.error("Expected '>' to close generic type arguments")
-            
-            # Check for constructor arguments (optional)
-            # Supports both: new Class(args) and new Class with [args] or new Class with arg1 and arg2
-            arguments = []
-            if self.current_token and self.current_token.type == TokenType.LEFT_PAREN:
-                # Syntax: new Class(arg1, arg2, ...)
-                self.advance()  # consume (
-                if self.current_token.type != TokenType.RIGHT_PAREN:
-                    arguments.append(self.expression())
-                    while self.current_token.type == TokenType.COMMA:
-                        self.advance()
-                        arguments.append(self.expression())
-                self.eat(TokenType.RIGHT_PAREN)
-            elif self.current_token and self.current_token.type == TokenType.WITH:
-                # Syntax: new Class with [args] or new Class with arg1 and arg2
-                self.advance()  # consume WITH
-                
-                if self.current_token and self.current_token.type == TokenType.LEFT_BRACKET:
-                    # with [arg1, arg2, ...] syntax
-                    self.advance()  # consume [
-                    if self.current_token.type != TokenType.RIGHT_BRACKET:
-                        arguments.append(self.expression())
-                        while self.current_token.type == TokenType.COMMA:
-                            self.advance()
-                            arguments.append(self.expression())
-                    self.eat(TokenType.RIGHT_BRACKET)
-                else:
-                    # with arg1 and arg2 syntax
-                    arguments.append(self.expression())
-                    while self.current_token and self.current_token.type == TokenType.AND:
-                        self.advance()  # consume AND
-                        arguments.append(self.expression())
-            
-            expr = ObjectInstantiation(class_name, arguments, type_arguments, line_num)
-            # Check for member access on the instantiated object
-            # Check for member access on the instantiated object
-            return self._parse_member_access(expr)
-        
+            return self._primary_new_object(token)
         elif token.type == TokenType.CONVERT:
             return self.convert_expression()
             
@@ -5191,42 +5102,7 @@ class Parser:
         
         # F-string literal with interpolation
         elif token.type == TokenType.FSTRING_LITERAL:
-            parts_data = token.literal  # List of ('literal', str, None) or ('expr', str, format_spec)
-            line_number = token.line
-            self.advance()
-            
-            # Convert parts to AST nodes
-            parts = []
-            # Import Parser and Lexer here to avoid circular dependency if they are in the same module
-            from .lexer import Lexer
-            from .parser import Parser
-            from .ast import FStringExpression
-            
-            for part_tuple in parts_data:
-                if len(part_tuple) == 2:
-                    # Old format: (type, content)
-                    part_type, content = part_tuple
-                    format_spec = None
-                elif len(part_tuple) == 3:
-                    # New format: (type, content, format_spec)
-                    part_type, content, format_spec = part_tuple
-                else:
-                    continue
-                
-                if part_type == 'literal':
-                    # Literal string part
-                    parts.append((True, content, None))
-                else:  # part_type == 'expr'
-                    # Parse the expression string
-                    # Create a mini-lexer/parser for the expression
-                    expr_lexer = Lexer(content)
-                    expr_tokens = expr_lexer.scan_tokens()
-                    expr_parser = Parser(expr_tokens)
-                    expr_ast = expr_parser.expression()
-                    parts.append((False, expr_ast, format_spec))
-            
-            return FStringExpression(parts, line_number)
-            
+            return self._primary_fstring(token)
         elif token.type == TokenType.TRUE:
             self.advance()
             return Literal("boolean", True)
@@ -5255,162 +5131,7 @@ class Parser:
                 return Identifier('old', line_num)
 
         elif token.type == TokenType.IDENTIFIER or self._can_be_identifier(token):
-            # Accept IDENTIFIER or keywords that can be used as variable names
-            name = token.lexeme if hasattr(token, 'lexeme') else str(token.type)
-            line_num = token.line if hasattr(token, 'line') else 0
-            self.advance()
-            
-            # Special case: "length of X" syntax - parse as property access
-            if name.lower() == 'length' and self.current_token and self.current_token.type == TokenType.OF:
-                self.advance()  # consume 'of'
-                
-                # Parse the target expression - just get identifier or literal
-                # Use primary() but avoid infinite recursion by getting the next primary element
-                if not self.current_token:
-                    self.error("Expected expression after 'of'")
-                
-                # Get the target (identifier or expression)
-                target_expr = Identifier(self.current_token.lexeme, self.current_token.line if hasattr(self.current_token, 'line') else 0)
-                self.advance()
-                
-                # Allow chaining with member access (e.g., "length of myObj.name")
-                target_expr = self._parse_member_access(target_expr)
-
-                # Return as a function call: length(target_expr)
-                return FunctionCall("length", [target_expr], line_number=line_num)
-            
-            # Check for generic type arguments early (before other patterns)
-            type_arguments = []
-            if self.current_token and self.current_token.type == TokenType.LESS_THAN:
-                type_arguments = self._parse_generic_type_arguments()
-            
-            # Special case: "call <function_name> with <args>" or "call (<expression>) with <args>" syntax
-            if name.lower() == 'call':
-                func_name_or_expr = None
-                
-                # Check for parenthesized expression: call (value at ptr) with args
-                if self.current_token and self.current_token.type == TokenType.LEFT_PAREN:
-                    self.advance()  # consume (
-                    func_name_or_expr = self.expression()  # Parse the expression (e.g., value at ptr)
-                    self.eat(TokenType.RIGHT_PAREN)
-                # Check for direct identifier: call func_name with args OR call object.method
-                elif self.current_token and self.current_token.type == TokenType.IDENTIFIER:
-                    # Parse the identifier first
-                    identifier = self.current_token.lexeme
-                    id_line = self.current_token.line if hasattr(self.current_token, 'line') else 0
-                    self.advance()  # consume identifier
-                    
-                    # Check if this is member access: call object.method
-                    if self.current_token and self.current_token.type == TokenType.DOT:
-                        # Create Identifier node and parse member access with call context
-                        func_name_or_expr = Identifier(identifier, id_line)
-                        func_name_or_expr = self._parse_member_access(func_name_or_expr, is_call_context=True)
-                        # If member access parsed successfully, return it directly (it's already marked as method call)
-                        return func_name_or_expr
-                    else:
-                        # Simple function call: call func_name
-                        func_name_or_expr = identifier
-                    
-                    # Check for generic type arguments after function name
-                    call_type_arguments = []
-                    if self.current_token and self.current_token.type == TokenType.LESS_THAN:
-                        call_type_arguments = self._parse_generic_type_arguments()
-                
-                # Now expect "with" keyword (for arguments) or no arguments
-                if func_name_or_expr and self.current_token and self.current_token.type == TokenType.WITH:
-                    self.advance()  # consume "with"
-                    arguments = []
-                    
-                    # Parse first argument
-                    arg = self.comparison()
-                    if arg:
-                        arguments.append(arg)
-                    
-                    # Parse additional arguments (comma or "and" separated)
-                    while self.current_token and (self.current_token.type == TokenType.COMMA or
-                                                   self.current_token.type == TokenType.AND):
-                        self.advance()
-                        arg = self.comparison()
-                        if arg:
-                            arguments.append(arg)
-                    
-                    # If func_name_or_expr is already a parsed expression (Identifier), create FunctionCall
-                    if isinstance(func_name_or_expr, str):
-                        expr = FunctionCall(func_name_or_expr, arguments, call_type_arguments, line_number=line_num)
-                    else:
-                        # It's already an expression node, just return it
-                        expr = func_name_or_expr
-                    return self._parse_member_access(expr, is_call_context=True)
-                elif func_name_or_expr:
-                    # "call <function_name>" or "call (<expr>)" without "with" - no args
-                    if isinstance(func_name_or_expr, str):
-                        expr = FunctionCall(func_name_or_expr, [], call_type_arguments if 'call_type_arguments' in locals() else [], line_number=line_num)
-                    else:
-                        # Already parsed as expression (e.g., member access)
-                        expr = func_name_or_expr
-                    return self._parse_member_access(expr, is_call_context=True)
-            
-            # Check if this is a function call with parentheses (e.g., "func(args)" or "func<T>(args)")
-            if self.current_token and self.current_token.type == TokenType.LEFT_PAREN:
-                self.advance()  # consume (
-                arguments = []
-                
-                # Parse arguments
-                if self.current_token.type != TokenType.RIGHT_PAREN:
-                    arguments.append(self.expression())
-                    while self.current_token.type == TokenType.COMMA:
-                        self.advance()  # consume ,
-                        arguments.append(self.expression())
-                        
-                self.eat(TokenType.RIGHT_PAREN)
-                expr = FunctionCall(name, arguments, type_arguments, named_arguments=None, trailing_block=None, line_number=line_num)
-                # Check for member access on function result
-                return self._parse_member_access(expr)
-            
-            # Check if this is a function call with "with" keyword (e.g., "func with args")
-            # This enables inline function calls without needing the 'call' keyword
-            elif self.current_token and self.current_token.type == TokenType.WITH:
-                # Use the full function_call parser which handles named arguments
-                # Need to backtrack since function_call expects to be at the 'with' token
-                # But we've already consumed the function name, so pass it along
-                func_call = self.function_call(name, line_num)
-                # Check for member access on function result
-                return self._parse_member_access(func_call)
-            
-            # Check if this is a zero-argument function call (just identifier, but it's a function)
-            # This is tricky: we need to distinguish between variable reference and function call
-            # For now, we'll treat it as an identifier and let the interpreter handle it
-            # The interpreter can check if it's a function and call it if needed
-            # Or we can require explicit '()' for zero-arg functions: func()
-            # 
-            # SPECIAL CASE: Check for trailing block without 'with'
-            # This handles: "func_name do ... end" (zero-arg function with trailing block)
-            # But NOT: "variable do" in argument contexts (which would be a bug)
-            
-            # First parse member access to handle chaining like obj.method
-            expr = Identifier(name)
-            expr = self._parse_member_access(expr)
-            
-            # Now check if this is followed by 'do' - but NOT if we're parsing function arguments
-            if (self.current_token and self.current_token.type == TokenType.DO 
-                and not self._in_argument_context):
-                trailing_block = self.parse_trailing_block()
-                # Convert to function call
-                if isinstance(expr, Identifier):
-                    # Simple case: func_name do
-                    func_call = FunctionCall(expr.name, [], None, None, trailing_block, line_num)
-                    return func_call
-                elif isinstance(expr, MemberAccess):
-                    # Method call: obj.method do
-                    # Keep the member access but mark it as having a trailing block
-                    # We'll handle this in the interpreter
-                    # For now, treat it as a function call to the method
-                    return FunctionCall(expr, [], None, None, trailing_block, line_num)
-                else:
-                    self.error(f"Cannot attach trailing block to {type(expr).__name__}")
-            
-            return expr
-            
+            return self._primary_identifier(token)
         elif token.type == TokenType.LEFT_PAREN:
             line_num = token.line if hasattr(token, 'line') else 0
             self.advance()  # consume (
@@ -5439,6 +5160,300 @@ class Parser:
             
         self.error(f"Unexpected token: {token.type}", error_type_key="unexpected_token")
     
+
+
+    def _primary_new_object(self, token):
+        """Parse `new ClassName(args)` object instantiation."""
+        line_num = token.line if hasattr(token, 'line') else 0
+        self.advance()  # consume 'new'
+        
+        # Get class name - allow any token with a lexeme (identifier or contextual keyword)
+        # This allows: new Point, new Number, new String, etc.
+        if not self.current_token or not self.current_token.lexeme:
+            self.error("Expected class name after 'new'")
+        
+        # Get the base class name without generic parameters
+        # Generic parameters will be parsed separately below
+        class_name = self.current_token.lexeme
+        self.advance()
+        
+        # Check for generic type arguments: new Container<Integer>
+        # (Note: parse_type might have already handled 'of' generics)
+        type_arguments = []
+        if self.current_token and self.current_token.type == TokenType.LESS_THAN:
+            self.advance()  # Eat '<'
+            
+            # Type names can be identifiers or type keywords (Integer, String, List, etc.)
+            type_token_types = [
+                TokenType.IDENTIFIER, TokenType.INTEGER, TokenType.STRING,
+                TokenType.FLOAT, TokenType.BOOLEAN, TokenType.LIST,
+                TokenType.DICTIONARY
+            ]
+            
+            # Parse first type argument - can be simple or nested generic
+            if self.current_token.type in type_token_types:
+                type_arg = self._parse_generic_type_argument()
+                type_arguments.append(type_arg)
+            else:
+                self.error("Expected type argument name")
+            
+            # Parse additional type arguments separated by commas
+            while self.current_token and self.current_token.type == TokenType.COMMA:
+                self.advance()  # Eat ','
+                if self.current_token.type in type_token_types:
+                    type_arg = self._parse_generic_type_argument()
+                    type_arguments.append(type_arg)
+                else:
+                    self.error("Expected type argument name after comma")
+            
+            # Expect '>'
+            if self.current_token and self.current_token.type == TokenType.GREATER_THAN:
+                self.advance()  # Eat '>'
+            elif self.current_token and self.current_token.type == TokenType.RIGHT_SHIFT:
+                # Handle >> as > > for nested cases
+                from ..parser.lexer import Token
+                self.current_token = Token(TokenType.GREATER_THAN, '>', None,
+                                          self.current_token.line, self.current_token.column + 1)
+            else:
+                self.error("Expected '>' to close generic type arguments")
+        
+        # Check for constructor arguments (optional)
+        # Supports both: new Class(args) and new Class with [args] or new Class with arg1 and arg2
+        arguments = []
+        if self.current_token and self.current_token.type == TokenType.LEFT_PAREN:
+            # Syntax: new Class(arg1, arg2, ...)
+            self.advance()  # consume (
+            if self.current_token.type != TokenType.RIGHT_PAREN:
+                arguments.append(self.expression())
+                while self.current_token.type == TokenType.COMMA:
+                    self.advance()
+                    arguments.append(self.expression())
+            self.eat(TokenType.RIGHT_PAREN)
+        elif self.current_token and self.current_token.type == TokenType.WITH:
+            # Syntax: new Class with [args] or new Class with arg1 and arg2
+            self.advance()  # consume WITH
+            
+            if self.current_token and self.current_token.type == TokenType.LEFT_BRACKET:
+                # with [arg1, arg2, ...] syntax
+                self.advance()  # consume [
+                if self.current_token.type != TokenType.RIGHT_BRACKET:
+                    arguments.append(self.expression())
+                    while self.current_token.type == TokenType.COMMA:
+                        self.advance()
+                        arguments.append(self.expression())
+                self.eat(TokenType.RIGHT_BRACKET)
+            else:
+                # with arg1 and arg2 syntax
+                arguments.append(self.expression())
+                while self.current_token and self.current_token.type == TokenType.AND:
+                    self.advance()  # consume AND
+                    arguments.append(self.expression())
+        
+        expr = ObjectInstantiation(class_name, arguments, type_arguments, line_num)
+        # Check for member access on the instantiated object
+        # Check for member access on the instantiated object
+        return self._parse_member_access(expr)
+    
+
+
+    def _primary_fstring(self, token):
+        """Parse an f-string literal expression."""
+        parts_data = token.literal  # List of ('literal', str, None) or ('expr', str, format_spec)
+        line_number = token.line
+        self.advance()
+        
+        # Convert parts to AST nodes
+        parts = []
+        # Import Parser and Lexer here to avoid circular dependency if they are in the same module
+        from .lexer import Lexer
+        from .parser import Parser
+        from .ast import FStringExpression
+        
+        for part_tuple in parts_data:
+            if len(part_tuple) == 2:
+                # Old format: (type, content)
+                part_type, content = part_tuple
+                format_spec = None
+            elif len(part_tuple) == 3:
+                # New format: (type, content, format_spec)
+                part_type, content, format_spec = part_tuple
+            else:
+                continue
+            
+            if part_type == 'literal':
+                # Literal string part
+                parts.append((True, content, None))
+            else:  # part_type == 'expr'
+                # Parse the expression string
+                # Create a mini-lexer/parser for the expression
+                expr_lexer = Lexer(content)
+                expr_tokens = expr_lexer.scan_tokens()
+                expr_parser = Parser(expr_tokens)
+                expr_ast = expr_parser.expression()
+                parts.append((False, expr_ast, format_spec))
+        
+        return FStringExpression(parts, line_number)
+        
+
+    def _primary_identifier(self, token):
+        """Parse an identifier primary expression (variable, function call, member access)."""
+        # Accept IDENTIFIER or keywords that can be used as variable names
+        name = token.lexeme if hasattr(token, 'lexeme') else str(token.type)
+        line_num = token.line if hasattr(token, 'line') else 0
+        self.advance()
+        
+        # Special case: "length of X" syntax - parse as property access
+        if name.lower() == 'length' and self.current_token and self.current_token.type == TokenType.OF:
+            self.advance()  # consume 'of'
+            
+            # Parse the target expression - just get identifier or literal
+            # Use primary() but avoid infinite recursion by getting the next primary element
+            if not self.current_token:
+                self.error("Expected expression after 'of'")
+            
+            # Get the target (identifier or expression)
+            target_expr = Identifier(self.current_token.lexeme, self.current_token.line if hasattr(self.current_token, 'line') else 0)
+            self.advance()
+            
+            # Allow chaining with member access (e.g., "length of myObj.name")
+            target_expr = self._parse_member_access(target_expr)
+
+            # Return as a function call: length(target_expr)
+            return FunctionCall("length", [target_expr], line_number=line_num)
+        
+        # Check for generic type arguments early (before other patterns)
+        type_arguments = []
+        if self.current_token and self.current_token.type == TokenType.LESS_THAN:
+            type_arguments = self._parse_generic_type_arguments()
+        
+        # Special case: "call <function_name> with <args>" or "call (<expression>) with <args>" syntax
+        if name.lower() == 'call':
+            func_name_or_expr = None
+            
+            # Check for parenthesized expression: call (value at ptr) with args
+            if self.current_token and self.current_token.type == TokenType.LEFT_PAREN:
+                self.advance()  # consume (
+                func_name_or_expr = self.expression()  # Parse the expression (e.g., value at ptr)
+                self.eat(TokenType.RIGHT_PAREN)
+            # Check for direct identifier: call func_name with args OR call object.method
+            elif self.current_token and self.current_token.type == TokenType.IDENTIFIER:
+                # Parse the identifier first
+                identifier = self.current_token.lexeme
+                id_line = self.current_token.line if hasattr(self.current_token, 'line') else 0
+                self.advance()  # consume identifier
+                
+                # Check if this is member access: call object.method
+                if self.current_token and self.current_token.type == TokenType.DOT:
+                    # Create Identifier node and parse member access with call context
+                    func_name_or_expr = Identifier(identifier, id_line)
+                    func_name_or_expr = self._parse_member_access(func_name_or_expr, is_call_context=True)
+                    # If member access parsed successfully, return it directly (it's already marked as method call)
+                    return func_name_or_expr
+                else:
+                    # Simple function call: call func_name
+                    func_name_or_expr = identifier
+                
+                # Check for generic type arguments after function name
+                call_type_arguments = []
+                if self.current_token and self.current_token.type == TokenType.LESS_THAN:
+                    call_type_arguments = self._parse_generic_type_arguments()
+            
+            # Now expect "with" keyword (for arguments) or no arguments
+            if func_name_or_expr and self.current_token and self.current_token.type == TokenType.WITH:
+                self.advance()  # consume "with"
+                arguments = []
+                
+                # Parse first argument
+                arg = self.comparison()
+                if arg:
+                    arguments.append(arg)
+                
+                # Parse additional arguments (comma or "and" separated)
+                while self.current_token and (self.current_token.type == TokenType.COMMA or
+                                               self.current_token.type == TokenType.AND):
+                    self.advance()
+                    arg = self.comparison()
+                    if arg:
+                        arguments.append(arg)
+                
+                # If func_name_or_expr is already a parsed expression (Identifier), create FunctionCall
+                if isinstance(func_name_or_expr, str):
+                    expr = FunctionCall(func_name_or_expr, arguments, call_type_arguments, line_number=line_num)
+                else:
+                    # It's already an expression node, just return it
+                    expr = func_name_or_expr
+                return self._parse_member_access(expr, is_call_context=True)
+            elif func_name_or_expr:
+                # "call <function_name>" or "call (<expr>)" without "with" - no args
+                if isinstance(func_name_or_expr, str):
+                    expr = FunctionCall(func_name_or_expr, [], call_type_arguments if 'call_type_arguments' in locals() else [], line_number=line_num)
+                else:
+                    # Already parsed as expression (e.g., member access)
+                    expr = func_name_or_expr
+                return self._parse_member_access(expr, is_call_context=True)
+        
+        # Check if this is a function call with parentheses (e.g., "func(args)" or "func<T>(args)")
+        if self.current_token and self.current_token.type == TokenType.LEFT_PAREN:
+            self.advance()  # consume (
+            arguments = []
+            
+            # Parse arguments
+            if self.current_token.type != TokenType.RIGHT_PAREN:
+                arguments.append(self.expression())
+                while self.current_token.type == TokenType.COMMA:
+                    self.advance()  # consume ,
+                    arguments.append(self.expression())
+                    
+            self.eat(TokenType.RIGHT_PAREN)
+            expr = FunctionCall(name, arguments, type_arguments, named_arguments=None, trailing_block=None, line_number=line_num)
+            # Check for member access on function result
+            return self._parse_member_access(expr)
+        
+        # Check if this is a function call with "with" keyword (e.g., "func with args")
+        # This enables inline function calls without needing the 'call' keyword
+        elif self.current_token and self.current_token.type == TokenType.WITH:
+            # Use the full function_call parser which handles named arguments
+            # Need to backtrack since function_call expects to be at the 'with' token
+            # But we've already consumed the function name, so pass it along
+            func_call = self.function_call(name, line_num)
+            # Check for member access on function result
+            return self._parse_member_access(func_call)
+        
+        # Check if this is a zero-argument function call (just identifier, but it's a function)
+        # This is tricky: we need to distinguish between variable reference and function call
+        # For now, we'll treat it as an identifier and let the interpreter handle it
+        # The interpreter can check if it's a function and call it if needed
+        # Or we can require explicit '()' for zero-arg functions: func()
+        # 
+        # SPECIAL CASE: Check for trailing block without 'with'
+        # This handles: "func_name do ... end" (zero-arg function with trailing block)
+        # But NOT: "variable do" in argument contexts (which would be a bug)
+        
+        # First parse member access to handle chaining like obj.method
+        expr = Identifier(name)
+        expr = self._parse_member_access(expr)
+        
+        # Now check if this is followed by 'do' - but NOT if we're parsing function arguments
+        if (self.current_token and self.current_token.type == TokenType.DO 
+            and not self._in_argument_context):
+            trailing_block = self.parse_trailing_block()
+            # Convert to function call
+            if isinstance(expr, Identifier):
+                # Simple case: func_name do
+                func_call = FunctionCall(expr.name, [], None, None, trailing_block, line_num)
+                return func_call
+            elif isinstance(expr, MemberAccess):
+                # Method call: obj.method do
+                # Keep the member access but mark it as having a trailing block
+                # We'll handle this in the interpreter
+                # For now, treat it as a function call to the method
+                return FunctionCall(expr, [], None, None, trailing_block, line_num)
+            else:
+                self.error(f"Cannot attach trailing block to {type(expr).__name__}")
+        
+        return expr
+        
+
     def convert_expression(self):
         """Parse a convert expression: convert expression to type."""
         # convert <expr> to <type>
