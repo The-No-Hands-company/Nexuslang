@@ -29,7 +29,7 @@ import threading
 from collections import Counter
 from datetime import date
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Counter
 
 _TELEMETRY_DIR = Path.home() / ".nlpl" / "telemetry"
 _COUNTS_FILE = _TELEMETRY_DIR / "diagnostic_counts.json"

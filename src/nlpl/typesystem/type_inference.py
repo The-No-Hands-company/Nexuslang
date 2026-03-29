@@ -3,7 +3,7 @@ Type inference for the NLPL language.
 This module provides advanced type inference functionality.
 """
 
-from typing import Dict, List, Optional, Set, Union, Any, Tuple
+from typing import Dict, List, Optional, Set, Union, Any, Tuple, Pattern, Type
 from ..parser.ast import (
     Program, VariableDeclaration, FunctionDefinition, Parameter,
     BinaryOperation, UnaryOperation, Literal, Identifier, FunctionCall,
@@ -402,7 +402,7 @@ class TypeInferenceEngine:
         
         return None  # Types cannot be unified
     
-    def infer_types_in_block(self, statements: List[Any], initial_env: Dict[str, Type] = None, generic_context: Optional[GenericTypeContext] = None) -> Dict[str, Type]:
+    def infer_types_in_block(self, statements: List[Any], initial_env: Dict[str, Type] = None, generic_context: Optional['GenericTypeContext'] = None) -> Dict[str, Type]:
         """Infer types for variables in a block of statements."""
         env = initial_env or {}
         

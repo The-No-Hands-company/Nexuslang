@@ -15,7 +15,7 @@ import multiprocessing
 from multiprocessing import Queue, Pool, Process
 from queue import Queue as ThreadQueue
 import time
-from typing import Any, Callable, List
+from typing import Any, Callable, List, Tuple
 
 # Global storage for threads and processes
 _threads = {}

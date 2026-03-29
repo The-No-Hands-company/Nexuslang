@@ -10,7 +10,7 @@ between NLPL and C code.
 """
 
 from llvmlite import ir
-from typing import Dict, List, Optional, Callable, Set, Tuple
+from typing import Dict, List, Optional, Callable, Set, Tuple, Type
 from dataclasses import dataclass, field
 from enum import Enum, auto
 

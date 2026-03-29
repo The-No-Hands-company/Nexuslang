@@ -5,7 +5,7 @@ Completion Provider
 Provides auto-completion suggestions for NLPL code.
 """
 
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Type
 import re
 
 

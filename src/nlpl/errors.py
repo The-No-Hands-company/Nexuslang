@@ -4,7 +4,7 @@ Provides detailed error messages with source context, suggestions, and formattin
 Inspired by Rust's error reporting system.
 """
 
-from typing import Optional, List
+from typing import Optional, List, Type
 import difflib
 from .error_codes import get_error_info, get_error_code_for_type
 from .colors import red, yellow, green, cyan, magenta, bold, dim

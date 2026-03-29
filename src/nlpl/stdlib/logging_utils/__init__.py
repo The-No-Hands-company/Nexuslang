@@ -396,9 +396,19 @@ def set_log_level(level: str) -> None:
 
 
 def add_file_handler(filepath: str, level: str = "DEBUG") -> bool:
-    """Legacy: add file handler to the root logger."""
+    """Legacy: add file handler to the root logger.
+
+    Returns False if the parent directory does not exist (does NOT create
+    directories, unlike log_add_file_handler).
+    """
     try:
-        log_add_file_handler("root", filepath)
+        abs_path = os.path.abspath(str(filepath))
+        parent = os.path.dirname(abs_path)
+        if not os.path.isdir(parent):
+            return False
+        with open(abs_path, "a", encoding="utf-8"):
+            pass
+        _get_or_create("root").handlers.append(_make_file_handler(abs_path))
         return True
     except Exception as exc:
         print(f"Failed to add file handler: {exc}", file=sys.stderr)

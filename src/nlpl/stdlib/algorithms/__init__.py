@@ -28,6 +28,7 @@ Example usage in NLPL:
     set max_val to algo_max_element with data
 """
 
+from typing import Set
 from ...runtime.runtime import Runtime
 import random
 import bisect

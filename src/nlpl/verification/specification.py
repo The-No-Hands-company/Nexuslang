@@ -11,7 +11,7 @@ from __future__ import annotations
 import enum
 import time
 from dataclasses import dataclass, field
-from typing import List, Optional, Any, Dict
+from typing import List, Optional, Any, Dict, Counter
 
 
 class VerificationStatus(enum.Enum):

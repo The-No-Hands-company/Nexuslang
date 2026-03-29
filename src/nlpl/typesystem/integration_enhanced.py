@@ -10,7 +10,7 @@ This module provides a unified interface for:
 Purpose: Single entry point for all type system functionality.
 """
 
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any, Tuple, Type
 from ..typesystem.types import (
     Type, PrimitiveType, ListType, DictionaryType, ClassType,
     FunctionType, UnionType, AnyType, GenericType, GenericParameter,

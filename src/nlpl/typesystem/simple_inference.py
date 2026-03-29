@@ -3,7 +3,7 @@ Simple type inference for the NLPL language.
 This provides basic type inference for variables and expressions.
 """
 
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Type
 from ..parser.ast import (
     Program, VariableDeclaration, FunctionDefinition, Parameter,
     BinaryOperation, UnaryOperation, Literal, Identifier, FunctionCall,

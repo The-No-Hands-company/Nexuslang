@@ -9,7 +9,7 @@ Complete implementation of generics with:
 - Variance support (covariant, contravariant)
 """
 
-from typing import Dict, List, Optional, Set, Tuple, Any
+from typing import Dict, List, Optional, Set, Tuple, Any, Type
 from dataclasses import dataclass
 from ..typesystem.types import (
     Type, PrimitiveType, ListType, DictionaryType, ClassType,

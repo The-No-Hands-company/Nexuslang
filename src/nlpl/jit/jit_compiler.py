@@ -22,7 +22,7 @@ Tier 2 – Native machine-code JIT (NativeFunctionJIT).
 """
 
 import time
-from typing import Dict, Optional, Any, Callable
+from typing import Dict, Optional, Any, Callable, Type
 from dataclasses import dataclass, field
 
 from .hot_function_detector import HotFunctionDetector

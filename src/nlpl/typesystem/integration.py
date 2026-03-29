@@ -3,6 +3,7 @@ Integration for the NLPL type system.
 This module connects all parts of the type system together.
 """
 
+from typing import Type
 from ..parser.ast import (
     Program, ClassDefinition, PropertyDeclaration, MethodDefinition, 
     FunctionDefinition, VariableDeclaration

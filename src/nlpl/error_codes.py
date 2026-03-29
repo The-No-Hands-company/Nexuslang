@@ -6,7 +6,7 @@ Comprehensive error code system with categories, descriptions, and fixes.
 Inspired by Rust's error codes.
 """
 
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Type
 from dataclasses import dataclass
 
 

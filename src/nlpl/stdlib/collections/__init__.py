@@ -4,7 +4,7 @@ Collections for NLPL: Vec<T>, HashMap<K,V>, Set<T>
 Production-ready implementations - NO SHORTCUTS.
 """
 
-from typing import TypeVar, Generic, Optional, Iterator as PyIterator
+from typing import TypeVar, Generic, Optional, Iterator as PyIterator, Set
 from ..option_result import Option, Some, NoneValue
 
 T = TypeVar('T')

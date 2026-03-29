@@ -7,7 +7,7 @@ Main analyzer that coordinates all checks.
 
 import time
 from pathlib import Path
-from typing import List, Optional, Set
+from typing import List, Optional, Set, Type
 import sys
 import os
 

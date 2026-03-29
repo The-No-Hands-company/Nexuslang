@@ -10,7 +10,7 @@ Detects type safety violations:
 - Wrong number of arguments
 """
 
-from typing import Dict, Set, List, Optional, Any
+from typing import Dict, Set, List, Optional, Any, Type
 import sys
 import os
 

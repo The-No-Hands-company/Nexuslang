@@ -16,7 +16,7 @@ import ctypes
 import os
 import platform
 import mmap
-from typing import Optional, Dict, Tuple
+from typing import Optional, Dict, Tuple, Callable
 from enum import IntEnum
 
 

@@ -3,7 +3,7 @@ Generic type system for NLPL.
 This module provides support for generic types and type parameters.
 """
 
-from typing import Dict, List, Optional, Set, Union, Any, Tuple
+from typing import Dict, List, Optional, Set, Union, Any, Tuple, Type
 from ..typesystem.types import (
     Type, PrimitiveType, ListType, DictionaryType, ClassType, 
     FunctionType, UnionType, AnyType, GenericType, GenericParameter,

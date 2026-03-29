@@ -18,7 +18,7 @@ This is a COMPLETE, PRODUCTION-READY implementation:
 NO COMPROMISES. NO SHORTCUTS. PRODUCTION QUALITY.
 """
 
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, Counter, Type
 from nlpl.compiler import CodeGenerator, CompilationTarget
 import subprocess
 import os

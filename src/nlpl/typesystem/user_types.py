@@ -3,7 +3,7 @@ User-defined types for the NLPL language.
 This module provides support for user-defined types with inheritance.
 """
 
-from typing import Dict, List, Optional, Set, Any, Tuple
+from typing import Dict, List, Optional, Set, Any, Tuple, Type
 from ..typesystem.types import (
     Type, ClassType, FunctionType, GenericType, GenericParameter,
     TypeKind, ANY_TYPE

@@ -5,7 +5,7 @@ Suggestion Engine
 Provides "did you mean?" suggestions using fuzzy matching and heuristics.
 """
 
-from typing import List, Optional, Set
+from typing import List, Optional, Set, Type
 from difflib import SequenceMatcher
 
 

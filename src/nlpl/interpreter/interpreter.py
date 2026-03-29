@@ -6,7 +6,7 @@ Executes AST nodes and manages program state.
 import os
 import re
 import struct
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Pattern, Tuple
 
 from nlpl.errors import NLPLNameError, NLPLRuntimeError, NLPLTypeError, get_close_matches
 from nlpl.parser.ast import (

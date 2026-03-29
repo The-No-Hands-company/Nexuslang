@@ -22,6 +22,7 @@ publish   Publish this package to the registry
 workspace Manage multi-package workspaces (init/list/build/clean/test)
 """
 
+from typing import Set
 import os
 import sys
 import argparse

@@ -3,7 +3,7 @@ Type checker for the NLPL language.
 This module provides type checking functionality for NLPL programs.
 """
 
-from typing import Dict, List, Optional, Set, Union, Any, Tuple
+from typing import Dict, List, Optional, Set, Union, Any, Tuple, Type
 from ..parser.ast import (
     Program, VariableDeclaration, FunctionDefinition, Parameter,
     IfStatement, WhileLoop, ForLoop, MemoryAllocation, MemoryDeallocation,

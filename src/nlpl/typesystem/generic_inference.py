@@ -5,7 +5,7 @@ Infers type arguments from function call context and performs type substitution.
 Example: map([1, 2, 3], fn) infers T=Integer from the list argument.
 """
 
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple, Type
 from ..typesystem.types import (
     Type, ListType, DictionaryType, FunctionType,
     get_type_by_name, INTEGER_TYPE, STRING_TYPE, FLOAT_TYPE, BOOLEAN_TYPE, ANY_TYPE

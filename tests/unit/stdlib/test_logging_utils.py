@@ -550,7 +550,8 @@ class TestBackwardCompatAliases:
             assert add_file_handler(path) is True
 
     def test_add_file_handler_returns_false_on_invalid_path(self):
-        result = add_file_handler("/nonexistent/deeply/nested/cant/create/file.log")
+        # Use a null byte — always an invalid path on Linux regardless of permissions
+        result = add_file_handler("/tmp/invalid\x00path.log")
         assert result is False
 
     def test_remove_all_handlers_clears_root(self):

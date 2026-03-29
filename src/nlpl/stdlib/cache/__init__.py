@@ -21,6 +21,7 @@ Example usage in NLPL:
     cache_clear()
 """
 
+from typing import OrderedDict
 from ...runtime.runtime import Runtime
 import time
 from collections import OrderedDict

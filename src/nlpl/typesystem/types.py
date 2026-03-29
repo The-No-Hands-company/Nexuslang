@@ -4,7 +4,7 @@ This module defines the core types and type operations.
 """
 
 from enum import Enum, auto
-from typing import Dict, List, Optional, Set, Union, Any, Tuple
+from typing import Dict, List, Optional, Set, Union, Any, Tuple, Iterator, Type
 from abc import ABC, abstractmethod
 
 class Variance(Enum):

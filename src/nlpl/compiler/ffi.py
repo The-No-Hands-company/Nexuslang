@@ -6,7 +6,7 @@ Advanced features: function pointers, opaque types, unions, nested types.
 """
 
 from llvmlite import ir
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple, Any, Type
 import ctypes.util
 
 

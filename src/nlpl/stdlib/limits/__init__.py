@@ -23,6 +23,7 @@ Example usage in NLPL:
     set is_little_endian to limits_is_little_endian()
 """
 
+from typing import Type
 from ...runtime.runtime import Runtime
 import sys
 import struct

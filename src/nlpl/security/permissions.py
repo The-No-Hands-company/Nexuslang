@@ -15,7 +15,7 @@ Permission model inspired by Deno's security architecture.
 """
 
 from enum import Enum, auto
-from typing import Set, Optional, List, Dict
+from typing import Set, Optional, List, Dict, Type
 from dataclasses import dataclass, field
 import os
 import sys

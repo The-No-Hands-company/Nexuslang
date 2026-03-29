@@ -16,7 +16,7 @@ This module provides:
 """
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Any, TYPE_CHECKING
+from typing import Dict, List, Optional, Any, TYPE_CHECKING, Type
 
 if TYPE_CHECKING:
     pass

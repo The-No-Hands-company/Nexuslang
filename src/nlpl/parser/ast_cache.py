@@ -11,7 +11,7 @@ Intelligent caching of parsed ASTs with:
 
 import hashlib
 import time
-from typing import Dict, Optional, Tuple, Any
+from typing import Dict, Optional, Tuple, Any, OrderedDict
 from collections import OrderedDict
 from threading import Lock
 from dataclasses import dataclass

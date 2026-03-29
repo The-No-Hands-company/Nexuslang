@@ -3,6 +3,7 @@ Parser for the Natural Language Programming Language (NLPL).
 This module converts a stream of tokens into an Abstract Syntax Tree (AST).
 """
 
+from typing import Type
 from nlpl.parser.lexer import TokenType, Token
 from nlpl.errors import NLPLSyntaxError, suggest_correction
 from nlpl.parser.ast import (

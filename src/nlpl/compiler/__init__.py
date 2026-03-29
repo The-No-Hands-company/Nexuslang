@@ -18,7 +18,7 @@ Supported Targets:
 Philosophy: No compromises - NLPL compiles to true native code, not bytecode.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set, Tuple
 from abc import ABC, abstractmethod
 from nlpl.parser.ast import *
 from nlpl.optimizer import OptimizationLevel, OptimizationPipeline, create_optimization_pipeline
