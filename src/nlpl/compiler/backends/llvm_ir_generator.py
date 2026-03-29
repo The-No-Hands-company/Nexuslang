@@ -3126,35 +3126,9 @@ class LLVMIRGenerator(CodeGenerator):
         var_name = node.name
         
         # If we're in a function, use local variables; otherwise skip (globals handled separately)
-        if self.current_function_name is None:
-            # Global scope - already collected, just initialize if needed
-            if hasattr(node, 'value') and node.value and var_name in self.global_vars:
-                llvm_type, global_name = self.global_vars[var_name]
-                
-                # Special handling for list expressions and comprehensions - both return pointers
-                if type(node.value).__name__ in ('ListExpression', 'ListComprehension'):
-                    value_reg = self._generate_expression(node.value, indent)
-                    # value_reg is already a pointer from _generate_list_expression or _generate_list_comprehension
-                    self.emit(f'{indent}store {llvm_type} {value_reg}, {llvm_type}* {global_name}, align 8')
-                else:
-                    value_reg = self._generate_expression(node.value, indent)
-                    value_type = self._infer_expression_type(node.value)
-                    
-                    # Track if this is a closure assignment (lambda expression) for GLOBALS
-                    if type(node.value).__name__ == 'LambdaExpression':
-                        ret_type = 'i64'  # Default return type
-                        param_types = []
-                        if hasattr(node.value, 'parameters'):
-                            param_types = ['i64'] * len(node.value.parameters)
-                        has_env = self.last_lambda_has_captures
-                        self.closure_variables[var_name] = (ret_type, param_types, has_env)
-                    
-                    if value_type != llvm_type:
-                        value_reg = self._convert_type(value_reg, value_type, llvm_type, indent)
-                    
-                    self.emit(f'{indent}store {llvm_type} {value_reg}, {llvm_type}* {global_name}, align 8')
-            return
-        
+        if self._is_global_variable_context(node):
+            return ""
+
         # Check if variable already exists (reassignment)
         if var_name in self.local_vars:
             # This is a reassignment - generate store only
@@ -3225,6 +3199,49 @@ class LLVMIRGenerator(CodeGenerator):
             return
         
         # New variable declaration
+        # New variable: delegate to helper
+        var_type = getattr(node, 'var_type', None)  # re-derive for helper
+        return self._generate_new_local_variable(node, var_name, var_type, indent)
+
+
+    def _is_global_variable_context(self, node):
+        """Return True if node is a global variable that should be skipped
+        (globals are handled during module-level code generation, not here).
+        """
+        if self.current_function_name is None:
+            # Global scope - already collected, just initialize if needed
+            if hasattr(node, 'value') and node.value and var_name in self.global_vars:
+                llvm_type, global_name = self.global_vars[var_name]
+                
+                # Special handling for list expressions and comprehensions - both return pointers
+                if type(node.value).__name__ in ('ListExpression', 'ListComprehension'):
+                    value_reg = self._generate_expression(node.value, indent)
+                    # value_reg is already a pointer from _generate_list_expression or _generate_list_comprehension
+                    self.emit(f'{indent}store {llvm_type} {value_reg}, {llvm_type}* {global_name}, align 8')
+                else:
+                    value_reg = self._generate_expression(node.value, indent)
+                    value_type = self._infer_expression_type(node.value)
+                    
+                    # Track if this is a closure assignment (lambda expression) for GLOBALS
+                    if type(node.value).__name__ == 'LambdaExpression':
+                        ret_type = 'i64'  # Default return type
+                        param_types = []
+                        if hasattr(node.value, 'parameters'):
+                            param_types = ['i64'] * len(node.value.parameters)
+                        has_env = self.last_lambda_has_captures
+                        self.closure_variables[var_name] = (ret_type, param_types, has_env)
+                    
+                    if value_type != llvm_type:
+                        value_reg = self._convert_type(value_reg, value_type, llvm_type, indent)
+                    
+                    self.emit(f'{indent}store {llvm_type} {value_reg}, {llvm_type}* {global_name}, align 8')
+            return
+        
+        return False
+
+
+    def _generate_new_local_variable(self, node, var_name, var_type, indent='  '):
+        """Generate LLVM IR for a new local variable declaration."""
         # Determine type
         if hasattr(node, 'var_type') and node.var_type:
             llvm_type = self._map_nlpl_type_to_llvm(node.var_type)
@@ -8646,49 +8663,11 @@ class LLVMIRGenerator(CodeGenerator):
                     
                     return result_reg
         
-        # Built-in panic intrinsic
-        if func_name == 'panic':
-            # Check argument
-            if not hasattr(expr, 'arguments') or not expr.arguments:
-                raise ValueError("panic requires a message argument")
-            
-            # Generate argument (message)
-            msg_expr = expr.arguments[0]
-            msg_reg = self._generate_expression(msg_expr, indent)
-            msg_type = self._infer_expression_type(msg_expr)
-            
-            # Ensure it's a string (i8*)
-            if msg_type != 'i8*':
-                # Attempt conversion if possible, or error
-                # For now assume it's a string
-                pass
-            
-            self.emit(f'{indent}call void @nlpl_panic(i8* {msg_reg})')
-            self.emit(f'{indent}unreachable')
-            return '0'
-        
-        # Built-in string functions
-        if func_name in ['strlen', 'substr', 'charat', 'indexof', 'strcpy', 'replace', 'split', 'join', 'trim', 'toupper', 'tolower']:
-            return self._generate_string_function_call(func_name, expr, indent)
-        
-        # Built-in array functions ('length' is the NLPL user-facing alias for 'arrlen')
-        # 'list_append' is the parser's internal name for 'append X to arr' statements
-        if func_name == 'length':
-            func_name = 'arrlen'
-        if func_name == 'list_append':
-            func_name = 'arrpush'
-        if func_name in ['arrlen', 'arrpush', 'arrpop', 'arrslice', 'map', 'filter', 'reduce', 'foreach']:
-            return self._generate_array_function_call(func_name, expr, indent)
-        
-        # Built-in math functions
-        if func_name in ['sqrt', 'pow', 'abs', 'min', 'max', 'sin', 'cos', 'tan', 'floor', 'ceil']:
-            return self._generate_math_function_call(func_name, expr, indent)
-        
-        # Built-in memory management functions
-        if func_name in ['alloc', 'dealloc', 'realloc']:
-            return self._generate_memory_function_call(func_name, expr, indent)
-        
-        # Check if it's an extern function
+        # Delegate to builtin handler
+        _builtin_result = self._generate_builtin_call(func_name, expr, indent)
+        if _builtin_result is not None:
+            return _builtin_result
+
         
         # Check if it's an extern function
         if func_name in self.extern_functions:
@@ -8792,6 +8771,57 @@ class LLVMIRGenerator(CodeGenerator):
         result_reg = self._emit_call_or_invoke(ret_type, func_name, args_str, indent)
         return result_reg
     
+
+    def _generate_builtin_call(self, func_name, expr, indent='  '):
+        """Handle built-in function calls (panic, string ops, array ops, math, memory).
+
+        Returns the LLVM IR string for the call, or None if func_name is not a builtin.
+        """
+        # Built-in panic intrinsic
+        if func_name == 'panic':
+            # Check argument
+            if not hasattr(expr, 'arguments') or not expr.arguments:
+                raise ValueError("panic requires a message argument")
+            
+            # Generate argument (message)
+            msg_expr = expr.arguments[0]
+            msg_reg = self._generate_expression(msg_expr, indent)
+            msg_type = self._infer_expression_type(msg_expr)
+            
+            # Ensure it's a string (i8*)
+            if msg_type != 'i8*':
+                # Attempt conversion if possible, or error
+                # For now assume it's a string
+                pass
+            
+            self.emit(f'{indent}call void @nlpl_panic(i8* {msg_reg})')
+            self.emit(f'{indent}unreachable')
+            return '0'
+        
+        # Built-in string functions
+        if func_name in ['strlen', 'substr', 'charat', 'indexof', 'strcpy', 'replace', 'split', 'join', 'trim', 'toupper', 'tolower']:
+            return self._generate_string_function_call(func_name, expr, indent)
+        
+        # Built-in array functions ('length' is the NLPL user-facing alias for 'arrlen')
+        # 'list_append' is the parser's internal name for 'append X to arr' statements
+        if func_name == 'length':
+            func_name = 'arrlen'
+        if func_name == 'list_append':
+            func_name = 'arrpush'
+        if func_name in ['arrlen', 'arrpush', 'arrpop', 'arrslice', 'map', 'filter', 'reduce', 'foreach']:
+            return self._generate_array_function_call(func_name, expr, indent)
+        
+        # Built-in math functions
+        if func_name in ['sqrt', 'pow', 'abs', 'min', 'max', 'sin', 'cos', 'tan', 'floor', 'ceil']:
+            return self._generate_math_function_call(func_name, expr, indent)
+        
+        # Built-in memory management functions
+        if func_name in ['alloc', 'dealloc', 'realloc']:
+            return self._generate_memory_function_call(func_name, expr, indent)
+        
+        # Check if it's an extern function
+        return None  # Not a builtin
+
     def _generate_indirect_function_call(self, deref_expr, call_expr, indent='') -> str:
         """
         Generate indirect function call through function pointer.
