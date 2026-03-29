@@ -2,7 +2,7 @@
 
 ## Understanding Game Time
 
-In NaturalScript, time management is crucial for smooth gameplay and consistent behavior across different devices.
+In NLPL, time management is crucial for smooth gameplay and consistent behavior across different devices.
 
 ## Frame-Based Updates
 

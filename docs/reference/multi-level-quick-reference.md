@@ -57,7 +57,7 @@ end
 **When:** Drivers, embedded, high-perf servers, system utils 
 **Keywords:** `allocate`, `free`, `sizeof`, `Pointer`, FFI 
 **Syntax:** Explicit memory + FFI 
-**Status:** 95% Ready
+**Status:** Working
 
 **Example:**
 ```nlpl

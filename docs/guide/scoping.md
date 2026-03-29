@@ -2,7 +2,7 @@
 
 ## Understanding Blocks
 
-In NaturalScript, blocks are groups of related commands that are indented together. They define the structure and flow of your program.
+In NLPL, blocks are groups of related commands that are indented together. They define the structure and flow of your program.
 
 ### Basic Block Structure
 ```

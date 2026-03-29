@@ -1,31 +1,22 @@
-# Tutorial 1: Hello World — Your First Program
+# Tutorial 1: Hello World
 
-**Time:** ~15 minutes  
+**Time:** ~10 minutes  
 **Prerequisites:** NLPL installed ([installation guide](../../getting-started/installation.md))
 
 ---
 
-## What You Will Learn
+## Your first program
 
-- How to run a NLPL program
-- How to print output to the screen
-- The basic structure of a NLPL source file
-
----
-
-## 1. Your First Program
-
-Open a text editor and create a file called `hello.nlpl`.  Write this single
-line inside it:
+Create a file called `hello.nlpl`:
 
 ```nlpl
 print text "Hello, World!"
 ```
 
-Now run it from your terminal:
+Run it:
 
-```
-nlpl hello.nlpl
+```bash
+PYTHONPATH=src python -m nlpl.main hello.nlpl
 ```
 
 You should see:
@@ -34,77 +25,59 @@ You should see:
 Hello, World!
 ```
 
-Congratulations — that is a complete NLPL program.
-
 ---
 
-## 2. Printing Multiple Lines
-
-You can call `print text` as many times as you like:
+## Printing different types
 
 ```nlpl
-print text "Hello, World!"
-print text "Welcome to NLPL."
-print text "This is my first program."
+print text "I am a string"
+print number 42
+print number 3.14
 ```
 
----
-
-## 3. Comments
-
-Lines that start with `#` are comments.  The interpreter ignores them, but
-they help human readers understand the code.
+The `print text` and `print number` hints are optional — `print` alone works for anything:
 
 ```nlpl
-# This is a comment. The interpreter ignores it.
-print text "Comments make code easier to read."
-```
-
-You can also put a comment at the end of a line:
-
-```nlpl
-print text "Inline comment follows"  # this part is ignored
+print "Hello again"
+print 100
 ```
 
 ---
 
-## 4. Printing Numbers
-
-`print text` expects text.  To print a number, convert it first:
+## Comments
 
 ```nlpl
-print text convert 42 to string
-print text convert 3.14 to string
-```
+# This is a comment — ignored by NLPL
+print text "Comments don't affect output"
 
-Or build a sentence:
-
-```nlpl
-set count to 5
-print text "The count is: " plus convert count to string
+# You can comment out code:
+# print text "This line won't run"
 ```
 
 ---
 
-## 5. Your Turn
-
-Try making the program greet you by name.  Replace `"World"` with your name:
+## Multiline programs
 
 ```nlpl
-set my_name to "Your Name Here"
-print text "Hello, " plus my_name plus "!"
+print text "Line 1"
+print text "Line 2"
+print text "Line 3"
 ```
 
 ---
 
-## Summary
+## Variables
 
-| Concept | Syntax |
-|---------|--------|
-| Print a line | `print text "…"` |
-| Comment | `# comment text` |
-| Store a value | `set name to value` |
-| Join strings | `"text" plus more_text` |
-| Convert number to text | `convert number to string` |
+```nlpl
+set greeting to "Hello"
+set name to "Alice"
+print text greeting plus ", " plus name plus "!"
+```
 
-**Next:** [Variables, Functions, and Control Flow](02-variables-functions-control-flow.md)
+Output: `Hello, Alice!`
+
+---
+
+## Next steps
+
+Continue to [Tutorial 2: Variables, Functions, and Control Flow](02-variables-functions-control-flow.md).

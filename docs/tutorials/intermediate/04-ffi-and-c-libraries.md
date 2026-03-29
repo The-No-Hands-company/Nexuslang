@@ -18,8 +18,8 @@ passing them across the FFI boundary.
 
 Enable FFI access with:
 
-```
-nlpl program.nlpl --allow-ffi
+```bash
+PYTHONPATH=src python -m nlpl.main program.nlpl --allow-ffi
 ```
 
 ---

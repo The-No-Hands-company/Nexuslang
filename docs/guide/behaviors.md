@@ -2,7 +2,7 @@
 
 ## Understanding Behaviors
 
-Behaviors in NaturalScript are reusable sets of actions that define how objects act and react in your game.
+Behaviors in NLPL are reusable sets of actions that define how objects act and react in your game.
 
 ### Basic Behavior Structure
 ```

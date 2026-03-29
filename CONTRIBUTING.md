@@ -20,7 +20,7 @@ Thank you for your interest in contributing to NLPL (Natural Language Programmin
 
 ## Prerequisites
 
-- Python 3.10 or later (tested up to 3.14)
+- Python 3.11 or later
 - Git
 
 ---

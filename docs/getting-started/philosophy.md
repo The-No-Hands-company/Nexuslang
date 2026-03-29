@@ -2,7 +2,7 @@
 
 ## Why Natural Language Programming?
 
-Programming should be as intuitive as explaining your ideas to another person. Traditional programming languages force people to think like computers, but NaturalScript allows computers to understand human thought patterns.
+Programming should be as intuitive as explaining your ideas to another person. Traditional programming languages force people to think like computers, but NLPL allows computers to understand human thought patterns.
 
 ## Core Values
 

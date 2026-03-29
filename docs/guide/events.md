@@ -2,7 +2,7 @@
 
 ## Understanding Events
 
-Events in NaturalScript are things that happen during your game that you want to respond to. They can be user actions, game states, or object interactions.
+Events in NLPL are things that happen during your game that you want to respond to. They can be user actions, game states, or object interactions.
 
 ## Basic Event Structure
 

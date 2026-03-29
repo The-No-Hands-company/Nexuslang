@@ -1776,84 +1776,89 @@ class Parser:
             self.error("Expected a parameter name")
         
     def class_definition(self):
-        """Parse a class definition."""
-        # Support both syntaxes:
-        # 1. Simple: "class ClassName"
-        # 2. Verbose: "define a class called ClassName with T as a type parameter"
-        
+        """Parse a class definition (simple or verbose syntax)."""
         line_number = self.current_token.line
-        
-        # Check for DEFINE token (verbose syntax)
+
+        if self.current_token.type == TokenType.DEFINE:
+            return self._parse_class_verbose(line_number)
+        elif self.current_token.type == TokenType.CLASS:
+            return self._parse_class_simple(line_number)
+        else:
+            self.error("Expected 'class' or 'define' for class definition")
+
+
+    def _parse_class_verbose(self, line_number):
+        """Parse verbose class syntax: define a class called ClassName ..."""
         if self.current_token.type == TokenType.DEFINE:
             self.advance()  # consume 'define'
-            
+        
             # Skip optional 'a'
             if self.current_token.type == TokenType.A:
                 self.advance()
-            
+        
             # Expect 'class'
             if self.current_token.type != TokenType.CLASS:
                 self.error("Expected 'class' after 'define'")
             self.advance()  # consume 'class'
-            
+        
             # Expect 'called'
             if self.current_token.type != TokenType.CALLED:
                 self.error("Expected 'called' after 'class'")
             self.advance()  # consume 'called'
-            
+        
             # Get class name
             if self.current_token.type != TokenType.IDENTIFIER:
                 self.error("Expected class name")
             class_name = self.current_token.lexeme
             self.advance()
-            
+        
             # Parse generic parameters: "with T as a type parameter that must be a number"
             generic_parameters = []
             parent_classes = []
             implemented_interfaces = []
-            
+        
             if self.current_token and self.current_token.type == TokenType.WITH:
                 self.advance()  # consume 'with'
-                
+            
                 # Parse type parameter name (T, K, V, etc.)
                 if self.current_token.type != TokenType.IDENTIFIER:
                     self.error("Expected type parameter name after 'with'")
                 param_name = self.current_token.lexeme
                 self.advance()
-                
+            
                 # Expect "as a type parameter"
                 if self.current_token.type == TokenType.AS:
                     self.advance()  # consume 'as'
-                    
+                
                     # Skip optional 'a'
                     if self.current_token.type == TokenType.A:
                         self.advance()
-                    
+                
                     # Expect 'type'
                     if self.current_token.type == TokenType.TYPE:
                         self.advance()
-                        
+                    
                         # Expect 'parameter'
                         if self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() == 'parameter':
                             self.advance()
-                            
+                        
                             # Check for constraint: "that must be a number"
                             constraint = None
                             if self.current_token and self.current_token.type == TokenType.THAT:
                                 self.advance()  # consume 'that'
-                                
+                            
                                 # Expect 'must'
                                 if self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() == 'must':
                                     self.advance()
-                                    
+                                
                                     # Expect 'be'
                                     if self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() == 'be':
                                         self.advance()
-                                        
+                                    
                                         # Skip optional 'a'
                                         if self.current_token.type == TokenType.A:
                                             self.advance()
-                                        
+                                    
                                         # Get constraint type (number, string, etc.)
                                         if self.current_token.type in (TokenType.NUMBER, TokenType.STRING, TokenType.BOOLEAN, TokenType.INTEGER, TokenType.FLOAT):
                                             constraint = self.current_token.lexeme
@@ -1861,7 +1866,7 @@ class Parser:
                                         elif self.current_token.type == TokenType.IDENTIFIER:
                                             constraint = self.current_token.lexeme
                                             self.advance()
-                            
+                        
                             # Create TypeParameter with constraint
                             from ..parser.ast import TypeParameter
                             generic_parameters.append(
@@ -1871,65 +1876,65 @@ class Parser:
                                     line_number=line_number
                                 )
                             )
-            
+        
             # Parse class body (properties and methods)
             properties = []
             methods = []
-            
+        
             # Skip NEWLINE before INDENT (emitted after class header line)
             while self.current_token and self.current_token.type == TokenType.NEWLINE:
                 self.advance()
-            
+        
             # Expect INDENT
             if self.current_token and self.current_token.type == TokenType.INDENT:
                 self.advance()
-                
+            
                 # Parse properties section
                 if self.current_token and self.current_token.type == TokenType.PROPERTIES:
                     self.advance()  # consume 'properties'
-                    
+                
                     # Skip colon
                     if self.current_token and self.current_token.type == TokenType.COLON:
                         self.advance()
-                    
+                
                     # Expect INDENT for properties
                     if self.current_token and self.current_token.type == TokenType.INDENT:
                         self.advance()
-                        
+                    
                         # Parse property definitions: "name: Type"
                         while self.current_token and self.current_token.type != TokenType.DEDENT:
                             if self.current_token.type == TokenType.IDENTIFIER or self.current_token.type == TokenType.VALUE:
                                 prop_name = self.current_token.lexeme
                                 self.advance()
-                                
+                            
                                 # Expect colon
                                 if self.current_token and self.current_token.type == TokenType.COLON:
                                     self.advance()
-                                    
+                                
                                     # Get type
                                     prop_type = self.parse_type()
-                                    
+                                
                                     from ..parser.ast import PropertyDeclaration
                                     properties.append(PropertyDeclaration(prop_name, prop_type, line_number=line_number))
                             else:
                                 self.advance()  # Skip unknown tokens
-                        
+                    
                         # Consume DEDENT
                         if self.current_token and self.current_token.type == TokenType.DEDENT:
                             self.advance()
-                
+            
                 # Parse methods section
                 if self.current_token and self.current_token.type == TokenType.METHODS:
                     self.advance()  # consume 'methods'
-                    
+                
                     # Skip colon
                     if self.current_token and self.current_token.type == TokenType.COLON:
                         self.advance()
-                    
+                
                     # Expect INDENT for methods
                     if self.current_token and self.current_token.type == TokenType.INDENT:
                         self.advance()
-                        
+                    
                         # Parse method definitions
                         while self.current_token and self.current_token.type != TokenType.DEDENT:
                             if self.current_token.type == TokenType.DEFINE:
@@ -1937,15 +1942,15 @@ class Parser:
                                 methods.append(method)
                             else:
                                 self.advance()  # Skip unknown tokens
-                        
+                    
                         # Consume DEDENT
                         if self.current_token and self.current_token.type == TokenType.DEDENT:
                             self.advance()
-                
+            
                 # Consume final DEDENT (class body)
                 if self.current_token and self.current_token.type == TokenType.DEDENT:
                     self.advance()
-            
+        
             return ClassDefinition(
                 name=class_name,
                 properties=properties,
@@ -1955,23 +1960,35 @@ class Parser:
                 generic_parameters=generic_parameters,
                 line_number=line_number
             )
-        
+    
         # Check for simple syntax: "class ClassName" or "class ClassName extends ParentClass"
-        elif self.current_token.type == TokenType.CLASS:
-            self.advance()  # consume 'class'
+
+    def _parse_class_simple(self, line_number):
+        """Parse simple class syntax: class ClassName [extends Parent] [<T>]."""
+        self.advance()  # consume 'class'
+        
+        # Get class name
+        if self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
+            class_name = self.current_token.lexeme
+            self.advance()
             
-            # Get class name
-            if self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
-                class_name = self.current_token.lexeme
-                self.advance()
+            # Check for generic type parameters: class Container<T> or class Functor<F :: * -> *>
+            generic_parameters = []
+            class_type_param_kinds = {}
+            if self.current_token and self.current_token.type == TokenType.LESS_THAN:
+                self.advance()  # Eat '<'
                 
-                # Check for generic type parameters: class Container<T> or class Functor<F :: * -> *>
-                generic_parameters = []
-                class_type_param_kinds = {}
-                if self.current_token and self.current_token.type == TokenType.LESS_THAN:
-                    self.advance()  # Eat '<'
-                    
-                    # Parse type parameter names with optional kind annotations
+                # Parse type parameter names with optional kind annotations
+                if self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
+                    pname = self.current_token.lexeme
+                    generic_parameters.append(pname)
+                    self.advance()
+                    if self.current_token and self.current_token.type == TokenType.DOUBLE_COLON:
+                        self.advance()  # Eat '::'
+                        class_type_param_kinds[pname] = self.parse_kind_annotation()
+                
+                while self.current_token and self.current_token.type == TokenType.COMMA:
+                    self.advance()  # Eat ','
                     if self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
                         pname = self.current_token.lexeme
                         generic_parameters.append(pname)
@@ -1979,288 +1996,202 @@ class Parser:
                         if self.current_token and self.current_token.type == TokenType.DOUBLE_COLON:
                             self.advance()  # Eat '::'
                             class_type_param_kinds[pname] = self.parse_kind_annotation()
-                    
-                    while self.current_token and self.current_token.type == TokenType.COMMA:
-                        self.advance()  # Eat ','
-                        if self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
-                            pname = self.current_token.lexeme
-                            generic_parameters.append(pname)
-                            self.advance()
-                            if self.current_token and self.current_token.type == TokenType.DOUBLE_COLON:
-                                self.advance()  # Eat '::'
-                                class_type_param_kinds[pname] = self.parse_kind_annotation()
-                        else:
-                            self.error("Expected type parameter name after comma")
-                    
-                    # Expect '>'
-                    if self.current_token and self.current_token.type == TokenType.GREATER_THAN:
-                        self.advance()  # Eat '>'
-                    elif self.current_token and self.current_token.type == TokenType.RIGHT_SHIFT:
-                        # Handle >> as > > for nested cases
-                        from ..parser.lexer import Token
-                        self.current_token = Token(TokenType.GREATER_THAN, '>', None,
-                                                  self.current_token.line, self.current_token.column + 1)
                     else:
-                        self.error("Expected '>' to close generic type parameters")
+                        self.error("Expected type parameter name after comma")
                 
-                # Check for inheritance: "extends ParentClass" or "inherits ParentClass"
-                parent_classes = []
-                if self.current_token and (self.current_token.type == TokenType.EXTENDS or 
-                                          self.current_token.type == TokenType.INHERITS):
-                    self.advance()  # consume 'extends' or 'inherits'
-                    
-                    # Get parent class name
-                    if self.current_token.type == TokenType.IDENTIFIER:
-                        parent_classes.append(self.current_token.lexeme)
-                        self.advance()
-                    else:
-                        self.error(f"Expected parent class name after extends/inherits")
+                # Expect '>'
+                if self.current_token and self.current_token.type == TokenType.GREATER_THAN:
+                    self.advance()  # Eat '>'
+                elif self.current_token and self.current_token.type == TokenType.RIGHT_SHIFT:
+                    # Handle >> as > > for nested cases
+                    from ..parser.lexer import Token
+                    self.current_token = Token(TokenType.GREATER_THAN, '>', None,
+                                              self.current_token.line, self.current_token.column + 1)
+                else:
+                    self.error("Expected '>' to close generic type parameters")
+            
+            # Check for inheritance: "extends ParentClass" or "inherits ParentClass"
+            parent_classes = []
+            if self.current_token and (self.current_token.type == TokenType.EXTENDS or 
+                                      self.current_token.type == TokenType.INHERITS):
+                self.advance()  # consume 'extends' or 'inherits'
                 
-                # Check for interface implementation: "implements Interface1, Interface2"
-                implemented_interfaces = []
-                if self.current_token and self.current_token.type == TokenType.IMPLEMENTS:
-                    self.advance()  # consume 'implements'
-                    
-                    # Get first interface name
-                    if self.current_token.type == TokenType.IDENTIFIER:
-                        implemented_interfaces.append(self.current_token.lexeme)
-                        self.advance()
-                        
-                        # Get additional interfaces (comma-separated)
-                        while self.current_token and self.current_token.type == TokenType.COMMA:
-                            self.advance()  # consume comma
-                            if self.current_token.type == TokenType.IDENTIFIER:
-                                implemented_interfaces.append(self.current_token.lexeme)
-                                self.advance()
-                            else:
-                                self.error("Expected interface name after comma")
-                    else:
-                        self.error("Expected interface name after 'implements'")
-                
-                # Skip NEWLINE before INDENT (emitted after class header line)
-                while self.current_token and self.current_token.type == TokenType.NEWLINE:
+                # Get parent class name
+                if self.current_token.type == TokenType.IDENTIFIER:
+                    parent_classes.append(self.current_token.lexeme)
                     self.advance()
-                # Expect INDENT for class body
-                if self.current_token and self.current_token.type == TokenType.INDENT:
-                    self.advance()  # consume INDENT
+                else:
+                    self.error(f"Expected parent class name after extends/inherits")
+            
+            # Check for interface implementation: "implements Interface1, Interface2"
+            implemented_interfaces = []
+            if self.current_token and self.current_token.type == TokenType.IMPLEMENTS:
+                self.advance()  # consume 'implements'
+                
+                # Get first interface name
+                if self.current_token.type == TokenType.IDENTIFIER:
+                    implemented_interfaces.append(self.current_token.lexeme)
+                    self.advance()
                     
-                    # Parse properties and methods
-                    properties = []
-                    methods = []
-                    
-                    while self.current_token and self.current_token.type != TokenType.DEDENT:
-                        # Skip NEWLINE tokens between class members
-                        if self.current_token.type == TokenType.NEWLINE:
+                    # Get additional interfaces (comma-separated)
+                    while self.current_token and self.current_token.type == TokenType.COMMA:
+                        self.advance()  # consume comma
+                        if self.current_token.type == TokenType.IDENTIFIER:
+                            implemented_interfaces.append(self.current_token.lexeme)
                             self.advance()
-                            continue
-                        
-                        # Check for access modifiers (private/public/protected)
-                        access_modifier = 'public'  # default
-                        if self.current_token.type in (TokenType.PRIVATE, TokenType.PUBLIC, TokenType.PROTECTED):
-                            if self.current_token.type == TokenType.PRIVATE:
-                                access_modifier = 'private'
-                            elif self.current_token.type == TokenType.PUBLIC:
-                                access_modifier = 'public'
-                            elif self.current_token.type == TokenType.PROTECTED:
-                                access_modifier = 'protected'
-                            self.advance()  # consume access modifier
-                        
-                        # Now parse the property or method
-                        if self.current_token.type == TokenType.PROPERTY:
+                        else:
+                            self.error("Expected interface name after comma")
+                else:
+                    self.error("Expected interface name after 'implements'")
+            
+            # Skip NEWLINE before INDENT (emitted after class header line)
+            while self.current_token and self.current_token.type == TokenType.NEWLINE:
+                self.advance()
+            # Expect INDENT for class body
+            if self.current_token and self.current_token.type == TokenType.INDENT:
+                self.advance()  # consume INDENT
+                
+                # Parse properties and methods
+                properties = []
+                methods = []
+                
+                while self.current_token and self.current_token.type != TokenType.DEDENT:
+                    # Skip NEWLINE tokens between class members
+                    if self.current_token.type == TokenType.NEWLINE:
+                        self.advance()
+                        continue
+                    
+                    # Check for access modifiers (private/public/protected)
+                    access_modifier = 'public'  # default
+                    if self.current_token.type in (TokenType.PRIVATE, TokenType.PUBLIC, TokenType.PROTECTED):
+                        if self.current_token.type == TokenType.PRIVATE:
+                            access_modifier = 'private'
+                        elif self.current_token.type == TokenType.PUBLIC:
+                            access_modifier = 'public'
+                        elif self.current_token.type == TokenType.PROTECTED:
+                            access_modifier = 'protected'
+                        self.advance()  # consume access modifier
+                    
+                    # Now parse the property or method
+                    if self.current_token.type == TokenType.PROPERTY:
+                        prop = self.property_declaration_simple()
+                        prop.access_modifier = access_modifier
+                        properties.append(prop)
+                    elif self.current_token.type == TokenType.SET:
+                        # Handle 'set <name> to <value>' syntax for property declarations
+                        prop = self.set_statement_as_property()
+                        prop.access_modifier = access_modifier
+                        properties.append(prop)
+                    elif self.current_token.type == TokenType.METHOD:
+                        method = self.method_definition_simple()
+                        method.access_modifier = access_modifier
+                        methods.append(method)
+                    elif self.current_token.type == TokenType.FUNCTION:
+                        # Parse as function, convert to method
+                        from ..parser.ast import MethodDefinition
+                        func = self.function_definition_short()
+                        method = MethodDefinition(func.name, func.parameters, func.body, func.return_type, is_static=False, access_modifier=access_modifier, line_number=func.line_number)
+                        methods.append(method)
+                    elif self.current_token.type == TokenType.IDENTIFIER:
+                        # Check for special keywords
+                        lexeme = self.current_token.lexeme.strip().lower()
+                        if lexeme == "property":
                             prop = self.property_declaration_simple()
                             prop.access_modifier = access_modifier
                             properties.append(prop)
-                        elif self.current_token.type == TokenType.SET:
-                            # Handle 'set <name> to <value>' syntax for property declarations
-                            prop = self.set_statement_as_property()
-                            prop.access_modifier = access_modifier
-                            properties.append(prop)
-                        elif self.current_token.type == TokenType.METHOD:
+                        elif lexeme == "method":
                             method = self.method_definition_simple()
                             method.access_modifier = access_modifier
                             methods.append(method)
-                        elif self.current_token.type == TokenType.FUNCTION:
-                            # Parse as function, convert to method
-                            from ..parser.ast import MethodDefinition
-                            func = self.function_definition_short()
-                            method = MethodDefinition(func.name, func.parameters, func.body, func.return_type, is_static=False, access_modifier=access_modifier, line_number=func.line_number)
-                            methods.append(method)
-                        elif self.current_token.type == TokenType.IDENTIFIER:
-                            # Check for special keywords
-                            lexeme = self.current_token.lexeme.strip().lower()
-                            if lexeme == "property":
-                                prop = self.property_declaration_simple()
-                                prop.access_modifier = access_modifier
-                                properties.append(prop)
-                            elif lexeme == "method":
+                        elif lexeme == "abstract":
+                            # Abstract method: public abstract function name
+                            self.advance()  # Eat 'abstract'
+                            if self.current_token.type == TokenType.FUNCTION:
+                                # Parse abstract method signature (no body)
+                                from ..parser.ast import AbstractMethodDefinition
+                                line_num = self.current_token.line
+                                self.advance()  # Eat 'function'
+                                
+                                # Get function name (can be multi-word)
+                                function_name = self._parse_multiword_name(
+                                    stop_tokens=(TokenType.WITH, TokenType.RETURNS, TokenType.NEWLINE),
+                                    error_msg="Expected function name after 'function'",
+                                )
+                                
+                                # Parse parameters if present
+                                parameters = []
+                                if self.current_token and self.current_token.type == TokenType.WITH:
+                                    self.advance()  # consume 'with'
+                                    parameters, _ = self.parameter_list()
+                                
+                                # Parse return type
+                                return_type = None
+                                if self.current_token and self.current_token.type == TokenType.RETURNS:
+                                    self.advance()  # consume 'returns'
+                                    return_type = self.parse_type()
+                                
+                                # Consume NEWLINE if present
+                                if self.current_token and self.current_token.type == TokenType.NEWLINE:
+                                    self.advance()
+                                
+                                # Create abstract method
+                                abstract_method = AbstractMethodDefinition(function_name, parameters, return_type, line_num)
+                                abstract_method.access_modifier = access_modifier
+                                methods.append(abstract_method)
+                            else:
+                                self.error("Expected 'function' after 'abstract' in class body")
+                        elif lexeme == "static":
+                            self.advance() # Eat 'static'
+                            if self.current_token.type == TokenType.FUNCTION:
+                                # Parse as function, convert to static method
+                                from ..parser.ast import MethodDefinition
+                                func = self.function_definition_short()
+                                method = MethodDefinition(func.name, func.parameters, func.body, func.return_type, is_static=True, access_modifier=access_modifier, line_number=func.line_number)
+                                methods.append(method)
+                            elif self.current_token.type == TokenType.METHOD or (self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() == 'method'):
                                 method = self.method_definition_simple()
+                                method.is_static = True
                                 method.access_modifier = access_modifier
                                 methods.append(method)
-                            elif lexeme == "abstract":
-                                # Abstract method: public abstract function name
-                                self.advance()  # Eat 'abstract'
-                                if self.current_token.type == TokenType.FUNCTION:
-                                    # Parse abstract method signature (no body)
-                                    from ..parser.ast import AbstractMethodDefinition
-                                    line_num = self.current_token.line
-                                    self.advance()  # Eat 'function'
-                                    
-                                    # Get function name (can be multi-word)
-                                    function_name = self._parse_multiword_name(
-                                        stop_tokens=(TokenType.WITH, TokenType.RETURNS, TokenType.NEWLINE),
-                                        error_msg="Expected function name after 'function'",
-                                    )
-                                    
-                                    # Parse parameters if present
-                                    parameters = []
-                                    if self.current_token and self.current_token.type == TokenType.WITH:
-                                        self.advance()  # consume 'with'
-                                        parameters, _ = self.parameter_list()
-                                    
-                                    # Parse return type
-                                    return_type = None
-                                    if self.current_token and self.current_token.type == TokenType.RETURNS:
-                                        self.advance()  # consume 'returns'
-                                        return_type = self.parse_type()
-                                    
-                                    # Consume NEWLINE if present
-                                    if self.current_token and self.current_token.type == TokenType.NEWLINE:
-                                        self.advance()
-                                    
-                                    # Create abstract method
-                                    abstract_method = AbstractMethodDefinition(function_name, parameters, return_type, line_num)
-                                    abstract_method.access_modifier = access_modifier
-                                    methods.append(abstract_method)
-                                else:
-                                    self.error("Expected 'function' after 'abstract' in class body")
-                            elif lexeme == "static":
-                                self.advance() # Eat 'static'
-                                if self.current_token.type == TokenType.FUNCTION:
-                                    # Parse as function, convert to static method
-                                    from ..parser.ast import MethodDefinition
-                                    func = self.function_definition_short()
-                                    method = MethodDefinition(func.name, func.parameters, func.body, func.return_type, is_static=True, access_modifier=access_modifier, line_number=func.line_number)
-                                    methods.append(method)
-                                elif self.current_token.type == TokenType.METHOD or (self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() == 'method'):
-                                    method = self.method_definition_simple()
-                                    method.is_static = True
-                                    method.access_modifier = access_modifier
-                                    methods.append(method)
-                                else:
-                                    self.error(f"Expected 'function' or 'method' after 'static', got '{self.current_token.type}'")
-                            elif lexeme == "pass":
-                                # Allow pass statement in class body
-                                self.advance()
                             else:
-                                self.error(f"Expected 'property' or 'method' in class body, got '{self.current_token.lexeme}'")
-                                self.advance()
+                                self.error(f"Expected 'function' or 'method' after 'static', got '{self.current_token.type}'")
+                        elif lexeme == "pass":
+                            # Allow pass statement in class body
+                            self.advance()
                         else:
-                            self.error(f"Unexpected token in class body: {self.current_token.type}")
+                            self.error(f"Expected 'property' or 'method' in class body, got '{self.current_token.lexeme}'")
                             self.advance()
-                    
-                    if self.current_token and self.current_token.type == TokenType.DEDENT:
-                        self.advance()  # consume DEDENT
-                    
-                    # Consume END_CLASS if present
-                    if self.current_token and self.current_token.type == TokenType.END_CLASS:
-                        self.advance()  # consume combined 'end class' token
-                    elif self.current_token and self.current_token.type == TokenType.END:
-                        self.advance()  # consume 'end'
-                        # consume 'class' if present
-                        if self.current_token and self.current_token.type == TokenType.CLASS:
-                            self.advance()
-                    
-                    return ClassDefinition(
-                        name=class_name,
-                        properties=properties,
-                        methods=methods,
-                        parent_classes=parent_classes,
-                        implemented_interfaces=implemented_interfaces,
-                        generic_parameters=generic_parameters,
-                        type_param_kinds=class_type_param_kinds,
-                        line_number=line_number
-                    )
-                else:
-                    self.error("Expected indented class body after class name")
-            else:
-                self.error("Expected class name after 'class'")
-        
-        # Handle verbose syntax (existing code)
-        elif self.current_token.type == TokenType.IDENTIFIER:
-            # Get the full text of the token and check if it contains "Create a class"
-            full_text = self.current_token.lexeme
-            parts = full_text.lower().split()
-            
-            # Check if this is a class definition
-            if "create" in parts and "class" in parts and "called" in parts:
-                # Extract the class name (after "called")
-                class_name = None
-                generic_parameters = []
-                
-                try:
-                    # Extract the class name (should be after "called")
-                    called_index = parts.index("called")
-                    if called_index + 1 < len(parts):
-                        class_name = full_text.split()[called_index + 1]
-                    
-                    # Check for generic type parameters
-                    if "with" in parts and "generic" in parts and "type" in parts and "parameter" in parts and "extends" in parts:
-                        try:
-                            # Find the generic parameter name and its constraint
-                            param_index = parts.index("parameter")
-                            extends_index = parts.index("extends")
-                            
-                            if param_index > 0 and param_index < extends_index:
-                                # Get T or N, which is the actual parameter name
-                                # It should be right before 'that extends'
-                                param_name = None
-                                for i in range(param_index + 1, extends_index):
-                                    if full_text.split()[i].lower() != "that":
-                                        param_name = full_text.split()[i]
-                                        break
-                                
-                                if not param_name:
-                                    # Fallback to the token right after "parameter"
-                                    param_name = full_text.split()[param_index + 1]
-                                
-                                constraint_type = full_text.split()[extends_index + 1].rstrip(".,;")
-                                
-                                # Create the type parameter with constraint
-                                generic_parameters.append(
-                                    TypeParameter(
-                                        name=param_name,
-                                        bounds=[constraint_type],
-                                        line_number=line_number
-                                    )
-                                )
-                        except (ValueError, IndexError):
-                            pass
-                except (ValueError, IndexError):
-                    pass
-                
-                # If we successfully extracted the class name, we can create the ClassDefinition
-                if class_name:
-                    # Advance past this token
-                    self.advance()
-                    
-                    # Skip period if present
-                    if self.current_token and self.current_token.type == TokenType.DOT:
+                    else:
+                        self.error(f"Unexpected token in class body: {self.current_token.type}")
                         self.advance()
-                    
-                    # Create and return the class definition
-                    return ClassDefinition(
-                        name=class_name,
-                        properties=[],
-                        methods=[],
-                        parent_classes=[],
-                        implemented_interfaces=[],
-                        generic_parameters=generic_parameters,
-                        line_number=line_number
-                    )
-        
-        # If we get here, we couldn't parse as a single-token class definition
-        # Generate a syntax error
-        self.error("Expected class definition")
+                
+                if self.current_token and self.current_token.type == TokenType.DEDENT:
+                    self.advance()  # consume DEDENT
+                
+                # Consume END_CLASS if present
+                if self.current_token and self.current_token.type == TokenType.END_CLASS:
+                    self.advance()  # consume combined 'end class' token
+                elif self.current_token and self.current_token.type == TokenType.END:
+                    self.advance()  # consume 'end'
+                    # consume 'class' if present
+                    if self.current_token and self.current_token.type == TokenType.CLASS:
+                        self.advance()
+                
+                return ClassDefinition(
+                    name=class_name,
+                    properties=properties,
+                    methods=methods,
+                    parent_classes=parent_classes,
+                    implemented_interfaces=implemented_interfaces,
+                    generic_parameters=generic_parameters,
+                    type_param_kinds=class_type_param_kinds,
+                    line_number=line_number
+                )
+            else:
+                self.error("Expected indented class body after class name")
+        else:
+            self.error("Expected class name after 'class'")
+    
     
     def struct_definition(self, packed=False):
         """Parse a struct definition.
@@ -2600,32 +2531,41 @@ class Parser:
         )
     
     def set_statement_as_property(self):
-        """Parse 'set <name> to <Type>' as a class property declaration."""
+        """Parse a 'set' statement inside a class body as a property declaration.
+
+        Handles all three forms used in class bodies:
+          set name to "default"       -- untyped with default value
+          set name as Type to value   -- typed with default value
+          set name as Type            -- typed, no default
+        """
         line_number = self.current_token.line
         self.advance()  # consume 'set'
-        
+
         # Get property name
         if not self.current_token or not self.current_token.lexeme:
             self.error("Expected property name after 'set'")
             return None
-        
+
         prop_name = self.current_token.lexeme
         self.advance()
-        
-        # Expect 'to'
+
+        # Optional type annotation: 'as Type'
+        type_annotation = None
+        if self.current_token and self.current_token.type == TokenType.AS:
+            self.advance()  # consume 'as'
+            type_annotation = self.parse_type()
+
+        # Default value: 'to <expr>'
+        default_value = None
         if self.current_token and self.current_token.type == TokenType.TO:
             self.advance()  # consume 'to'
-        else:
-            self.error(f"Expected 'to' after property name '{prop_name}'")
-        
-        # Get the type annotation (not a value, but a type like "Integer" or "List of Float")
-        type_annotation = self.parse_type()
-        
+            default_value = self.expression()
+
         # Consume newline if present
         if self.current_token and self.current_token.type == TokenType.NEWLINE:
             self.advance()
-        
-        return PropertyDeclaration(prop_name, type_annotation, None, line_number)
+
+        return PropertyDeclaration(prop_name, type_annotation, default_value, line_number)
     
     def property_declaration_simple(self):
         """Parse simple property declaration: 'property name as Type'"""

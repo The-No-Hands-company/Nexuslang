@@ -1,6 +1,5 @@
 # NLPL Language Server Protocol (LSP) Features
 
-**Last Updated:** February 16, 2026  
 **Status:** Production-ready  
 **Coverage:** 13 LSP features fully implemented
 

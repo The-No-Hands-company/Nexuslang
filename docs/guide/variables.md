@@ -1,8 +1,8 @@
 # Variables and Objects
 
-## Variables in NaturalScript
+## Variables in NLPL
 
-Variables in NaturalScript are created and used in a natural way, without traditional programming declarations.
+Variables in NLPL are created and used in a natural way, without traditional programming declarations.
 
 ### Creating Variables
 ```
@@ -41,7 +41,7 @@ Create is game over set to no
 Create player is moving initially false
 ```
 
-## Objects in NaturalScript
+## Objects in NLPL
 
 ### Creating Game Objects
 ```

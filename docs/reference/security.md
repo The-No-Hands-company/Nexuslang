@@ -85,8 +85,8 @@ Each layer is independent and can be enabled or disabled individually.
 
 ### Command-line Flags
 
-```
-nlpl program.nlpl --allow-read=/data --allow-net=api.example.com
+```bash
+PYTHONPATH=src python -m nlpl.main program.nlpl --allow-read=/data --allow-net=api.example.com
 ```
 
 | Flag | Effect |

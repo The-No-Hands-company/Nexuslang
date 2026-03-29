@@ -1,6 +1,5 @@
 # NLPL Standard Library API Reference
 
-**Version:** Pre-1.0 (February 2026)  
 **Total Modules:** 62  
 **Status:** Production-ready
 

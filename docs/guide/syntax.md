@@ -1,7 +1,5 @@
 # NLPL Syntax Reference
 
-**Last Updated:** February 3, 2026  
-**Language Version:** Pre-1.0 (Release Candidate)
 
 ---
 
@@ -293,7 +291,7 @@ end
 
 ## Pattern Matching
 
-**New in Feb 2026!** See [pattern_matching.md](../3_core_concepts/pattern_matching.md) for full guide.
+ See [pattern_matching.md](../3_core_concepts/pattern_matching.md) for full guide.
 
 ### Basic Pattern Matching
 
@@ -437,7 +435,7 @@ end
 
 ## Structs and Unions
 
-**Verified Feb 2026!** See [struct_union.md](../3_core_concepts/struct_union.md) for full guide.
+ See [struct_union.md](../3_core_concepts/struct_union.md) for full guide.
 
 ### Struct Definition
 
@@ -480,7 +478,7 @@ set data.int_value to 42
 
 ## Inline Assembly
 
-**New Feb 2026!** See [inline_assembly.md](../3_core_concepts/inline_assembly.md) for full guide.
+ See [inline_assembly.md](../3_core_concepts/inline_assembly.md) for full guide.
 
 ### Basic Assembly
 

@@ -16,8 +16,8 @@ Inline assembly is used for:
 
 It requires `--allow-asm` on the command line:
 
-```
-nlpl program.nlpl --allow-asm
+```bash
+PYTHONPATH=src python -m nlpl.main program.nlpl --allow-asm
 ```
 
 Use it sparingly. Most programs do not need it.

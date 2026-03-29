@@ -2,7 +2,7 @@
 
 ## Understanding Network Operations
 
-NaturalScript provides comprehensive networking capabilities for both client and server applications.
+NLPL provides comprehensive networking capabilities for both client and server applications.
 
 ### Creating Network Connections
 ```
