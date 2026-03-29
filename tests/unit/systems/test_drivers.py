@@ -52,6 +52,8 @@ from nlpl.stdlib import register_stdlib
 
 
 IS_LINUX = platform.system().lower() == "linux"
+HAS_PROC_MODULES = os.path.exists("/proc/modules")
+HAS_SYS_NET = os.path.exists("/sys/class/net")
 
 
 # ---------------------------------------------------------------------------
@@ -314,8 +316,8 @@ class TestDeviceTreeAccess:
 
 class TestSysfsDeviceListing:
     def test_list_devices_by_class_net(self):
-        if not IS_LINUX:
-            pytest.skip("Linux-only: /sys/class/net")
+        if not IS_LINUX or not HAS_SYS_NET:
+            pytest.skip("Linux-only or /sys/class/net unavailable")
         devices = list_devices_by_class("net")
         assert isinstance(devices, list)
 
@@ -398,26 +400,26 @@ class TestDriverRegistration:
 
 class TestKernelModules:
     def test_is_module_loaded_returns_bool(self):
-        if not IS_LINUX:
-            pytest.skip("Linux-only: /proc/modules")
+        if not IS_LINUX or not HAS_PROC_MODULES:
+            pytest.skip("Linux-only or /proc/modules unavailable")
         result = is_module_loaded("loop")
         assert isinstance(result, bool)
 
     def test_is_module_loaded_false_for_nonexistent(self):
-        if not IS_LINUX:
-            pytest.skip("Linux-only: /proc/modules")
+        if not IS_LINUX or not HAS_PROC_MODULES:
+            pytest.skip("Linux-only or /proc/modules unavailable")
         assert is_module_loaded("definitely_not_a_module_xyz_99") is False
 
     def test_list_loaded_modules_nonempty(self):
-        if not IS_LINUX:
-            pytest.skip("Linux-only: /proc/modules")
+        if not IS_LINUX or not HAS_PROC_MODULES:
+            pytest.skip("Linux-only or /proc/modules unavailable")
         modules = list_loaded_modules()
         assert isinstance(modules, list)
         assert len(modules) > 0
 
     def test_list_loaded_modules_entry_keys(self):
-        if not IS_LINUX:
-            pytest.skip("Linux-only: /proc/modules")
+        if not IS_LINUX or not HAS_PROC_MODULES:
+            pytest.skip("Linux-only or /proc/modules unavailable")
         modules = list_loaded_modules()
         required_keys = {"name", "size", "refcount", "dependencies", "state", "offset"}
         for entry in modules:
@@ -428,8 +430,8 @@ class TestKernelModules:
             assert isinstance(entry["dependencies"], list)
 
     def test_list_loaded_modules_offset_hex_string(self):
-        if not IS_LINUX:
-            pytest.skip("Linux-only: /proc/modules")
+        if not IS_LINUX or not HAS_PROC_MODULES:
+            pytest.skip("Linux-only or /proc/modules unavailable")
         modules = list_loaded_modules()
         for entry in modules:
             assert isinstance(entry["offset"], str)
@@ -557,21 +559,21 @@ class TestUsbDevices:
 
 class TestNetDevices:
     def test_enumerate_net_returns_list(self):
-        if not IS_LINUX:
-            pytest.skip("Linux-only: /sys/class/net")
+        if not IS_LINUX or not HAS_SYS_NET:
+            pytest.skip("Linux-only or /sys/class/net unavailable")
         devices = enumerate_net_devices()
         assert isinstance(devices, list)
         assert len(devices) > 0  # at least loopback
 
     def test_loopback_present(self):
-        if not IS_LINUX:
-            pytest.skip("Linux-only: /sys/class/net")
+        if not IS_LINUX or not HAS_SYS_NET:
+            pytest.skip("Linux-only or /sys/class/net unavailable")
         names = [d.name for d in enumerate_net_devices()]
         assert "lo" in names
 
     def test_net_device_mac_address(self):
-        if not IS_LINUX:
-            pytest.skip("Linux-only: /sys/class/net")
+        if not IS_LINUX or not HAS_SYS_NET:
+            pytest.skip("Linux-only or /sys/class/net unavailable")
         dev = NetDevice("lo")
         mac = dev.mac_address
         # Loopback has 00:00:00:00:00:00 or similar
@@ -579,22 +581,22 @@ class TestNetDevices:
         assert len(mac) > 0
 
     def test_net_device_mtu(self):
-        if not IS_LINUX:
-            pytest.skip("Linux-only: /sys/class/net")
+        if not IS_LINUX or not HAS_SYS_NET:
+            pytest.skip("Linux-only or /sys/class/net unavailable")
         dev = NetDevice("lo")
         mtu = dev.mtu
         assert isinstance(mtu, int)
         assert mtu > 0
 
     def test_net_device_is_up_bool(self):
-        if not IS_LINUX:
-            pytest.skip("Linux-only: /sys/class/net")
+        if not IS_LINUX or not HAS_SYS_NET:
+            pytest.skip("Linux-only or /sys/class/net unavailable")
         dev = NetDevice("lo")
         assert isinstance(dev.is_up, bool)
 
     def test_net_device_stats_are_int(self):
-        if not IS_LINUX:
-            pytest.skip("Linux-only: /sys/class/net")
+        if not IS_LINUX or not HAS_SYS_NET:
+            pytest.skip("Linux-only or /sys/class/net unavailable")
         dev = NetDevice("lo")
         for attr in ("rx_bytes", "tx_bytes", "rx_packets", "tx_packets",
                      "rx_errors", "tx_errors", "rx_dropped", "tx_dropped"):
@@ -602,14 +604,14 @@ class TestNetDevices:
             assert isinstance(val, int), f"{attr} should be int, got {type(val)}"
 
     def test_net_device_operstate(self):
-        if not IS_LINUX:
-            pytest.skip("Linux-only: /sys/class/net")
+        if not IS_LINUX or not HAS_SYS_NET:
+            pytest.skip("Linux-only or /sys/class/net unavailable")
         dev = NetDevice("lo")
         assert isinstance(dev.operstate, str)
 
     def test_net_device_to_dict_keys(self):
-        if not IS_LINUX:
-            pytest.skip("Linux-only: /sys/class/net")
+        if not IS_LINUX or not HAS_SYS_NET:
+            pytest.skip("Linux-only or /sys/class/net unavailable")
         dev = NetDevice("lo")
         d = dev.to_dict()
         required_keys = {"name", "mac_address", "mtu", "operstate", "is_up",
@@ -617,8 +619,8 @@ class TestNetDevices:
         assert required_keys.issubset(d.keys())
 
     def test_net_device_repr(self):
-        if not IS_LINUX:
-            pytest.skip("Linux-only: /sys/class/net")
+        if not IS_LINUX or not HAS_SYS_NET:
+            pytest.skip("Linux-only or /sys/class/net unavailable")
         assert "lo" in repr(NetDevice("lo"))
 
     def test_non_linux_raises(self):
