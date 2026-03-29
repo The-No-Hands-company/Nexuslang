@@ -368,8 +368,12 @@ def register_ffi_functions(runtime: Runtime) -> None:
             raise ValueError("Cannot dereference null pointer")
         
         if length is not None:
-            # Read specific length
+            # Read specific length — guard against null pointer before cast
+            if ptr is None or (hasattr(ptr, 'value') and ptr.value == 0):
+                raise FFIError("from_c_string: null pointer dereference")
             c_array = ctypes.cast(ptr, ctypes.POINTER(ctypes.c_char * length))
+            if not c_array:
+                raise FFIError("from_c_string: cast produced null pointer")
             return c_array.contents.value.decode('utf-8')
         else:
             # Read until null terminator

@@ -220,6 +220,10 @@ class NLPLCodeGenerator:
             "_print": _make_print_helper(interpreter),
         }
 
+        # Security note: `source` here is machine-generated Python from the NLPL
+        # AST node — not user-supplied strings. The exec namespace `ns` is a
+        # tightly-controlled dict containing only the JIT helper functions.
+        # This is intentional and audited. See docs/contributing/architecture.md.
         try:
             code = compile(source, f"<jit:{func_name}>", "exec")
         except SyntaxError as exc:

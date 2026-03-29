@@ -1,128 +1,120 @@
-# Key Features of NaturalScript
+# Key Features
 
-## 1. Natural Language Syntax
+## Language features
 
-### English-Like Commands
-NaturalScript allows you to write code as if you're explaining what you want to create:
-
-```
-Create a window called "My Game"
-Make the background blue
-Add a player character in the center
-```
-
-### Intuitive Control Structures
-Control game flow using natural language:
-
-```
-When the space key is pressed:
-    Make the player jump
-    Play the jump sound
-
-Every frame:
-    Check for collisions
-    Update player position
+### Natural syntax
+```nlpl
+set x to 10
+if x is greater than 5
+    print text "big"
+end
 ```
 
-## 2. Smart Context Understanding
+### Full OOP
+Classes, inheritance, interfaces, traits, abstract classes, mixins.
 
-### Automatic Context Recognition
-The language understands context and maintains it throughout your code blocks:
+### Generics with HKT
+```nlpl
+class Container with T :: *
+    set value as T
 
-```
-Create a button:
-    Set text to "Start Game"
-    Make it blue
-    Position at screen center
-    When clicked:
-        Start the game
-        Hide this button
-```
-
-### Intelligent Reference Resolution
-Natural handling of objects and their interactions:
-
-```
-Create three enemies
-Make them move randomly
-When any enemy touches the player:
-    Remove that enemy
-    Reduce player health by 1
+    function get returns T
+        return value
+    end
+end
 ```
 
-## 3. Built-in Game Development Features
-
-### Graphics and Animation
-- Automatic sprite and image handling
-- Simple animation commands
-- Built-in particle effects system
-- Easy camera controls and viewport management
-
-### Physics and Collision
-- Natural language physics commands
-- Automatic collision detection
-- Simplified raycasting and pathfinding
-- Realistic movement and physics behaviors
-
-### Audio System
-- Easy sound effect management
-- Background music control
-- 3D audio positioning
-- Volume and audio mixing controls
-
-## 4. Development Environment
-
-### Real-Time Preview
-- See changes as you type
-- Live game testing
-- Interactive debugging
-- Visual object manipulation
-
-### Smart Assistance
-- Command suggestions based on context
-- Natural language error messages
-- Code completion
-- Visual feedback for actions
-
-## 5. Advanced Features
-
-### State Management
-Define game states naturally:
-
-```
-Create game states:
-    Menu:
-        Show start button
-        Show options button
-    Playing:
-        Update player position
-        Check for enemies
-    Paused:
-        Show pause menu
-        Dim the background
+### Pattern matching
+```nlpl
+match shape
+    case Circle with radius
+        print text "Circle, r=" plus radius
+    case Rectangle with width, height
+        print text "Rect " plus width plus "x" plus height
+    case _
+        print text "Unknown"
+end
 ```
 
-### Event System
-Handle events in plain English:
-
-```
-When player collects coin:
-    Add 10 to score
-    Play coin sound
-    Show sparkle effect
-    Save progress
+### FFI (Foreign Function Interface)
+Call any C library directly:
+```nlpl
+extern function printf with format as CString, value as Integer
+set _ to printf("Value: %d\n", 42)
 ```
 
-### Custom Behaviors
-Create reusable behaviors using natural language:
-
+### Inline assembly
+```nlpl
+inline asm "nop" : : :
 ```
-Create behavior "Patrol":
-    Move left for 2 seconds
-    Wait 0.5 seconds
-    Move right for 2 seconds
-    Wait 0.5 seconds
-    Repeat
 
-Add Patrol behavior to guard
+### Smart pointers
+```nlpl
+set ptr to Rc(create MyStruct)
+set clone to ptr.clone()
 ```
+
+### Error handling
+```nlpl
+try
+    set result to parse_json(raw_input)
+catch ParseError as e
+    print text "Parse failed: " plus e.message
+end
+```
+
+### Closures and lambdas
+```nlpl
+set double to function with x returns x times 2
+set results to map(numbers, double)
+```
+
+### Async/await
+```nlpl
+async function fetch_data with url as String returns String
+    set response to await http_get(url)
+    return response.body
+end
+```
+
+## Type system
+
+- Full type inference — types are optional but enforced when declared
+- Generic types with constraints
+- Higher-kinded types (`T :: * -> *`)
+- Borrow checker (Rust-inspired, opt-in)
+- Lifetime annotations
+- Union types
+- Optional/Result types from stdlib
+
+## Standard library (85 modules)
+
+2,219 registered functions covering:
+
+| Category | Modules |
+|----------|---------|
+| Core | math, string, collections, I/O, system |
+| Data | JSON, CSV, XML, SQLite, databases |
+| Networking | HTTP client/server, WebSocket, TCP/UDP |
+| Concurrency | async runtime, threading, atomics, sync primitives |
+| Systems | FFI, inline assembly, hardware, SIMD, kernel primitives |
+| Tooling | testing, benchmarking, profiling, coverage |
+| Cryptography | hashing, AES, RSA, key derivation |
+| Scientific | linear algebra, numerical integration, statistics, DSP |
+| Graphics | math3d, mesh loading, shaders, scene management |
+| Filesystem | file I/O, directory walking, path manipulation |
+
+## Tooling
+
+| Tool | Status |
+|------|--------|
+| LSP server | 25 features, VS Code + Neovim + Emacs |
+| Debugger | DAP-compliant, breakpoints, stepping, variable inspection |
+| Build system | Incremental, dependency tracking, caching |
+| Formatter | Code formatting |
+| Linter | Static analysis, 15+ check categories |
+| REPL | Interactive interpreter |
+| Test runner | Built-in test blocks, BDD-style describe/it |
+| Coverage | HTML/XML/JSON coverage reports |
+| Profiler | Function-level profiling |
+| Fuzzer | Fuzz testing infrastructure |

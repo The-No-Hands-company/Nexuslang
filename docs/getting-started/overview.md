@@ -1,101 +1,69 @@
-# NaturalScript Overview
+# NLPL Overview
 
-## What is NaturalScript?
+## What is NLPL?
 
-NaturalScript is a revolutionary general-purpose programming language that allows anyone who can write English to create any type of software application. From web services to desktop applications, from system utilities to data processing, NaturalScript makes programming accessible while maintaining the full power of traditional programming languages.
+NLPL (Natural Language Programming Language) is a general-purpose programming language that reads like English. You write code using words like `set`, `if`, `for each`, `function`, and `return` — the same words you use to explain logic to another person.
 
-## Core Features
+NLPL compiles to native code via LLVM. It has a comprehensive standard library, a full type system with generics, pattern matching, FFI, inline assembly, and a production-quality tooling ecosystem.
 
-### Natural Language Programming
-Write code as if you're explaining your ideas to another person:
+## Design goals
 
-```
-Create web service:
-    Listen on port 8080
-    When request received:
-        Process data
-        Query database
-        Send response
+- **Readable by default** — code should be understandable without language expertise
+- **No compromises on capability** — full OOP, generics, pattern matching, FFI, systems programming
+- **Strong tooling** — LSP, debugger, build system, formatter, REPL all work today
+- **Type safety** — optional static typing with inference; dynamic mode available
 
-Create data processor:
-    Read from "input.csv"
-    For each row:
-        Apply transformations
-        Update database
+## What NLPL looks like
 
-Create GUI application:
-    Add main window:
-        Set title to "Data Analyzer"
-        Add menu bar
-        Create data view
-```
+```nlpl
+# Variables
+set name to "Alice"
+set age as Integer to 30
 
-### Visual Development Environment
-- Real-time preview of your changes
-- Drag-and-drop interface
-- Immediate visual feedback
-- Interactive debugging
+# Functions
+function greet with person as String returns String
+    if person is not empty
+        return "Hello, " plus person plus "!"
+    else
+        return "Hello!"
+    end
+end
 
-### Intelligent Assistance
-- Context-aware suggestions
-- Natural language error messages
-- Automatic code completion
-- Smart syntax validation
+# Classes
+class Counter
+    set count as Integer to 0
 
-## Who Is It For?
+    function increment
+        set count to count plus 1
+    end
 
-### Game Developers
-- Create games without learning complex syntax
-- Rapid prototyping and development
-- Built-in game development features
-- Physics and collision detection
+    function value returns Integer
+        return count
+    end
+end
 
-### Application Developers
-- Build user interfaces naturally
-- Create interactive applications
-- Handle data and files easily
-- Connect to external services
+# Using the class
+set c to create Counter
+call c.increment
+call c.increment
+print number c.value()
 
-### Educational Use
-- Well-suited to beginners and experienced developers
-- Learn programming concepts naturally
-- Immediate visual results
-- Focus on logic rather than syntax
+# Collections and loops
+set numbers to [1, 2, 3, 4, 5]
+set total to 0
+for each n in numbers
+    set total to total plus n
+end
+print text "Sum: " plus total
 
-## Getting Started
-
-1. Install NaturalScript IDE
-2. Create your first project
-3. Write natural language commands
-4. See immediate results
-
-## Example Project
-
-```
-Start a new project called "My First Game"
-
-Create the main window:
-    Set size to 1280 by 720
-    Set title to "My Awesome Game"
-    Use dark theme
-
-Create a player:
-    Use image "hero.png"
-    Position at screen center
-    Set movement speed to 5
-
-When arrow keys are pressed:
-    Move player in that direction
-
-Every frame:
-    Update game
-    Check for collisions
-    Draw everything
+# Error handling
+try
+    set data to read_file("config.json")
+catch error as e
+    print text "Could not read config: " plus e
+end
 ```
 
-## Next Steps
+## Current state
 
-- Read the [Getting Started Guide](getting_started.md)
-- Explore [Key Features](key_features.md)
-- Learn about [Game Objects](../3_core_concepts/game_objects.md)
-- Join our community 
+NLPL is pre-v1.0 and under active development. The interpreter is production-quality for real programs. The LLVM compiler backend works for core language constructs. See [README.md](../../README.md) for a full honest status breakdown.

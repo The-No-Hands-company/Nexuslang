@@ -1313,24 +1313,12 @@ class Parser:
         # Eat 'function'
         self.eat(TokenType.FUNCTION)
         
-        # Get the function name - can be multiple words (e.g., "get name", "set value", "to string")
-        # Keep consuming identifiers/contextual keywords until we hit WITH, THAT, RETURNS, NEWLINE, or INDENT
-        function_name_parts = []
-        while (self.current_token and 
-               (self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token)) and
-               self.current_token.type not in (TokenType.WITH, TokenType.THAT, TokenType.RETURNS, TokenType.NEWLINE, TokenType.INDENT)):
-            function_name_parts.append(self.current_token.lexeme)
-            self.advance()
-            
-            # Stop if next token is WITH, THAT, RETURNS, NEWLINE, or INDENT
-            if self.current_token and self.current_token.type in (TokenType.WITH, TokenType.THAT, TokenType.RETURNS, TokenType.NEWLINE, TokenType.INDENT):
-                break
-        
-        if not function_name_parts:
-            self.error("Expected a function name after 'function'")
-        
-        # Join multi-word names with underscore (e.g., "get name" -> "get_name")
-        function_name = "_".join(function_name_parts)
+        # Get the function name — multi-word names like "get name" → "get_name"
+        function_name = self._parse_multiword_name(
+            stop_tokens=(TokenType.WITH, TokenType.THAT, TokenType.RETURNS,
+                         TokenType.NEWLINE, TokenType.INDENT),
+            error_msg="Expected a function name after 'function'",
+        )
         
         # Check for generic type parameters: function name<T, R> or function name<T: Comparable>
         type_parameters = []
@@ -2118,19 +2106,10 @@ class Parser:
                                     self.advance()  # Eat 'function'
                                     
                                     # Get function name (can be multi-word)
-                                    function_name_parts = []
-                                    while (self.current_token and 
-                                           (self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token)) and
-                                           self.current_token.type not in (TokenType.WITH, TokenType.RETURNS, TokenType.NEWLINE)):
-                                        function_name_parts.append(self.current_token.lexeme)
-                                        self.advance()
-                                        if self.current_token and self.current_token.type in (TokenType.WITH, TokenType.RETURNS, TokenType.NEWLINE):
-                                            break
-                                    
-                                    if not function_name_parts:
-                                        self.error("Expected function name after 'function'")
-                                    
-                                    function_name = "_".join(function_name_parts)
+                                    function_name = self._parse_multiword_name(
+                                        stop_tokens=(TokenType.WITH, TokenType.RETURNS, TokenType.NEWLINE),
+                                        error_msg="Expected function name after 'function'",
+                                    )
                                     
                                     # Parse parameters if present
                                     parameters = []
@@ -5735,6 +5714,35 @@ class Parser:
         }
         return token.type in contextual_keywords
         
+
+    def _parse_multiword_name(self, stop_tokens=None, error_msg="Expected name"):
+        """Parse a multi-word identifier (e.g. function names like 'add two numbers').
+        
+        Words are joined with underscores to form a single identifier.
+        Stops at any token in stop_tokens, or at NEWLINE/EOF.
+        
+        Returns:
+            str: the joined name (e.g. 'add_two_numbers')
+        """
+        if stop_tokens is None:
+            stop_tokens = (TokenType.WITH, TokenType.RETURNS, TokenType.NEWLINE)
+        
+        parts = []
+        while (self.current_token and
+               (self.current_token.type == TokenType.IDENTIFIER or
+                self._can_be_identifier(self.current_token)) and
+               self.current_token.type not in stop_tokens):
+            parts.append(self.current_token.lexeme)
+            self.advance()
+            if self.current_token and self.current_token.type in stop_tokens:
+                break
+        
+        if not parts:
+            self.error(error_msg)
+        
+        return "_".join(parts)
+
+
     def identifier_or_function_call(self):
         """Parse an identifier or function call."""
         identifier = self.current_token.lexeme
@@ -6946,19 +6954,10 @@ class Parser:
         self.eat(TokenType.FUNCTION)
         
         # Get function name (can be multi-word)
-        function_name_parts = []
-        while (self.current_token and 
-               (self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token)) and
-               self.current_token.type not in (TokenType.WITH, TokenType.RETURNS, TokenType.NEWLINE)):
-            function_name_parts.append(self.current_token.lexeme)
-            self.advance()
-            if self.current_token and self.current_token.type in (TokenType.WITH, TokenType.RETURNS, TokenType.NEWLINE):
-                break
-        
-        if not function_name_parts:
-            self.error("Expected function name after 'function'")
-        
-        function_name = "_".join(function_name_parts)
+        function_name = self._parse_multiword_name(
+            stop_tokens=(TokenType.WITH, TokenType.RETURNS, TokenType.NEWLINE),
+            error_msg="Expected function name after 'function'",
+        )
         
         # Parse parameters if present
         parameters = []
@@ -7050,16 +7049,10 @@ class Parser:
                         self.advance()  # Eat 'function'
                         
                         # Get function name (multi-word support)
-                        function_name_parts = []
-                        while (self.current_token and 
-                               (self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token)) and
-                               self.current_token.type not in (TokenType.WITH, TokenType.RETURNS, TokenType.NEWLINE)):
-                            function_name_parts.append(self.current_token.lexeme)
-                            self.advance()
-                            if self.current_token and self.current_token.type in (TokenType.WITH, TokenType.RETURNS, TokenType.NEWLINE):
-                                break
-                        
-                        function_name = "_".join(function_name_parts) if function_name_parts else "unnamed"
+                        function_name = self._parse_multiword_name(
+                            stop_tokens=(TokenType.WITH, TokenType.RETURNS, TokenType.NEWLINE),
+                            error_msg="Expected function name",
+                        )
                         
                         # Parse parameters
                         parameters = []
