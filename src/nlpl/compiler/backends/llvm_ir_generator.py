@@ -1307,8 +1307,15 @@ class LLVMIRGenerator(CodeGenerator):
     def _define_additional_string_helper_functions(self):
         """Define additional NLPL string helper functions."""
         self.emit('; NLPL Additional String Helper Functions')
-        
-        # str_replace(str, old, new) -> new string with replacements
+        self._emit_llvm_str_replace()
+        self._emit_llvm_str_trim()
+        self._emit_llvm_str_toupper()
+        self._emit_llvm_str_tolower()
+        self._emit_llvm_str_split()
+        self._emit_llvm_str_join()
+
+    def _emit_llvm_str_replace(self):
+        """Emit LLVM IR for str_replace()."""
         self.emit('define i8* @str_replace(i8* %str, i8* %old, i8* %new) {')
         self.emit('entry:')
         self.emit('  %str_len = call i64 @strlen(i8* %str)')
@@ -1367,6 +1374,9 @@ class LLVMIRGenerator(CodeGenerator):
         self.emit('')
         
         # str_trim(str) -> trimmed string (remove leading/trailing whitespace)
+
+    def _emit_llvm_str_trim(self):
+        """Emit LLVM IR for str_trim()."""
         self.emit('define i8* @str_trim(i8* %str) {')
         self.emit('entry:')
         self.emit('  %len = call i64 @strlen(i8* %str)')
@@ -1456,6 +1466,9 @@ class LLVMIRGenerator(CodeGenerator):
         self.emit('')
         
         # str_toupper(str) -> uppercase string
+
+    def _emit_llvm_str_toupper(self):
+        """Emit LLVM IR for str_toupper()."""
         self.emit('define i8* @str_toupper(i8* %str) {')
         self.emit('entry:')
         self.emit('  %len = call i64 @strlen(i8* %str)')
@@ -1490,6 +1503,9 @@ class LLVMIRGenerator(CodeGenerator):
         self.emit('')
         
         # str_tolower(str) -> lowercase string
+
+    def _emit_llvm_str_tolower(self):
+        """Emit LLVM IR for str_tolower()."""
         self.emit('define i8* @str_tolower(i8* %str) {')
         self.emit('entry:')
         self.emit('  %len = call i64 @strlen(i8* %str)')
@@ -1524,6 +1540,9 @@ class LLVMIRGenerator(CodeGenerator):
         self.emit('')
         
         # Production-ready str_split implementation with dynamic memory allocation
+
+    def _emit_llvm_str_split(self):
+        """Emit LLVM IR for str_split()."""
         self.emit('define i8* @str_split(i8* %str, i8* %delim) {')
         self.emit('entry:')
         self.emit('  ; Get string and delimiter lengths')
@@ -1571,6 +1590,9 @@ class LLVMIRGenerator(CodeGenerator):
         self.emit('')
         
         # Production-ready str_join implementation
+
+    def _emit_llvm_str_join(self):
+        """Emit LLVM IR for str_join()."""
         self.emit('define i8* @str_join(i8* %arr, i8* %sep) {')
         self.emit('entry:')
         self.emit('  ; Calculate total length needed')
@@ -1653,8 +1675,7 @@ class LLVMIRGenerator(CodeGenerator):
         self.emit('  store i8 0, i8* %final_wpos')
         self.emit('  ret i8* %result')
         self.emit('}')
-        self.emit('')
-    
+
     def _define_panic_function(self):
         """Define the nlpl_panic function that prints error and exits."""
         self.emit('; NLPL panic function (error handler)')
@@ -1689,18 +1710,18 @@ class LLVMIRGenerator(CodeGenerator):
         self.emit('')
     
     def _define_coroutine_runtime_functions(self):
-        """Define NLPL coroutine runtime helper functions for async/await.
-        
-        These functions provide the scheduler infrastructure:
-        - Promise creation and management
-        - Task queue operations
-        - Run-until-complete scheduler
-        """
-        self.emit('; NLPL Coroutine Runtime Functions')
-        self.emit('')
-        
-        # Promise creation: create_promise() -> %Promise*
-        self.emit('; Create a new promise in pending state')
+        """Define NLPL coroutine runtime helper functions for async/await."""
+        self._emit_llvm_coro_nlpl_promise_create()
+        self._emit_llvm_coro_nlpl_promise_resolve()
+        self._emit_llvm_coro_nlpl_promise_is_ready()
+        self._emit_llvm_coro_nlpl_promise_get_result()
+        self._emit_llvm_coro_nlpl_taskqueue_init()
+        self._emit_llvm_coro_nlpl_taskqueue_push()
+        self._emit_llvm_coro_nlpl_taskqueue_pop()
+        self._emit_llvm_coro_nlpl_run_until_complete()
+
+    def _emit_llvm_coro_nlpl_promise_create(self):
+        """Emit LLVM IR for nlpl_promise_create()."""
         self.emit('define %Promise* @nlpl_promise_create() {')
         self.emit('entry:')
         self.emit('  %promise = call i8* @malloc(i64 32)')  # sizeof(Promise) = 32 bytes
@@ -1723,6 +1744,9 @@ class LLVMIRGenerator(CodeGenerator):
         
         # Resolve promise: resolve_promise(%Promise*, i8* result)
         self.emit('; Resolve a promise with a result value')
+
+    def _emit_llvm_coro_nlpl_promise_resolve(self):
+        """Emit LLVM IR for nlpl_promise_resolve()."""
         self.emit('define void @nlpl_promise_resolve(%Promise* %promise, i8* %result) {')
         self.emit('entry:')
         self.emit('  ; Store result')
@@ -1746,6 +1770,9 @@ class LLVMIRGenerator(CodeGenerator):
         
         # Check promise ready: is_promise_ready(%Promise*) -> i1
         self.emit('; Check if a promise is ready (resolved or rejected)')
+
+    def _emit_llvm_coro_nlpl_promise_is_ready(self):
+        """Emit LLVM IR for nlpl_promise_is_ready()."""
         self.emit('define i1 @nlpl_promise_is_ready(%Promise* %promise) {')
         self.emit('entry:')
         self.emit('  %state_ptr = getelementptr inbounds %Promise, %Promise* %promise, i32 0, i32 0')
@@ -1757,6 +1784,9 @@ class LLVMIRGenerator(CodeGenerator):
         
         # Get promise result: get_promise_result(%Promise*) -> i8*
         self.emit('; Get the result from a resolved promise')
+
+    def _emit_llvm_coro_nlpl_promise_get_result(self):
+        """Emit LLVM IR for nlpl_promise_get_result()."""
         self.emit('define i8* @nlpl_promise_get_result(%Promise* %promise) {')
         self.emit('entry:')
         self.emit('  %result_ptr = getelementptr inbounds %Promise, %Promise* %promise, i32 0, i32 1')
@@ -1767,6 +1797,9 @@ class LLVMIRGenerator(CodeGenerator):
         
         # Task queue initialization
         self.emit('; Initialize a task queue')
+
+    def _emit_llvm_coro_nlpl_taskqueue_init(self):
+        """Emit LLVM IR for nlpl_taskqueue_init()."""
         self.emit('define void @nlpl_taskqueue_init(%TaskQueue* %queue) {')
         self.emit('entry:')
         self.emit('  %head_ptr = getelementptr inbounds %TaskQueue, %TaskQueue* %queue, i32 0, i32 0')
@@ -1781,6 +1814,9 @@ class LLVMIRGenerator(CodeGenerator):
         
         # Task queue push
         self.emit('; Add a coroutine to the task queue')
+
+    def _emit_llvm_coro_nlpl_taskqueue_push(self):
+        """Emit LLVM IR for nlpl_taskqueue_push()."""
         self.emit('define void @nlpl_taskqueue_push(%TaskQueue* %queue, i8* %coro) {')
         self.emit('entry:')
         self.emit('  ; Allocate new task')
@@ -1820,6 +1856,9 @@ class LLVMIRGenerator(CodeGenerator):
         
         # Task queue pop
         self.emit('; Remove and return a coroutine from the task queue')
+
+    def _emit_llvm_coro_nlpl_taskqueue_pop(self):
+        """Emit LLVM IR for nlpl_taskqueue_pop()."""
         self.emit('define i8* @nlpl_taskqueue_pop(%TaskQueue* %queue) {')
         self.emit('entry:')
         self.emit('  %head_ptr = getelementptr inbounds %TaskQueue, %TaskQueue* %queue, i32 0, i32 0')
@@ -1857,6 +1896,9 @@ class LLVMIRGenerator(CodeGenerator):
         
         # Run until complete - simple single-threaded scheduler
         self.emit('; Run coroutines until the main coroutine completes')
+
+    def _emit_llvm_coro_nlpl_run_until_complete(self):
+        """Emit LLVM IR for nlpl_run_until_complete()."""
         self.emit('define i64 @nlpl_run_until_complete(i8* %main_coro) {')
         self.emit('entry:')
         self.emit('  ; Allocate task queue on stack')
@@ -1902,17 +1944,16 @@ class LLVMIRGenerator(CodeGenerator):
         self.emit('}')
         self.emit('')
     
+
     def _define_array_helper_functions(self):
         """Define NLPL array helper functions."""
-        self.emit('; NLPL Array Helper Functions')
-        
-        # arrlen(array_ptr, size) -> length
-        # Note: Arrays in NLPL store size in a metadata header
-        # For now, we'll track size in a separate global or pass it
-        # Simplified: arrays are i64* with known sizes at compile time
-        # We need a runtime representation that includes size
-        
-        # arrpush(array_ptr, elem_count, new_elem) -> new_array_ptr
+        self._emit_llvm_arr_arrpush()
+        self._emit_llvm_arr_arrpush_i8()
+        self._emit_llvm_arr_arrpop()
+        self._emit_llvm_arr_arrslice()
+
+    def _emit_llvm_arr_arrpush(self):
+        """Emit LLVM IR for arrpush()."""
         self.emit('define i64* @arrpush(i64* %arr, i64 %count, i64 %elem) {')
         self.emit('entry:')
         self.emit('  %new_count = add i64 %count, 1')
@@ -1947,6 +1988,9 @@ class LLVMIRGenerator(CodeGenerator):
         
         # arrpush_i8: like arrpush but for 1-byte element arrays (booleans, chars).
         # Elements are stored as i8 (1 byte each) for compatibility with i1/i8 arrays.
+
+    def _emit_llvm_arr_arrpush_i8(self):
+        """Emit LLVM IR for arrpush_i8()."""
         self.emit('define i8* @arrpush_i8(i8* %arr, i64 %count, i8 %elem) {')
         self.emit('entry:')
         self.emit('  %new_count = add i64 %count, 1')
@@ -1978,6 +2022,9 @@ class LLVMIRGenerator(CodeGenerator):
         self.emit('')
         
         # arrpop(array_ptr, elem_count) -> new_array_ptr
+
+    def _emit_llvm_arr_arrpop(self):
+        """Emit LLVM IR for arrpop()."""
         self.emit('define i64* @arrpop(i64* %arr, i64 %count) {')
         self.emit('entry:')
         self.emit('  %has_elements = icmp ugt i64 %count, 0')
@@ -2017,6 +2064,9 @@ class LLVMIRGenerator(CodeGenerator):
         self.emit('')
         
         # arrslice(array_ptr, start, end) -> new_array_ptr
+
+    def _emit_llvm_arr_arrslice(self):
+        """Emit LLVM IR for arrslice()."""
         self.emit('define i64* @arrslice(i64* %arr, i64 %start, i64 %end) {')
         self.emit('entry:')
         self.emit('  %valid = icmp ule i64 %start, %end')
@@ -2061,6 +2111,7 @@ class LLVMIRGenerator(CodeGenerator):
         self.emit('@.str.arrslice_error = private unnamed_addr constant [25 x i8] c"arrslice: invalid bounds\\00", align 1')
         self.emit('')
     
+
     def _add_helper_error_strings(self):
         """Add error message strings for helper functions."""
         # These will be added to global strings
