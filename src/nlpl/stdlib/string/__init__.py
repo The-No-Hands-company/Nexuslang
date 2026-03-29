@@ -69,6 +69,17 @@ def register_string_functions(runtime: Runtime) -> None:
     runtime.register_function("match", match)
     runtime.register_function("replace_regex", replace_regex)
 
+    # Conversion functions
+    runtime.register_function("to_number", to_number)
+    runtime.register_function("to_int", to_int)
+    runtime.register_function("to_float", to_float)
+    runtime.register_function("int", to_int)
+    runtime.register_function("float", to_float)
+    runtime.register_function("number", to_number)
+    runtime.register_function("split_string", split_string)
+    runtime.register_function("str_split", split_string)
+    runtime.register_function("trim_string", trim_string)
+
 # Basic string operations
 def length(obj):
     """Return the length of a string, list, dict, bytes, or any iterable.
@@ -285,3 +296,35 @@ def is_uppercase(s):
 def to_string(value):
     """Convert any value to string representation."""
     return str(value)
+
+
+def to_number(value) -> float:
+    """Convert a string or other value to a number (float)."""
+    try:
+        return float(str(value).strip())
+    except (ValueError, TypeError):
+        return 0.0
+
+
+def to_int(value) -> int:
+    """Convert a value to an integer."""
+    try:
+        return int(float(str(value).strip()))
+    except (ValueError, TypeError):
+        return 0
+
+
+def to_float(value) -> float:
+    """Convert a value to a float."""
+    return to_number(value)
+
+
+def split_string(s: str, delimiter: str = " ") -> list:
+    """Split string by delimiter. Alias for split()."""
+    return str(s).split(delimiter)
+
+
+def trim_string(s: str) -> str:
+    """Strip leading/trailing whitespace. Alias for trim()."""
+    return str(s).strip()
+

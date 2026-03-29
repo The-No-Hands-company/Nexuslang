@@ -242,6 +242,8 @@ class TypeChecker:
             return self.check_concurrent_block(statement, env)
         elif isinstance(statement, TryCatchBlock):
             return self.check_try_catch_block(statement, env)
+        elif isinstance(statement, TryCatch):
+            return self.check_try_catch(statement, env)
         elif isinstance(statement, FunctionCall):
             return self.check_function_call(statement, env)
         elif isinstance(statement, BinaryOperation):
@@ -764,9 +766,12 @@ class TypeChecker:
         # Create a new environment for the loop body
         loop_env = TypeEnvironment(env)
         
-        # Infer the element type from the iterable type
+        # Infer the element type from the iterable type.
+        # AnyType is allowed (runtime-registered stdlib functions return ANY_TYPE).
         if isinstance(iterable_type, ListType):
             element_type = iterable_type.element_type
+        elif isinstance(iterable_type, AnyType):
+            element_type = ANY_TYPE  # Dynamic iterable — skip type error
         else:
             element_type = ANY_TYPE
             self.errors.append(
@@ -877,6 +882,29 @@ class TypeChecker:
         # The type of a try-catch block is the union of the try and catch block types
         return UnionType([try_type, catch_type])
     
+    def check_try_catch(self, node: TryCatch, env: TypeEnvironment) -> Type:
+        """Check a TryCatch node (alternative try-catch AST form).
+        
+        try_block and catch_block may be Block objects or plain lists of statements.
+        """
+        def check_body(body, local_env):
+            if body is None:
+                return ANY_TYPE
+            if isinstance(body, list):
+                last = ANY_TYPE
+                for stmt in body:
+                    last = self.check_statement(stmt, local_env)
+                return last
+            return self.check_block(body, local_env)
+
+        try_env = TypeEnvironment(env)
+        try_type = check_body(node.try_block, try_env)
+        catch_env = TypeEnvironment(env)
+        if node.exception_var:
+            catch_env.define_variable(node.exception_var, STRING_TYPE)
+        catch_type = check_body(node.catch_block, catch_env)
+        return UnionType([try_type, catch_type])
+
     def check_function_call(self, call: FunctionCall, env: TypeEnvironment) -> Type:
         """Check a function call with bidirectional type inference."""
         # Handle module.function calls (function name contains a dot)
@@ -991,7 +1019,16 @@ class TypeChecker:
             op = operation.operator.lexeme
         else:
             op = str(operation.operator)
-        
+
+        # Normalize type-prefixed natural-language operators like "integer divided by"
+        # The parser sometimes emits operators with a type qualifier prefix.
+        _type_prefixes = ('integer ', 'float ', 'number ', 'string ', 'boolean ',
+                          'text ', 'real ', 'int ')
+        for _pfx in _type_prefixes:
+            if op.startswith(_pfx):
+                op = op[len(_pfx):]
+                break
+
         # Arithmetic operators (both symbolic and natural language)
         arithmetic_ops = ['+', '-', '*', '/', '%', 'plus', 'minus', 'times', 'divided by', 'modulo', 'power', 'to the power of', '**']
         if op in arithmetic_ops:
@@ -999,12 +1036,20 @@ class TypeChecker:
                 # String concatenation
                 return STRING_TYPE
             
-            if not (left_type.is_compatible_with(INTEGER_TYPE) or left_type.is_compatible_with(FLOAT_TYPE)):
+            # AnyType and FunctionType are allowed (dynamic/runtime calls — skip numeric check)
+            _numeric = (INTEGER_TYPE, FLOAT_TYPE)
+            _dynamic_types = (AnyType,)
+            _skip_left = isinstance(left_type, _dynamic_types) or \
+                         type(left_type).__name__ == 'FunctionType' or \
+                         any(left_type.is_compatible_with(t) for t in _numeric)
+            _skip_right = isinstance(right_type, _dynamic_types) or \
+                          type(right_type).__name__ == 'FunctionType' or \
+                          any(right_type.is_compatible_with(t) for t in _numeric)
+            if not _skip_left:
                 self.errors.append(
                     f"Type error: Left operand of '{op}' must be a number, got '{self._type_name(left_type)}'"
                 )
-            
-            if not (right_type.is_compatible_with(INTEGER_TYPE) or right_type.is_compatible_with(FLOAT_TYPE)):
+            if not _skip_right:
                 self.errors.append(
                     f"Type error: Right operand of '{op}' must be a number, got '{self._type_name(right_type)}'"
                 )

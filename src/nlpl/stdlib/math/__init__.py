@@ -6,6 +6,23 @@ This module provides mathematical functions and constants.
 import math
 from ...runtime.runtime import Runtime
 
+
+def pct(part, total, decimals: int = 1) -> float:
+    """Return part/total as a percentage (0-100). Returns 0.0 if total is 0."""
+    if total == 0:
+        return 0.0
+    return round(float(part) / float(total) * 100.0, decimals)
+
+
+def clamp(value, minimum, maximum):
+    """Clamp value between minimum and maximum."""
+    return max(minimum, min(maximum, value))
+
+
+def lerp(a, b, t: float):
+    """Linear interpolation between a and b by factor t (0..1)."""
+    return a + (b - a) * float(t)
+
 def register_math_functions(runtime: Runtime) -> None:
     """Register math functions with the runtime."""
     # Register constants
@@ -29,6 +46,10 @@ def register_math_functions(runtime: Runtime) -> None:
     runtime.register_function("sqrt", sqrt)  # Short alias
     runtime.register_function("power", power)
     runtime.register_function("pow", power)  # Short alias
+    runtime.register_function("pct", pct)
+    runtime.register_function("percent", pct)
+    runtime.register_function("clamp", clamp)
+    runtime.register_function("lerp", lerp)
     runtime.register_function("floor", floor)
     runtime.register_function("ceiling", ceiling)
     runtime.register_function("ceil", ceiling)  # Short alias

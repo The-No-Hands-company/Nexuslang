@@ -3160,6 +3160,10 @@ class Interpreter:
         op_type = node.operator.type if hasattr(node.operator, 'type') else node.operator
         
         if op_type == TokenType.PLUS:
+            # Auto-coerce: if either operand is a string, convert the other to string.
+            # This makes "value: " plus 42 work naturally without explicit to_string().
+            if isinstance(left, str) or isinstance(right, str):
+                return str(left) + str(right)
             return left + right
         elif op_type == TokenType.MINUS:
             return left - right

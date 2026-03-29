@@ -292,3 +292,84 @@ def register_filesystem_functions(runtime: Runtime) -> None:
     runtime.register_function("ls", list_dir)
     runtime.register_function("pwd", get_cwd)
     runtime.register_function("cd", change_dir)
+    # Directory walking and search
+    runtime.register_function("walk_directory", walk_directory)
+    runtime.register_function("find_files", find_files)
+    runtime.register_function("get_dir_size", get_dir_size)
+    runtime.register_function("normalize_path", normalize_path)
+    runtime.register_function("path_stem", path_stem)
+    runtime.register_function("path_parts", path_parts)
+
+
+def walk_directory(dirpath: str, include_hidden: bool = False) -> list:
+    """Recursively walk a directory, returning file info dicts.
+    Each dict: path, name, extension, size, is_dir, relative_path, directory.
+    """
+    results = []
+    root_path = Path(dirpath).resolve()
+    for root, dirs, files in os.walk(str(root_path)):
+        if not include_hidden:
+            dirs[:] = [d for d in dirs if not d.startswith('.')]
+        for filename in files:
+            if not include_hidden and filename.startswith('.'):
+                continue
+            full_path = os.path.join(root, filename)
+            try:
+                size = os.path.getsize(full_path)
+            except OSError:
+                size = 0
+            rel = os.path.relpath(full_path, str(root_path))
+            results.append({
+                "path": full_path,
+                "name": filename,
+                "extension": Path(filename).suffix.lower(),
+                "size": size,
+                "is_dir": False,
+                "relative_path": rel,
+                "directory": root,
+            })
+    return results
+
+
+def find_files(dirpath: str, extension: str = "", pattern: str = "") -> list:
+    """Return list of file paths matching extension or pattern under dirpath."""
+    import fnmatch
+    results = []
+    for root, dirs, files in os.walk(dirpath):
+        dirs[:] = [d for d in dirs if not d.startswith('.')]
+        for filename in files:
+            if extension and not filename.lower().endswith(extension.lower()):
+                continue
+            if pattern and not fnmatch.fnmatch(filename, pattern):
+                continue
+            results.append(os.path.join(root, filename))
+    return results
+
+
+def get_dir_size(dirpath: str) -> int:
+    """Return total size in bytes of all files under dirpath."""
+    total = 0
+    for root, dirs, files in os.walk(dirpath):
+        dirs[:] = [d for d in dirs if not d.startswith('.')]
+        for filename in files:
+            try:
+                total += os.path.getsize(os.path.join(root, filename))
+            except OSError:
+                pass
+    return total
+
+
+def normalize_path(filepath: str) -> str:
+    """Return normalized absolute path."""
+    return str(Path(filepath).resolve())
+
+
+def path_stem(filepath: str) -> str:
+    """Return file name without extension."""
+    return Path(filepath).stem
+
+
+def path_parts(filepath: str) -> list:
+    """Return list of path components."""
+    return list(Path(filepath).parts)
+
