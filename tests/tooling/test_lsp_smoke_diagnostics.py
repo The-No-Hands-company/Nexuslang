@@ -36,7 +36,7 @@ import pytest
 # Helpers
 # ---------------------------------------------------------------------------
 
-WORKSPACE_ROOT = Path(__file__).parent.parent
+WORKSPACE_ROOT = Path(__file__).resolve().parent.parent.parent  # tests/tooling -> tests -> NLPL/
 SRC_DIR = WORKSPACE_ROOT / "src"
 FIXTURE_ERROR = WORKSPACE_ROOT / "test_programs" / "regression" / "lsp_smoke_fixture.nlpl"
 FIXTURE_VALID = WORKSPACE_ROOT / "test_programs" / "regression" / "error_tests" / "test_basic_errors.nlpl"
@@ -55,9 +55,17 @@ class _LspClient:
     def __init__(self):
         import os
         env = os.environ.copy()
-        # Ensure the src/ directory is on PYTHONPATH so 'nlpl' package is importable
+        # Ensure the src/ directory is on PYTHONPATH so 'nlpl' package is importable.
+        # We use the absolute resolved path so the child process can always find the
+        # package regardless of cwd or how pytest was invoked (e.g. without
+        # PYTHONPATH set in the shell environment — conftest.py only patches
+        # sys.path in-process, not os.environ, so we must do it explicitly here).
+        src_abs = str(SRC_DIR.resolve())
         existing = env.get("PYTHONPATH", "")
-        env["PYTHONPATH"] = str(SRC_DIR) + (os.pathsep + existing if existing else "")
+        env["PYTHONPATH"] = src_abs + (os.pathsep + existing if existing else "")
+        # close_fds=True ensures pytest's captured file descriptors are not
+        # inherited by the child process, preventing broken-pipe exits when
+        # pytest's capture plugin replaces the process-level stdout/stderr FDs.
         self.proc = subprocess.Popen(
             [sys.executable, "-m", "nlpl.lsp", "--stdio"],
             stdin=subprocess.PIPE,
@@ -65,6 +73,7 @@ class _LspClient:
             stderr=subprocess.PIPE,
             cwd=str(WORKSPACE_ROOT),
             env=env,
+            close_fds=True,
         )
         self._notifications: List[Dict] = []
         self._next_id = 1
@@ -217,8 +226,15 @@ class _LspClient:
 def lsp_client():
     """Module-scoped LSP client: start once, share across tests in this file."""
     client = _LspClient()
-    time.sleep(0.3)  # Let server initialize
-    assert client.proc.poll() is None, "LSP server failed to start"
+    # Poll with retries — pytest's capture plugin can delay server startup.
+    deadline = time.monotonic() + 3.0
+    while time.monotonic() < deadline:
+        if client.proc.poll() is None:
+            break
+        time.sleep(0.05)
+    if client.proc.poll() is not None:
+        err = client.proc.stderr.read().decode(errors="replace")
+        pytest.fail(f"LSP server failed to start (rc={client.proc.returncode}): {err[:400]}")
     client.initialize()
     yield client
     client.shutdown()

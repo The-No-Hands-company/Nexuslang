@@ -13,7 +13,7 @@ import time
 from pathlib import Path
 
 # Add NLPL to path
-sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src'))
 
 
 class LSPTestClient:
@@ -25,12 +25,20 @@ class LSPTestClient:
         
     def start(self):
         """Start the LSP server."""
+        import os
+        env = os.environ.copy()
+        # Use absolute resolved path — conftest only sets sys.path in-process,
+        # not os.environ, so the subprocess needs PYTHONPATH set explicitly.
+        src_dir = str(Path(__file__).parent.parent.parent.resolve() / "src")
+        existing = env.get("PYTHONPATH", "")
+        env["PYTHONPATH"] = src_dir + (os.pathsep + existing if existing else "")
         self.process = subprocess.Popen(
             [sys.executable, '-m', 'nlpl.lsp', '--stdio'],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            cwd=Path(__file__).parent.parent
+            cwd=Path(__file__).parent.parent.parent,
+            env=env,
         )
         time.sleep(0.5)
         
@@ -164,7 +172,7 @@ print text result
     client = LSPTestClient()
     client.start()
     
-    test_file = Path(__file__).parent.parent / "test_programs" / "lsp_tests" / "test_same_file.nlpl"
+    test_file = Path(__file__).parent.parent.parent / "test_programs" / "lsp_tests" / "test_same_file.nlpl"
     test_file.parent.mkdir(parents=True, exist_ok=True)
     test_file.write_text(test_code)
     
@@ -217,7 +225,7 @@ def test_goto_definition_cross_file():
     print("TEST: Go-To-Definition (Cross-File)")
     print("=" * 70)
     
-    test_dir = Path(__file__).parent.parent / "test_programs" / "lsp_tests"
+    test_dir = Path(__file__).parent.parent.parent / "test_programs" / "lsp_tests"
     
     # Read the test files
     module_a_path = test_dir / "test_module_a.nlpl"
