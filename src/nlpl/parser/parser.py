@@ -66,6 +66,10 @@ from nlpl.parser.ast import (
 
 class Parser:
     """Parses a stream of tokens into an AST."""
+    # Single-token statement dispatch — maps TokenType → method name.
+    # Populated at class definition time to avoid repeated dict construction.
+    _STMT_DISPATCH: dict = {}
+
     def __init__(self, tokens, source=None):
         self.tokens = tokens
         self.source = source  # Store full source for error context
@@ -277,27 +281,20 @@ class Parser:
         
         try:
             # Handle different statement types
-            if token.type == TokenType.SET:
-                return self.variable_declaration()
-            elif token.type == TokenType.PANIC:
-                return self.panic_statement()
+            # Fast dispatch for simple single-token statements
+            _handler = self._STMT_DISPATCH.get(token.type)
+            if _handler:
+                return getattr(self, _handler)()
+
             
-            elif token.type == TokenType.PRINT:
-                return self.print_statement()
             
-            elif token.type == TokenType.IF:
-                return self.if_statement()
             
             elif token.type == TokenType.LABEL:
                 # Label for loop - check what follows
                 # label name: while/for ...
                 return self.labeled_loop_statement()
             
-            elif token.type == TokenType.WHILE:
-                return self.while_loop()
             
-            elif token.type == TokenType.FOR:
-                return self.for_loop()
             
             elif token.type == TokenType.FOR_EACH:
                 # Handle "for each" as a single token
@@ -339,11 +336,7 @@ class Parser:
                 # Handle "async function <name>..." syntax
                 return self.async_function_definition()
             
-            elif token.type == TokenType.CLASS:
-                return self.class_definition()
             
-            elif token.type == TokenType.STRUCT:
-                return self.struct_definition()
             
             elif token.type == TokenType.IDENTIFIER:
                 # Check for "abstract class" syntax
@@ -355,11 +348,7 @@ class Parser:
                     expr = self.expression()
                     return expr if expr else None
             
-            elif token.type == TokenType.UNION:
-                return self.union_definition()
             
-            elif token.type == TokenType.ENUM:
-                return self.enum_definition()
             
             elif token.type == TokenType.PACKED:
                 # packed struct Name
@@ -372,89 +361,35 @@ class Parser:
             elif token.type == TokenType.RETURN or token.type == TokenType.RETURNS:
                 return self.return_statement()
             
-            elif token.type == TokenType.BREAK:
-                return self.break_statement()
             
-            elif token.type == TokenType.CONTINUE:
-                return self.continue_statement()
             
-            elif token.type == TokenType.FALLTHROUGH:
-                return self.fallthrough_statement()
             
-            elif token.type == TokenType.IMPORT:
-                return self.import_statement()
             
-            elif token.type == TokenType.FROM:
-                return self.selective_import_statement()
             
-            elif token.type == TokenType.TRY:
-                return self.try_statement()
             
-            elif token.type == TokenType.RAISE:
-                return self.raise_statement()
             
-            elif token.type == TokenType.MATCH:
-                return self.match_expression()
             
-            elif token.type == TokenType.SWITCH:
-                return self.switch_statement()
             
-            elif token.type == TokenType.ALLOCATE:
-                return self.memory_allocation()
             
-            elif token.type == TokenType.FREE:
-                return self.memory_deallocation()
 
-            elif token.type == TokenType.DROP:
-                return self.drop_borrow_statement()
 
-            elif token.type == TokenType.ASM:
-                return self.parse_inline_assembly()
             
-            elif token.type == TokenType.INTERFACE:
-                return self.interface_definition()
             
-            elif token.type == TokenType.TRAIT:
-                return self.trait_definition()
             
             elif token.type == TokenType.EXTERN or token.type == TokenType.FOREIGN:
                 return self.extern_declaration()
 
-            elif token.type == TokenType.UNSAFE:
-                return self.parse_unsafe_block()
 
-            elif token.type == TokenType.TEST:
-                return self.parse_test_block()
 
-            elif token.type == TokenType.DESCRIBE:
-                return self.parse_describe_block()
 
-            elif token.type == TokenType.IT:
-                return self.parse_it_block()
 
-            elif token.type == TokenType.BEFORE_EACH:
-                return self.parse_before_each_block()
 
-            elif token.type == TokenType.AFTER_EACH:
-                return self.parse_after_each_block()
 
-            elif token.type == TokenType.EXPECT:
-                return self.parse_expect_statement()
 
-            elif token.type == TokenType.REQUIRE:
-                return self.parse_require_statement()
 
-            elif token.type == TokenType.ENSURE:
-                return self.parse_ensure_statement()
 
-            elif token.type == TokenType.GUARANTEE:
-                return self.parse_guarantee_statement()
 
-            elif token.type == TokenType.INVARIANT:
-                return self.parse_invariant_statement()
 
-            elif token.type == TokenType.SPEC:
-                return self.parse_spec_block()
 
             elif token.type == TokenType.EOF:
                 # End of file - return None to stop parsing
@@ -470,20 +405,10 @@ class Parser:
                 # DEFINE can start various constructs - look ahead to determine which
                 return self.define_statement()
             
-            elif token.type == TokenType.EXPORT:
-                return self.export_statement()
             
-            elif token.type == TokenType.MACRO:
-                return self.macro_definition()
             
-            elif token.type == TokenType.EXPAND:
-                return self.macro_expansion()
             
-            elif token.type == TokenType.COMPTIME:
-                return self.comptime_statement()
 
-            elif token.type == TokenType.ATTRIBUTE:
-                return self.attribute_declaration()
 
             elif token.type == TokenType.AT:
                 # Decorator - collect decorators and apply to next function or class
@@ -7304,6 +7229,21 @@ class Parser:
         else:
             self.error("Expected trait definition to start with 'Create'")
         
+        # Parse trait body
+        required_methods, provided_methods = self._parse_trait_body(line_number)
+        return TraitDefinition(
+            name=trait_name,
+            required_methods=required_methods,
+            provided_methods=provided_methods,
+            line_number=line_number
+        )
+
+
+    def _parse_trait_body(self, line_number):
+        """Parse the body of a trait definition (required/provided methods).
+
+        Returns (required_methods, provided_methods).
+        """
         # Parse trait body - methods can be in single tokens
         required_methods = []
         provided_methods = []
@@ -7515,13 +7455,7 @@ class Parser:
                 # Skip unknown tokens
                 self.advance()
         
-        # Return the trait definition
-        return TraitDefinition(
-            name=trait_name,
-            required_methods=required_methods,
-            provided_methods=provided_methods,
-            line_number=line_number
-        )
+        return required_methods, provided_methods
 
     def parse_type_parameters(self):
         """Parse type parameters for generic types."""
@@ -9786,3 +9720,50 @@ class Parser:
                 self.advance()  # consume SPEC (part of "end spec")
 
         return SpecBlock(name=name, annotations=annotations, line_number=line_number)
+
+
+# Populate Parser._STMT_DISPATCH after all methods are defined
+Parser._STMT_DISPATCH = {
+    TokenType.SET: 'variable_declaration',
+    TokenType.PANIC: 'panic_statement',
+    TokenType.PRINT: 'print_statement',
+    TokenType.IF: 'if_statement',
+    TokenType.WHILE: 'while_loop',
+    TokenType.FOR: 'for_loop',
+    TokenType.CLASS: 'class_definition',
+    TokenType.STRUCT: 'struct_definition',
+    TokenType.UNION: 'union_definition',
+    TokenType.ENUM: 'enum_definition',
+    TokenType.BREAK: 'break_statement',
+    TokenType.CONTINUE: 'continue_statement',
+    TokenType.FALLTHROUGH: 'fallthrough_statement',
+    TokenType.IMPORT: 'import_statement',
+    TokenType.FROM: 'selective_import_statement',
+    TokenType.TRY: 'try_statement',
+    TokenType.RAISE: 'raise_statement',
+    TokenType.MATCH: 'match_expression',
+    TokenType.SWITCH: 'switch_statement',
+    TokenType.ALLOCATE: 'memory_allocation',
+    TokenType.FREE: 'memory_deallocation',
+    TokenType.DROP: 'drop_borrow_statement',
+    TokenType.ASM: 'parse_inline_assembly',
+    TokenType.INTERFACE: 'interface_definition',
+    TokenType.TRAIT: 'trait_definition',
+    TokenType.UNSAFE: 'parse_unsafe_block',
+    TokenType.TEST: 'parse_test_block',
+    TokenType.DESCRIBE: 'parse_describe_block',
+    TokenType.IT: 'parse_it_block',
+    TokenType.BEFORE_EACH: 'parse_before_each_block',
+    TokenType.AFTER_EACH: 'parse_after_each_block',
+    TokenType.EXPECT: 'parse_expect_statement',
+    TokenType.REQUIRE: 'parse_require_statement',
+    TokenType.ENSURE: 'parse_ensure_statement',
+    TokenType.GUARANTEE: 'parse_guarantee_statement',
+    TokenType.INVARIANT: 'parse_invariant_statement',
+    TokenType.SPEC: 'parse_spec_block',
+    TokenType.EXPORT: 'export_statement',
+    TokenType.MACRO: 'macro_definition',
+    TokenType.EXPAND: 'macro_expansion',
+    TokenType.COMPTIME: 'comptime_statement',
+    TokenType.ATTRIBUTE: 'attribute_declaration',
+}
