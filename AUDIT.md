@@ -10,19 +10,27 @@ This document tracks code quality findings and what has been fixed.
 
 | Metric | Before Audit | After Audit |
 |--------|-------------|-------------|
-| Tests passing | 4,288 | 4,288 |
-| Total functions >150 lines (all files) | 58 | 34 |
-| parser.py functions >150 lines | 29 | 12 |
-| llvm_ir_generator.py functions >150 lines | 29 | 16 |
-| interpreter.py functions >150 lines | 8 | 5 |
+| Tests passing | 4,288 | 4,812 |
+| Total functions >150 lines (all files) | 58 | 27 |
+| parser.py functions >150 lines | 29 | 10 |
+| llvm_ir_generator.py functions >150 lines | 29 | 13 |
+| interpreter.py functions >150 lines | 8 | 4 |
 | typechecker.py functions >150 lines | 3 | 1 |
 | Duplicate 8-line blocks (parser) | 36 | 32 |
 | Stale user-facing docs | 190 files | <5 files |
 | `class_definition()` size | 487 lines | 9 lines |
 | `primary()` size | 441 lines | 162 lines |
-| `statement()` size | 250 lines | 171 lines |
+| `statement()` size | 250 lines | 172 lines |
 | `trait_definition()` size | 298 lines | 88 lines |
 | `_generate_variable_declaration()` size | 276 lines | 79 lines |
+| `function_definition_short()` size | 219 lines | 36 lines |
+| `extern_declaration()` size | 228 lines | 30 lines |
+| `_parse_class_simple()` size | 228 lines | 31 lines |
+| `_generate_function_call_expression()` size | 290 lines | ~50 lines |
+| `_generate_inline_assembly()` size | 310 lines | ~60 lines |
+| `_infer_expression_type()` size | 298 lines | 175 lines |
+| `_generate_member_access()` size | 271 lines | ~50 lines |
+| Missing `stdlib/env` module | absent | added |
 | README accuracy | Outdated | Rewritten |
 
 ---
