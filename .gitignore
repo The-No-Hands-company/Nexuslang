@@ -203,3 +203,7 @@ oom-*
 src/nlpl/stdlib_native/_cmake_build/
 src/nlpl/stdlib_native/*.o
 coverage.json
+-e 
+# Environment files
+*.env
+*.env.*
