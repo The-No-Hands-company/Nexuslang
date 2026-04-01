@@ -44,7 +44,7 @@ print text x  # ERROR: i64 passed as i8* to printf
 |---------|-------------|--------|
 | 01_basic_concepts.nlpl | Variables, functions, control flow | ✅ Session 1 |
 | 04_type_system_basics.nlpl | Type inference, conversions | ✅ Session 2 |
-| 08_advanced_type_features_index.nlpl | Type aliases, guards | ✅ Session 2 |
+| 05_type_features_index.nlpl | Type aliases, guards | ✅ Session 2 |
 | 11_traits.nlpl | Trait system | ✅ Session 2 |
 | 25_ffi_c_interop.nlpl | C library bindings | ✅ Session 2 |
 | 26_ffi_struct_marshalling.nlpl | Struct marshalling | ✅ Session 3 (today) |
@@ -138,7 +138,7 @@ All 6 working examples tested with native compilation:
 ```bash
 ./nlplc examples/01_basic_concepts.nlpl -o test --run  # ✅ Works
 ./nlplc examples/04_type_system_basics.nlpl -o test --run  # ✅ Works
-./nlplc examples/08_advanced_type_features_index.nlpl -o test --run  # ✅ Works
+./nlplc examples/03_type_system/05_type_features_index.nlpl -o test --run  # ✅ Works
 ./nlplc examples/11_traits.nlpl -o test --run  # ✅ Works
 ./nlplc examples/25_ffi_c_interop.nlpl -o test --run  # ✅ Works
 ./nlplc examples/26_ffi_struct_marshalling.nlpl -o test --run  # ✅ Works (new!)

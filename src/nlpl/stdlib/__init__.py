@@ -92,356 +92,200 @@ from ..stdlib.platform_windows import register_platform_windows_functions
 from ..stdlib.platform_macos import register_platform_macos_functions
 from ..stdlib.gui import register_gui_functions
 
-def register_stdlib(runtime: Runtime) -> None:
-    """Register all standard library functions with the runtime."""
-    # Register math functions
-    register_math_functions(runtime)
-    
-    # Register string functions
-    register_string_functions(runtime)
-    
-    # Register IO functions
-    register_io_functions(runtime)
-    
-    # Register system functions
-    register_system_functions(runtime)
-    
-    # Register collections functions
-    register_collections_functions(runtime)
-    
-    # Register network functions
-    register_network_functions(runtime)
-    
-    # Register stringbuilder functions
-    register_stringbuilder_functions(runtime)
-    
-    # Register iterator functions
-    register_iterator_functions(runtime)
-    
-    # Register Option and Result types
-    register_option_result_functions(runtime)
-    
-    # Register type utilities (Optional, Result)
-    register_type_functions(runtime)
-    
-    # Register async utilities (Promise)
-    register_async_functions(runtime)
-    
-    # Register FFI (Foreign Function Interface)
-    register_ffi_functions(runtime)
-    
-    # Register graphics (OpenGL/GLFW wrapper)
+
+def _register_optional_graphics(runtime: Runtime) -> None:
+    """Register optional graphics support when dependencies are available."""
     try:
         register_graphics_functions(runtime)
-    except Exception as e:
-        # Graphics module is optional (requires GLFW and PyOpenGL)
+    except Exception:
         pass
-    
-    # Register inline assembly support
-    register_asm_functions(runtime)
-    
-    # Register testing framework
-    register_testing_functions(runtime)
 
-    # Register benchmarking framework
-    register_benchmark_functions(runtime)
 
-    # Register module system
-    register_module_functions(runtime)
-    
-    # Register file system operations
-    register_filesystem_functions(runtime)
-    
-    # Register 3D math library (Vector3, Matrix4, Quaternion)
-    register_math3d_functions(runtime)
-    
-    # Register JSON utilities
-    register_json_functions(runtime)
-    
-    # Register regular expressions
-    register_regex_functions(runtime)
-    
-    # Register datetime operations
-    register_datetime_functions(runtime)
-    
-    # Register HTTP client
-    register_http_functions(runtime)
-    
-    # Register cryptography
-    register_crypto_functions(runtime)
-    
-    # Register UUID utilities
-    register_uuid_functions(runtime)
-    
-    # Register random utilities
-    register_random_functions(runtime)
-    
-    # Register compression utilities
-    register_compression_functions(runtime)
-    
-    # Register environment utilities
-    register_env_functions(runtime)
-    
-    # Register subprocess utilities
-    register_subprocess_functions(runtime)
-    
-    # Register 3D math library
-    register_math3d_functions(runtime)
-    
-    # Register camera system
-    register_camera_functions(runtime)
-    
-    # Register shader presets
-    register_shader_functions(runtime)
-    
-    # Register mesh loading
-    register_mesh_functions(runtime)
-    
-    # Register scene graph
-    register_scene_functions(runtime)
-    
-    # Register logging utilities
-    register_logging_functions(runtime)
-    
-    # Register CSV utilities
-    register_csv_functions(runtime)
-    
-    # Register path utilities
-    register_path_functions(runtime)
-    
-    # Register signal handling
-    register_signal_functions(runtime)
-    
-    # Register argument parsing
-    register_argparse_functions(runtime)
-    
-    # Register configuration handling
-    register_config_functions(runtime)
-    
-    # Register file I/O
-    register_file_io_functions(runtime)
-    
-    # Register SQLite database
-    register_sqlite_functions(runtime)
-    
-    # Register XML parsing
-    register_xml_functions(runtime)
-    
-    # Register email/SMTP
-    register_email_functions(runtime)
-    
-    # Register templates
-    register_template_functions(runtime)
-    
-    # Register threading and multiprocessing
-    register_threading_functions(runtime)
-    
-    # Register serialization (pickle, msgpack, yaml, toml)
-    register_serialization_functions(runtime)
-    
-    # Register WebSocket support
-    register_websocket_functions(runtime)
-    
-    # Register database connectors (PostgreSQL, MySQL, MongoDB)
-    register_database_functions(runtime)
-    
-    # Register PDF utilities (reportlab, PyPDF2)
-    register_pdf_functions(runtime)
-    
-    # Register image processing (PIL/Pillow)
-    register_image_functions(runtime)
-    
-    # Register validation and sanitization
-    register_validation_functions(runtime)
-    
-    # Register caching utilities
-    register_cache_functions(runtime)
-    
-    # Register statistics and data analysis
-    register_statistics_functions(runtime)
-    
-    # Register business logic and financial calculations
-    register_business_functions(runtime)
-    
-    # Register data processing and analytics
-    register_data_functions(runtime)
-    
-    # Register scientific computing and physics
-    register_scientific_functions(runtime)
+_STDLIB_REGISTRARS = (
+    register_math_functions,
+    register_string_functions,
+    register_io_functions,
+    register_system_functions,
+    register_collections_functions,
+    register_network_functions,
+    register_stringbuilder_functions,
+    register_iterator_functions,
+    register_option_result_functions,
+    register_type_functions,
+    register_async_functions,
+    register_ffi_functions,
+    _register_optional_graphics,
+    register_asm_functions,
+    register_testing_functions,
+    register_benchmark_functions,
+    register_module_functions,
+    register_filesystem_functions,
+    register_math3d_functions,
+    register_json_functions,
+    register_regex_functions,
+    register_datetime_functions,
+    register_http_functions,
+    register_crypto_functions,
+    register_uuid_functions,
+    register_random_functions,
+    register_compression_functions,
+    register_env_functions,
+    register_subprocess_functions,
+    register_math3d_functions,
+    register_camera_functions,
+    register_shader_functions,
+    register_mesh_functions,
+    register_scene_functions,
+    register_logging_functions,
+    register_csv_functions,
+    register_path_functions,
+    register_signal_functions,
+    register_argparse_functions,
+    register_config_functions,
+    register_file_io_functions,
+    register_sqlite_functions,
+    register_xml_functions,
+    register_email_functions,
+    register_template_functions,
+    register_threading_functions,
+    register_serialization_functions,
+    register_websocket_functions,
+    register_database_functions,
+    register_pdf_functions,
+    register_image_functions,
+    register_validation_functions,
+    register_cache_functions,
+    register_statistics_functions,
+    register_business_functions,
+    register_data_functions,
+    register_scientific_functions,
+    register_linalg_functions,
+    register_numint_functions,
+    register_dsp_functions,
+    register_plot_functions,
+    register_audio_functions,
+    register_result_utils_functions,
+    register_property_testing_functions,
+    register_coverage_utils_functions,
+    register_bit_ops_functions,
+    register_ctype_functions,
+    register_limits_functions,
+    register_algorithms_functions,
+    register_errno_functions,
+    register_simd_functions,
+    register_interrupt_functions,
+    register_type_trait_functions,
+    register_hardware_functions,
+    register_atomics_functions,
+    register_allocator_functions,
+    register_smart_pointer_functions,
+    register_native_threading_functions,
+    register_sync_functions,
+    register_parallel_functions,
+    register_kernel_functions,
+    register_driver_functions,
+    register_reflection_functions,
+    register_fs_watch_functions,
+    register_platform_linux_functions,
+    register_platform_windows_functions,
+    register_platform_macos_functions,
+    register_gui_functions,
+)
 
-    # Register linear algebra (matrices, vectors, linear systems)
-    register_linalg_functions(runtime)
 
-    # Register numerical integration, differentiation, root finding, optimization
-    register_numint_functions(runtime)
+_STDLIB_MODULES = (
+    "math",
+    "string",
+    "io",
+    "system",
+    "collections",
+    "network",
+    "types",
+    "asyncio",
+    "ffi",
+    "asm",
+    "testing",
+    "modules",
+    "filesystem",
+    "json",
+    "regex",
+    "datetime",
+    "http",
+    "crypto",
+    "uuid",
+    "random",
+    "compression",
+    "env",
+    "subprocess",
+    "math3d",
+    "camera",
+    "shaders",
+    "mesh",
+    "scene",
+    "logging",
+    "csv",
+    "path",
+    "signal",
+    "argparse",
+    "config",
+    "file_io",
+    "files",
+    "sqlite",
+    "database",
+    "xml",
+    "email",
+    "smtp",
+    "templates",
+    "testing",
+    "hardware",
+    "port_io",
+    "atomics",
+    "atomic",
+    "allocators",
+    "allocator",
+    "smart_pointers",
+    "smart_pointer",
+    "threading",
+    "threads",
+    "sync",
+    "synchronization",
+    "business",
+    "data",
+    "scientific",
+    "linalg",
+    "linear_algebra",
+    "numint",
+    "numerical",
+    "dsp",
+    "signal_proc",
+    "fft",
+    "plot",
+    "visualization",
+    "charts",
+    "audio",
+    "audio_utils",
+    "result_utils",
+    "error_handling",
+    "property_testing",
+    "prop_test",
+    "coverage_utils",
+    "coverage",
+    "reflection",
+    "platform_linux",
+    "platform_unix",
+    "platform_windows",
+    "platform_win32",
+    "platform_macos",
+    "platform_darwin",
+    "gui",
+    "windowing",
+    "font",
+)
 
-    # Register digital signal processing (FFT, filtering, spectral analysis)
-    register_dsp_functions(runtime)
+def register_stdlib(runtime: Runtime) -> None:
+    """Register all standard library functions with the runtime."""
+    for registrar in _STDLIB_REGISTRARS:
+        registrar(runtime)
 
-    # Register plotting and visualization (ASCII charts + SVG generation)
-    register_plot_functions(runtime)
-
-    # Register audio format handling (WAV I/O, PCM manipulation, generation, analysis)
-    register_audio_functions(runtime)
-
-    # Register Result/Option types and error-chain helpers
-    register_result_utils_functions(runtime)
-
-    # Register property-based testing (generators, property_test, shrinking)
-    register_property_testing_functions(runtime)
-
-    # Register coverage measurement (line/branch/function coverage via sys.settrace)
-    register_coverage_utils_functions(runtime)
-
-    # Register bit manipulation operations (ASM/C essential)
-    register_bit_ops_functions(runtime)
-    
-    # Register character classification (ctype.h equivalent)
-    register_ctype_functions(runtime)
-    
-    # Register numeric limits (limits.h/float.h equivalent)
-    register_limits_functions(runtime)
-    
-    # Register algorithms (C++ STL <algorithm> equivalent)
-    register_algorithms_functions(runtime)
-    
-    # Register error numbers (errno.h equivalent)
-    register_errno_functions(runtime)
-    
-    # Register SIMD vector operations (MMX, SSE, AVX)
-    register_simd_functions(runtime)
-    
-    # Register interrupt handling (x86 interrupts)
-    register_interrupt_functions(runtime)
-    
-    # Register type traits (C++ <type_traits> equivalent)
-    register_type_trait_functions(runtime)
-    
-    # Register hardware access (port I/O, MMIO, interrupts)
-    register_hardware_functions(runtime)
-    
-    # Register atomic operations and memory ordering
-    register_atomics_functions(runtime)
-
-    # Register custom allocator control
-    register_allocator_functions(runtime)
-
-    # Register smart pointer functions (Rc, Arc, Weak, Box, RefCell, Mutex<T>, RwLock<T>)
-    register_smart_pointer_functions(runtime)
-
-    # Register native threading API
-    register_native_threading_functions(runtime)
-    
-    # Register synchronization primitives
-    register_sync_functions(runtime)
-
-    # Register parallel computing functions
-    register_parallel_functions(runtime)
-
-    # Register OS kernel primitives
-    register_kernel_functions(runtime)
-
-    # Register device driver framework
-    register_driver_functions(runtime)
-
-    # Register reflection (runtime type introspection)
-    register_reflection_functions(runtime)
-
-    # Register file system watching (inotify/FSEvents/ReadDirectoryChangesW via watchdog)
-    register_fs_watch_functions(runtime)
-
-    # Register platform-specific libraries
-    register_platform_linux_functions(runtime)
-    register_platform_windows_functions(runtime)
-    register_platform_macos_functions(runtime)
-
-    # Register GUI, windowing, and font rendering
-    register_gui_functions(runtime)
-
-    # Register module names for importing
-    runtime.register_module("math")
-    runtime.register_module("string")
-    runtime.register_module("io")
-    runtime.register_module("system")
-    runtime.register_module("collections")
-    runtime.register_module("network")
-    runtime.register_module("types")
-    runtime.register_module("asyncio")
-    runtime.register_module("ffi")
-    runtime.register_module("asm")
-    runtime.register_module("testing")
-    runtime.register_module("modules")
-    runtime.register_module("filesystem")
-    runtime.register_module("json")
-    runtime.register_module("regex")
-    runtime.register_module("datetime")
-    runtime.register_module("http")
-    runtime.register_module("crypto")
-    runtime.register_module("uuid")
-    runtime.register_module("random")
-    runtime.register_module("compression")
-    runtime.register_module("env")
-    runtime.register_module("subprocess")
-    runtime.register_module("math3d")
-    runtime.register_module("camera")
-    runtime.register_module("shaders")
-    runtime.register_module("mesh")
-    runtime.register_module("scene")
-    runtime.register_module("logging")
-    runtime.register_module("csv")
-    runtime.register_module("path")
-    runtime.register_module("signal")
-    runtime.register_module("argparse")
-    runtime.register_module("config")
-    runtime.register_module("file_io")
-    runtime.register_module("files")
-    runtime.register_module("sqlite")
-    runtime.register_module("database")
-    runtime.register_module("xml")
-    runtime.register_module("email")
-    runtime.register_module("smtp")
-    runtime.register_module("templates")
-    runtime.register_module("testing")
-    runtime.register_module("hardware")
-    runtime.register_module("port_io")
-    runtime.register_module("atomics")
-    runtime.register_module("atomic")
-    runtime.register_module("allocators")
-    runtime.register_module("allocator")
-    runtime.register_module("smart_pointers")
-    runtime.register_module("smart_pointer")
-    runtime.register_module("threading")
-    runtime.register_module("threads")
-    runtime.register_module("sync")
-    runtime.register_module("synchronization")
-    runtime.register_module("business")
-    runtime.register_module("data")
-    runtime.register_module("scientific")
-    runtime.register_module("linalg")
-    runtime.register_module("linear_algebra")
-    runtime.register_module("numint")
-    runtime.register_module("numerical")
-    runtime.register_module("dsp")
-    runtime.register_module("signal_proc")
-    runtime.register_module("fft")
-    runtime.register_module("plot")
-    runtime.register_module("visualization")
-    runtime.register_module("charts")
-    runtime.register_module("audio")
-    runtime.register_module("audio_utils")
-    runtime.register_module("result_utils")
-    runtime.register_module("error_handling")
-    runtime.register_module("property_testing")
-    runtime.register_module("prop_test")
-    runtime.register_module("coverage_utils")
-    runtime.register_module("coverage")
-    runtime.register_module("reflection")
-    runtime.register_module("platform_linux")
-    runtime.register_module("platform_unix")
-    runtime.register_module("platform_windows")
-    runtime.register_module("platform_win32")
-    runtime.register_module("platform_macos")
-    runtime.register_module("platform_darwin")
-    runtime.register_module("gui")
-    runtime.register_module("windowing")
-    runtime.register_module("font")
+    for module_name in _STDLIB_MODULES:
+        runtime.register_module(module_name)

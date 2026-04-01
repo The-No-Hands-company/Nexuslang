@@ -1,5 +1,5 @@
 """
-Tests for NLPL advanced build system features:
+Tests for NLPL extended build system features:
     - Parallel compilation  (src/nlpl/build/parallel.py)
     - Link-Time Optimization (src/nlpl/build/lto.py)
     - Cross-compilation      (src/nlpl/build/cross.py)

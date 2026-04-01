@@ -65,7 +65,7 @@ def test_unreachable_after_return_severity_is_warning(provider):
         assert d["severity"] == 2  # WARNING
 
 
-def test_unreachable_after_return_has_fix(provider):
+def test_unreachable_after_return_has_suggestion(provider):
     diags = provider.get_diagnostics("file:///t.nlpl", UNREACHABLE_RETURN)
     dead = [d for d in diags if d["code"] == "dead-unreachable"]
     for d in dead:
@@ -243,7 +243,7 @@ def test_diagnostic_has_required_lsp_fields(provider):
         assert d["source"] == "nlpl-dead-code"
 
 
-def test_diagnostic_has_fixes_in_data(provider):
+def test_diagnostic_has_suggestions_in_data(provider):
     src = "if false\n    print text \"x\"\nend\n"
     diags = provider.get_diagnostics("file:///t.nlpl", src)
     for d in diags:

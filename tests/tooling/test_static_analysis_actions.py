@@ -1,8 +1,8 @@
 """
-Tests for static analysis auto-fix engine and LSP IDE integration hooks.
+Tests for static analysis remediation engine and LSP IDE integration hooks.
 
 Covers:
-  - autofix.py: TextEdit, FixSuggestion, FixResult, AutoFixer, all built-in generators
+    - autofix.py: TextEdit, FixSuggestion, FixResult, AutoFixer, all built-in generators
   - ide_hooks.py: IDEHooks, LspFormatter, severity_to_lsp, lsp_position, lsp_range
 """
 
@@ -315,7 +315,7 @@ class TestFixGeneratorStyleEof:
         assert suggestion is not None
         assert suggestion.is_applicable()
 
-    def test_returns_fix_suggestion(self):
+    def test_returns_suggestion_hint(self):
         issue = _make_issue(code="W-STYLE-EOF", line=1)
         lines = ["no newline here"]
         suggestion = self._run(issue, lines)
@@ -359,7 +359,7 @@ class TestFixGeneratorDeadAssign:
         assert suggestion is not None
         assert suggestion.edits[0].line == 3
 
-    def test_returns_fix_suggestion(self):
+    def test_returns_suggestion_hint(self):
         issue = _make_issue(code="W-DEAD-ASSIGN", line=1)
         lines = ["set x to 0\n"]
         suggestion = self._run(issue, lines)
@@ -403,7 +403,7 @@ class TestFixGeneratorUninitUse:
         assert suggestion is not None
         assert len(suggestion.edits) == 1
 
-    def test_returns_fix_suggestion(self):
+    def test_returns_suggestion_hint(self):
         issue = _make_issue(code="W-UNINIT-USE", line=1, message="variable 'x' uninitialized")
         lines = ["x\n"]
         suggestion = self._run(issue, lines)
@@ -456,7 +456,7 @@ class TestFixGeneratorP005:
         assert suggestion is not None
         assert len(suggestion.edits) >= 1
 
-    def test_returns_fix_suggestion(self):
+    def test_returns_suggestion_hint(self):
         issue = _make_issue(code="P005", line=1)
         lines = ["some loop call\n"]
         suggestion = self._run(issue, lines)
@@ -479,7 +479,7 @@ class TestFixGeneratorSInject:
         assert suggestion is not None
         assert len(suggestion.edits) >= 1
 
-    def test_returns_fix_suggestion(self):
+    def test_returns_suggestion_hint(self):
         issue = _make_issue(code="S-INJECT", line=1)
         lines = ["execute user_data\n"]
         suggestion = self._run(issue, lines)
@@ -640,7 +640,7 @@ class TestAutoFixerApply:
         if result.applied > 0:
             assert len(result.changes) > 0
 
-    def test_fix_result_type_returned(self):
+    def test_suggestion_result_type_returned(self):
         fixer = AutoFixer()
         result = fixer.apply("source\n", [])
         assert isinstance(result, FixResult)
@@ -925,8 +925,8 @@ class TestIDEHooksFixesToCodeActions:
 
     def _make_suggestion(self, line=1):
         issue = _make_issue(line=line)
-        edit = TextEdit(line, 1, line, 5, "fix")
-        return FixSuggestion(issue=issue, description="fix something", edits=[edit])
+        edit = TextEdit(line, 1, line, 5, "edit")
+        return FixSuggestion(issue=issue, description="apply edit", edits=[edit])
 
     def test_empty_returns_empty(self):
         result = self.hooks.fixes_to_code_actions([], self.file_uri)
@@ -956,7 +956,7 @@ class TestIDEHooksGetCodeActionsForRange:
     def _make_suggestion(self, line):
         issue = _make_issue(line=line)
         edit = TextEdit(line, 1, line, 2, "x")
-        return FixSuggestion(issue=issue, description="fix", edits=[edit])
+        return FixSuggestion(issue=issue, description="edit", edits=[edit])
 
     def test_issue_in_range_included(self):
         issues = [_make_issue(line=5)]
@@ -974,7 +974,7 @@ class TestIDEHooksGetCodeActionsForRange:
         )
         assert len(actions) == 0
 
-    def test_empty_result_when_no_fixes_in_range(self):
+    def test_empty_result_when_no_suggestions_in_range(self):
         actions = self.hooks.get_code_actions_for_range(
             [], [], self.file_uri, start_line=1, end_line=10
         )
@@ -1042,7 +1042,7 @@ class TestLspFormatterFacade:
         result = self.formatter.code_actions_for_range(report, source, 1, 1)
         assert isinstance(result, list)
 
-    def test_apply_fixes_returns_string(self):
+    def test_apply_suggestions_returns_string(self):
         issue = _make_issue(code="W-STYLE-TRAIL", line=1)
         report = _make_report(issues=[issue], file_path="/tmp/test.nlpl")
         source = "trailing   \n"

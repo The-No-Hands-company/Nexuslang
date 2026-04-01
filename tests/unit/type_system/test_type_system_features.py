@@ -1,5 +1,5 @@
 """
-Test cases for advanced type system features in NLPL.
+Test cases for type-system feature coverage in NLPL.
 """
 
 import sys
@@ -15,8 +15,8 @@ from nlpl.parser.ast import (
     MethodDefinition, Identifier
 )
 
-class TestAdvancedTypes(unittest.TestCase):
-    """Test cases for advanced type system features."""
+class TestTypeSystemFeatures(unittest.TestCase):
+    """Test cases for type-system feature coverage."""
     
     def test_abstract_class_definition(self):
         """Test parsing of abstract class definitions."""

@@ -1533,28 +1533,180 @@ class GraphicsModule:
             self.destroy_window(window_id)
 
 
+def _register_named_functions(runtime, functions):
+    for name, func in functions:
+        runtime.register_function(name, func)
+
+
+def _register_graphics_core_functions(runtime, gfx):
+    _register_named_functions(runtime, [
+        ("create_window", gfx.create_window),
+        ("window_should_close", gfx.window_should_close),
+        ("destroy_window", gfx.destroy_window),
+        ("get_key", gfx.get_key),
+        ("get_framebuffer_size", gfx.get_framebuffer_size),
+        ("update_input", gfx.update_input),
+        ("is_key_pressed", gfx.is_key_pressed),
+        ("is_key_held", gfx.is_key_held),
+        ("is_key_released", gfx.is_key_released),
+        ("get_mouse_position", gfx.get_mouse_position),
+        ("get_mouse_delta", gfx.get_mouse_delta),
+        ("get_mouse_delta_x", gfx.get_mouse_delta_x),
+        ("get_mouse_delta_y", gfx.get_mouse_delta_y),
+        ("is_mouse_button_pressed", gfx.is_mouse_button_pressed),
+        ("is_mouse_button_held", gfx.is_mouse_button_held),
+        ("is_mouse_button_released", gfx.is_mouse_button_released),
+        ("get_scroll_offset", gfx.get_scroll_offset),
+        ("set_cursor_mode", gfx.set_cursor_mode),
+        ("begin_frame", gfx.begin_frame),
+        ("end_frame", gfx.end_frame),
+        ("set_clear_color", gfx.set_clear_color),
+        ("set_viewport", gfx.set_viewport),
+    ])
+
+
+def _register_graphics_pipeline_functions(runtime, gfx):
+    _register_named_functions(runtime, [
+        ("create_shader", gfx.create_shader),
+        ("load_shader_from_files", gfx.load_shader_from_files),
+        ("use_shader", gfx.use_shader),
+        ("set_uniform_mat4", gfx.set_uniform_mat4),
+        ("set_uniform_vec3", gfx.set_uniform_vec3),
+        ("set_uniform_vec4", gfx.set_uniform_vec4),
+        ("set_uniform_float", gfx.set_uniform_float),
+        ("set_uniform_int", gfx.set_uniform_int),
+        ("delete_shader", gfx.delete_shader),
+        ("create_vertex_buffer", gfx.create_vertex_buffer),
+        ("create_index_buffer", gfx.create_index_buffer),
+        ("delete_vertex_buffer", gfx.delete_vertex_buffer),
+        ("delete_index_buffer", gfx.delete_index_buffer),
+        ("create_vertex_array", gfx.create_vertex_array),
+        ("vao_set_vertex_buffer", gfx.vao_set_vertex_buffer),
+        ("vao_set_index_buffer", gfx.vao_set_index_buffer),
+        ("vao_set_attribute", gfx.vao_set_attribute),
+        ("vao_draw_arrays", gfx.vao_draw_arrays),
+        ("vao_draw_elements", gfx.vao_draw_elements),
+        ("delete_vertex_array", gfx.delete_vertex_array),
+        ("create_texture", gfx.create_texture),
+        ("bind_texture", gfx.bind_texture),
+        ("delete_texture", gfx.delete_texture),
+        ("load_texture_from_file", gfx.load_texture_from_file),
+        ("create_depth_texture", gfx.create_depth_texture),
+        ("create_cubemap", gfx.create_cubemap),
+        ("load_cubemap_from_files", gfx.load_cubemap_from_files),
+        ("bind_cubemap", gfx.bind_cubemap),
+        ("delete_cubemap", gfx.delete_cubemap),
+        ("create_skybox_geometry", gfx.create_skybox_geometry),
+        ("create_framebuffer", gfx.create_framebuffer),
+        ("bind_framebuffer", gfx.bind_framebuffer),
+        ("unbind_framebuffer", gfx.unbind_framebuffer),
+        ("framebuffer_attach_depth_texture", gfx.framebuffer_attach_depth_texture),
+        ("framebuffer_attach_color_texture", gfx.framebuffer_attach_color_texture),
+        ("delete_framebuffer", gfx.delete_framebuffer),
+    ])
+
+
+def _register_graphics_math_functions(runtime, gfx):
+    _register_named_functions(runtime, [
+        ("lerp", gfx.lerp),
+        ("lerp_vec3", gfx.lerp_vec3),
+        ("cubic_hermite", gfx.cubic_hermite),
+        ("catmull_rom", gfx.catmull_rom),
+        ("catmull_rom_vec3", gfx.catmull_rom_vec3),
+        ("ease_linear", gfx.ease_linear),
+        ("ease_in_quad", gfx.ease_in_quad),
+        ("ease_out_quad", gfx.ease_out_quad),
+        ("ease_in_out_quad", gfx.ease_in_out_quad),
+        ("ease_in_cubic", gfx.ease_in_cubic),
+        ("ease_out_cubic", gfx.ease_out_cubic),
+        ("ease_in_out_cubic", gfx.ease_in_out_cubic),
+        ("ease_in_out_sine", gfx.ease_in_out_sine),
+        ("create_animation_track", gfx.create_animation_track),
+        ("add_keyframe", gfx.add_keyframe),
+        ("animation_play", gfx.animation_play),
+        ("animation_stop", gfx.animation_stop),
+        ("animation_update", gfx.animation_update),
+        ("animation_evaluate_at", gfx.animation_evaluate_at),
+        ("delete_animation_track", gfx.delete_animation_track),
+        ("create_identity_matrix", gfx.create_identity_matrix),
+        ("create_translation_matrix", gfx.create_translation_matrix),
+        ("create_scale_matrix", gfx.create_scale_matrix),
+        ("create_rotation_x_matrix", gfx.create_rotation_x_matrix),
+        ("create_rotation_y_matrix", gfx.create_rotation_y_matrix),
+        ("create_rotation_z_matrix", gfx.create_rotation_z_matrix),
+        ("create_view_matrix", gfx.create_view_matrix),
+        ("create_perspective_matrix", gfx.create_perspective_matrix),
+        ("create_orthographic_matrix", gfx.create_orthographic_matrix),
+        ("multiply_matrices", gfx.multiply_matrices),
+        ("draw_rect", gfx.draw_rect),
+        ("GL_TRIANGLES", lambda: GL_TRIANGLES),
+        ("GL_TRIANGLE_STRIP", lambda: GL_TRIANGLE_STRIP),
+        ("GL_TRIANGLE_FAN", lambda: GL_TRIANGLE_FAN),
+        ("GL_LINES", lambda: GL_LINES),
+        ("GL_LINE_STRIP", lambda: GL_LINE_STRIP),
+        ("GL_POINTS", lambda: GL_POINTS),
+    ])
+
+
+def _register_glfw_constants(runtime):
+    if not GLFW_AVAILABLE:
+        return
+
+    _register_named_functions(runtime, [
+        ("KEY_W", lambda: glfw.KEY_W),
+        ("KEY_A", lambda: glfw.KEY_A),
+        ("KEY_S", lambda: glfw.KEY_S),
+        ("KEY_D", lambda: glfw.KEY_D),
+        ("KEY_Q", lambda: glfw.KEY_Q),
+        ("KEY_E", lambda: glfw.KEY_E),
+        ("KEY_SPACE", lambda: glfw.KEY_SPACE),
+        ("KEY_ESCAPE", lambda: glfw.KEY_ESCAPE),
+        ("KEY_ENTER", lambda: glfw.KEY_ENTER),
+        ("KEY_TAB", lambda: glfw.KEY_TAB),
+        ("KEY_LEFT_SHIFT", lambda: glfw.KEY_LEFT_SHIFT),
+        ("KEY_LEFT_CONTROL", lambda: glfw.KEY_LEFT_CONTROL),
+        ("KEY_LEFT_ALT", lambda: glfw.KEY_LEFT_ALT),
+        ("KEY_UP", lambda: glfw.KEY_UP),
+        ("KEY_DOWN", lambda: glfw.KEY_DOWN),
+        ("KEY_LEFT", lambda: glfw.KEY_LEFT),
+        ("KEY_RIGHT", lambda: glfw.KEY_RIGHT),
+        ("KEY_0", lambda: glfw.KEY_0),
+        ("KEY_1", lambda: glfw.KEY_1),
+        ("KEY_2", lambda: glfw.KEY_2),
+        ("KEY_3", lambda: glfw.KEY_3),
+        ("KEY_4", lambda: glfw.KEY_4),
+        ("KEY_5", lambda: glfw.KEY_5),
+        ("KEY_6", lambda: glfw.KEY_6),
+        ("KEY_7", lambda: glfw.KEY_7),
+        ("KEY_8", lambda: glfw.KEY_8),
+        ("KEY_9", lambda: glfw.KEY_9),
+        ("MOUSE_BUTTON_LEFT", lambda: glfw.MOUSE_BUTTON_LEFT),
+        ("MOUSE_BUTTON_RIGHT", lambda: glfw.MOUSE_BUTTON_RIGHT),
+        ("MOUSE_BUTTON_MIDDLE", lambda: glfw.MOUSE_BUTTON_MIDDLE),
+        ("CURSOR_NORMAL", lambda: glfw.CURSOR_NORMAL),
+        ("CURSOR_HIDDEN", lambda: glfw.CURSOR_HIDDEN),
+        ("CURSOR_DISABLED", lambda: glfw.CURSOR_DISABLED),
+    ])
+
+
 def register_graphics_functions(runtime):
     """Register graphics functions with NLPL runtime"""
     gfx = GraphicsModule()
-    
-    # Helper function to create procedural textures
+
     def create_checkerboard_texture(width: int, height: int, cell_size: int) -> int:
         """Create a checkerboard texture"""
         data = []
         for y in range(height):
             for x in range(width):
-                # Determine if we're in a white or black cell
                 cell_x = x // cell_size
                 cell_y = y // cell_size
                 is_white = (cell_x + cell_y) % 2 == 0
-                
                 if is_white:
-                    data.extend([255, 255, 255, 255])  # White
+                    data.extend([255, 255, 255, 255])
                 else:
-                    data.extend([0, 0, 0, 255])  # Black
-        
+                    data.extend([0, 0, 0, 255])
         return gfx.create_texture(width, height, bytes(data))
-    
+
     def create_gradient_texture(width: int, height: int) -> int:
         """Create a gradient texture (red to blue)"""
         data = []
@@ -1564,176 +1716,17 @@ def register_graphics_functions(runtime):
                 g = 128
                 b = int((y / height) * 255)
                 data.extend([r, g, b, 255])
-        
         return gfx.create_texture(width, height, bytes(data))
-    
-    # Window management
-    runtime.register_function("create_window", gfx.create_window)
-    runtime.register_function("window_should_close", gfx.window_should_close)
-    runtime.register_function("destroy_window", gfx.destroy_window)
-    runtime.register_function("get_key", gfx.get_key)
-    runtime.register_function("get_framebuffer_size", gfx.get_framebuffer_size)
-    
-    # Input management
-    runtime.register_function("update_input", gfx.update_input)
-    runtime.register_function("is_key_pressed", gfx.is_key_pressed)
-    runtime.register_function("is_key_held", gfx.is_key_held)
-    runtime.register_function("is_key_released", gfx.is_key_released)
-    runtime.register_function("get_mouse_position", gfx.get_mouse_position)
-    runtime.register_function("get_mouse_delta", gfx.get_mouse_delta)
-    runtime.register_function("get_mouse_delta_x", gfx.get_mouse_delta_x)
-    runtime.register_function("get_mouse_delta_y", gfx.get_mouse_delta_y)
-    runtime.register_function("is_mouse_button_pressed", gfx.is_mouse_button_pressed)
-    runtime.register_function("is_mouse_button_held", gfx.is_mouse_button_held)
-    runtime.register_function("is_mouse_button_released", gfx.is_mouse_button_released)
-    runtime.register_function("get_scroll_offset", gfx.get_scroll_offset)
-    runtime.register_function("set_cursor_mode", gfx.set_cursor_mode)
-    
-    # Frame management
-    runtime.register_function("begin_frame", gfx.begin_frame)
-    runtime.register_function("end_frame", gfx.end_frame)
-    runtime.register_function("set_clear_color", gfx.set_clear_color)
-    runtime.register_function("set_viewport", gfx.set_viewport)
-    
-    # Shader management
-    runtime.register_function("create_shader", gfx.create_shader)
-    runtime.register_function("load_shader_from_files", gfx.load_shader_from_files)
-    runtime.register_function("use_shader", gfx.use_shader)
-    runtime.register_function("set_uniform_mat4", gfx.set_uniform_mat4)
-    runtime.register_function("set_uniform_vec3", gfx.set_uniform_vec3)
-    runtime.register_function("set_uniform_vec4", gfx.set_uniform_vec4)
-    runtime.register_function("set_uniform_float", gfx.set_uniform_float)
-    runtime.register_function("set_uniform_int", gfx.set_uniform_int)
-    runtime.register_function("delete_shader", gfx.delete_shader)
-    
-    # Buffer management
-    runtime.register_function("create_vertex_buffer", gfx.create_vertex_buffer)
-    runtime.register_function("create_index_buffer", gfx.create_index_buffer)
-    runtime.register_function("delete_vertex_buffer", gfx.delete_vertex_buffer)
-    runtime.register_function("delete_index_buffer", gfx.delete_index_buffer)
-    
-    # VAO management
-    runtime.register_function("create_vertex_array", gfx.create_vertex_array)
-    runtime.register_function("vao_set_vertex_buffer", gfx.vao_set_vertex_buffer)
-    runtime.register_function("vao_set_index_buffer", gfx.vao_set_index_buffer)
-    runtime.register_function("vao_set_attribute", gfx.vao_set_attribute)
-    runtime.register_function("vao_draw_arrays", gfx.vao_draw_arrays)
-    runtime.register_function("vao_draw_elements", gfx.vao_draw_elements)
-    runtime.register_function("delete_vertex_array", gfx.delete_vertex_array)
-    
-    # Texture management
-    runtime.register_function("create_texture", gfx.create_texture)
-    runtime.register_function("bind_texture", gfx.bind_texture)
-    runtime.register_function("delete_texture", gfx.delete_texture)
-    runtime.register_function("load_texture_from_file", gfx.load_texture_from_file)
-    runtime.register_function("create_depth_texture", gfx.create_depth_texture)
-    
-    # Cubemap management
-    runtime.register_function("create_cubemap", gfx.create_cubemap)
-    runtime.register_function("load_cubemap_from_files", gfx.load_cubemap_from_files)
-    runtime.register_function("bind_cubemap", gfx.bind_cubemap)
-    runtime.register_function("delete_cubemap", gfx.delete_cubemap)
-    runtime.register_function("create_skybox_geometry", gfx.create_skybox_geometry)
-    
-    # Framebuffer management
-    runtime.register_function("create_framebuffer", gfx.create_framebuffer)
-    runtime.register_function("bind_framebuffer", gfx.bind_framebuffer)
-    runtime.register_function("unbind_framebuffer", gfx.unbind_framebuffer)
-    runtime.register_function("framebuffer_attach_depth_texture", gfx.framebuffer_attach_depth_texture)
-    runtime.register_function("framebuffer_attach_color_texture", gfx.framebuffer_attach_color_texture)
-    runtime.register_function("delete_framebuffer", gfx.delete_framebuffer)
-    runtime.register_function("set_viewport", gfx.set_viewport)
-    
-    # Animation system
-    runtime.register_function("lerp", gfx.lerp)
-    runtime.register_function("lerp_vec3", gfx.lerp_vec3)
-    runtime.register_function("cubic_hermite", gfx.cubic_hermite)
-    runtime.register_function("catmull_rom", gfx.catmull_rom)
-    runtime.register_function("catmull_rom_vec3", gfx.catmull_rom_vec3)
-    runtime.register_function("ease_linear", gfx.ease_linear)
-    runtime.register_function("ease_in_quad", gfx.ease_in_quad)
-    runtime.register_function("ease_out_quad", gfx.ease_out_quad)
-    runtime.register_function("ease_in_out_quad", gfx.ease_in_out_quad)
-    runtime.register_function("ease_in_cubic", gfx.ease_in_cubic)
-    runtime.register_function("ease_out_cubic", gfx.ease_out_cubic)
-    runtime.register_function("ease_in_out_cubic", gfx.ease_in_out_cubic)
-    runtime.register_function("ease_in_out_sine", gfx.ease_in_out_sine)
-    runtime.register_function("create_animation_track", gfx.create_animation_track)
-    runtime.register_function("add_keyframe", gfx.add_keyframe)
-    runtime.register_function("animation_play", gfx.animation_play)
-    runtime.register_function("animation_stop", gfx.animation_stop)
-    runtime.register_function("animation_update", gfx.animation_update)
-    runtime.register_function("animation_evaluate_at", gfx.animation_evaluate_at)
-    runtime.register_function("delete_animation_track", gfx.delete_animation_track)
-    
-    # Matrix utilities
-    runtime.register_function("create_identity_matrix", gfx.create_identity_matrix)
-    runtime.register_function("create_translation_matrix", gfx.create_translation_matrix)
-    runtime.register_function("create_scale_matrix", gfx.create_scale_matrix)
-    runtime.register_function("create_rotation_x_matrix", gfx.create_rotation_x_matrix)
-    runtime.register_function("create_rotation_y_matrix", gfx.create_rotation_y_matrix)
-    runtime.register_function("create_rotation_z_matrix", gfx.create_rotation_z_matrix)
-    runtime.register_function("create_view_matrix", gfx.create_view_matrix)
-    runtime.register_function("create_perspective_matrix", gfx.create_perspective_matrix)
-    runtime.register_function("create_orthographic_matrix", gfx.create_orthographic_matrix)
-    runtime.register_function("multiply_matrices", gfx.multiply_matrices)
-    
-    # Legacy rendering
-    runtime.register_function("draw_rect", gfx.draw_rect)
-    
-    # OpenGL constants (for NLPL code to use)
-    runtime.register_function("GL_TRIANGLES", lambda: GL_TRIANGLES)
-    runtime.register_function("GL_TRIANGLE_STRIP", lambda: GL_TRIANGLE_STRIP)
-    runtime.register_function("GL_TRIANGLE_FAN", lambda: GL_TRIANGLE_FAN)
-    runtime.register_function("GL_LINES", lambda: GL_LINES)
-    runtime.register_function("GL_LINE_STRIP", lambda: GL_LINE_STRIP)
-    runtime.register_function("GL_POINTS", lambda: GL_POINTS)
-    
-    # Procedural texture helpers
-    runtime.register_function("create_checkerboard_texture", create_checkerboard_texture)
-    runtime.register_function("create_gradient_texture", create_gradient_texture)
-    
-    # GLFW key constants (most commonly used)
-    if GLFW_AVAILABLE:
-        runtime.register_function("KEY_W", lambda: glfw.KEY_W)
-        runtime.register_function("KEY_A", lambda: glfw.KEY_A)
-        runtime.register_function("KEY_S", lambda: glfw.KEY_S)
-        runtime.register_function("KEY_D", lambda: glfw.KEY_D)
-        runtime.register_function("KEY_Q", lambda: glfw.KEY_Q)
-        runtime.register_function("KEY_E", lambda: glfw.KEY_E)
-        runtime.register_function("KEY_SPACE", lambda: glfw.KEY_SPACE)
-        runtime.register_function("KEY_ESCAPE", lambda: glfw.KEY_ESCAPE)
-        runtime.register_function("KEY_ENTER", lambda: glfw.KEY_ENTER)
-        runtime.register_function("KEY_TAB", lambda: glfw.KEY_TAB)
-        runtime.register_function("KEY_LEFT_SHIFT", lambda: glfw.KEY_LEFT_SHIFT)
-        runtime.register_function("KEY_LEFT_CONTROL", lambda: glfw.KEY_LEFT_CONTROL)
-        runtime.register_function("KEY_LEFT_ALT", lambda: glfw.KEY_LEFT_ALT)
-        runtime.register_function("KEY_UP", lambda: glfw.KEY_UP)
-        runtime.register_function("KEY_DOWN", lambda: glfw.KEY_DOWN)
-        runtime.register_function("KEY_LEFT", lambda: glfw.KEY_LEFT)
-        runtime.register_function("KEY_RIGHT", lambda: glfw.KEY_RIGHT)
-        runtime.register_function("KEY_0", lambda: glfw.KEY_0)
-        runtime.register_function("KEY_1", lambda: glfw.KEY_1)
-        runtime.register_function("KEY_2", lambda: glfw.KEY_2)
-        runtime.register_function("KEY_3", lambda: glfw.KEY_3)
-        runtime.register_function("KEY_4", lambda: glfw.KEY_4)
-        runtime.register_function("KEY_5", lambda: glfw.KEY_5)
-        runtime.register_function("KEY_6", lambda: glfw.KEY_6)
-        runtime.register_function("KEY_7", lambda: glfw.KEY_7)
-        runtime.register_function("KEY_8", lambda: glfw.KEY_8)
-        runtime.register_function("KEY_9", lambda: glfw.KEY_9)
-        
-        # Mouse button constants
-        runtime.register_function("MOUSE_BUTTON_LEFT", lambda: glfw.MOUSE_BUTTON_LEFT)
-        runtime.register_function("MOUSE_BUTTON_RIGHT", lambda: glfw.MOUSE_BUTTON_RIGHT)
-        runtime.register_function("MOUSE_BUTTON_MIDDLE", lambda: glfw.MOUSE_BUTTON_MIDDLE)
-        
-        # Cursor mode constants
-        runtime.register_function("CURSOR_NORMAL", lambda: glfw.CURSOR_NORMAL)
-        runtime.register_function("CURSOR_HIDDEN", lambda: glfw.CURSOR_HIDDEN)
-        runtime.register_function("CURSOR_DISABLED", lambda: glfw.CURSOR_DISABLED)
-    
-    # Store reference for cleanup
+
+    _register_graphics_core_functions(runtime, gfx)
+    _register_graphics_pipeline_functions(runtime, gfx)
+    _register_graphics_math_functions(runtime, gfx)
+
+    _register_named_functions(runtime, [
+        ("create_checkerboard_texture", create_checkerboard_texture),
+        ("create_gradient_texture", create_gradient_texture),
+    ])
+    _register_glfw_constants(runtime)
+
     runtime._graphics_module = gfx
-    
     return gfx

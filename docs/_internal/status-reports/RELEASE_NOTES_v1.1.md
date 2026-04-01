@@ -34,7 +34,7 @@ Added new `example-smoke` CI job that validates 10 working example files compile
 - 01_basic_concepts.nlpl
 - 02_object_oriented.nlpl
 - 04_type_system_basics.nlpl
-- 08_advanced_type_features_index.nlpl
+- 05_type_features_index.nlpl
 - 11_traits.nlpl
 - 12_type_aliases.nlpl
 - 25_ffi_c_interop.nlpl

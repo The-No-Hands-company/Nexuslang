@@ -373,7 +373,7 @@ class TestErrorHandlingPerformance:
     def test_name_error_with_large_scope_is_fast(self):
         """
         NLPLNameError with 1500 available names should resolve in < 100ms
-        (was hanging for seconds before the 256-cap fix in errors.py).
+        (was hanging for seconds before the 256-cap update in errors.py).
         """
         from nlpl.errors import NLPLNameError, get_close_matches
 

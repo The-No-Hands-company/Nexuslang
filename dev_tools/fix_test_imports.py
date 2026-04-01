@@ -10,7 +10,7 @@ test_dir = Path(__file__).parent.parent / "tests"
 
 # Files to update
 test_files = [
-    "test_advanced_types.py",
+    "test_type_system_features.py",
     "test_comprehensive_errors.py",
     "test_error_reporting.py",
     "test_errors.py",

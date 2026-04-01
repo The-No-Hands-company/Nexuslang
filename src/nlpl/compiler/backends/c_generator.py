@@ -723,74 +723,84 @@ class CCodeGenerator(CodeGenerator):
             return self._STDLIB_RETURN_TYPES[expr.name]
         return "int"
 
+    def _infer_identifier_type(self, expr: Identifier) -> str:
+        """Infer C type for an identifier expression."""
+        # Check if it's a property in the current class
+        if self.current_class and (self.current_class, expr.name) in self.property_types:
+            return self.property_types[(self.current_class, expr.name)]
+        # Look up variable type from symbol table
+        if expr.name in self.symbol_table:
+            return self.symbol_table[expr.name]
+        return "int"
+
+    def _infer_list_expression_type(self, expr: ListExpression) -> str:
+        """Infer C type for a list expression."""
+        # Infer array type from elements
+        if not expr.elements:
+            # Empty array defaults to int[]
+            return "int[]"
+
+        # Check all elements to find the most general type
+        element_types = [self._infer_type(elem) for elem in expr.elements]
+
+        # If any element is double, the array should be double
+        if "double" in element_types:
+            return "double[]"
+        # If all are int, use int
+        if all(t == "int" for t in element_types):
+            return "int[]"
+        # If all are const char*, use const char*
+        if all(t == "const char*" for t in element_types):
+            return "const char*[]"
+        # If all are bool, use bool
+        if all(t == "bool" for t in element_types):
+            return "bool[]"
+        # Otherwise use the first element's type
+        return f"{element_types[0]}[]"
+
+    def _infer_index_expression_type(self, expr: IndexExpression) -> str:
+        """Infer C type for an index expression."""
+        # Array indexing returns the element type
+        array_type = self._infer_type(expr.array_expr)
+        # Strip the [] suffix to get element type
+        if array_type.endswith("[]"):
+            return array_type[:-2]
+        # If it's a pointer type (e.g., "int*"), strip the *
+        if array_type.endswith("*"):
+            return array_type[:-1]
+        # Default to the same type (might be void*)
+        return array_type
+
     def _infer_type(self, expr: Any) -> str:
         """Infer C type from NLPL expression."""
         if isinstance(expr, Literal):
             return self._infer_type_from_literal(expr)
-        
-        elif isinstance(expr, BinaryOperation):
+
+        if isinstance(expr, BinaryOperation):
             return self._infer_type_from_binary_op(expr)
-        
-        elif isinstance(expr, Identifier):
-            # Check if it's a property in the current class
-            if self.current_class and (self.current_class, expr.name) in self.property_types:
-                return self.property_types[(self.current_class, expr.name)]
-            # Look up variable type from symbol table
-            if expr.name in self.symbol_table:
-                return self.symbol_table[expr.name]
-            return "int"
-        
-        elif isinstance(expr, UnaryOperation):
+
+        if isinstance(expr, Identifier):
+            return self._infer_identifier_type(expr)
+
+        if isinstance(expr, UnaryOperation):
             return self._infer_type(expr.operand)
-        
-        elif isinstance(expr, ObjectInstantiation):
+
+        if isinstance(expr, ObjectInstantiation):
             return f"{expr.class_name}*"
-        
-        elif isinstance(expr, MemberAccess):
+
+        if isinstance(expr, MemberAccess):
             return self._infer_member_access_type(expr)
-        
-        elif isinstance(expr, FunctionCall):
+
+        if isinstance(expr, FunctionCall):
             return self._infer_function_call_type(expr)
-        
-        elif isinstance(expr, ListExpression):
-            # Infer array type from elements
-            if expr.elements:
-                # Check all elements to find the most general type
-                element_types = [self._infer_type(elem) for elem in expr.elements]
-                
-                # If any element is double, the array should be double
-                if "double" in element_types:
-                    return "double[]"
-                # If all are int, use int
-                elif all(t == "int" for t in element_types):
-                    return "int[]"
-                # If all are const char*, use const char*
-                elif all(t == "const char*" for t in element_types):
-                    return "const char*[]"
-                # If all are bool, use bool
-                elif all(t == "bool" for t in element_types):
-                    return "bool[]"
-                # Otherwise use the first element's type
-                else:
-                    return f"{element_types[0]}[]"
-            else:
-                # Empty array defaults to int[]
-                return "int[]"
-        
-        elif isinstance(expr, IndexExpression):
-            # Array indexing returns the element type
-            array_type = self._infer_type(expr.array_expr)
-            # Strip the [] suffix to get element type
-            if array_type.endswith("[]"):
-                return array_type[:-2]
-            # If it's a pointer type (e.g., "int*"), strip the *
-            elif array_type.endswith("*"):
-                return array_type[:-1]
-            # Default to the same type (might be void*)
-            return array_type
-        
-        else:
-            return "void*"
+
+        if isinstance(expr, ListExpression):
+            return self._infer_list_expression_type(expr)
+
+        if isinstance(expr, IndexExpression):
+            return self._infer_index_expression_type(expr)
+
+        return "void*"
     
     def _generate_extern_function(self, node: ExternFunctionDeclaration) -> None:
         """Generate extern function declaration for FFI."""

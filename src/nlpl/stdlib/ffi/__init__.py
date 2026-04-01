@@ -257,16 +257,27 @@ class FFIManager:
 def register_ffi_functions(runtime: Runtime) -> None:
     """Register FFI functions with the runtime."""
     ffi_manager = FFIManager()
-    
-    # Store FFI manager in runtime for access
     runtime.ffi_manager = ffi_manager
-    
-    # Register functions
-    runtime.register_function("ffi_load_library", lambda name, path=None: ffi_manager.load_library(name, path))
-    runtime.register_function("ffi_call", lambda lib, func, arg_types, return_type, *args: 
-                            ffi_manager.call_function(lib, func, arg_types, return_type, list(args)))
-    
-    # Helper functions for common C library functions
+
+    _register_ffi_core_functions(runtime, ffi_manager)
+    _register_ffi_c_helpers(runtime, ffi_manager)
+    _register_ffi_string_helpers(runtime)
+    _register_ffi_struct_callback_variadic_functions(runtime, ffi_manager)
+
+
+def _register_ffi_core_functions(runtime: Runtime, ffi_manager: FFIManager) -> None:
+    runtime.register_function(
+        "ffi_load_library",
+        lambda name, path=None: ffi_manager.load_library(name, path),
+    )
+    runtime.register_function(
+        "ffi_call",
+        lambda lib, func, arg_types, return_type, *args:
+            ffi_manager.call_function(lib, func, arg_types, return_type, list(args)),
+    )
+
+
+def _register_ffi_c_helpers(runtime: Runtime, ffi_manager: FFIManager) -> None:
     def c_strlen(s: str) -> int:
         """Call C strlen function."""
         try:
@@ -274,7 +285,7 @@ def register_ffi_functions(runtime: Runtime) -> None:
             return ffi_manager.call_function("c", "strlen", ["char*"], "size_t", [s])
         except Exception as e:
             raise RuntimeError(f"Failed to call strlen: {e}")
-    
+
     def c_malloc(size: int) -> int:
         """Call C malloc function."""
         try:
@@ -282,7 +293,7 @@ def register_ffi_functions(runtime: Runtime) -> None:
             return ffi_manager.call_function("c", "malloc", ["size_t"], "void*", [size])
         except Exception as e:
             raise RuntimeError(f"Failed to call malloc: {e}")
-    
+
     def c_free(ptr: int) -> None:
         """Call C free function."""
         try:
@@ -290,142 +301,87 @@ def register_ffi_functions(runtime: Runtime) -> None:
             ffi_manager.call_function("c", "free", ["void*"], "void", [ptr])
         except Exception as e:
             raise RuntimeError(f"Failed to call free: {e}")
-    
+
     runtime.register_function("c_strlen", c_strlen)
     runtime.register_function("c_malloc", c_malloc)
     runtime.register_function("c_free", c_free)
-    
-    # String conversion functions for explicit C ↔ NLPL string conversion
+
+
+def _register_ffi_string_helpers(runtime: Runtime) -> None:
     def to_c_string(s: str) -> bytes:
-        """
-        Convert NLPL string to C string (bytes with null terminator).
-        Returns bytes object that can be passed to C functions expecting char*.
-        
-        Example:
-            set c_str to to_c_string with "Hello, World!"
-            # c_str is now b'Hello, World!\x00'
-        """
         if not isinstance(s, str):
             raise TypeError(f"to_c_string expects string, got {type(s).__name__}")
         return s.encode('utf-8') + b'\x00'
-    
+
     def from_c_string(c_str: bytes) -> str:
-        """
-        Convert C string (bytes or char*) to NLPL string.
-        Handles null-terminated strings from C functions.
-        
-        Example:
-            set result to from_c_string with c_string_pointer
-            # result is now a regular NLPL string
-        """
         if isinstance(c_str, bytes):
-            # Remove null terminator if present
             if c_str.endswith(b'\x00'):
                 c_str = c_str[:-1]
             return c_str.decode('utf-8')
-        elif isinstance(c_str, str):
-            return c_str  # Already a Python string
-        elif isinstance(c_str, int):
-            # Handle pointer (ctypes address)
+        if isinstance(c_str, str):
+            return c_str
+        if isinstance(c_str, int):
             char_p = ctypes.cast(c_str, ctypes.c_char_p)
             if char_p.value:
                 return char_p.value.decode('utf-8')
             return ""
-        else:
-            raise TypeError(f"from_c_string expects bytes, string, or pointer, got {type(c_str).__name__}")
-    
+        raise TypeError(f"from_c_string expects bytes, string, or pointer, got {type(c_str).__name__}")
+
     def string_to_pointer(s: str) -> int:
-        """
-        Convert NLPL string to C char* pointer address.
-        Returns an integer address that can be used in FFI calls.
-        WARNING: The pointer is only valid while the string object exists.
-        
-        Example:
-            set ptr to string_to_pointer with "Hello"
-            # ptr is now an integer address pointing to the string data
-        """
         if not isinstance(s, str):
             raise TypeError(f"string_to_pointer expects string, got {type(s).__name__}")
         c_str = s.encode('utf-8')
         ptr = ctypes.cast(ctypes.c_char_p(c_str), ctypes.c_void_p).value
         return ptr if ptr is not None else 0
-    
+
     def pointer_to_string(ptr: int, length: Optional[int] = None) -> str:
-        """
-        Convert C char* pointer address to NLPL string.
-        If length is provided, reads exactly that many bytes.
-        Otherwise, reads until null terminator.
-        
-        Example:
-            set text to pointer_to_string with address
-            # Or with explicit length:
-            set text to pointer_to_string with address and 10
-        """
         if not isinstance(ptr, int):
             raise TypeError(f"pointer_to_string expects integer pointer, got {type(ptr).__name__}")
-        
+
         if ptr == 0:
             raise ValueError("Cannot dereference null pointer")
-        
+
         if length is not None:
-            # Read specific length — guard against null pointer before cast
             if ptr is None or (hasattr(ptr, 'value') and ptr.value == 0):
                 raise FFIError("from_c_string: null pointer dereference")
             c_array = ctypes.cast(ptr, ctypes.POINTER(ctypes.c_char * length))
             if not c_array:
                 raise FFIError("from_c_string: cast produced null pointer")
             return c_array.contents.value.decode('utf-8')
-        else:
-            # Read until null terminator
-            c_str = ctypes.cast(ptr, ctypes.c_char_p)
-            return c_str.value.decode('utf-8') if c_str.value else ""
-    
+
+        c_str = ctypes.cast(ptr, ctypes.c_char_p)
+        return c_str.value.decode('utf-8') if c_str.value else ""
+
     runtime.register_function("to_c_string", to_c_string)
     runtime.register_function("from_c_string", from_c_string)
     runtime.register_function("string_to_pointer", string_to_pointer)
     runtime.register_function("pointer_to_string", pointer_to_string)
-    
-    # FFI Enhancements: Struct passing, callbacks, variadic functions
-    
+
+
+def _register_ffi_struct_callback_variadic_functions(runtime: Runtime, ffi_manager: FFIManager) -> None:
     def ffi_struct_to_ctypes(struct_instance, struct_name: str = ""):
-        """Convert NLPL struct to ctypes Structure for passing by value."""
         return ffi_manager.struct_to_ctypes(struct_instance, struct_name)
-    
+
     def ffi_register_callback(callback_func: Callable, arg_types: List[str], return_type: str):
-        """
-        Register NLPL function as C callback (function pointer).
-        Returns function pointer that can be passed to C functions.
-        
-        Example:
-            function my_comparator with a as Integer and b as Integer returns Integer
-                if a is less than b
-                    return -1
-                else if a is greater than b
-                    return 1
-                else
-                    return 0
-                end
-            end
-            
-            set callback_ptr to ffi_register_callback with my_comparator and ["int", "int"] and "int"
-            # Pass callback_ptr to qsort or other C function expecting comparator
-        """
         return ffi_manager.register_callback(callback_func, arg_types, return_type)
-    
-    def ffi_call_variadic(lib_name: str, func_name: str,
-                         fixed_arg_types: List[str], return_type: str,
-                         fixed_args: List[Any], variadic_args: List[Any]):
-        """
-        Call variadic C function (like printf, sprintf, scanf).
-        
-        Example:
-            # Call printf("Hello %s, value: %d\n", "World", 42)
-            ffi_call_variadic with "c" and "printf" and ["char*"] and "int" 
-                              and ["Hello %s, value: %d\n"] and ["World", 42]
-        """
-        return ffi_manager.call_variadic(lib_name, func_name, fixed_arg_types, 
-                                        return_type, fixed_args, variadic_args)
-    
+
+    def ffi_call_variadic(
+        lib_name: str,
+        func_name: str,
+        fixed_arg_types: List[str],
+        return_type: str,
+        fixed_args: List[Any],
+        variadic_args: List[Any],
+    ):
+        return ffi_manager.call_variadic(
+            lib_name,
+            func_name,
+            fixed_arg_types,
+            return_type,
+            fixed_args,
+            variadic_args,
+        )
+
     runtime.register_function("ffi_struct_to_ctypes", ffi_struct_to_ctypes)
     runtime.register_function("ffi_register_callback", ffi_register_callback)
     runtime.register_function("ffi_call_variadic", ffi_call_variadic)

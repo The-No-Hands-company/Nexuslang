@@ -596,7 +596,7 @@ class Parser:
     def create_statement(self):
         """Parse a create statement for variable initialization.
 
-        Handles both the classic form and advanced type definition forms:
+        Handles both the classic form and structured type-definition forms:
             CREATE identifier AS expression
             CREATE member_access AS expression
             CREATE (A|AN) abstract CLASS CALLED name WITH: body
@@ -608,7 +608,7 @@ class Parser:
         line_number = self.current_token.line
         self.advance()  # consume CREATE
 
-        # Detect advanced constructs when next token is A or AN
+        # Detect article-prefixed class/trait/type constructs when next token is A or AN
         if self.current_token and self.current_token.type in (TokenType.A, TokenType.AN):
             self.advance()  # consume A/AN
             tok = self.current_token
@@ -711,7 +711,7 @@ class Parser:
             return VariableDeclaration(str(target), value, None)
 
     # ------------------------------------------------------------------
-    # Helper parsers for advanced type constructs
+    # Helper parsers for structured type constructs
     # ------------------------------------------------------------------
 
     def _parse_abstract_class_def(self, line_number):

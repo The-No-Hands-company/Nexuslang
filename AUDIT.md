@@ -1,6 +1,6 @@
 # NLPL Code Quality Audit Report
 
-*Last updated: April 2026*
+*Last updated: April 1, 2026*
 
 This document tracks code quality findings and what has been fixed.
 
@@ -57,6 +57,39 @@ This document tracks code quality findings and what has been fixed.
 | `_walk()` size (data_flow) | 171 lines | ~80 lines |
 | Missing `stdlib/env` module | absent | added |
 | README accuracy | Outdated | Rewritten |
+
+---
+
+## Verified snapshot (April 1, 2026)
+
+The table above contains historical "after audit" checkpoints and is not a strict
+live view of HEAD. The following values were re-measured directly from the current
+`main` source tree (`src/nlpl`) using AST-based function span checks.
+
+| Item | AUDIT table value | Verified current value |
+|------|-------------------|------------------------|
+| Total functions >150 lines (src/nlpl scope) | 18 (all files) | 7 |
+| parser.py functions >150 lines | 3 | 0 |
+| `primary()` size | 162 | 54 |
+| `statement()` size | 172 | 20 |
+| `_primary_identifier()` size | 157 | 38 |
+| `_generate_pattern_bindings()` size | 59 | 67 |
+| `_generate_foreach_loop()` size | 128 | 131 |
+| `_generate_math_function_call()` size | ~40 | 60 |
+| `_generate_runtime_functions()` size (c_generator) | 12 | 13 |
+| `_infer_type()` size (c_generator) | ~25 | 30 |
+| `main()` size (main.py) | 207 | 93 |
+| `_build_parser()` size (cli) | ~20 | 28 |
+| `register_stdlib()` size | 353 | 7 |
+| `register_driver_functions()` size | 414 | 17 |
+| `register_graphics_functions()` size | 204 | 41 |
+| `register_ffi_functions()` size | 175 | 9 |
+
+Notes:
+- The commit history does contain the referenced refactor commits, but some
+  AUDIT values are now stale because additional refactoring landed later.
+- The previously listed `_collect_console_and_array_runtime()` remaining item is
+  no longer present in current `c_generator.py`.
 
 ---
 
@@ -174,37 +207,47 @@ This document tracks code quality findings and what has been fixed.
 - **`_extract_symbols_from_ast()`** reduced 164 → ~60 lines by extracting `_extract_function_symbol()`, `_extract_class_symbol()`
 - **`_walk()`** (data_flow) reduced 171 → ~80 lines by extracting `_walk_variable_declaration()`, `_walk_assignment()`, `_walk_if_statement()`
 
+### Stdlib registration refactoring
+
+- **`register_stdlib()`** reduced 353 → 7 lines by extracting ordered registration lists:
+  - `_STDLIB_REGISTRARS` — preserves stdlib function registration order (including existing duplicate registrations)
+  - `_STDLIB_MODULES` — preserves module alias registration list
+  - `_register_optional_graphics()` — keeps optional graphics registration behavior (best-effort)
+
+### Driver registration refactoring
+
+- **`register_driver_functions()`** reduced 414 → 17 lines by extracting section-specific registrars while preserving registration order:
+  - `_register_char_device_functions()`, `_register_block_device_functions()`, `_register_pci_functions()`
+  - `_register_i2c_functions()`, `_register_spi_functions()`, `_register_gpio_functions()`, `_register_irq_functions()`
+  - `_register_interrupt_handler_functions()`, `_register_device_tree_functions()`, `_register_udev_sysfs_functions()`
+  - `_register_kernel_module_functions()`, `_register_usb_functions()`, `_register_network_device_functions()`
+  - `_register_dma_functions()`, `_register_vfio_functions()`
+
+### Graphics registration refactoring
+
+- **`register_graphics_functions()`** reduced 204 → 41 lines by extracting grouped registrars while preserving symbol names and registration order:
+  - `_register_graphics_core_functions()`, `_register_graphics_pipeline_functions()`, `_register_graphics_math_functions()`
+  - `_register_glfw_constants()` and shared `_register_named_functions()`
+
+### FFI registration refactoring
+
+- **`register_ffi_functions()`** reduced 175 → 9 lines by extracting grouped registrars while preserving exported FFI symbols:
+  - `_register_ffi_core_functions()`
+  - `_register_ffi_c_helpers()`
+  - `_register_ffi_string_helpers()`
+  - `_register_ffi_struct_callback_variadic_functions()`
+
 ---
 
 ## Remaining large functions (tracked, not yet split)
 
-### parser.py
-
-| Function | Lines | Notes |
-|----------|-------|-------|
-| `statement()` | 172 | Large dispatch table — low risk, intentional |
-| `primary()` | 163 | Stable after prior extraction |
-| `_primary_identifier()` | 157 | Stable after prior extraction |
-
-### Other files
+### Current >150 lines in src/nlpl
 
 | File | Function | Lines | Notes |
 |------|----------|-------|-------|
-| `main.py` | `main()` | 207 | Execution dispatch — complex state flow |
-| `c_generator.py` | `_collect_console_and_array_runtime()` | 202 | Two separable groups |
-| `c_generator.py` | `_infer_type()` | 191 | Needs further extraction |
 | `lexer.py` | `_build_keywords()` | 278 | Pure data definition (dict literal) — intentionally large |
-| `lexer.py` | `scan_token()` | 162 | Token dispatch |
-| `stdlib/__init__.py` | `register_stdlib()` | 353 | Pure registration dispatch — intentionally large |
-| `stdlib/drivers/__init__.py` | `register_driver_functions()` | 414 | Pure data registration — intentionally large |
-| `stdlib/ffi/__init__.py` | `register_ffi_functions()` | 175 | Pure data registration — intentionally large |
-| `stdlib/graphics/__init__.py` | `register_graphics_functions()` | 204 | Pure data registration — intentionally large |
 | `stdlib/testing/__init__.py` | `register_testing_functions()` | 160 | Pure data registration — intentionally large |
 | `stdlib/benchmark/__init__.py` | `register_benchmark_functions()` | 152 | Pure data registration — intentionally large |
-| `build/builder.py` | `build()` | 160 | Complex build orchestration |
-| `tooling/builder.py` | `_build_internal()` | 157 | Complex build orchestration |
-| `tooling/registry.py` | `publish()` | 152 | Complex publish orchestration |
-| `typesystem/type_inference.py` | `infer_pattern_binding_type()` | 150 | Complex type inference |
 
 ---
 

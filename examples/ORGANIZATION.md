@@ -57,8 +57,8 @@ Networking and Web
 - Web programming
 - Database access
 
-### 09_advanced/
-Advanced Topics
+### 09_feature_patterns/
+Feature Patterns
 - Error handling and logging
 - Testing and debugging
 - Security and authentication
@@ -86,4 +86,4 @@ New to NLPL? Follow this learning path:
 2. `02_oop/01_object_oriented.nlpl`
 3. `03_type_system/01_type_system_basics.nlpl`
 4. `04_generics/01_generic_classes.nlpl`
-5. `09_advanced/01_error_handling.nlpl`
+5. `09_feature_patterns/01_error_handling.nlpl`

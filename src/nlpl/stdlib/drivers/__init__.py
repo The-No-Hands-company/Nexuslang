@@ -2335,10 +2335,7 @@ def get_iommu_group(pci_address: str) -> Optional[int]:
 # Registration
 # ---------------------------------------------------------------------------
 
-def register_driver_functions(runtime: Any) -> None:
-    """Register all driver framework functions with the NLPL runtime."""
-
-    # ---- CharDevice lifecycle ----
+def _register_char_device_functions(runtime: Any) -> None:
     runtime.register_function(
         "open_char_device",
         lambda rt, path, flags=os.O_RDWR: _open_char_device(path, int(flags)),
@@ -2366,7 +2363,8 @@ def register_driver_functions(runtime: Any) -> None:
         lambda rt, dev: dev.is_open(),
     )
 
-    # ---- BlockDevice lifecycle ----
+
+def _register_block_device_functions(runtime: Any) -> None:
     runtime.register_function(
         "open_block_device",
         lambda rt, path, read_only=True: _open_block_device(path, bool(read_only)),
@@ -2392,7 +2390,8 @@ def register_driver_functions(runtime: Any) -> None:
         lambda rt, dev: dev.get_logical_block_size(),
     )
 
-    # ---- PCI ----
+
+def _register_pci_functions(runtime: Any) -> None:
     runtime.register_function(
         "enumerate_pci",
         lambda rt: [d.to_dict() for d in enumerate_pci_devices()],
@@ -2407,7 +2406,8 @@ def register_driver_functions(runtime: Any) -> None:
         lambda rt, dev: dev.to_dict() if isinstance(dev, PciDevice) else {},
     )
 
-    # ---- I2C ----
+
+def _register_i2c_functions(runtime: Any) -> None:
     runtime.register_function(
         "open_i2c_device",
         lambda rt, bus, addr: _open_i2c(int(bus), int(addr)),
@@ -2439,7 +2439,8 @@ def register_driver_functions(runtime: Any) -> None:
         lambda rt, dev, reg: dev.read_word_data(int(reg)),
     )
 
-    # ---- SPI ----
+
+def _register_spi_functions(runtime: Any) -> None:
     runtime.register_function(
         "open_spi_device",
         lambda rt, bus, cs: _open_spi(int(bus), int(cs)),
@@ -2456,7 +2457,8 @@ def register_driver_functions(runtime: Any) -> None:
         ),
     )
 
-    # ---- GPIO ----
+
+def _register_gpio_functions(runtime: Any) -> None:
     runtime.register_function(
         "gpio_export",
         lambda rt, pin: _gpio_export(int(pin)),
@@ -2482,7 +2484,8 @@ def register_driver_functions(runtime: Any) -> None:
         lambda rt: list_gpio_chips(),
     )
 
-    # ---- IRQ information ----
+
+def _register_irq_functions(runtime: Any) -> None:
     runtime.register_function(
         "list_irqs",
         lambda rt: list_irqs(),
@@ -2496,7 +2499,8 @@ def register_driver_functions(runtime: Any) -> None:
         lambda rt, irq, mask: set_irq_affinity(int(irq), str(mask)),
     )
 
-    # ---- Interrupt handler (software simulation) ----
+
+def _register_interrupt_handler_functions(runtime: Any) -> None:
     runtime.register_function(
         "create_interrupt_handler",
         lambda rt: InterruptHandler(),
@@ -2518,7 +2522,8 @@ def register_driver_functions(runtime: Any) -> None:
         lambda rt, handler, sig: handler.trigger(int(sig)),
     )
 
-    # ---- Device tree ----
+
+def _register_device_tree_functions(runtime: Any) -> None:
     runtime.register_function(
         "read_device_tree_property",
         lambda rt, node, prop: read_device_tree_property(str(node), str(prop)),
@@ -2532,7 +2537,8 @@ def register_driver_functions(runtime: Any) -> None:
         lambda rt, node: list_device_tree_children(str(node)),
     )
 
-    # ---- udev / sysfs ----
+
+def _register_udev_sysfs_functions(runtime: Any) -> None:
     runtime.register_function(
         "list_devices_by_class",
         lambda rt, cls: list_devices_by_class(str(cls)),
@@ -2546,7 +2552,8 @@ def register_driver_functions(runtime: Any) -> None:
         lambda rt, cls, name, attr: get_device_attribute(str(cls), str(name), str(attr)),
     )
 
-    # ---- Kernel module management ----
+
+def _register_kernel_module_functions(runtime: Any) -> None:
     runtime.register_function(
         "load_kernel_module",
         lambda rt, name, params=None: load_kernel_module(str(name), params),
@@ -2572,7 +2579,8 @@ def register_driver_functions(runtime: Any) -> None:
         lambda rt, name: get_module_dependencies(str(name)),
     )
 
-    # ---- USB device framework ----
+
+def _register_usb_functions(runtime: Any) -> None:
     runtime.register_function(
         "enumerate_usb_devices",
         lambda rt, vid=None, pid=None: [
@@ -2596,7 +2604,8 @@ def register_driver_functions(runtime: Any) -> None:
         lambda rt, dev: dev.to_dict() if isinstance(dev, UsbDevice) else {},
     )
 
-    # ---- Network device drivers ----
+
+def _register_network_device_functions(runtime: Any) -> None:
     runtime.register_function(
         "enumerate_net_devices",
         lambda rt: [d.to_dict() for d in enumerate_net_devices()],
@@ -2636,7 +2645,8 @@ def register_driver_functions(runtime: Any) -> None:
         lambda rt, sock, max_len=65535: receive_raw_packet(sock, int(max_len)),
     )
 
-    # ---- DMA buffer management ----
+
+def _register_dma_functions(runtime: Any) -> None:
     runtime.register_function(
         "dma_alloc",
         lambda rt, size, heap="system": DmaBuffer.allocate(int(size), str(heap)),
@@ -2666,7 +2676,8 @@ def register_driver_functions(runtime: Any) -> None:
         lambda rt: list_dma_heaps(),
     )
 
-    # ---- VFIO ----
+
+def _register_vfio_functions(runtime: Any) -> None:
     runtime.register_function(
         "vfio_open_container",
         lambda rt: (lambda c: c.open() or c)(VfioContainer()),
@@ -2749,6 +2760,24 @@ def register_driver_functions(runtime: Any) -> None:
         "get_iommu_group",
         lambda rt, pci_addr: get_iommu_group(str(pci_addr)),
     )
+
+def register_driver_functions(runtime: Any) -> None:
+    """Register all driver framework functions with the NLPL runtime."""
+    _register_char_device_functions(runtime)
+    _register_block_device_functions(runtime)
+    _register_pci_functions(runtime)
+    _register_i2c_functions(runtime)
+    _register_spi_functions(runtime)
+    _register_gpio_functions(runtime)
+    _register_irq_functions(runtime)
+    _register_interrupt_handler_functions(runtime)
+    _register_device_tree_functions(runtime)
+    _register_udev_sysfs_functions(runtime)
+    _register_kernel_module_functions(runtime)
+    _register_usb_functions(runtime)
+    _register_network_device_functions(runtime)
+    _register_dma_functions(runtime)
+    _register_vfio_functions(runtime)
 
 
 # ---------------------------------------------------------------------------

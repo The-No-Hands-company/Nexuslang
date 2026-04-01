@@ -1,5 +1,5 @@
 """
-Tests for FFI advanced features:
+Tests for FFI interoperability features:
 - ABI compatibility checker (ffi_abi_checker.py)
 - FFI debugging tools - call tracer, GDB/LLDB generators (ffi_debug.py)
 - C++ interop - name mangling, class wrapping, templates,

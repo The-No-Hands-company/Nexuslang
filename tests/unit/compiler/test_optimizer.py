@@ -171,7 +171,7 @@ class TestInterpreterModePipeline:
     min_occurrences=1 annotates every string literal without benefit.
     None of these annotations are read by the interpreter.
 
-    The fix: create_optimization_pipeline(level, interpreter_mode=True)
+    The change: create_optimization_pipeline(level, interpreter_mode=True)
     restricts the pipeline to passes that reduce interpretation work
     (ConstantFolding, DCE, StrengthReduction, CSE, TCO).
     """

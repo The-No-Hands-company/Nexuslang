@@ -138,7 +138,7 @@ jobs:
           python nlplc examples/01_basic_concepts.nlpl --emit-llvm -o /tmp/test1 || exit 1
           python nlplc examples/02_object_oriented.nlpl --emit-llvm -o /tmp/test2 || exit 1
           python nlplc examples/04_type_system_basics.nlpl --emit-llvm -o /tmp/test4 || exit 1
-          python nlplc examples/08_advanced_type_features_index.nlpl --emit-llvm -o /tmp/test8 || exit 1
+          python nlplc examples/03_type_system/05_type_features_index.nlpl --emit-llvm -o /tmp/test8 || exit 1
           python nlplc examples/11_traits.nlpl --emit-llvm -o /tmp/test11 || exit 1
           python nlplc examples/12_type_aliases.nlpl --emit-llvm -o /tmp/test12 || exit 1
           python nlplc examples/25_ffi_c_interop.nlpl --emit-llvm -o /tmp/test25a || exit 1

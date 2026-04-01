@@ -81,7 +81,7 @@ class TestBuildDiagnosticShape:
                                 severity=1, message="no code")
         assert "code" not in d
 
-    def test_no_data_field_when_registry_has_no_fixes_and_none_given(self):
+    def test_no_data_field_when_registry_has_no_suggestions_and_none_given(self):
         """If a code resolves but the registry entry has no fixes, data may be omitted."""
         p = make_provider()
         # Pass an explicit empty fixes list -> data.fixes is [] which is filtered
@@ -128,7 +128,7 @@ class TestDiagnosticE001:
                                 error_type_key="unexpected_token")
         assert d["data"]["category"] == "syntax"
 
-    def test_data_fixes_non_empty(self):
+    def test_data_suggestions_non_empty(self):
         p = make_provider()
         d = p._build_diagnostic(line=0, start_char=0, end_char=5,
                                 severity=1, message="Syntax error",
@@ -171,7 +171,7 @@ class TestDiagnosticE100:
                                 error_type_key="undefined_variable")
         assert d["data"]["category"] == "name"
 
-    def test_fixes_include_set_declaration_hint(self):
+    def test_suggestions_include_set_declaration_hint(self):
         p = make_provider()
         d = p._build_diagnostic(line=2, start_char=4, end_char=11,
                                 severity=1, message="Undefined: foo",
@@ -208,7 +208,7 @@ class TestDiagnosticE200:
                                 error_type_key="type_mismatch")
         assert d["data"]["category"] == "type"
 
-    def test_fixes_mention_conversion(self):
+    def test_suggestions_mention_conversion(self):
         p = make_provider()
         d = p._build_diagnostic(line=5, start_char=8, end_char=15,
                                 severity=1, message="Type error",
@@ -223,7 +223,7 @@ class TestDiagnosticE200:
                                 error_type_key="type_mismatch")
         assert d["data"].get("docLink")
 
-    def test_fixes_capped_at_3(self):
+    def test_suggestions_capped_at_3(self):
         p = make_provider()
         d = p._build_diagnostic(line=5, start_char=8, end_char=15,
                                 severity=1, message="Type error",
@@ -297,7 +297,7 @@ class TestDiagnosticE309:
 class TestExplicitOverrides:
     """Caller-supplied values must win over registry lookups."""
 
-    def test_explicit_fixes_override_registry(self):
+    def test_explicit_suggestions_override_registry(self):
         p = make_provider()
         custom_fixes = ["Do this first", "Then do that"]
         d = p._build_diagnostic(line=0, start_char=0, end_char=5,

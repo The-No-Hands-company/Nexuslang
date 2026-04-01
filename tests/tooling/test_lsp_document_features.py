@@ -251,7 +251,7 @@ end
 class TestCodeActionsIntegration:
     """Test code actions integration through NLPLLanguageServer handlers."""
 
-    def test_code_actions_use_structured_diagnostic_fixes(self):
+    def test_code_actions_use_structured_diagnostic_suggestions(self):
         """Diagnostics with data.fixes should yield non-empty code actions."""
         server = NLPLLanguageServer()
 
@@ -294,7 +294,7 @@ class TestCodeActionsIntegration:
         quickfix_titles = [action.get("title", "") for action in response["result"]]
         assert any("quote" in title.lower() for title in quickfix_titles)
 
-    def test_code_actions_fallback_without_structured_fixes(self):
+    def test_code_actions_fallback_without_structured_suggestions(self):
         """Without data.fixes, message-based heuristics should still return actions."""
         server = NLPLLanguageServer()
 

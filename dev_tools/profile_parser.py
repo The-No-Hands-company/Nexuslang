@@ -91,9 +91,9 @@ def profile_parse(source_file):
 def benchmark_multiple_files():
     """Benchmark multiple files of varying sizes."""
     test_files = [
-        'examples/01_basic_concepts.nlpl',
+        'examples/01_basics/01_basic_concepts.nlpl',
         'examples/10_concurrency_and_async.nlpl',
-        'examples/20_advanced_memory_management.nlpl',
+        'examples/09_feature_patterns/07_performance_optimization.nlpl',
         'test_programs/unit/stdlib/test_json.nlpl',
     ]
     

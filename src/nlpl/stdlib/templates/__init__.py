@@ -205,7 +205,7 @@ class SimpleTemplate:
 
 
 def create_simple_template(template_str: str) -> SimpleTemplate:
-    """Create SimpleTemplate instance for advanced templating."""
+    """Create a SimpleTemplate for variable, conditional, and loop rendering."""
     return SimpleTemplate(template_str)
 
 

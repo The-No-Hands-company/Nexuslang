@@ -7,13 +7,13 @@ import statistics
 
 # Examples to benchmark
 EXAMPLES = [
-    "01_basic_concepts.nlpl",
-    "04_type_system_basics.nlpl", 
-    "08_advanced_type_features_index.nlpl",
-    "11_traits.nlpl",
-    "25_ffi_c_interop.nlpl",
-    "26_ffi_struct_marshalling.nlpl",
-    "32_feature_showcase.nlpl"
+    "01_basics/01_basic_concepts.nlpl",
+    "03_type_system/01_type_system_basics.nlpl",
+    "03_type_system/05_type_features_index.nlpl",
+    "02_oop/03_traits.nlpl",
+    "07_low_level/03_ffi_c_interop.nlpl",
+    "07_low_level/04_ffi_struct_marshalling.nlpl",
+    "09_feature_patterns/09_feature_showcase.nlpl"
 ]
 
 RUNS = 5  # Number of runs per example

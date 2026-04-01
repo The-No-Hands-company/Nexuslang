@@ -13,12 +13,12 @@ Examples covering fundamental language concepts and syntax:
 - **04_type_system_basics.nlpl** - Basic type system features
 - **05_typed_program.nlpl** - Complete typed program example
 
-### Advanced OOP & Type System (06-15)
-Advanced object-oriented and type system features:
+### OOP & Type System Depth (06-15)
+Object-oriented and type-system depth topics:
 
-- **06_advanced_type_system.nlpl** - Advanced type features
+- **06_polymorphic_type_system.nlpl** - Polymorphism and rich type constraints
 - **07_type_system_features.nlpl** - Type system capabilities
-- **08_advanced_type_features_index.nlpl** - Index to advanced type examples (09-14)
+- **08_type_features_index.nlpl** - Index to type-system examples (09-14)
 - **09_generic_classes.nlpl** - Generic classes with type parameters
 - **10_abstract_classes.nlpl** - Abstract classes and methods
 - **11_traits.nlpl** - Trait definitions and implementations

@@ -15,9 +15,9 @@ mv 15_design_patterns.nlpl 02_oop/04_design_patterns.nlpl
 # 03_type_system
 mv 04_type_system_basics.nlpl 03_type_system/01_type_system_basics.nlpl
 mv 05_typed_program.nlpl 03_type_system/02_typed_program.nlpl
-mv 06_advanced_type_system.nlpl 03_type_system/03_advanced_type_system.nlpl
+mv 06_advanced_type_system.nlpl 03_type_system/03_polymorphic_type_system.nlpl
 mv 07_type_system_features.nlpl 03_type_system/04_type_system_features.nlpl
-mv 08_advanced_type_features_index.nlpl 03_type_system/05_advanced_type_features_index.nlpl
+mv 08_advanced_type_features_index.nlpl 03_type_system/05_type_features_index.nlpl
 mv 12_type_aliases.nlpl 03_type_system/06_type_aliases.nlpl
 mv 13_type_guards.nlpl 03_type_system/07_type_guards.nlpl
 mv 14_variance.nlpl 03_type_system/08_variance.nlpl
@@ -51,16 +51,16 @@ mv 24_network_programming.nlpl 08_networking/01_network_programming.nlpl
 mv 25_web_programming.nlpl 08_networking/02_web_programming.nlpl
 mv 26_database_programming.nlpl 08_networking/03_database_programming.nlpl
 
-# 09_advanced
-mv 27_testing.nlpl 09_advanced/01_testing.nlpl
-mv 28_error_handling_and_logging.nlpl 09_advanced/02_error_handling_and_logging.nlpl
-mv 35_debugging_error_handling.nlpl 09_advanced/03_debugging_error_handling.nlpl
-mv 34_advanced_pattern_matching.nlpl 09_advanced/04_pattern_matching.nlpl
-mv 29_security_and_authentication.nlpl 09_advanced/05_security_and_authentication.nlpl
-mv 27_security_best_practices.nlpl 09_advanced/06_security_best_practices.nlpl
-mv 30_performance_optimization.nlpl 09_advanced/07_performance_optimization.nlpl
-mv 31_dependency_injection.nlpl 09_advanced/08_dependency_injection.nlpl
-mv 32_feature_showcase.nlpl 09_advanced/09_feature_showcase.nlpl
+# 09_feature_patterns
+mv 27_testing.nlpl 09_feature_patterns/01_testing.nlpl
+mv 28_error_handling_and_logging.nlpl 09_feature_patterns/02_error_handling_and_logging.nlpl
+mv 35_debugging_error_handling.nlpl 09_feature_patterns/03_debugging_error_handling.nlpl
+mv 34_advanced_pattern_matching.nlpl 09_feature_patterns/04_pattern_matching.nlpl
+mv 29_security_and_authentication.nlpl 09_feature_patterns/05_security_and_authentication.nlpl
+mv 27_security_best_practices.nlpl 09_feature_patterns/06_security_best_practices.nlpl
+mv 30_performance_optimization.nlpl 09_feature_patterns/07_performance_optimization.nlpl
+mv 31_dependency_injection.nlpl 09_feature_patterns/08_dependency_injection.nlpl
+mv 32_feature_showcase.nlpl 09_feature_patterns/09_feature_showcase.nlpl
 
 # 10_stdlib
 mv stdlib_demo.nlpl 10_stdlib/01_stdlib_demo.nlpl

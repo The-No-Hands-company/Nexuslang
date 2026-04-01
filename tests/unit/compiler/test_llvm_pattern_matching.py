@@ -1,5 +1,5 @@
 """
-Test LLVM compiler support for advanced pattern matching.
+Test LLVM compiler support for comprehensive pattern matching.
 
 These tests verify that pattern matching (Option, Result, Tuple, List)
 compiles correctly to LLVM IR with proper variant checking and data extraction.

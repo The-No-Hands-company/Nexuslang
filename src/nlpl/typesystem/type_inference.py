@@ -1,6 +1,6 @@
 """
 Type inference for the NLPL language.
-This module provides advanced type inference functionality.
+This module provides comprehensive type inference functionality.
 """
 
 from typing import Dict, List, Optional, Set, Union, Any, Tuple, Pattern, Type
