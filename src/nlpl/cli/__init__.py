@@ -589,6 +589,218 @@ def _ws_lock(args, load_workspace):
 # Argument parser
 # ---------------------------------------------------------------------------
 
+def _add_new_subcommand(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser("new", help="Create a new project")
+    p.add_argument("name", help="Project name (also the new directory name)")
+
+
+def _add_init_subcommand(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser("init", help="Initialise a project in the current directory")
+    p.add_argument("name", nargs="?", default=None,
+                   help="Package name (defaults to current directory name)")
+
+
+def _add_build_subcommand(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser("build", help="Compile the project")
+    p.add_argument("--release", action="store_true",
+                   help="Build with release profile (optimised, no debug info)")
+    p.add_argument("--profile", metavar="PROFILE",
+                   help="Use a named build profile (overrides --release)")
+    p.add_argument("--features", nargs="+", metavar="FEATURE",
+                   help="Enable additional named features")
+    p.add_argument("--jobs", "-j", type=int, metavar="N",
+                   help="Number of parallel compilation workers")
+    p.add_argument("--clean", action="store_true",
+                   help="Remove cached artefacts before building")
+    p.add_argument("--optimize-bounds-checks", action="store_true",
+                   help="Enable compile-time bounds check elimination")
+    p.add_argument("--verbose", "-v", action="store_true",
+                   help="Show verbose compiler output")
+    p.add_argument("--quiet", "-q", action="store_true",
+                   help="Suppress informational output")
+    p.add_argument("--target", metavar="TRIPLE",
+                   help="Target triple for cross-compilation (e.g. x86_64-linux-gnu)")
+    p.add_argument("--opt-level", "-O", metavar="LEVEL",
+                   help="Optimisation level: 0 (none), 1 (basic), 2 (standard), 3 (aggressive), s (size). Overrides profile.")
+    p.add_argument("--lto", action="store_true",
+                   help="Enable link-time optimisation (LTO)")
+    p.add_argument("--pgo-use", metavar="PROFILE",
+                   help="Path to a merged PGO profile to guide optimisation")
+
+
+def _add_run_subcommand(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser("run", help="Build and run the project")
+    p.add_argument("--release", action="store_true",
+                   help="Build with release profile before running")
+    p.add_argument("--features", nargs="+", metavar="FEATURE",
+                   help="Enable additional named features")
+    p.add_argument("run_args", nargs=argparse.REMAINDER, metavar="-- [ARGS...]",
+                   help="Arguments to pass to the compiled program (after --)")
+    p.add_argument("--opt-level", "-O", metavar="LEVEL",
+                   help="Optimisation level: 0, 1, 2, 3, or s (size).")
+
+
+def _add_lint_subcommand(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser("lint", help="Run static analysis on the project")
+    p.add_argument("path", nargs="?", default="src", metavar="PATH",
+                   help="Source directory to analyse (default: src/)")
+    p.add_argument("--style", action="store_true",
+                   help="Enable style checks")
+    p.add_argument("--no-security", action="store_true",
+                   help="Disable security checks")
+    p.add_argument("--no-performance", action="store_true",
+                   help="Disable performance checks")
+    p.add_argument("--no-data-flow", action="store_true",
+                   help="Disable data-flow checks")
+
+
+def _add_pgo_subcommand(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser("pgo", help="Profile-guided optimisation workflow")
+    pgo_sub = p.add_subparsers(dest="pgo_command", metavar="<subcommand>")
+
+    p_inst = pgo_sub.add_parser("instrument",
+                                help="Build an instrumented binary that emits profile data")
+    p_inst.add_argument("source", nargs="?", metavar="FILE",
+                        help="Source file to instrument (default: project entry-point)")
+    p_inst.add_argument("--profile-dir", metavar="DIR", default="build/profiles",
+                        help="Directory to write raw profile data (default: build/profiles)")
+
+    p_coll = pgo_sub.add_parser("collect",
+                                help="Merge raw profile files into a single optimisation profile")
+    p_coll.add_argument("--profile-dir", metavar="DIR", default="build/profiles",
+                        help="Directory containing raw profiles (default: build/profiles)")
+    p_coll.add_argument("--min-hot-count", type=int, default=100, metavar="N",
+                        help="Call-count threshold for 'hot' functions (default: 100)")
+    p_coll.add_argument("--verbose", "-v", action="store_true")
+
+    p_build = pgo_sub.add_parser("build", help="Build with PGO optimisation data")
+    p_build.add_argument("--pgo-profile", metavar="FILE",
+                         help="Path to merged profile (default: build/profiles/merged.json)")
+    p_build.add_argument("--profile-dir", metavar="DIR", default="build/profiles")
+
+
+def _add_check_subcommand(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser("check", help="Type-check without producing output")
+    p.add_argument("--features", nargs="+", metavar="FEATURE",
+                   help="Enable additional named features")
+
+
+def _add_test_subcommand(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser("test", help="Run tests from the tests/ directory")
+    p.add_argument("filter", nargs="*", metavar="NAME",
+                   help="Only run tests whose filename contains this string")
+    p.add_argument("--release", action="store_true",
+                   help="Build tests with release profile")
+    p.add_argument("--features", nargs="+", metavar="FEATURE",
+                   help="Enable additional named features")
+    p.add_argument("--coverage", action="store_true",
+                   help="Collect line coverage and write report to coverage/")
+    p.add_argument("--coverage-output", metavar="DIR",
+                   help="Directory to write coverage report (default: coverage/)")
+    p.add_argument("--jobs", "-j", type=int, metavar="N",
+                   help="Number of parallel test jobs (default: CPU count)")
+
+
+def _add_coverage_subcommand(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser("coverage", help="Run a file with coverage collection")
+    p.add_argument("source", metavar="FILE", help="NLPL source file to run")
+    p.add_argument("--output", "-o", metavar="DIR",
+                   help="Output directory for coverage report (default: coverage/)")
+    p.add_argument("--fail-under", type=float, metavar="PCT",
+                   help="Exit 1 if coverage is below this percentage")
+
+
+def _add_profile_subcommand(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser("profile", help="Run a file with CPU/memory profiling")
+    p.add_argument("source", metavar="FILE", help="NLPL source file to profile")
+    p.add_argument("--output", "-o", metavar="DIR",
+                   help="Output directory for profile report (default: profile/)")
+    p.add_argument("--no-cpu", action="store_true",
+                   help="Disable CPU profiling")
+    p.add_argument("--no-memory", action="store_true",
+                   help="Disable memory profiling")
+
+
+def _add_add_subcommand(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser("add", help="Add a dependency")
+    p.add_argument("spec", metavar="PACKAGE[@VERSION]",
+                   help="Package name with optional version constraint (e.g. mylib@^1.2)")
+    p.add_argument("--dev", action="store_true",
+                   help="Add as a dev-dependency")
+    p.add_argument("--path", metavar="PATH",
+                   help="Local filesystem path to an NLPL project")
+    p.add_argument("--git", metavar="URL",
+                   help="Git repository URL")
+    p.add_argument("--branch", metavar="BRANCH",
+                   help="Git branch (used with --git)")
+    p.add_argument("--tag", metavar="TAG",
+                   help="Git tag (used with --git)")
+    p.add_argument("--rev", metavar="SHA",
+                   help="Exact git commit SHA (used with --git)")
+
+
+def _add_remove_subcommand(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser("remove", help="Remove a dependency")
+    p.add_argument("name", help="Package name to remove")
+    p.add_argument("--dev", action="store_true",
+                   help="Remove from dev-dependencies")
+
+
+def _add_lock_subcommand(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser("lock", help="Regenerate nlpl.lock from nlpl.toml")
+    p.add_argument("--offline", action="store_true",
+                   help="Skip registry network calls (use cached/fallback data)")
+
+
+def _add_search_subcommand(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser("search", help="Search the package registry")
+    p.add_argument("query", help="Search term")
+    p.add_argument("--limit", "-n", type=int, default=20, metavar="N",
+                   help="Maximum number of results (default: 20)")
+
+
+def _add_publish_subcommand(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser("publish", help="Publish this package to the registry")
+    p.add_argument("--dry-run", action="store_true",
+                   help="Create archive and validate metadata but do not upload")
+
+
+def _add_workspace_subcommand(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser("workspace", help="Manage multi-package workspaces",
+                       aliases=["ws"])
+    ws_sub = p.add_subparsers(dest="ws_command", metavar="<subcommand>")
+
+    p_init = ws_sub.add_parser("init", help="Create a workspace manifest in the current directory")
+    p_init.add_argument("--members", nargs="+", metavar="GLOB",
+                        help="Member glob patterns (default: packages/*)")
+    p_init.add_argument("--description", metavar="TEXT",
+                        help="Optional workspace description")
+
+    ws_sub.add_parser("list", help="List all workspace members and build order")
+
+    p_build = ws_sub.add_parser("build", help="Build all (or a single) workspace member")
+    p_build.add_argument("member", nargs="?", metavar="NAME",
+                         help="Build only this member (default: build all)")
+    p_build.add_argument("--release", action="store_true",
+                         help="Build with release profile")
+    p_build.add_argument("--features", nargs="+", metavar="FEATURE",
+                         help="Enable named features")
+    p_build.add_argument("--jobs", "-j", type=int, metavar="N",
+                         help="Parallel compilation workers")
+
+    ws_sub.add_parser("clean", help="Clean all workspace members")
+
+    p_test = ws_sub.add_parser("test", help="Run tests across all workspace members")
+    p_test.add_argument("filter", nargs="*", metavar="NAME",
+                        help="Only run tests whose filename contains this string")
+    p_test.add_argument("--release", action="store_true",
+                        help="Run tests with release profile")
+    p_test.add_argument("--features", nargs="+", metavar="FEATURE",
+                        help="Enable named features")
+
+    ws_sub.add_parser("lock", help="Regenerate the shared workspace nlpl.lock")
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="nlpl",
@@ -597,211 +809,24 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="command", metavar="<command>")
 
-    # ---- new ----------------------------------------------------------------
-    p_new = sub.add_parser("new", help="Create a new project")
-    p_new.add_argument("name", help="Project name (also the new directory name)")
-
-    # ---- init ---------------------------------------------------------------
-    p_init = sub.add_parser("init", help="Initialise a project in the current directory")
-    p_init.add_argument("name", nargs="?", default=None,
-                        help="Package name (defaults to current directory name)")
-
-    # ---- build --------------------------------------------------------------
-    p_build = sub.add_parser("build", help="Compile the project")
-    p_build.add_argument("--release", action="store_true",
-                         help="Build with release profile (optimised, no debug info)")
-    p_build.add_argument("--profile", metavar="PROFILE",
-                         help="Use a named build profile (overrides --release)")
-    p_build.add_argument("--features", nargs="+", metavar="FEATURE",
-                         help="Enable additional named features")
-    p_build.add_argument("--jobs", "-j", type=int, metavar="N",
-                         help="Number of parallel compilation workers")
-    p_build.add_argument("--clean", action="store_true",
-                         help="Remove cached artefacts before building")
-    p_build.add_argument("--optimize-bounds-checks", action="store_true",
-                         help="Enable compile-time bounds check elimination")
-    p_build.add_argument("--verbose", "-v", action="store_true",
-                         help="Show verbose compiler output")
-    p_build.add_argument("--quiet", "-q", action="store_true",
-                         help="Suppress informational output")
-    p_build.add_argument("--target", metavar="TRIPLE",
-                         help="Target triple for cross-compilation (e.g. x86_64-linux-gnu)")
-    p_build.add_argument("--opt-level", "-O", metavar="LEVEL",
-                         help="Optimisation level: 0 (none), 1 (basic), 2 (standard), 3 (aggressive), s (size). Overrides profile.")
-    p_build.add_argument("--lto", action="store_true",
-                         help="Enable link-time optimisation (LTO)")
-    p_build.add_argument("--pgo-use", metavar="PROFILE",
-                         help="Path to a merged PGO profile to guide optimisation")
-
-    # ---- run ----------------------------------------------------------------
-    p_run = sub.add_parser("run", help="Build and run the project")
-    p_run.add_argument("--release", action="store_true",
-                       help="Build with release profile before running")
-    p_run.add_argument("--features", nargs="+", metavar="FEATURE",
-                       help="Enable additional named features")
-    p_run.add_argument("run_args", nargs=argparse.REMAINDER, metavar="-- [ARGS...]",
-                       help="Arguments to pass to the compiled program (after --)")
-    p_run.add_argument("--opt-level", "-O", metavar="LEVEL",
-                       help="Optimisation level: 0, 1, 2, 3, or s (size).")
-
-    # ---- lint ---------------------------------------------------------------
-    p_lint = sub.add_parser("lint", help="Run static analysis on the project")
-    p_lint.add_argument("path", nargs="?", default="src", metavar="PATH",
-                        help="Source directory to analyse (default: src/)")
-    p_lint.add_argument("--style", action="store_true",
-                        help="Enable style checks")
-    p_lint.add_argument("--no-security", action="store_true",
-                        help="Disable security checks")
-    p_lint.add_argument("--no-performance", action="store_true",
-                        help="Disable performance checks")
-    p_lint.add_argument("--no-data-flow", action="store_true",
-                        help="Disable data-flow checks")
-
-    # ---- pgo ----------------------------------------------------------------
-    p_pgo = sub.add_parser(
-        "pgo",
-        help="Profile-guided optimisation workflow",
-    )
-    pgo_sub = p_pgo.add_subparsers(dest="pgo_command", metavar="<subcommand>")
-
-    p_pgo_inst = pgo_sub.add_parser("instrument",
-                                     help="Build an instrumented binary that emits profile data")
-    p_pgo_inst.add_argument("source", nargs="?", metavar="FILE",
-                             help="Source file to instrument (default: project entry-point)")
-    p_pgo_inst.add_argument("--profile-dir", metavar="DIR", default="build/profiles",
-                             help="Directory to write raw profile data (default: build/profiles)")
-
-    p_pgo_coll = pgo_sub.add_parser("collect",
-                                     help="Merge raw profile files into a single optimisation profile")
-    p_pgo_coll.add_argument("--profile-dir", metavar="DIR", default="build/profiles",
-                             help="Directory containing raw profiles (default: build/profiles)")
-    p_pgo_coll.add_argument("--min-hot-count", type=int, default=100, metavar="N",
-                             help="Call-count threshold for 'hot' functions (default: 100)")
-    p_pgo_coll.add_argument("--verbose", "-v", action="store_true")
-
-    p_pgo_build = pgo_sub.add_parser("build",
-                                      help="Build with PGO optimisation data")
-    p_pgo_build.add_argument("--pgo-profile", metavar="FILE",
-                              help="Path to merged profile (default: build/profiles/merged.json)")
-    p_pgo_build.add_argument("--profile-dir", metavar="DIR", default="build/profiles")
-
-    # ---- check --------------------------------------------------------------
-    p_check = sub.add_parser("check", help="Type-check without producing output")
-    p_check.add_argument("--features", nargs="+", metavar="FEATURE",
-                         help="Enable additional named features")
-
-    # ---- clean --------------------------------------------------------------
+    _add_new_subcommand(sub)
+    _add_init_subcommand(sub)
+    _add_build_subcommand(sub)
+    _add_run_subcommand(sub)
+    _add_lint_subcommand(sub)
+    _add_pgo_subcommand(sub)
+    _add_check_subcommand(sub)
     sub.add_parser("clean", help="Remove build output directory and cache")
-
-    # ---- test ---------------------------------------------------------------
-    p_test = sub.add_parser("test", help="Run tests from the tests/ directory")
-    p_test.add_argument("filter", nargs="*", metavar="NAME",
-                        help="Only run tests whose filename contains this string")
-    p_test.add_argument("--release", action="store_true",
-                        help="Build tests with release profile")
-    p_test.add_argument("--features", nargs="+", metavar="FEATURE",
-                        help="Enable additional named features")
-    p_test.add_argument("--coverage", action="store_true",
-                        help="Collect line coverage and write report to coverage/")
-    p_test.add_argument("--coverage-output", metavar="DIR",
-                        help="Directory to write coverage report (default: coverage/)")
-    p_test.add_argument("--jobs", "-j", type=int, metavar="N",
-                        help="Number of parallel test jobs (default: CPU count)")
-
-    # ---- coverage -----------------------------------------------------------
-    p_cov = sub.add_parser("coverage", help="Run a file with coverage collection")
-    p_cov.add_argument("source", metavar="FILE", help="NLPL source file to run")
-    p_cov.add_argument("--output", "-o", metavar="DIR",
-                       help="Output directory for coverage report (default: coverage/)")
-    p_cov.add_argument("--fail-under", type=float, metavar="PCT",
-                       help="Exit 1 if coverage is below this percentage")
-
-    # ---- profile ------------------------------------------------------------
-    p_prof = sub.add_parser("profile", help="Run a file with CPU/memory profiling")
-    p_prof.add_argument("source", metavar="FILE", help="NLPL source file to profile")
-    p_prof.add_argument("--output", "-o", metavar="DIR",
-                        help="Output directory for profile report (default: profile/)")
-    p_prof.add_argument("--no-cpu", action="store_true",
-                        help="Disable CPU profiling")
-    p_prof.add_argument("--no-memory", action="store_true",
-                        help="Disable memory profiling")
-
-    # ---- add ----------------------------------------------------------------
-    p_add = sub.add_parser("add", help="Add a dependency")
-    p_add.add_argument("spec", metavar="PACKAGE[@VERSION]",
-                       help="Package name with optional version constraint (e.g. mylib@^1.2)")
-    p_add.add_argument("--dev", action="store_true",
-                       help="Add as a dev-dependency")
-    p_add.add_argument("--path", metavar="PATH",
-                       help="Local filesystem path to an NLPL project")
-    p_add.add_argument("--git", metavar="URL",
-                       help="Git repository URL")
-    p_add.add_argument("--branch", metavar="BRANCH",
-                       help="Git branch (used with --git)")
-    p_add.add_argument("--tag", metavar="TAG",
-                       help="Git tag (used with --git)")
-    p_add.add_argument("--rev", metavar="SHA",
-                       help="Exact git commit SHA (used with --git)")
-
-    # ---- remove -------------------------------------------------------------
-    p_remove = sub.add_parser("remove", help="Remove a dependency")
-    p_remove.add_argument("name", help="Package name to remove")
-    p_remove.add_argument("--dev", action="store_true",
-                          help="Remove from dev-dependencies")
-
-    # ---- lock ---------------------------------------------------------------
-    p_lock = sub.add_parser("lock", help="Regenerate nlpl.lock from nlpl.toml")
-    p_lock.add_argument("--offline", action="store_true",
-                        help="Skip registry network calls (use cached/fallback data)")
-
-    # ---- deps ---------------------------------------------------------------
+    _add_test_subcommand(sub)
+    _add_coverage_subcommand(sub)
+    _add_profile_subcommand(sub)
+    _add_add_subcommand(sub)
+    _add_remove_subcommand(sub)
+    _add_lock_subcommand(sub)
     sub.add_parser("deps", help="List dependencies and lock status")
-
-    # ---- search -------------------------------------------------------------
-    p_search = sub.add_parser("search", help="Search the package registry")
-    p_search.add_argument("query", help="Search term")
-    p_search.add_argument("--limit", "-n", type=int, default=20, metavar="N",
-                          help="Maximum number of results (default: 20)")
-
-    # ---- publish ------------------------------------------------------------
-    p_publish = sub.add_parser("publish", help="Publish this package to the registry")
-    p_publish.add_argument("--dry-run", action="store_true",
-                           help="Create archive and validate metadata but do not upload")
-
-    # ---- workspace ----------------------------------------------------------
-    p_ws = sub.add_parser("workspace", help="Manage multi-package workspaces",
-                          aliases=["ws"])
-    ws_sub = p_ws.add_subparsers(dest="ws_command", metavar="<subcommand>")
-
-    p_ws_init = ws_sub.add_parser("init", help="Create a workspace manifest in the current directory")
-    p_ws_init.add_argument("--members", nargs="+", metavar="GLOB",
-                           help="Member glob patterns (default: packages/*)")
-    p_ws_init.add_argument("--description", metavar="TEXT",
-                           help="Optional workspace description")
-
-    ws_sub.add_parser("list", help="List all workspace members and build order")
-
-    p_ws_build = ws_sub.add_parser("build", help="Build all (or a single) workspace member")
-    p_ws_build.add_argument("member", nargs="?", metavar="NAME",
-                             help="Build only this member (default: build all)")
-    p_ws_build.add_argument("--release", action="store_true",
-                             help="Build with release profile")
-    p_ws_build.add_argument("--features", nargs="+", metavar="FEATURE",
-                             help="Enable named features")
-    p_ws_build.add_argument("--jobs", "-j", type=int, metavar="N",
-                             help="Parallel compilation workers")
-
-    ws_sub.add_parser("clean", help="Clean all workspace members")
-
-    p_ws_test = ws_sub.add_parser("test", help="Run tests across all workspace members")
-    p_ws_test.add_argument("filter", nargs="*", metavar="NAME",
-                           help="Only run tests whose filename contains this string")
-    p_ws_test.add_argument("--release", action="store_true",
-                           help="Run tests with release profile")
-    p_ws_test.add_argument("--features", nargs="+", metavar="FEATURE",
-                           help="Enable named features")
-
-    ws_sub.add_parser("lock", help="Regenerate the shared workspace nlpl.lock")
+    _add_search_subcommand(sub)
+    _add_publish_subcommand(sub)
+    _add_workspace_subcommand(sub)
 
     return parser
 

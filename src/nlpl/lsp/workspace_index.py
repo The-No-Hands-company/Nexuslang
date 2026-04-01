@@ -222,121 +222,116 @@ class WorkspaceIndex:
             logger.error(f"Failed to index {file_uri}: {e}", exc_info=True)
             return []
     
+    def _extract_function_symbol(self, stmt: FunctionDefinition, file_uri: str, scope: Optional[str]) -> List[SymbolInfo]:
+        """Return SymbolInfo list for a FunctionDefinition, including its parameters."""
+        symbols = []
+        kind = 'method' if scope else 'function'
+        signature = self._build_function_signature(stmt)
+        symbol = SymbolInfo(
+            name=stmt.name,
+            kind=kind,
+            file_uri=file_uri,
+            line=stmt.line_number - 1 if stmt.line_number else 0,
+            column=0,
+            scope=scope,
+            signature=signature,
+            type_annotation=str(stmt.return_type) if stmt.return_type else None
+        )
+        symbols.append(symbol)
+        for param in stmt.parameters:
+            param_symbol = SymbolInfo(
+                name=param.name,
+                kind='parameter',
+                file_uri=file_uri,
+                line=stmt.line_number - 1 if stmt.line_number else 0,
+                column=0,
+                scope=f"{scope}.{stmt.name}" if scope else stmt.name,
+                type_annotation=str(param.type_annotation) if hasattr(param, 'type_annotation') and param.type_annotation else None
+            )
+            symbols.append(param_symbol)
+        return symbols
+
+    def _extract_class_symbol(self, stmt: ClassDefinition, file_uri: str, scope: Optional[str]) -> List[SymbolInfo]:
+        """Return SymbolInfo list for a ClassDefinition, including methods and attributes."""
+        symbols = []
+        symbol = SymbolInfo(
+            name=stmt.name,
+            kind='class',
+            file_uri=file_uri,
+            line=stmt.line_number - 1 if stmt.line_number else 0,
+            column=0,
+            scope=scope
+        )
+        symbols.append(symbol)
+        class_scope = f"{scope}.{stmt.name}" if scope else stmt.name
+        if hasattr(stmt, 'methods'):
+            for method in stmt.methods:
+                if isinstance(method, (FunctionDefinition, MethodDefinition)):
+                    method_signature = self._build_function_signature(method)
+                    method_symbol = SymbolInfo(
+                        name=method.name,
+                        kind='method',
+                        file_uri=file_uri,
+                        line=method.line_number - 1 if method.line_number else 0,
+                        column=0,
+                        scope=class_scope,
+                        signature=method_signature,
+                        type_annotation=str(method.return_type) if method.return_type else None
+                    )
+                    symbols.append(method_symbol)
+                    for param in method.parameters:
+                        param_symbol = SymbolInfo(
+                            name=param.name,
+                            kind='parameter',
+                            file_uri=file_uri,
+                            line=method.line_number - 1 if method.line_number else 0,
+                            column=0,
+                            scope=f"{class_scope}.{method.name}",
+                            type_annotation=str(param.type_annotation) if hasattr(param, 'type_annotation') and param.type_annotation else None
+                        )
+                        symbols.append(param_symbol)
+        if hasattr(stmt, 'attributes'):
+            for attr in stmt.attributes:
+                if isinstance(attr, VariableDeclaration):
+                    attr_symbol = SymbolInfo(
+                        name=attr.name,
+                        kind='field',
+                        file_uri=file_uri,
+                        line=0,  # TODO: Get from AST
+                        column=0,
+                        scope=class_scope,
+                        type_annotation=str(attr.type_annotation) if attr.type_annotation else None
+                    )
+                    symbols.append(attr_symbol)
+        return symbols
+
     def _extract_symbols_from_ast(self, ast: Program, file_uri: str, scope: Optional[str] = None) -> List[SymbolInfo]:
         """
         Walk AST and extract all symbols (functions, classes, variables, etc.).
-        
+
         This is the core symbol extraction logic. It recursively walks the AST
         and creates SymbolInfo objects for each symbol definition found.
-        
+
         Args:
             ast: Program AST node
             file_uri: File URI
             scope: Current scope (e.g., class name for methods)
-            
+
         Returns:
             List of SymbolInfo objects
         """
         symbols = []
-        
+
         if not hasattr(ast, 'statements'):
             return symbols
-        
+
         for stmt in ast.statements:
-            # Function definitions
             if isinstance(stmt, FunctionDefinition):
-                # Determine kind (function vs method)
-                kind = 'method' if scope else 'function'
-                
-                # Build signature
-                signature = self._build_function_signature(stmt)
-                
-                symbol = SymbolInfo(
-                    name=stmt.name,
-                    kind=kind,
-                    file_uri=file_uri,
-                    line=stmt.line_number - 1 if stmt.line_number else 0,  # Convert to 0-indexed
-                    column=0,  # TODO: Extract from token
-                    scope=scope,
-                    signature=signature,
-                    type_annotation=str(stmt.return_type) if stmt.return_type else None
-                )
-                symbols.append(symbol)
-                
-                # Extract parameters as symbols
-                for param in stmt.parameters:
-                    param_symbol = SymbolInfo(
-                        name=param.name,
-                        kind='parameter',
-                        file_uri=file_uri,
-                        line=stmt.line_number - 1 if stmt.line_number else 0,
-                        column=0,
-                        scope=f"{scope}.{stmt.name}" if scope else stmt.name,
-                        type_annotation=str(param.type_annotation) if hasattr(param, 'type_annotation') and param.type_annotation else None
-                    )
-                    symbols.append(param_symbol)
-            
-            # Class definitions
+                symbols.extend(self._extract_function_symbol(stmt, file_uri, scope))
+
             elif isinstance(stmt, ClassDefinition):
-                symbol = SymbolInfo(
-                    name=stmt.name,
-                    kind='class',
-                    file_uri=file_uri,
-                    line=stmt.line_number - 1 if stmt.line_number else 0,
-                    column=0,
-                    scope=scope
-                )
-                symbols.append(symbol)
-                
-                # Recursively extract methods and attributes
-                class_scope = f"{scope}.{stmt.name}" if scope else stmt.name
-                
-                # Extract methods
-                if hasattr(stmt, 'methods'):
-                    for method in stmt.methods:
-                        if isinstance(method, (FunctionDefinition, MethodDefinition)):
-                            method_signature = self._build_function_signature(method)
-                            method_symbol = SymbolInfo(
-                                name=method.name,
-                                kind='method',
-                                file_uri=file_uri,
-                                line=method.line_number - 1 if method.line_number else 0,
-                                column=0,
-                                scope=class_scope,
-                                signature=method_signature,
-                                type_annotation=str(method.return_type) if method.return_type else None
-                            )
-                            symbols.append(method_symbol)
-                            
-                            # Extract method parameters
-                            for param in method.parameters:
-                                param_symbol = SymbolInfo(
-                                    name=param.name,
-                                    kind='parameter',
-                                    file_uri=file_uri,
-                                    line=method.line_number - 1 if method.line_number else 0,
-                                    column=0,
-                                    scope=f"{class_scope}.{method.name}",
-                                    type_annotation=str(param.type_annotation) if hasattr(param, 'type_annotation') and param.type_annotation else None
-                                )
-                                symbols.append(param_symbol)
-                
-                # Extract attributes
-                if hasattr(stmt, 'attributes'):
-                    for attr in stmt.attributes:
-                        if isinstance(attr, VariableDeclaration):
-                            attr_symbol = SymbolInfo(
-                                name=attr.name,
-                                kind='field',
-                                file_uri=file_uri,
-                                line=0,  # TODO: Get from AST
-                                column=0,
-                                scope=class_scope,
-                                type_annotation=str(attr.type_annotation) if attr.type_annotation else None
-                            )
-                            symbols.append(attr_symbol)
-            
-            # Struct definitions
+                symbols.extend(self._extract_class_symbol(stmt, file_uri, scope))
+
             elif isinstance(stmt, StructDefinition):
                 symbol = SymbolInfo(
                     name=stmt.name,
@@ -347,8 +342,6 @@ class WorkspaceIndex:
                     scope=scope
                 )
                 symbols.append(symbol)
-                
-                # Extract struct fields
                 if hasattr(stmt, 'fields'):
                     struct_scope = f"{scope}.{stmt.name}" if scope else stmt.name
                     for field in stmt.fields:
@@ -362,8 +355,7 @@ class WorkspaceIndex:
                             type_annotation=str(field.type_annotation) if hasattr(field, 'type_annotation') else None
                         )
                         symbols.append(field_symbol)
-            
-            # Variable declarations (module-level)
+
             elif isinstance(stmt, VariableDeclaration) and not scope:
                 symbol = SymbolInfo(
                     name=stmt.name,
@@ -375,16 +367,12 @@ class WorkspaceIndex:
                     type_annotation=str(stmt.type_annotation) if stmt.type_annotation else None
                 )
                 symbols.append(symbol)
-            
-            # Import statements (track for cross-file resolution)
+
             elif isinstance(stmt, ImportStatement):
                 if file_uri not in self.imports:
                     self.imports[file_uri] = []
-                
-                # Extract module name from path
-                module_name = stmt.module_name
-                self.imports[file_uri].append(module_name)
-        
+                self.imports[file_uri].append(stmt.module_name)
+
         return symbols
     
     def _build_function_signature(self, func: FunctionDefinition) -> str:
