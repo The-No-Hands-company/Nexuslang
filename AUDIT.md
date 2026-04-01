@@ -68,7 +68,7 @@ live view of HEAD. The following values were re-measured directly from the curre
 
 | Item | AUDIT table value | Verified current value |
 |------|-------------------|------------------------|
-| Total functions >150 lines (src/nlpl scope) | 18 (all files) | 7 |
+| Total functions >150 lines (src/nlpl scope) | 18 (all files) | 2 |
 | parser.py functions >150 lines | 3 | 0 |
 | `primary()` size | 162 | 54 |
 | `statement()` size | 172 | 20 |
@@ -84,6 +84,7 @@ live view of HEAD. The following values were re-measured directly from the curre
 | `register_driver_functions()` size | 414 | 17 |
 | `register_graphics_functions()` size | 204 | 41 |
 | `register_ffi_functions()` size | 175 | 9 |
+| `register_testing_functions()` size | 160 | 5 |
 
 Notes:
 - The commit history does contain the referenced refactor commits, but some
@@ -237,6 +238,13 @@ Notes:
   - `_register_ffi_string_helpers()`
   - `_register_ffi_struct_callback_variadic_functions()`
 
+### Testing registration refactoring
+
+- **`register_testing_functions()`** reduced 160 → 5 lines by extracting grouped registrars while preserving assertion aliases and suite APIs:
+  - `_register_assertion_functions()`
+  - `_register_assertion_aliases()`
+  - `_register_test_management_functions()`
+
 ---
 
 ## Remaining large functions (tracked, not yet split)
@@ -246,7 +254,6 @@ Notes:
 | File | Function | Lines | Notes |
 |------|----------|-------|-------|
 | `lexer.py` | `_build_keywords()` | 278 | Pure data definition (dict literal) — intentionally large |
-| `stdlib/testing/__init__.py` | `register_testing_functions()` | 160 | Pure data registration — intentionally large |
 | `stdlib/benchmark/__init__.py` | `register_benchmark_functions()` | 152 | Pure data registration — intentionally large |
 
 ---
