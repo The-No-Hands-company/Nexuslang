@@ -280,170 +280,108 @@ class Parser:
         token = self.current_token
         
         try:
-            # Handle different statement types
             # Fast dispatch for simple single-token statements
             _handler = self._STMT_DISPATCH.get(token.type)
             if _handler:
                 return getattr(self, _handler)()
-
             
-            
-            
-            elif token.type == TokenType.LABEL:
-                # Label for loop - check what follows
-                # label name: while/for ...
-                return self.labeled_loop_statement()
-            
-            
-            
-            elif token.type == TokenType.FOR_EACH:
-                # Handle "for each" as a single token
-                return self.for_loop()
-            
-            elif token.type == TokenType.PARALLEL:
-                # Handle "parallel for each item in collection ... end"
-                return self.parse_parallel_for()
-
-            elif token.type == TokenType.WHEN:
-                # Disambiguate: "when target ..." / "when feature ..." are
-                # conditional compilation blocks; anything else falls through
-                # to expression parsing.
-                next_tok = self._peek_next()
-                if next_tok and next_tok.lexeme in ("target", "feature"):
-                    return self.parse_conditional_compilation()
-                # Otherwise fall through to expression statement
-
-            elif token.type == TokenType.REPEAT:
-                # Could be "repeat N times" or "repeat for each"
-                return self.for_loop()
-            
-            elif token.type == TokenType.ADD or token.type == TokenType.APPEND:
-                # Handle "add X to Y" or "append X to Y" statement
-                return self.add_statement()
-            
-            elif token.type == TokenType.CREATE:
-                # Handle "create variable as Type" or "create variable as value"
-                # This is used for initialization: "create this.grades as empty List of Float"
-                return self.create_statement()
-            
-            elif token.type == TokenType.FUNCTION:
-                # Handle both syntaxes:
-                # 1. "function <name> that takes..." (short form)
-                # 2. Called from define_statement for "define a function called..." (long form)
-                return self.function_definition_short()
-            
-            elif token.type == TokenType.ASYNC:
-                # Handle "async function <name>..." syntax
-                return self.async_function_definition()
-            
-            
-            
-            elif token.type == TokenType.IDENTIFIER:
-                # Check for "abstract class" syntax
-                if (token.lexeme.lower() == "abstract" and 
-                    self.peek() and self.peek().type == TokenType.CLASS):
-                    return self.abstract_class_short_syntax()
-                # Otherwise try expression statement
-                else:
-                    expr = self.expression()
-                    return expr if expr else None
-            
-            
-            
-            elif token.type == TokenType.PACKED:
-                # packed struct Name
-                self.advance()  # consume 'packed'
-                if self.current_token and self.current_token.type == TokenType.STRUCT:
-                    return self.struct_definition(packed=True)
-                else:
-                    self.error("Expected 'struct' after 'packed'")
-            
-            elif token.type == TokenType.RETURN or token.type == TokenType.RETURNS:
-                return self.return_statement()
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-
-
-            
-            
-            
-            elif token.type == TokenType.EXTERN or token.type == TokenType.FOREIGN:
-                return self.extern_declaration()
-
-
-
-
-
-
-
-
-
-
-
-
-
-            elif token.type == TokenType.EOF:
-                # End of file - return None to stop parsing
-                return None
-            
-            elif token.type in (TokenType.INDENT, TokenType.DEDENT, TokenType.NEWLINE):
-                # INDENT/DEDENT/NEWLINE tokens are handled by block-level constructs.
-                # If we encounter them here at statement level, skip them.
-                self.advance()
-                return None
-            
-            elif token.type == TokenType.DEFINE:
-                # DEFINE can start various constructs - look ahead to determine which
-                return self.define_statement()
-            
-            
-            
-            
-
-
-            elif token.type == TokenType.AT:
-                # Decorator - collect decorators and apply to next function or class
-                decorators = []
-                while self.current_token and self.current_token.type == TokenType.AT:
-                    decorators.append(self.parse_decorator())
-                    # Skip newlines between stacked decorators
-                    while self.current_token and self.current_token.type == TokenType.NEWLINE:
-                        self.advance()
-                
-                # Skip trailing newlines before function/class keyword
-                while self.current_token and self.current_token.type == TokenType.NEWLINE:
-                    self.advance()
-                
-                # Next statement should be a function or class definition
-                if self.current_token and self.current_token.type == TokenType.FUNCTION:
-                    func_def = self.function_definition_short()
-                    func_def.decorators = decorators
-                    return func_def
-                elif self.current_token and self.current_token.type == TokenType.CLASS:
-                    class_def = self.class_definition()
-                    class_def.decorators = decorators
-                    return class_def
-                else:
-                    self.error("Decorators can only be applied to functions or classes")
-                
-            else:
-                # Try to parse as expression statement (function call, etc.)
-                expr = self.expression()
-                return expr if expr else None
+            # Handle special multi-token or context-dependent statements
+            return self._handle_special_statements(token)
                 
         except SyntaxError as e:
             # Attempt error recovery
             self.error_recovery()
             return None
+
+    def _handle_special_statements(self, token):
+        """Handle special statements that require lookahead or context."""
+        if token.type == TokenType.LABEL:
+            return self.labeled_loop_statement()
+        elif token.type == TokenType.FOR_EACH:
+            return self.for_loop()
+        elif token.type == TokenType.PARALLEL:
+            return self.parse_parallel_for()
+        elif token.type == TokenType.WHEN:
+            return self._handle_when_statement()
+        elif token.type == TokenType.REPEAT:
+            return self.for_loop()
+        elif token.type in (TokenType.ADD, TokenType.APPEND):
+            return self.add_statement()
+        elif token.type == TokenType.CREATE:
+            return self.create_statement()
+        elif token.type == TokenType.FUNCTION:
+            return self.function_definition_short()
+        elif token.type == TokenType.ASYNC:
+            return self.async_function_definition()
+        elif token.type == TokenType.IDENTIFIER:
+            return self._handle_identifier_statement(token)
+        elif token.type == TokenType.PACKED:
+            return self._handle_packed_struct()
+        elif token.type in (TokenType.RETURN, TokenType.RETURNS):
+            return self.return_statement()
+        elif token.type in (TokenType.EXTERN, TokenType.FOREIGN):
+            return self.extern_declaration()
+        elif token.type == TokenType.EOF:
+            return None
+        elif token.type in (TokenType.INDENT, TokenType.DEDENT, TokenType.NEWLINE):
+            self.advance()
+            return None
+        elif token.type == TokenType.DEFINE:
+            return self.define_statement()
+        elif token.type == TokenType.AT:
+            return self._handle_decorator()
+        else:
+            # Default: try to parse as expression statement
+            expr = self.expression()
+            return expr if expr else None
+
+    def _handle_when_statement(self):
+        """Handle 'when' statements - disambiguate conditional compilation vs expression."""
+        next_tok = self._peek_next()
+        if next_tok and next_tok.lexeme in ("target", "feature"):
+            return self.parse_conditional_compilation()
+        expr = self.expression()
+        return expr if expr else None
+
+    def _handle_identifier_statement(self, token):
+        """Handle identifier-based statements (abstract class, expressions)."""
+        if (token.lexeme.lower() == "abstract" and 
+            self.peek() and self.peek().type == TokenType.CLASS):
+            return self.abstract_class_short_syntax()
+        else:
+            expr = self.expression()
+            return expr if expr else None
+
+    def _handle_packed_struct(self):
+        """Handle 'packed struct' declarations."""
+        self.advance()  # consume 'packed'
+        if self.current_token and self.current_token.type == TokenType.STRUCT:
+            return self.struct_definition(packed=True)
+        else:
+            self.error("Expected 'struct' after 'packed'")
+
+    def _handle_decorator(self):
+        """Handle decorator statements - collect and apply to next function/class."""
+        decorators = []
+        while self.current_token and self.current_token.type == TokenType.AT:
+            decorators.append(self.parse_decorator())
+            while self.current_token and self.current_token.type == TokenType.NEWLINE:
+                self.advance()
+        
+        while self.current_token and self.current_token.type == TokenType.NEWLINE:
+            self.advance()
+        
+        if self.current_token and self.current_token.type == TokenType.FUNCTION:
+            func_def = self.function_definition_short()
+            func_def.decorators = decorators
+            return func_def
+        elif self.current_token and self.current_token.type == TokenType.CLASS:
+            class_def = self.class_definition()
+            class_def.decorators = decorators
+            return class_def
+        else:
+            self.error("Decorators can only be applied to functions or classes")
+    
     
     def define_statement(self):
         """Dispatch DEFINE statements to the appropriate parser based on lookahead."""
