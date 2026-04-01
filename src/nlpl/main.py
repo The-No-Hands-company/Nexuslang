@@ -161,8 +161,8 @@ def _apply_freestanding(args: argparse.Namespace, runtime: "Runtime"):
     return config
 
 
-def main():
-    """Main entry point for the NLPL interpreter."""
+def _build_argument_parser() -> argparse.ArgumentParser:
+    """Build and return the argument parser for the NLPL interpreter."""
     parser = argparse.ArgumentParser(description='Natural Language Programming Language Interpreter')
     parser.add_argument('file', nargs='?', help='The NLPL file to execute (omit for interactive REPL)')
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')
@@ -255,8 +255,12 @@ def main():
         action='store_true',
         help='Allow threading primitives in freestanding mode (requires RTOS)'
     )
+    return parser
 
-    args = parser.parse_args()
+
+def main():
+    """Main entry point for the NLPL interpreter."""
+    args = _build_argument_parser().parse_args()
 
     # Handle --emit-entry-stub (write stub and exit)
     if args.emit_entry_stub:
