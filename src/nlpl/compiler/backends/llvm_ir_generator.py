@@ -4942,6 +4942,65 @@ class LLVMIRGenerator(CodeGenerator):
         # Pop loop context
         self.loop_stack.pop()
     
+    def _resolve_iterable(self, node, indent):
+        """
+        Resolve the iterable expression of a for-each loop.
+
+        Returns (array_ptr, array_type, array_size, length_reg) where
+        length_reg is a register holding the dynamic length (or None if the
+        length is either statically known via array_size or not yet determined).
+        Returns (None, None, None, None) if the iterable cannot be resolved.
+        """
+        array_size = None
+        array_ptr = None
+        array_type = None
+        length_reg = None
+
+        if hasattr(node.iterable, 'name'):
+            # Simple variable reference
+            array_var_name = node.iterable.name
+            if array_var_name in self.local_vars:
+                array_type, array_alloca = self.local_vars[array_var_name]
+                # Load array pointer
+                array_ptr = self._new_temp()
+                self.emit(f'{indent}{array_ptr} = load {array_type}, {array_type}* {array_alloca}, align 8')
+
+                # Get array size from tracking
+                if array_var_name in self.array_sizes:
+                    array_size = self.array_sizes[array_var_name]
+            elif array_var_name in self.global_vars:
+                array_type, global_name = self.global_vars[array_var_name]
+                # Load array pointer
+                array_ptr = self._new_temp()
+                self.emit(f'{indent}{array_ptr} = load {array_type}, {array_type}* {global_name}, align 8')
+
+                # Try to get size from tracking
+                if array_var_name in self.array_sizes:
+                    array_size = self.array_sizes[array_var_name]
+        else:
+            # Arbitrary expression - evaluate it
+            iterable_reg = self._generate_expression(node.iterable, indent)
+            iterable_type = self._infer_expression_type(node.iterable)
+
+            # For list types, extract length and data pointer
+            if iterable_type.startswith('{'):
+                # Struct type like { i64, i64* } - extract length
+                length_reg = self._new_temp()
+                self.emit(f'{indent}{length_reg} = extractvalue {iterable_type} {iterable_reg}, 0')
+                array_size = None  # Dynamic size
+
+                # Extract data pointer
+                array_ptr = self._new_temp()
+                self.emit(f'{indent}{array_ptr} = extractvalue {iterable_type} {iterable_reg}, 1')
+                array_type = iterable_type
+            else:
+                # Assume it's a pointer type
+                array_ptr = iterable_reg
+                array_type = iterable_type
+                array_size = None  # Unknown size
+
+        return array_ptr, array_type, array_size, length_reg
+
     def _generate_foreach_loop(self, node, indent=''):
         """
         Generate for-each loop over array: for each item in array
@@ -4958,53 +5017,7 @@ class LLVMIRGenerator(CodeGenerator):
         iterator_name = node.iterator
         
         # Evaluate the iterable expression
-        array_var_name = None
-        array_size = None
-        array_ptr = None
-        array_type = None
-        
-        if hasattr(node.iterable, 'name'):
-            # Simple variable reference
-            array_var_name = node.iterable.name
-            if array_var_name in self.local_vars:
-                array_type, array_alloca = self.local_vars[array_var_name]
-                # Load array pointer
-                array_ptr = self._new_temp()
-                self.emit(f'{indent}{array_ptr} = load {array_type}, {array_type}* {array_alloca}, align 8')
-                
-                # Get array size from tracking
-                if array_var_name in self.array_sizes:
-                    array_size = self.array_sizes[array_var_name]
-            elif array_var_name in self.global_vars:
-                array_type, global_name = self.global_vars[array_var_name]
-                # Load array pointer
-                array_ptr = self._new_temp()
-                self.emit(f'{indent}{array_ptr} = load {array_type}, {array_type}* {global_name}, align 8')
-                
-                # Try to get size from tracking
-                if array_var_name in self.array_sizes:
-                    array_size = self.array_sizes[array_var_name]
-        else:
-            # Arbitrary expression - evaluate it
-            iterable_reg = self._generate_expression(node.iterable, indent)
-            iterable_type = self._infer_expression_type(node.iterable)
-            
-            # For list types, extract length and data pointer
-            if iterable_type.startswith('{'):
-                # Struct type like { i64, i64* } - extract length
-                length_reg = self._new_temp()
-                self.emit(f'{indent}{length_reg} = extractvalue {iterable_type} {iterable_reg}, 0')
-                array_size = None  # Dynamic size
-                
-                # Extract data pointer
-                array_ptr = self._new_temp()
-                self.emit(f'{indent}{array_ptr} = extractvalue {iterable_type} {iterable_reg}, 1')
-                array_type = iterable_type
-            else:
-                # Assume it's a pointer type
-                array_ptr = iterable_reg
-                array_type = iterable_type
-                array_size = None  # Unknown size
+        array_ptr, array_type, array_size, length_reg = self._resolve_iterable(node, indent)
         
         # If we couldn't determine the array pointer, skip
         if array_ptr is None:
@@ -5745,10 +5758,200 @@ class LLVMIRGenerator(CodeGenerator):
             
         return 'false'
 
+    def _generate_variant_pattern_binding(self, pattern, value_reg, value_type, indent):
+        """
+        Generate code to bind variables for a VariantPattern (e.g. Result.Ok(val)).
+
+        Extracts the inner value via a property getter and stores it in a new
+        alloca, updating the local symbol table with the resolved IR type.
+        """
+        if not pattern.bindings:
+            return
+
+        # This is a Result.Ok(val) pattern where val is the variable name
+        # We need to extract the inner value
+
+        # Assume property getter NLPL_Class_value(ptr) -> T
+        # We need to know inner type T. For Result<T,E>, value is T.
+        # Simplification: Assume value access works via index 0
+
+        # In a real generic implementation we need to know the concrete type of T
+        # For this phase, assumes strict layout access or getter
+
+        prop_name = 'value'
+        if pattern.variant_name == 'Err' or pattern.variant_name.endswith('.Err'):
+             prop_name = 'error'
+
+        class_name = value_type
+        method_name = f"NLPL_{class_name}_{prop_name}"
+
+        # Resolve return type from generic type substitutions
+        # Check if we have type substitutions active (from specialized generic class)
+        if self.current_type_substitutions:
+            # Look up the property type in class metadata
+            if class_name in self.class_metadata:
+                class_meta = self.class_metadata[class_name]
+                if 'properties' in class_meta:
+                    for prop in class_meta['properties']:
+                        if prop['name'] == prop_name:
+                            prop_type = prop['type']
+                            # Apply type substitutions
+                            if prop_type in self.current_type_substitutions:
+                                return_type_ir = self._map_nlpl_type_to_llvm(
+                                    self.current_type_substitutions[prop_type]
+                                )
+                            else:
+                                return_type_ir = self._map_nlpl_type_to_llvm(prop_type)
+                            break
+                    else:
+                        # Property not found in metadata, default to i64
+                        return_type_ir = 'i64'
+                else:
+                    return_type_ir = 'i64'
+            else:
+                return_type_ir = 'i64'
+        else:
+            # No type substitutions, try to infer from class metadata
+            if class_name in self.class_metadata:
+                class_meta = self.class_metadata[class_name]
+                if 'properties' in class_meta:
+                    for prop in class_meta['properties']:
+                        if prop['name'] == prop_name:
+                            return_type_ir = self._map_nlpl_type_to_llvm(prop['type'])
+                            break
+                    else:
+                        return_type_ir = 'i64'
+                else:
+                    return_type_ir = 'i64'
+            else:
+                return_type_ir = 'i64'
+
+        # Call getter with resolved return type
+        inner_val = self._new_temp()
+        self.emit(f'{indent}{inner_val} = call {return_type_ir} @{method_name}(%{class_name}* {value_reg})')
+
+        # Bind variable
+        var_name = pattern.bindings[0]
+        var_addr = self._new_temp()
+        self.emit(f'{indent}{var_addr} = alloca {return_type_ir}')
+        self.emit(f'{indent}store {return_type_ir} {inner_val}, {return_type_ir}* {var_addr}')
+        # Update symbol table with resolved type
+        self.local_vars[var_name] = (return_type_ir, var_addr)
+
+    def _generate_list_pattern_binding(self, pattern, value_reg, value_type, indent):
+        """
+        Generate code to match and bind variables for a ListPattern.
+
+        Checks the list length, matches individual element patterns, and
+        optionally binds the remaining tail elements to a rest variable.
+        Returns the combined i1 match result register.
+        """
+        # Lists are dynamic arrays with length + data pointer
+        # Structure: { i64 length, element_type* data }
+
+        patterns = pattern.patterns
+        rest_binding = pattern.rest_binding
+
+        # Extract list length
+        length_reg = self._new_temp()
+        self.emit(f'{indent}{length_reg} = extractvalue {value_type} {value_reg}, 0')
+
+        # Check minimum length requirement
+        min_length = len(patterns)
+        length_check_reg = self._new_temp()
+
+        if rest_binding:
+            # With rest pattern, need at least len(patterns) elements
+            self.emit(f'{indent}{length_check_reg} = icmp sge i64 {length_reg}, {min_length}')
+        else:
+            # Without rest pattern, need exactly len(patterns) elements
+            self.emit(f'{indent}{length_check_reg} = icmp eq i64 {length_reg}, {min_length}')
+
+        # If no patterns, just check length
+        if not patterns and not rest_binding:
+            return length_check_reg
+
+        # Extract list data pointer
+        data_ptr_reg = self._new_temp()
+        self.emit(f'{indent}{data_ptr_reg} = extractvalue {value_type} {value_reg}, 1')
+
+        # Match each element pattern
+        match_results = [length_check_reg]
+
+        for i, elem_pattern in enumerate(patterns):
+            # Get pointer to element
+            elem_ptr_reg = self._new_temp()
+            self.emit(f'{indent}{elem_ptr_reg} = getelementptr inbounds i64, i64* {data_ptr_reg}, i64 {i}')
+
+            # Load element value
+            elem_value_reg = self._new_temp()
+            self.emit(f'{indent}{elem_value_reg} = load i64, i64* {elem_ptr_reg}, align 8')
+
+            # Match element pattern
+            # NOTE: case_label is expected to be provided by the surrounding match
+            # context; this mirrors the pre-existing behaviour in the original code.
+            elem_match = self._generate_pattern_match(
+                elem_pattern, elem_value_reg, 'i64', case_label, indent
+            )
+            match_results.append(elem_match)
+
+        # Handle rest binding
+        if rest_binding:
+            # Create a new list with remaining elements
+            # Calculate number of remaining elements
+            num_patterns = len(patterns)
+            remaining_count_reg = self._new_temp()
+            self.emit(f'{indent}{remaining_count_reg} = sub i64 {length_reg}, {num_patterns}')
+
+            # Allocate new list structure for rest elements
+            rest_list_reg = self._new_temp()
+            self.emit(f'{indent}{rest_list_reg} = alloca {value_type}, align 8')
+
+            # Calculate size for remaining elements (in bytes)
+            elem_size = 8  # Assuming i64 elements
+            rest_size_reg = self._new_temp()
+            self.emit(f'{indent}{rest_size_reg} = mul i64 {remaining_count_reg}, {elem_size}')
+
+            # Allocate memory for rest data
+            rest_data_i8_reg = self._new_temp()
+            self.emit(f'{indent}{rest_data_i8_reg} = call i8* @malloc(i64 {rest_size_reg})')
+
+            # Cast to element pointer type
+            rest_data_reg = self._new_temp()
+            self.emit(f'{indent}{rest_data_reg} = bitcast i8* {rest_data_i8_reg} to i64*')
+
+            # Copy remaining elements to new list
+            # Source: data_ptr_reg + num_patterns offset
+            src_offset_reg = self._new_temp()
+            self.emit(f'{indent}{src_offset_reg} = getelementptr inbounds i64, i64* {data_ptr_reg}, i64 {num_patterns}')
+
+            # Use memcpy to copy remaining elements
+            self.emit(f'{indent}call void @llvm.memcpy.p0i8.p0i8.i64(i8* {rest_data_i8_reg}, i8* bitcast (i64* {src_offset_reg} to i8*), i64 {rest_size_reg}, i1 false)')
+
+            # Create rest list structure: { length, data }
+            rest_struct_reg = self._new_temp()
+            self.emit(f'{indent}{rest_struct_reg} = insertvalue {value_type} undef, i64 {remaining_count_reg}, 0')
+            rest_struct_reg2 = self._new_temp()
+            self.emit(f'{indent}{rest_struct_reg2} = insertvalue {value_type} {rest_struct_reg}, i64* {rest_data_reg}, 1')
+
+            # Store rest list in local variable
+            self.emit(f'{indent}store {value_type} {rest_struct_reg2}, {value_type}* {rest_list_reg}, align 8')
+            self.local_vars[rest_binding] = (value_type, rest_list_reg)
+
+
+        # Combine all match results with AND
+        combined_reg = match_results[0]
+        for next_result in match_results[1:]:
+            and_reg = self._new_temp()
+            self.emit(f'{indent}{and_reg} = and i1 {combined_reg}, {next_result}')
+            combined_reg = and_reg
+
+        return combined_reg
+
     def _generate_pattern_bindings(self, pattern, value_reg, value_type, indent=''):
         """Generate code to extract values and bind variables for a pattern."""
         pattern_type = type(pattern).__name__
-        
+
         if pattern_type == 'IdentifierPattern':
             # Bind entire value to variable
             var_name = pattern.name
@@ -5758,102 +5961,31 @@ class LLVMIRGenerator(CodeGenerator):
             self.emit(f'{indent}store {self._map_type(value_type)} {value_reg}, {self._map_type(value_type)}* {var_addr}')
             # Update symbol table
             self.local_vars[var_name] = (self._map_type(value_type), var_addr)
-            
-        elif pattern_type == 'VariantPattern':
-            if pattern.bindings:
-                # This is a Result.Ok(val) pattern where val is the variable name
-                # We need to extract the inner value
-                
-                # Assume property getter NLPL_Class_value(ptr) -> T
-                # We need to know inner type T. For Result<T,E>, value is T.
-                # Simplification: Assume value access works via index 0
-                
-                # In a real generic implementation we need to know the concrete type of T
-                # For this phase, assumes strict layout access or getter
-                
-                prop_name = 'value'
-                if pattern.variant_name == 'Err' or pattern.variant_name.endswith('.Err'):
-                     prop_name = 'error'
-                     
-                class_name = value_type
-                method_name = f"NLPL_{class_name}_{prop_name}"
-                
-                # Resolve return type from generic type substitutions
-                # Check if we have type substitutions active (from specialized generic class)
-                if self.current_type_substitutions:
-                    # Look up the property type in class metadata
-                    if class_name in self.class_metadata:
-                        class_meta = self.class_metadata[class_name]
-                        if 'properties' in class_meta:
-                            for prop in class_meta['properties']:
-                                if prop['name'] == prop_name:
-                                    prop_type = prop['type']
-                                    # Apply type substitutions
-                                    if prop_type in self.current_type_substitutions:
-                                        return_type_ir = self._map_nlpl_type_to_llvm(
-                                            self.current_type_substitutions[prop_type]
-                                        )
-                                    else:
-                                        return_type_ir = self._map_nlpl_type_to_llvm(prop_type)
-                                    break
-                            else:
-                                # Property not found in metadata, default to i64
-                                return_type_ir = 'i64'
-                        else:
-                            return_type_ir = 'i64'
-                    else:
-                        return_type_ir = 'i64'
-                else:
-                    # No type substitutions, try to infer from class metadata
-                    if class_name in self.class_metadata:
-                        class_meta = self.class_metadata[class_name]
-                        if 'properties' in class_meta:
-                            for prop in class_meta['properties']:
-                                if prop['name'] == prop_name:
-                                    return_type_ir = self._map_nlpl_type_to_llvm(prop['type'])
-                                    break
-                            else:
-                                return_type_ir = 'i64'
-                        else:
-                            return_type_ir = 'i64'
-                    else:
-                        return_type_ir = 'i64'
-                
-                # Call getter with resolved return type
-                inner_val = self._new_temp()
-                self.emit(f'{indent}{inner_val} = call {return_type_ir} @{method_name}(%{class_name}* {value_reg})')
-                
-                # Bind variable
-                var_name = pattern.bindings[0]
-                var_addr = self._new_temp()
-                self.emit(f'{indent}{var_addr} = alloca {return_type_ir}')
-                self.emit(f'{indent}store {return_type_ir} {inner_val}, {return_type_ir}* {var_addr}')
-                # Update symbol table with resolved type
-                self.local_vars[var_name] = (return_type_ir, var_addr)
-            
 
-        
+        elif pattern_type == 'VariantPattern':
+            self._generate_variant_pattern_binding(pattern, value_reg, value_type, indent)
+
         # Tuple pattern: match each element
         elif pattern_type == 'TuplePattern':
             # Tuples are represented as structs: { elem0_type, elem1_type, ... }
             # Match each element pattern against corresponding tuple element
-            
+
             match_results = []
-            
+
             for i, elem_pattern in enumerate(pattern.patterns):
                 # Extract tuple element
                 elem_reg = self._new_temp()
                 self.emit(f'{indent}{elem_reg} = extractvalue {value_type} {value_reg}, {i}')
-                
+
                 # Determine element type
                 elem_type = self._get_tuple_element_type(value_type, i)
-                
+
                 # Recursively match element pattern
                 elem_match = self._generate_pattern_match(
                     elem_pattern, elem_reg, elem_type, case_label, indent
                 )
                 match_results.append(elem_match)
-            
+
             # Combine all element matches with AND
             if len(match_results) == 0:
                 return 'true'
@@ -5867,109 +5999,11 @@ class LLVMIRGenerator(CodeGenerator):
                     self.emit(f'{indent}{and_reg} = and i1 {combined_reg}, {next_result}')
                     combined_reg = and_reg
                 return combined_reg
-        
+
         # List pattern: match list elements
         elif pattern_type == 'ListPattern':
-            # Lists are dynamic arrays with length + data pointer
-            # Structure: { i64 length, element_type* data }
-            
-            patterns = pattern.patterns
-            rest_binding = pattern.rest_binding
-            
-            # Extract list length
-            length_reg = self._new_temp()
-            self.emit(f'{indent}{length_reg} = extractvalue {value_type} {value_reg}, 0')
-            
-            # Check minimum length requirement
-            min_length = len(patterns)
-            length_check_reg = self._new_temp()
-            
-            if rest_binding:
-                # With rest pattern, need at least len(patterns) elements
-                self.emit(f'{indent}{length_check_reg} = icmp sge i64 {length_reg}, {min_length}')
-            else:
-                # Without rest pattern, need exactly len(patterns) elements
-                self.emit(f'{indent}{length_check_reg} = icmp eq i64 {length_reg}, {min_length}')
-            
-            # If no patterns, just check length
-            if not patterns and not rest_binding:
-                return length_check_reg
-            
-            # Extract list data pointer
-            data_ptr_reg = self._new_temp()
-            self.emit(f'{indent}{data_ptr_reg} = extractvalue {value_type} {value_reg}, 1')
-            
-            # Match each element pattern
-            match_results = [length_check_reg]
-            
-            for i, elem_pattern in enumerate(patterns):
-                # Get pointer to element
-                elem_ptr_reg = self._new_temp()
-                self.emit(f'{indent}{elem_ptr_reg} = getelementptr inbounds i64, i64* {data_ptr_reg}, i64 {i}')
-                
-                # Load element value
-                elem_value_reg = self._new_temp()
-                self.emit(f'{indent}{elem_value_reg} = load i64, i64* {elem_ptr_reg}, align 8')
-                
-                # Match element pattern
-                elem_match = self._generate_pattern_match(
-                    elem_pattern, elem_value_reg, 'i64', case_label, indent
-                )
-                match_results.append(elem_match)
-            
-            # Handle rest binding
-            if rest_binding:
-                # Create a new list with remaining elements
-                # Calculate number of remaining elements
-                num_patterns = len(patterns)
-                remaining_count_reg = self._new_temp()
-                self.emit(f'{indent}{remaining_count_reg} = sub i64 {length_reg}, {num_patterns}')
-                
-                # Allocate new list structure for rest elements
-                rest_list_reg = self._new_temp()
-                self.emit(f'{indent}{rest_list_reg} = alloca {value_type}, align 8')
-                
-                # Calculate size for remaining elements (in bytes)
-                elem_size = 8  # Assuming i64 elements
-                rest_size_reg = self._new_temp()
-                self.emit(f'{indent}{rest_size_reg} = mul i64 {remaining_count_reg}, {elem_size}')
-                
-                # Allocate memory for rest data
-                rest_data_i8_reg = self._new_temp()
-                self.emit(f'{indent}{rest_data_i8_reg} = call i8* @malloc(i64 {rest_size_reg})')
-                
-                # Cast to element pointer type
-                rest_data_reg = self._new_temp()
-                self.emit(f'{indent}{rest_data_reg} = bitcast i8* {rest_data_i8_reg} to i64*')
-                
-                # Copy remaining elements to new list
-                # Source: data_ptr_reg + num_patterns offset
-                src_offset_reg = self._new_temp()
-                self.emit(f'{indent}{src_offset_reg} = getelementptr inbounds i64, i64* {data_ptr_reg}, i64 {num_patterns}')
-                
-                # Use memcpy to copy remaining elements
-                self.emit(f'{indent}call void @llvm.memcpy.p0i8.p0i8.i64(i8* {rest_data_i8_reg}, i8* bitcast (i64* {src_offset_reg} to i8*), i64 {rest_size_reg}, i1 false)')
-                
-                # Create rest list structure: { length, data }
-                rest_struct_reg = self._new_temp()
-                self.emit(f'{indent}{rest_struct_reg} = insertvalue {value_type} undef, i64 {remaining_count_reg}, 0')
-                rest_struct_reg2 = self._new_temp()
-                self.emit(f'{indent}{rest_struct_reg2} = insertvalue {value_type} {rest_struct_reg}, i64* {rest_data_reg}, 1')
-                
-                # Store rest list in local variable
-                self.emit(f'{indent}store {value_type} {rest_struct_reg2}, {value_type}* {rest_list_reg}, align 8')
-                self.local_vars[rest_binding] = (value_type, rest_list_reg)
-            
-            
-            # Combine all match results with AND
-            combined_reg = match_results[0]
-            for next_result in match_results[1:]:
-                and_reg = self._new_temp()
-                self.emit(f'{indent}{and_reg} = and i1 {combined_reg}, {next_result}')
-                combined_reg = and_reg
-            
-            return combined_reg
-        
+            return self._generate_list_pattern_binding(pattern, value_reg, value_type, indent)
+
         else:
             # Unknown pattern type
             return 'false'
