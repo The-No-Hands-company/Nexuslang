@@ -686,26 +686,36 @@ class Lexer:
 
     def scan_token(self) -> None:
         """Scan a single token with indentation tracking."""
-        # Handle indentation at the start of a line
-        if self.at_line_start:
-            self.handle_indentation()
-            self.at_line_start = False
-            
-            # Update start position after consuming indentation whitespace
-            self.start = self.current
-            
-            # If we're at end or hit a blank line, skip
-            if self.is_at_end() or self.peek() == '\n':
-                return
+        if self._handle_line_start():
+            return
         
         c = self.advance()
         
-        # Handle newlines
+        if self._handle_whitespace_and_newlines(c):
+            return
+        
+        if self._handle_comments(c):
+            return
+        
+        if self._handle_literals(c):
+            return
+        
+        self._handle_operators_and_punctuation(c)
+
+    def _handle_line_start(self) -> bool:
+        """Handle indentation at the start of a line. Returns True if we should return early."""
+        if not self.at_line_start:
+            return False
+        
+        self.handle_indentation()
+        self.at_line_start = False
+        self.start = self.current
+        
+        return self.is_at_end() or self.peek() == '\n'
+
+    def _handle_whitespace_and_newlines(self, c: str) -> bool:
+        """Handle newlines and whitespace. Returns True if handled."""
         if c == '\n':
-            # Emit NEWLINE with the line number of the line that just ended,
-            # i.e. BEFORE incrementing self.line to the next line.  Skip when
-            # the last token was already NEWLINE/INDENT/DEDENT to avoid
-            # duplicate boundary tokens that would confuse the member-name parser.
             if self.tokens and self.tokens[-1].type not in (
                 TokenType.NEWLINE, TokenType.INDENT, TokenType.DEDENT
             ):
@@ -713,55 +723,62 @@ class Lexer:
             self.line += 1
             self.column = 1
             self.at_line_start = True
-            return
+            return True
         
-        # Skip other whitespace (spaces, tabs handled by handle_indentation)
         if c.isspace():
             self.column += 1
-            return
+            return True
         
-        # Handle comments
-        if c == '#':
-            if self.peek() == '#':
-                # Documentation comment (##) — capture the text and emit a token
-                self.advance()  # consume the second '#'
-                # Skip optional single space after ##
-                if self.peek() == ' ':
-                    self.advance()
-                # Read the rest of the line as the doc text
-                doc_start = self.current
-                while self.peek() != '\n' and not self.is_at_end():
-                    self.advance()
-                doc_text = self.source[doc_start:self.current]
-                self.add_token(TokenType.DOC_COMMENT, doc_text)
-            else:
-                # Regular comment — skip until end of line
-                while self.peek() != '\n' and not self.is_at_end():
-                    self.advance()
-            return
+        return False
+
+    def _handle_comments(self, c: str) -> bool:
+        """Handle comments (both doc comments and regular). Returns True if handled."""
+        if c != '#':
+            return False
         
+        if self.peek() == '#':
+            # Documentation comment (##)
+            self.advance()  # consume the second '#'
+            if self.peek() == ' ':
+                self.advance()
+            doc_start = self.current
+            while self.peek() != '\n' and not self.is_at_end():
+                self.advance()
+            doc_text = self.source[doc_start:self.current]
+            self.add_token(TokenType.DOC_COMMENT, doc_text)
+        else:
+            # Regular comment
+            while self.peek() != '\n' and not self.is_at_end():
+                self.advance()
+        return True
+
+    def _handle_literals(self, c: str) -> bool:
+        """Handle literals (identifiers, numbers, strings). Returns True if handled."""
         if c.isalpha() or c == '_':
-            # Check for f-string: f"..."
             if c == 'f' and self.peek() == '"':
                 self.advance()  # consume the '"'
                 self.fstring()
             else:
                 self.identifier()
-            return
+            return True
         
         if c.isdigit():
             self.number()
-            return
+            return True
         
         if c == '"':
             self.string()
-            return
-
+            return True
+        
         if c == "'":
             self.single_quote_string()
-            return
+            return True
         
-        # Handle operators and punctuation
+        return False
+
+    def _handle_operators_and_punctuation(self, c: str) -> None:
+        """Handle operators and punctuation characters."""
+        # Parentheses and brackets
         if c == '(':
             self.add_token(TokenType.LEFT_PAREN)
         elif c == ')':
@@ -774,23 +791,32 @@ class Lexer:
             self.add_token(TokenType.LEFT_BRACKET)
         elif c == ']':
             self.add_token(TokenType.RIGHT_BRACKET)
+        
+        # Basic punctuation
         elif c == ',':
             self.add_token(TokenType.COMMA)
+        elif c == ';':
+            self.add_token(TokenType.SEMICOLON)
+        elif c == '@':
+            self.add_token(TokenType.AT)
+        
+        # Dot and ellipsis
         elif c == '.':
-            # Check for ellipsis ...
             if self.peek() == '.' and self.peek_next() == '.':
-                self.advance()  # consume second .
-                self.advance()  # consume third .
+                self.advance()
+                self.advance()
                 self.add_token(TokenType.ELLIPSIS)
             else:
                 self.add_token(TokenType.DOT)
+        
+        # Colon
         elif c == ':':
             if self.match(':'):
                 self.add_token(TokenType.DOUBLE_COLON)
             else:
                 self.add_token(TokenType.COLON)
-        elif c == ';':
-            self.add_token(TokenType.SEMICOLON)
+        
+        # Arithmetic operators
         elif c == '+':
             self.add_token(TokenType.PLUS)
         elif c == '-':
@@ -800,16 +826,18 @@ class Lexer:
                 self.add_token(TokenType.MINUS)
         elif c == '*':
             if self.match('*'):
-                self.add_token(TokenType.POWER)  # **
+                self.add_token(TokenType.POWER)
             else:
                 self.add_token(TokenType.TIMES)
         elif c == '/':
             if self.match('/'):
-                self.add_token(TokenType.FLOOR_DIVIDE)  # //
+                self.add_token(TokenType.FLOOR_DIVIDE)
             else:
-                self.add_token(TokenType.DIVIDED_BY)  # / for division
+                self.add_token(TokenType.DIVIDED_BY)
         elif c == '%':
             self.add_token(TokenType.MODULO)
+        
+        # Bitwise operators
         elif c == '&':
             self.add_token(TokenType.BITWISE_AND)
         elif c == '|':
@@ -818,32 +846,33 @@ class Lexer:
             self.add_token(TokenType.BITWISE_XOR)
         elif c == '~':
             self.add_token(TokenType.BITWISE_NOT)
+        
+        # Comparison operators
         elif c == '<':
             if self.match('<'):
-                self.add_token(TokenType.LEFT_SHIFT)  # <<
+                self.add_token(TokenType.LEFT_SHIFT)
             elif self.match('='):
-                self.add_token(TokenType.LESS_THAN_OR_EQUAL_TO)  # <=
+                self.add_token(TokenType.LESS_THAN_OR_EQUAL_TO)
             else:
-                self.add_token(TokenType.LESS_THAN)  # <
+                self.add_token(TokenType.LESS_THAN)
         elif c == '>':
             if self.match('>'):
-                self.add_token(TokenType.RIGHT_SHIFT)  # >>
+                self.add_token(TokenType.RIGHT_SHIFT)
             elif self.match('='):
-                self.add_token(TokenType.GREATER_THAN_OR_EQUAL_TO)  # >=
+                self.add_token(TokenType.GREATER_THAN_OR_EQUAL_TO)
             else:
-                self.add_token(TokenType.GREATER_THAN)  # >
+                self.add_token(TokenType.GREATER_THAN)
         elif c == '=':
             if self.match('='):
-                self.add_token(TokenType.EQUAL_TO)  # ==
+                self.add_token(TokenType.EQUAL_TO)
             else:
-                self.add_token(TokenType.EQUALS)  # =
+                self.add_token(TokenType.EQUALS)
         elif c == '!':
             if self.match('='):
-                self.add_token(TokenType.NOT_EQUAL_TO)  # !=
+                self.add_token(TokenType.NOT_EQUAL_TO)
             else:
-                self.add_token(TokenType.NOT)  # !
-        elif c == '@':
-            self.add_token(TokenType.AT)  # @ for decorators
+                self.add_token(TokenType.NOT)
+        
         else:
             self.error(f"Unexpected character '{c}'")
     

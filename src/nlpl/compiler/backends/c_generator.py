@@ -1739,9 +1739,16 @@ double nlpl_read_float(void) {
 
     def _collect_array_runtime(self, code_parts: list) -> None:
         """Append dynamic array struct and all nlpl_array_* C implementations to code_parts."""
-
         if any(fn.startswith("nlpl_array_") for fn in self.needed_runtime_functions):
-            code_parts.append('''
+            self._append_array_struct_and_core(code_parts)
+        
+        self._append_array_basic_ops(code_parts)
+        self._append_array_mutation_ops(code_parts)
+        self._append_array_search_and_transform(code_parts)
+
+    def _append_array_struct_and_core(self, code_parts: list) -> None:
+        """Append array struct definition and core create/free functions."""
+        code_parts.append('''
 // Static array length macro (for compile-time known arrays)
 #define NLPL_STATIC_ARRLEN(arr) (sizeof(arr) / sizeof((arr)[0]))
 
@@ -1791,6 +1798,8 @@ void nlpl_array_free(NLPLArray* arr) {
     }
 }''')
 
+    def _append_array_basic_ops(self, code_parts: list) -> None:
+        """Append basic array operations: length, get, set, push, pop."""
         if "nlpl_array_length" in self.needed_runtime_functions:
             code_parts.append('''
 int nlpl_array_length(NLPLArray* arr) {
@@ -1830,6 +1839,8 @@ void nlpl_array_set(NLPLArray* arr, int index, void* elem) {
     arr->data[index] = elem;
 }''')
 
+    def _append_array_mutation_ops(self, code_parts: list) -> None:
+        """Append array mutation operations: insert, remove, clear."""
         if "nlpl_array_insert" in self.needed_runtime_functions:
             code_parts.append('''
 void nlpl_array_insert(NLPLArray* arr, int index, void* elem) {
@@ -1858,6 +1869,14 @@ void* nlpl_array_remove(NLPLArray* arr, int index) {
     return elem;
 }''')
 
+        if "nlpl_array_clear" in self.needed_runtime_functions:
+            code_parts.append('''
+void nlpl_array_clear(NLPLArray* arr) {
+    if (arr) arr->size = 0;
+}''')
+
+    def _append_array_search_and_transform(self, code_parts: list) -> None:
+        """Append array search and transformation operations: find, reverse, slice, sort."""
         if "nlpl_array_find" in self.needed_runtime_functions:
             code_parts.append('''
 int nlpl_array_find(NLPLArray* arr, void* elem) {
@@ -1877,12 +1896,6 @@ void nlpl_array_reverse(NLPLArray* arr) {
         arr->data[i] = arr->data[arr->size - 1 - i];
         arr->data[arr->size - 1 - i] = temp;
     }
-}''')
-
-        if "nlpl_array_clear" in self.needed_runtime_functions:
-            code_parts.append('''
-void nlpl_array_clear(NLPLArray* arr) {
-    if (arr) arr->size = 0;
 }''')
 
         if "nlpl_array_slice" in self.needed_runtime_functions:
