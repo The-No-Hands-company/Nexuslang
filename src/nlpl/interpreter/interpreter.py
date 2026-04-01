@@ -2274,136 +2274,30 @@ class Interpreter:
             )
         
         try:
-            # Load the library based on platform
             system = platform.system()
+            full_library_path = ctypes.util.find_library(library_name) or \
+                self._resolve_library_path(library_name, system)
+            library = self._load_ctypes_library(full_library_path, calling_convention, system)
             
-            # First try to find the library using ctypes.util
-            full_library_path = ctypes.util.find_library(library_name)
-            
-            # Special handling for common library names
-            if not full_library_path:
-                if system == 'Windows':
-                    if library_name == 'c':
-                        full_library_path = 'msvcrt.dll'
-                    elif library_name == 'm':
-                        full_library_path = 'msvcrt.dll'  # Math functions in msvcrt on Windows
-                    else:
-                        full_library_path = library_name
-                elif system == 'Darwin':  # macOS
-                    if library_name == 'c':
-                        full_library_path = 'libc.dylib'
-                    elif library_name == 'm':
-                        full_library_path = 'libm.dylib'
-                    else:
-                        full_library_path = library_name
-                else:  # Linux and other Unix-like
-                    if library_name == 'c':
-                        full_library_path = 'libc.so.6'
-                    elif library_name == 'm':
-                        full_library_path = 'libm.so.6'
-                    else:
-                        full_library_path = library_name
-            
-            if system == 'Windows':
-                if calling_convention == 'stdcall':
-                    library = ctypes.WinDLL(full_library_path)
-                else:
-                    library = ctypes.CDLL(full_library_path)
-            else:
-                library = ctypes.CDLL(full_library_path)
-            
-            # Get the C function
             c_func = getattr(library, func_name)
-            
-            # Parse return type
             return_type = node.return_type if node.return_type else "Void"
             c_return_type = self._nlpl_type_to_ctype(return_type)
             c_func.restype = c_return_type
             
-            # Parse parameter types and names
             param_types = []
             param_names = []
             for param in node.parameters:
                 param_names.append(param.name)
                 param_types.append(self._nlpl_type_to_ctype(param.type_annotation))
             
-            # For non-variadic functions, set argtypes
-            # For variadic functions, only set argtypes for fixed parameters
-            if param_types and not variadic:
-                c_func.argtypes = param_types
-            elif param_types and variadic:
-                # Set argtypes only for fixed params, variadic params handled differently
+            if param_types:
                 c_func.argtypes = param_types
             
-            # Create wrapper that handles type conversion
-            def nlpl_wrapper(*args):
-                """Wrapper that converts NLPL values to C values and back."""
-                # Convert arguments
-                c_args = []
-                # Keep references to prevent garbage collection
-                temp_refs = []
-                
-                for i, arg in enumerate(args):
-                    if i < len(param_types):
-                        # Fixed parameter - use declared type
-                        ctype = param_types[i]
-                    else:
-                        # Variadic parameter - infer type from Python value
-                        if isinstance(arg, bool):
-                            ctype = ctypes.c_int  # C promotes bool to int
-                        elif isinstance(arg, int):
-                            ctype = ctypes.c_long
-                        elif isinstance(arg, float):
-                            ctype = ctypes.c_double
-                        elif isinstance(arg, str):
-                            ctype = ctypes.c_char_p
-                        elif isinstance(arg, bytes):
-                            ctype = ctypes.c_char_p
-                        else:
-                            ctype = ctypes.c_void_p
-                    
-                    # Special handling for strings passed to variadic functions
-                    if ctype == ctypes.c_char_p and isinstance(arg, str):
-                        # Convert string to bytes and create c_char_p
-                        encoded = arg.encode('utf-8')
-                        char_ptr = ctypes.c_char_p(encoded)
-                        temp_refs.append(char_ptr)  # Keep alive
-                        c_args.append(char_ptr)
-                    # Special handling for void pointers (format strings in printf)
-                    elif ctype == ctypes.c_void_p and isinstance(arg, str):
-                        # Convert string to bytes and create c_char_p
-                        encoded = arg.encode('utf-8')
-                        char_ptr = ctypes.c_char_p(encoded)
-                        temp_refs.append(char_ptr)  # Keep alive
-                        c_args.append(char_ptr)
-                    else:
-                        converted = self._python_to_ctype_value(arg, ctype)
-                        # For variadic args, explicitly cast to the expected type
-                        if i >= len(param_types) and variadic:
-                            if ctype == ctypes.c_double and isinstance(converted, (int, float)):
-                                converted = ctypes.c_double(float(converted))
-                            elif ctype == ctypes.c_long and isinstance(converted, int):
-                                converted = ctypes.c_long(converted)
-                        c_args.append(converted)
-                
-                # Call C function
-                try:
-                    result = c_func(*c_args)
-                except Exception as e:
-                    raise NLPLRuntimeError(
-                        f"Error calling C function '{func_name}': {str(e)}",
-                        line=getattr(node, 'line_number', None),
-                        error_type_key="function_call_error",
-                        full_source=self.source,
-                    )
-                
-                # Convert result back to Python
-                return self._ctype_value_to_python(result, c_return_type)
+            nlpl_wrapper = self._build_extern_wrapper(
+                func_name, c_func, param_types, variadic, c_return_type, node
+            )
             
-            # Register the function in the runtime
             self.runtime.register_function(func_name, nlpl_wrapper)
-            
-            # Also store in current scope as a variable for direct access
             self.set_variable(func_name, nlpl_wrapper)
             
             return func_name
@@ -2422,6 +2316,75 @@ class Interpreter:
                 error_type_key="undefined_function",
                 full_source=self.source,
             )
+
+    def _resolve_library_path(self, library_name: str, system: str) -> str:
+        """Return a platform-appropriate shared-library file name for *library_name*."""
+        if system == 'Windows':
+            aliases = {'c': 'msvcrt.dll', 'm': 'msvcrt.dll'}
+        elif system == 'Darwin':
+            aliases = {'c': 'libc.dylib', 'm': 'libm.dylib'}
+        else:  # Linux and other Unix-like
+            aliases = {'c': 'libc.so.6', 'm': 'libm.so.6'}
+        return aliases.get(library_name, library_name)
+
+    def _load_ctypes_library(self, full_library_path: str, calling_convention: str, system: str):
+        """Load and return a ctypes library object from *full_library_path*."""
+        import ctypes
+        if system == 'Windows' and calling_convention == 'stdcall':
+            return ctypes.WinDLL(full_library_path)
+        return ctypes.CDLL(full_library_path)
+
+    def _build_extern_wrapper(self, func_name: str, c_func, param_types, variadic: bool, c_return_type, node):
+        """Return a Python callable that converts NLPL values to C values, calls *c_func*, and converts the result back."""
+        import ctypes
+
+        def nlpl_wrapper(*args):
+            c_args = []
+            temp_refs = []  # keep alive to prevent GC during the call
+            
+            for i, arg in enumerate(args):
+                if i < len(param_types):
+                    ctype = param_types[i]
+                else:
+                    # Variadic: infer ctype from Python value
+                    if isinstance(arg, bool):
+                        ctype = ctypes.c_int
+                    elif isinstance(arg, int):
+                        ctype = ctypes.c_long
+                    elif isinstance(arg, float):
+                        ctype = ctypes.c_double
+                    elif isinstance(arg, (str, bytes)):
+                        ctype = ctypes.c_char_p
+                    else:
+                        ctype = ctypes.c_void_p
+                
+                if ctype in (ctypes.c_char_p, ctypes.c_void_p) and isinstance(arg, str):
+                    encoded = arg.encode('utf-8')
+                    char_ptr = ctypes.c_char_p(encoded)
+                    temp_refs.append(char_ptr)
+                    c_args.append(char_ptr)
+                else:
+                    converted = self._python_to_ctype_value(arg, ctype)
+                    if i >= len(param_types) and variadic:
+                        if ctype == ctypes.c_double and isinstance(converted, (int, float)):
+                            converted = ctypes.c_double(float(converted))
+                        elif ctype == ctypes.c_long and isinstance(converted, int):
+                            converted = ctypes.c_long(converted)
+                    c_args.append(converted)
+            
+            try:
+                result = c_func(*c_args)
+            except Exception as e:
+                raise NLPLRuntimeError(
+                    f"Error calling C function '{func_name}': {str(e)}",
+                    line=getattr(node, 'line_number', None),
+                    error_type_key="function_call_error",
+                    full_source=self.source,
+                )
+            
+            return self._ctype_value_to_python(result, c_return_type)
+        
+        return nlpl_wrapper
 
     def execute_unsafe_block(self, node):
         """Execute an unsafe FFI block, suppressing runtime safety checks.
@@ -2618,171 +2581,152 @@ class Interpreter:
         def _fail(msg: str):
             raise AssertionError(msg)
 
-        # ------------------------------------------------------------------
         # raise_error is special: must NOT pre-evaluate the expression so
         # that we can catch exceptions thrown by the expression itself.
-        # ------------------------------------------------------------------
         if matcher == "raise_error":
-            raised = False
-            raised_exc = None
-            try:
-                self.execute(node.actual_expr)
-            except AssertionError:
-                raised = True
-                raised_exc = None  # assertion failures are not "raised errors"
-            except Exception as exc:
-                raised = True
-                raised_exc = exc
-            if negated:
-                if raised:
-                    exc_info = f"{type(raised_exc).__name__}: {raised_exc}" if raised_exc else "AssertionError"
-                    _fail(f"Expected expression not to raise an error, but got: {exc_info}")
-            else:
-                if not raised:
-                    _fail("Expected expression to raise an error, but it did not raise")
-            return None
+            return self._execute_expect_raise_error(node, negated, _fail)
 
-        # ------------------------------------------------------------------
-        # All other matchers: evaluate the actual expression first.
-        # ------------------------------------------------------------------
         actual = self.execute(node.actual_expr)
 
-        if matcher == "equal":
+        if matcher in ("be_true", "be_false", "be_null", "be_empty"):
+            self._execute_expect_unary_matcher(matcher, negated, actual, _fail)
+        elif matcher == "approximately_equal":
+            self._execute_expect_approximate(negated, actual, node, _fail)
+        elif matcher == "be_of_type":
             expected = self.execute(node.expected_expr)
-            passed = (actual == expected)
-            if negated:
-                passed = not passed
-            if not passed:
-                if negated:
-                    _fail(f"Expected {actual!r} not to equal {expected!r}")
-                else:
-                    _fail(f"Expected {actual!r} to equal {expected!r}")
-
-        elif matcher == "greater_than":
+            self._execute_expect_type_check(negated, actual, expected, _fail)
+        elif matcher in (
+            "equal", "greater_than", "less_than", "greater_than_or_equal_to",
+            "less_than_or_equal_to", "contain", "have_length", "start_with", "end_with",
+        ):
             expected = self.execute(node.expected_expr)
-            passed = (actual > expected)
-            if negated:
-                passed = not passed
-            if not passed:
-                qual = "not " if negated else ""
-                _fail(f"Expected {actual!r} {qual}to be greater than {expected!r}")
+            self._execute_expect_comparison_matcher(matcher, negated, actual, expected, _fail)
+        else:
+            raise RuntimeError(f"Unknown expect matcher: {matcher!r}")
 
-        elif matcher == "less_than":
-            expected = self.execute(node.expected_expr)
-            passed = (actual < expected)
-            if negated:
-                passed = not passed
-            if not passed:
-                qual = "not " if negated else ""
-                _fail(f"Expected {actual!r} {qual}to be less than {expected!r}")
+        return None
 
-        elif matcher == "greater_than_or_equal_to":
-            expected = self.execute(node.expected_expr)
-            passed = (actual >= expected)
-            if negated:
-                passed = not passed
-            if not passed:
-                qual = "not " if negated else ""
-                _fail(f"Expected {actual!r} {qual}to be >= {expected!r}")
+    def _execute_expect_raise_error(self, node, negated: bool, _fail) -> None:
+        """Handle the 'raise_error' expect matcher."""
+        raised = False
+        raised_exc = None
+        try:
+            self.execute(node.actual_expr)
+        except AssertionError:
+            raised = True
+            raised_exc = None  # assertion failures are not "raised errors"
+        except Exception as exc:
+            raised = True
+            raised_exc = exc
+        if negated:
+            if raised:
+                exc_info = f"{type(raised_exc).__name__}: {raised_exc}" if raised_exc else "AssertionError"
+                _fail(f"Expected expression not to raise an error, but got: {exc_info}")
+        else:
+            if not raised:
+                _fail("Expected expression to raise an error, but it did not raise")
 
-        elif matcher == "less_than_or_equal_to":
-            expected = self.execute(node.expected_expr)
-            passed = (actual <= expected)
-            if negated:
-                passed = not passed
-            if not passed:
-                qual = "not " if negated else ""
-                _fail(f"Expected {actual!r} {qual}to be <= {expected!r}")
-
-        elif matcher == "contain":
-            expected = self.execute(node.expected_expr)
-            try:
-                passed = (expected in actual)
-            except TypeError:
-                passed = False
-            if negated:
-                passed = not passed
-            if not passed:
-                qual = "not " if negated else ""
-                _fail(f"Expected {actual!r} {qual}to contain {expected!r}")
-
-        elif matcher == "be_true":
+    def _execute_expect_unary_matcher(self, matcher: str, negated: bool, actual, _fail) -> None:
+        """Handle matchers that do not require an expected value."""
+        if matcher == "be_true":
             passed = bool(actual)
-            if negated:
-                passed = not passed
-            if not passed:
-                qual = "not " if negated else ""
-                _fail(f"Expected {actual!r} {qual}to be true")
-
         elif matcher == "be_false":
             passed = not bool(actual)
-            if negated:
-                passed = not passed
-            if not passed:
-                qual = "not " if negated else ""
-                _fail(f"Expected {actual!r} {qual}to be false")
-
         elif matcher == "be_null":
-            passed = (actual is None)
-            if negated:
-                passed = not passed
-            if not passed:
-                qual = "not " if negated else ""
-                _fail(f"Expected value {qual}to be null, got {actual!r}")
-
-        elif matcher == "approximately_equal":
-            expected = self.execute(node.expected_expr)
-            if node.tolerance_expr is not None:
-                tolerance = self.execute(node.tolerance_expr)
-            else:
-                tolerance = 1e-9
-            try:
-                passed = abs(actual - expected) <= tolerance
-            except TypeError:
-                passed = False
-            if negated:
-                passed = not passed
-            if not passed:
-                qual = "not " if negated else ""
-                _fail(
-                    f"Expected {actual!r} {qual}to be approximately equal to "
-                    f"{expected!r} within {tolerance!r}"
-                )
-
+            passed = actual is None
         elif matcher == "be_empty":
             try:
                 passed = len(actual) == 0
             except TypeError:
                 passed = False
-            if negated:
-                passed = not passed
-            if not passed:
-                qual = "not " if negated else ""
+        else:
+            raise RuntimeError(f"Unknown unary matcher: {matcher!r}")
+
+        if negated:
+            passed = not passed
+        if not passed:
+            qual = "not " if negated else ""
+            if matcher == "be_null":
+                _fail(f"Expected value {qual}to be null, got {actual!r}")
+            elif matcher == "be_empty":
                 length = len(actual) if hasattr(actual, "__len__") else "?"
                 _fail(
                     f"Expected value {qual}to be empty"
                     + (f", but it has {length} element(s)" if not negated else "")
                 )
+            else:
+                _fail(f"Expected {actual!r} {qual}to be {matcher.replace('_', ' ')}")
 
+    def _execute_expect_approximate(self, negated: bool, actual, node, _fail) -> None:
+        """Handle the 'approximately_equal' expect matcher."""
+        expected = self.execute(node.expected_expr)
+        tolerance = self.execute(node.tolerance_expr) if node.tolerance_expr is not None else 1e-9
+        try:
+            passed = abs(actual - expected) <= tolerance
+        except TypeError:
+            passed = False
+        if negated:
+            passed = not passed
+        if not passed:
+            qual = "not " if negated else ""
+            _fail(
+                f"Expected {actual!r} {qual}to be approximately equal to "
+                f"{expected!r} within {tolerance!r}"
+            )
+
+    def _execute_expect_type_check(self, negated: bool, actual, expected, _fail) -> None:
+        """Handle the 'be_of_type' expect matcher."""
+        type_name = str(expected).lower()
+        _TYPE_MAP = {
+            "integer": int, "int": int,
+            "float": float, "number": (int, float),
+            "string": str, "str": str,
+            "boolean": bool, "bool": bool,
+            "list": list, "array": list,
+            "dict": dict, "dictionary": dict, "map": dict,
+            "none": type(None), "null": type(None),
+        }
+        expected_type = _TYPE_MAP.get(type_name)
+        if expected_type is not None:
+            passed = isinstance(actual, expected_type)
+        else:
+            passed = type(actual).__name__.lower() == type_name
+        if negated:
+            passed = not passed
+        if not passed:
+            actual_type = type(actual).__name__
+            qual = "not " if negated else ""
+            _fail(
+                f"Expected value of type {expected!r}, but got {actual_type!r}"
+                if not negated
+                else f"Expected value {qual}to be of type {expected!r}, but it is {actual_type!r}"
+            )
+
+    def _execute_expect_comparison_matcher(self, matcher: str, negated: bool, actual, expected, _fail) -> None:
+        """Handle comparison expect matchers that require an expected value."""
+        if matcher == "equal":
+            passed = actual == expected
+        elif matcher == "greater_than":
+            passed = actual > expected
+        elif matcher == "less_than":
+            passed = actual < expected
+        elif matcher == "greater_than_or_equal_to":
+            passed = actual >= expected
+        elif matcher == "less_than_or_equal_to":
+            passed = actual <= expected
+        elif matcher == "contain":
+            try:
+                passed = expected in actual
+            except TypeError:
+                passed = False
         elif matcher == "have_length":
-            expected = self.execute(node.expected_expr)
             try:
                 actual_len = len(actual)
                 passed = actual_len == expected
             except TypeError:
                 passed = False
                 actual_len = None
-            if negated:
-                passed = not passed
-            if not passed:
-                qual = "not " if negated else ""
-                _fail(
-                    f"Expected value {qual}to have length {expected!r}"
-                    + (f", but it has length {actual_len!r}" if actual_len is not None else "")
-                )
-
         elif matcher == "start_with":
-            expected = self.execute(node.expected_expr)
             try:
                 if isinstance(actual, str):
                     passed = actual.startswith(str(expected))
@@ -2792,14 +2736,7 @@ class Interpreter:
                     passed = False
             except Exception:
                 passed = False
-            if negated:
-                passed = not passed
-            if not passed:
-                qual = "not " if negated else ""
-                _fail(f"Expected {actual!r} {qual}to start with {expected!r}")
-
         elif matcher == "end_with":
-            expected = self.execute(node.expected_expr)
             try:
                 if isinstance(actual, str):
                     passed = actual.endswith(str(expected))
@@ -2809,45 +2746,35 @@ class Interpreter:
                     passed = False
             except Exception:
                 passed = False
-            if negated:
-                passed = not passed
-            if not passed:
-                qual = "not " if negated else ""
-                _fail(f"Expected {actual!r} {qual}to end with {expected!r}")
-
-        elif matcher == "be_of_type":
-            expected = self.execute(node.expected_expr)
-            type_name = str(expected).lower()
-            _TYPE_MAP = {
-                "integer": int, "int": int,
-                "float": float, "number": (int, float),
-                "string": str, "str": str,
-                "boolean": bool, "bool": bool,
-                "list": list, "array": list,
-                "dict": dict, "dictionary": dict, "map": dict,
-                "none": type(None), "null": type(None),
-            }
-            expected_type = _TYPE_MAP.get(type_name)
-            if expected_type is not None:
-                passed = isinstance(actual, expected_type)
-            else:
-                # Fall back to matching against the actual type name
-                passed = type(actual).__name__.lower() == type_name
-            if negated:
-                passed = not passed
-            if not passed:
-                actual_type = type(actual).__name__
-                qual = "not " if negated else ""
-                _fail(
-                    f"Expected value of type {expected!r}, but got {actual_type!r}"
-                    if not negated
-                    else f"Expected value {qual}to be of type {expected!r}, but it is {actual_type!r}"
-                )
-
         else:
-            raise RuntimeError(f"Unknown expect matcher: {matcher!r}")
+            raise RuntimeError(f"Unknown comparison matcher: {matcher!r}")
 
-        return None
+        if negated:
+            passed = not passed
+        if not passed:
+            qual = "not " if negated else ""
+            if matcher == "have_length":
+                actual_len = len(actual) if hasattr(actual, "__len__") else None
+                _fail(
+                    f"Expected value {qual}to have length {expected!r}"
+                    + (f", but it has length {actual_len!r}" if actual_len is not None else "")
+                )
+            elif matcher in ("equal",):
+                if negated:
+                    _fail(f"Expected {actual!r} not to equal {expected!r}")
+                else:
+                    _fail(f"Expected {actual!r} to equal {expected!r}")
+            else:
+                verb = {
+                    "greater_than": "greater than",
+                    "less_than": "less than",
+                    "greater_than_or_equal_to": ">=",
+                    "less_than_or_equal_to": "<=",
+                    "contain": "contain",
+                    "start_with": "start with",
+                    "end_with": "end with",
+                }.get(matcher, matcher)
+                _fail(f"Expected {actual!r} {qual}to be {verb} {expected!r}")
 
     # ------------------------------------------------------------------
     # Contract programming (require / ensure / guarantee)
@@ -3522,7 +3449,6 @@ class Interpreter:
         # Evaluate named arguments
         named_args = {}
         if hasattr(node, 'named_arguments') and node.named_arguments:
-            # Defensive: ensure named_arguments is a dict
             if isinstance(node.named_arguments, dict):
                 for param_name, arg_expr in node.named_arguments.items():
                     named_args[param_name] = self.execute(arg_expr)
@@ -3534,13 +3460,10 @@ class Interpreter:
         
         # If function_name is already a callable (function value), call it directly
         if callable(function_name):
-            # Python functions - pass positional and kwargs
             return function_name(*positional_args, **named_args)
         
         # Handle expressions that evaluate to callables (e.g., function pointers)
-        # Check if function_name is actually an expression node
         if not isinstance(function_name, str):
-            # It's an expression - evaluate it to get the callable
             func_value = self.execute(function_name)
             if callable(func_value):
                 return func_value(*positional_args, **named_args)
@@ -3551,151 +3474,28 @@ class Interpreter:
                     full_source=self.source,
                 )
         
-        # Check if function_name is a variable holding a callable (e.g., closure, function reference)
-        # This enables: block() where block is a variable containing a closure
-        # Use get_variable_or_none to avoid expensive NLPLNameError + difflib on every miss;
-        # the name-not-found case is normal here (most calls go to functions, not variables).
+        # Check if function_name is a variable holding a callable
         _var_value = self.get_variable_or_none(function_name)
         if _var_value is not None and callable(_var_value):
             return _var_value(*positional_args, **named_args)
-        # If _var_value is not None but not callable, fall through (e.g. int stored under same name)
         
         # Handle module.function calls (function_name contains a dot)
         if '.' in function_name:
-            parts = function_name.split('.')
-            if len(parts) == 2:
-                module_name, member_name = parts
-                # Use get_variable_or_none: module might not be a local variable at all
-                # (e.g. it could be a runtime-registered module name) — no error construction on miss.
-                module = self.get_variable_or_none(module_name)
-                if module is not None:
-                    if hasattr(module, member_name):
-                        func = getattr(module, member_name)
-                        if callable(func):
-                            return func(*positional_args, **named_args)
-                        else:
-                            raise NLPLTypeError(
-                                f"{module_name}.{member_name} is not callable",
-                                error_type_key="function_call_error",
-                                full_source=self.source,
-                            )
-                    else:
-                        raise AttributeError(f"Module '{module_name}' has no attribute '{member_name}'")
+            result = self._execute_module_function_call(function_name, positional_args, named_args)
+            if result is not None or '.' in function_name:
+                return result
         
         # Check for built-in functions in the runtime
         if function_name in self.runtime.functions:
-            import inspect
-            func = self.runtime.functions[function_name]
-            sig = inspect.signature(func)
-            params = list(sig.parameters.keys())
-            
-            # Check if first parameter is 'runtime' - if so, inject it
-            if params and params[0] == 'runtime':
-                positional_args = [self.runtime] + list(positional_args)
-            
-            # For runtime functions, we need to handle named args manually
-            # since most Python stdlib functions don't accept them by name
-            if named_args:
-                # Try calling with kwargs first
-                try:
-                    return func(*positional_args, **named_args)
-                except TypeError:
-                    # Fall back to positional-only if kwargs not supported
-                    # This is for backward compatibility with existing functions
-                    all_args = list(positional_args) + list(named_args.values())
-                    return func(*all_args)
-            else:
-                return func(*positional_args)
+            return self._execute_builtin_function_call(function_name, positional_args, named_args)
         
         # Check for user-defined functions
         if function_name in self.functions:
-            function_def = self.functions[function_name]
-            
-            # Combine positional and named arguments
-            args = self._resolve_function_arguments(
-                function_def, 
-                positional_args, 
-                named_args,
-                function_name
+            return self._execute_user_defined_function_call(
+                function_name, self.functions[function_name], positional_args, named_args
             )
-            
-            # Debugger hook: trace function call
-            if self.debugger:
-                local_vars = {param.name: args[i] if i < len(args) else None 
-                             for i, param in enumerate(function_def.parameters)}
-                self.debugger.trace_call(
-                    function_name,
-                    getattr(function_def, 'file', self.current_file or '<unknown>'),
-                    getattr(function_def, 'line', self.current_line or 0),
-                    local_vars
-                )
-            
-            # Create a new scope for the function
-            self.enter_scope()
-            
-            # Bind arguments to parameters
-            for i, param in enumerate(function_def.parameters):
-                if i < len(args):
-                    self.set_variable(param.name, args[i])
-                else:
-                    # Use default value if provided, otherwise None
-                    default_value = None
-                    if hasattr(param, 'default_value') and param.default_value:
-                        default_value = self.execute(param.default_value)
-                    self.set_variable(param.name, default_value)
-
-            # Separate ensure postconditions from the main function body.
-            # This lets us bind `result` and run old()-aware postconditions
-            # AFTER the body has fully executed.
-            from ..parser.ast import EnsureStatement as _EnsureStmt
-            main_body = [s for s in function_def.body
-                         if not isinstance(s, _EnsureStmt)]
-            ensure_stmts = [s for s in function_def.body
-                            if isinstance(s, _EnsureStmt)]
-
-            # Pre-call snapshot: evaluate every old(expr) sub-expression that
-            # appears in postconditions so we remember the pre-call values.
-            saved_old_values = self._old_values
-            self._old_values = {}
-            for _es in ensure_stmts:
-                for _old_node in self._collect_old_refs(_es.condition):
-                    self._old_values[id(_old_node)] = self.execute(_old_node.expr)
-                if _es.message_expr is not None:
-                    for _old_node in self._collect_old_refs(_es.message_expr):
-                        self._old_values[id(_old_node)] = self.execute(_old_node.expr)
-
-            # Execute the function body and postconditions
-            result = None
-            try:
-                try:
-                    for statement in main_body:
-                        result = self.execute(statement)
-                except ReturnException as ret:
-                    # Properly capture the return value
-                    result = ret.value
-
-                # Bind `result` variable so ensure postconditions can reference it
-                self.set_variable("result", result)
-
-                # Execute ensure postconditions with result in scope
-                for _es in ensure_stmts:
-                    self.execute(_es)
-
-            finally:
-                # Debugger hook: trace function return
-                if self.debugger:
-                    self.debugger.trace_return(function_name, result)
-
-                # Restore old_values from the enclosing call frame
-                self._old_values = saved_old_values
-
-                # Always clean up the function scope
-                self.exit_scope()
-            
-            return result
         
         # Try to get it as a variable (might be a function value stored after definition)
-        # Use get_variable_or_none to avoid NLPLNameError + difflib construction on miss.
         _func_value = self.get_variable_or_none(function_name)
         if _func_value is not None and callable(_func_value):
             return _func_value(*positional_args, **named_args)
@@ -3706,6 +3506,108 @@ class Interpreter:
             error_type_key="undefined_function",
             full_source=self.source,
         )
+
+    def _execute_module_function_call(self, function_name: str, positional_args, named_args):
+        """Handle ``module.function`` style calls. Returns the call result."""
+        parts = function_name.split('.')
+        if len(parts) == 2:
+            module_name, member_name = parts
+            module = self.get_variable_or_none(module_name)
+            if module is not None:
+                if hasattr(module, member_name):
+                    func = getattr(module, member_name)
+                    if callable(func):
+                        return func(*positional_args, **named_args)
+                    else:
+                        raise NLPLTypeError(
+                            f"{module_name}.{member_name} is not callable",
+                            error_type_key="function_call_error",
+                            full_source=self.source,
+                        )
+                else:
+                    raise AttributeError(f"Module '{module_name}' has no attribute '{member_name}'")
+        return None
+
+    def _execute_builtin_function_call(self, function_name: str, positional_args, named_args):
+        """Call a function registered in the runtime's built-in function table."""
+        import inspect
+        func = self.runtime.functions[function_name]
+        sig = inspect.signature(func)
+        params = list(sig.parameters.keys())
+        
+        if params and params[0] == 'runtime':
+            positional_args = [self.runtime] + list(positional_args)
+        
+        if named_args:
+            try:
+                return func(*positional_args, **named_args)
+            except TypeError:
+                all_args = list(positional_args) + list(named_args.values())
+                return func(*all_args)
+        else:
+            return func(*positional_args)
+
+    def _execute_user_defined_function_call(self, function_name: str, function_def, positional_args, named_args):
+        """Execute a user-defined NLPL function including contract postconditions."""
+        args = self._resolve_function_arguments(
+            function_def,
+            positional_args,
+            named_args,
+            function_name,
+        )
+        
+        if self.debugger:
+            local_vars = {param.name: args[i] if i < len(args) else None
+                         for i, param in enumerate(function_def.parameters)}
+            self.debugger.trace_call(
+                function_name,
+                getattr(function_def, 'file', self.current_file or '<unknown>'),
+                getattr(function_def, 'line', self.current_line or 0),
+                local_vars,
+            )
+        
+        self.enter_scope()
+        
+        for i, param in enumerate(function_def.parameters):
+            if i < len(args):
+                self.set_variable(param.name, args[i])
+            else:
+                default_value = None
+                if hasattr(param, 'default_value') and param.default_value:
+                    default_value = self.execute(param.default_value)
+                self.set_variable(param.name, default_value)
+        
+        from ..parser.ast import EnsureStatement as _EnsureStmt
+        main_body = [s for s in function_def.body if not isinstance(s, _EnsureStmt)]
+        ensure_stmts = [s for s in function_def.body if isinstance(s, _EnsureStmt)]
+        
+        saved_old_values = self._old_values
+        self._old_values = {}
+        for _es in ensure_stmts:
+            for _old_node in self._collect_old_refs(_es.condition):
+                self._old_values[id(_old_node)] = self.execute(_old_node.expr)
+            if _es.message_expr is not None:
+                for _old_node in self._collect_old_refs(_es.message_expr):
+                    self._old_values[id(_old_node)] = self.execute(_old_node.expr)
+        
+        result = None
+        try:
+            try:
+                for statement in main_body:
+                    result = self.execute(statement)
+            except ReturnException as ret:
+                result = ret.value
+            
+            self.set_variable("result", result)
+            for _es in ensure_stmts:
+                self.execute(_es)
+        finally:
+            if self.debugger:
+                self.debugger.trace_return(function_name, result)
+            self._old_values = saved_old_values
+            self.exit_scope()
+        
+        return result
     
     def _resolve_function_arguments(self, function_def, positional_args, named_args, function_name):
         """Resolve positional and named arguments into a single argument list.
@@ -4043,31 +3945,10 @@ class Interpreter:
         """
         class_name = node.class_name
         
-        # Handle built-in types
-        # Handle built-in types
-        if class_name == "List" or class_name.startswith("List ") or class_name.startswith("List<"):
-            return []
-        elif class_name == "Dictionary" or class_name.startswith("Dictionary ") or class_name.startswith("Map ") or class_name.startswith("Map<"):
-            return {}
-        elif "Array of" in class_name:
-            # Parse array size and element type: "Array of 10 Point"
-            parts = class_name.split()
-            if len(parts) >= 3:
-                try:
-                    size = int(parts[2])
-                    # Check if there's an element type (e.g., "Array of 10 Point")
-                    if len(parts) >= 4:
-                        element_type = parts[3]
-                        # If element type is a struct/class, initialize with instances
-                        if element_type in self.classes:
-                            return [self.execute(ObjectInstantiation(element_type, [], None)) for _ in range(size)]
-                    # Otherwise, return list with None elements
-                    return [None] * size
-                except ValueError:
-                    pass
-            return []
+        builtin = self._instantiate_builtin_type(class_name)
+        if builtin is not None:
+            return builtin
         
-        # Look up the class definition
         class_def = self.classes.get(class_name)
         if not class_def:
             from ..errors import NLPLNameError
@@ -4076,130 +3957,137 @@ class Interpreter:
                 line=node.line_number,
                 available_names=list(self.classes.keys()),
                 error_type_key="undefined_class",
-                full_source=self.source
+                full_source=self.source,
             )
-            
-        # Handle Generics: Check if this is a generic class instantiation
-        # Node has type_arguments: Box<Integer> -> type_arguments=['Integer']
-        type_args_map = {}
-        if hasattr(node, 'type_arguments') and node.type_arguments:
-            from ..errors import NLPLTypeError
-            if not hasattr(class_def, 'generic_parameters') or not class_def.generic_parameters:
-                raise NLPLTypeError(
-                    f"Class '{class_name}' is not generic but was given type arguments",
-                    line=getattr(node, 'line', None),
-                    column=getattr(node, 'column', None),
-                    error_type_key="invalid_generic_args",
-                    full_source=self.source
-                )
-            
-            if len(node.type_arguments) != len(class_def.generic_parameters):
-                raise NLPLTypeError(
-                    f"Class '{class_name}' expects {len(class_def.generic_parameters)} type arguments, got {len(node.type_arguments)}",
-                    line=getattr(node, 'line', None),
-                    column=getattr(node, 'column', None),
-                    error_type_key="invalid_generic_args",
-                    full_source=self.source
-                )
-            
-            # Map parameters T to arguments Integer
-            # class_def.generic_parameters is a list of TypeParameter nodes OR strings
-            # node.type_arguments is a list of type names or Type nodes (depending on parser)
-            
-            for param, arg in zip(class_def.generic_parameters, node.type_arguments):
-                # Param could be a TypeParameter node with .name, or just a string
-                if hasattr(param, 'name'):
-                    param_name = param.name
-                else:
-                    param_name = str(param)
-                
-                # Arg could be different depending on parser version. 
-                # Assuming simple strings for now based on current test.
-                # If complex type, it might be a node.
-                if hasattr(arg, 'name'):
-                    arg_name = arg.name
-                else:
-                    arg_name = str(arg)
-                    
-                type_args_map[param_name] = arg_name
-
-        # Handle Structs and Unions
+        
+        type_args_map = self._build_generic_type_args_map(class_def, node, class_name)
+        
         if isinstance(class_def, (RuntimeStructDefinition, RuntimeUnionDefinition)):
-            instance = StructureInstance(class_def)
-            
-            # Auto-initialize nested struct fields
-            if isinstance(class_def, RuntimeStructDefinition) and hasattr(class_def, '_original_fields'):
-                for field_name, type_name in class_def._original_fields:
-                    # Check if this field type is another struct
-                    if type_name in self.classes and isinstance(self.classes[type_name], RuntimeStructDefinition):
-                        # Create nested struct instance
-                        nested_instance = StructureInstance(self.classes[type_name])
-                        # Set it as the field value
-                        instance.set_field(field_name, nested_instance)
+            return self._instantiate_struct_or_union(class_def)
+        
+        return self._instantiate_regular_class(class_name, class_def, type_args_map)
 
-            # Wire up custom Drop for structs with a 'drop' method
-            if hasattr(class_def, 'methods'):
-                for m in class_def.methods:
-                    if getattr(m, 'name', None) == "drop":
-                        def _make_struct_drop(interp, drop_node):
-                            def _drop_fn(obj):
-                                interp.enter_scope()
-                                try:
-                                    interp.set_variable("self", obj)
-                                    body = getattr(drop_node, 'body', None) or []
-                                    for stmt in body:
-                                        interp.execute(stmt)
-                                finally:
-                                    interp.exit_scope()
-                            return _drop_fn
-                        instance._drop_method = _make_struct_drop(self, m)
-                        break
-            
-            return instance
+    def _instantiate_builtin_type(self, class_name: str):
+        """Return a new instance of a built-in collection type, or None if not recognised."""
+        if class_name == "List" or class_name.startswith("List ") or class_name.startswith("List<"):
+            return []
+        if class_name in ("Dictionary", "Map") or \
+                class_name.startswith("Dictionary ") or class_name.startswith("Map ") or \
+                class_name.startswith("Map<"):
+            return {}
+        if "Array of" in class_name:
+            parts = class_name.split()
+            if len(parts) >= 3:
+                try:
+                    size = int(parts[2])
+                    if len(parts) >= 4:
+                        element_type = parts[3]
+                        if element_type in self.classes:
+                            return [
+                                self.execute(ObjectInstantiation(element_type, [], None))
+                                for _ in range(size)
+                            ]
+                    return [None] * size
+                except ValueError:
+                    pass
+            return []
+        return None
 
-        # Regular Class Instantiation
-        # Create a new object instance
+    def _build_generic_type_args_map(self, class_def, node, class_name: str) -> dict:
+        """Build a mapping from generic parameter names to concrete type names from *node*."""
+        type_args_map = {}
+        if not (hasattr(node, 'type_arguments') and node.type_arguments):
+            return type_args_map
+        
+        from ..errors import NLPLTypeError
+        if not hasattr(class_def, 'generic_parameters') or not class_def.generic_parameters:
+            raise NLPLTypeError(
+                f"Class '{class_name}' is not generic but was given type arguments",
+                line=getattr(node, 'line', None),
+                column=getattr(node, 'column', None),
+                error_type_key="invalid_generic_args",
+                full_source=self.source,
+            )
+        if len(node.type_arguments) != len(class_def.generic_parameters):
+            raise NLPLTypeError(
+                f"Class '{class_name}' expects {len(class_def.generic_parameters)} type arguments, "
+                f"got {len(node.type_arguments)}",
+                line=getattr(node, 'line', None),
+                column=getattr(node, 'column', None),
+                error_type_key="invalid_generic_args",
+                full_source=self.source,
+            )
+        
+        for param, arg in zip(class_def.generic_parameters, node.type_arguments):
+            param_name = param.name if hasattr(param, 'name') else str(param)
+            arg_name = arg.name if hasattr(arg, 'name') else str(arg)
+            type_args_map[param_name] = arg_name
+        
+        return type_args_map
+
+    def _instantiate_struct_or_union(self, class_def):
+        """Create and return a StructureInstance, wiring up the drop method if defined."""
+        instance = StructureInstance(class_def)
+        
+        if isinstance(class_def, RuntimeStructDefinition) and hasattr(class_def, '_original_fields'):
+            for field_name, type_name in class_def._original_fields:
+                if type_name in self.classes and isinstance(self.classes[type_name], RuntimeStructDefinition):
+                    nested_instance = StructureInstance(self.classes[type_name])
+                    instance.set_field(field_name, nested_instance)
+        
+        if hasattr(class_def, 'methods'):
+            for m in class_def.methods:
+                if getattr(m, 'name', None) == "drop":
+                    def _make_struct_drop(interp, drop_node):
+                        def _drop_fn(obj):
+                            interp.enter_scope()
+                            try:
+                                interp.set_variable("self", obj)
+                                for stmt in (getattr(drop_node, 'body', None) or []):
+                                    interp.execute(stmt)
+                            finally:
+                                interp.exit_scope()
+                        return _drop_fn
+                    instance._drop_method = _make_struct_drop(self, m)
+                    break
+        
+        return instance
+
+    def _instantiate_regular_class(self, class_name: str, class_def, type_args_map: dict):
+        """Create and return a regular (non-struct) class instance."""
         instance = self.runtime.create_object(class_name, type_arguments=type_args_map)
         
-        # Initialize class properties
         if hasattr(class_def, 'properties'):
             for prop in class_def.properties:
                 instance.set_property(prop.name, None)
         
-        # Store methods
         if hasattr(class_def, 'methods'):
             for method in class_def.methods:
                 instance.add_method(method.name, method)
-
-        # Add derived methods generated by @derive decorator
+        
         if hasattr(class_def, '_derived_methods'):
             for mname, mcallable in class_def._derived_methods.items():
                 instance.add_method(mname, mcallable)
-
-        # Wire up custom Drop: if the class defines a 'drop' method, store
-        # a callable so exit_scope() can invoke it automatically (RAII).
+        
         if "drop" in instance.methods:
             drop_ast = instance.methods["drop"]
-            # Create a closure that executes the drop method body
             def _make_drop(interp, drop_node):
                 def _drop_fn(obj):
                     interp.enter_scope()
                     try:
                         interp.set_variable("self", obj)
-                        body = getattr(drop_node, 'body', None) or []
-                        for stmt in body:
+                        for stmt in (getattr(drop_node, 'body', None) or []):
                             interp.execute(stmt)
                     finally:
                         interp.exit_scope()
                 return _drop_fn
             instance._drop_method = _make_drop(self, drop_ast)
-
-        # Singleton support: return existing instance if @singleton class
+        
         if getattr(class_def, '_is_singleton', False):
             if class_def._singleton_instance is None:
                 class_def._singleton_instance = instance
             return class_def._singleton_instance
-                
+        
         return instance
     
     def execute_member_access(self, node):
