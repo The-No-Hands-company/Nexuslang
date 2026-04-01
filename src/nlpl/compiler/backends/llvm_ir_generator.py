@@ -4681,6 +4681,54 @@ class LLVMIRGenerator(CodeGenerator):
             # C-style for loop (legacy)
             self._generate_c_style_for_loop(node, indent)
     
+    def _detect_step_direction(self, step_node, indent=''):
+        """Analyze the step AST node and return (step_is_literal, step_value, step_reg).
+
+        Returns:
+            step_is_literal: True if step direction is known at compile time
+            step_value: integer value of the step (used when step_is_literal is True)
+            step_reg: LLVM register or literal string for the step value
+        """
+        step_is_literal = False
+        step_value = 1
+        step_reg = None
+
+        if step_node is not None:
+            # Check if step is a literal to determine direction at compile time
+            if type(step_node).__name__ == 'Literal' and isinstance(step_node.value, int):
+                step_is_literal = True
+                step_value = step_node.value
+            # Check if step is a unary minus on a literal (e.g., -2)
+            elif type(step_node).__name__ == 'UnaryOperation':
+                if hasattr(step_node, 'operator') and hasattr(step_node, 'operand'):
+                    op = step_node.operator
+                    # Extract operator string
+                    if hasattr(op, 'lexeme'):
+                        op_str = op.lexeme
+                    elif hasattr(op, 'type') and hasattr(op.type, 'name'):
+                        op_str = op.type.name.lower()
+                    else:
+                        op_str = str(op)
+
+                    # Check if it's negation of a literal
+                    if op_str in ('-', 'minus', 'negate'):
+                        if type(step_node.operand).__name__ == 'Literal' and isinstance(step_node.operand.value, int):
+                            step_is_literal = True
+                            step_value = -step_node.operand.value
+
+            # Generate step expression code
+            # For literal negatives, use the negated value directly to avoid runtime sub
+            if step_is_literal and step_value < 0:
+                step_reg = str(step_value)  # LLVM accepts negative integer literals
+            else:
+                step_reg = self._generate_expression(step_node, indent)
+        else:
+            step_reg = '1'
+            step_is_literal = True
+            step_value = 1
+
+        return step_is_literal, step_value, step_reg
+
     def _generate_range_for_loop(self, node, indent=''):
         """
         Generate range-based for loop: for i from start to end [by step]
@@ -4702,43 +4750,8 @@ class LLVMIRGenerator(CodeGenerator):
         
         # Step defaults to 1 if not provided
         # NO SHORTCUTS - Detect compile-time step value BEFORE code generation
-        step_reg = None
-        step_is_literal = False
-        step_value = 1
-        
-        if hasattr(node, 'step') and node.step is not None:
-            # Check if step is a literal to determine direction at compile time
-            if type(node.step).__name__ == 'Literal' and isinstance(node.step.value, int):
-                step_is_literal = True
-                step_value = node.step.value
-            # Check if step is a unary minus on a literal (e.g., -2)
-            elif type(node.step).__name__ == 'UnaryOperation':
-                if hasattr(node.step, 'operator') and hasattr(node.step, 'operand'):
-                    op = node.step.operator
-                    # Extract operator string
-                    if hasattr(op, 'lexeme'):
-                        op_str = op.lexeme
-                    elif hasattr(op, 'type') and hasattr(op.type, 'name'):
-                        op_str = op.type.name.lower()
-                    else:
-                        op_str = str(op)
-                    
-                    # Check if it's negation of a literal
-                    if op_str in ('-', 'minus', 'negate'):
-                        if type(node.step.operand).__name__ == 'Literal' and isinstance(node.step.operand.value, int):
-                            step_is_literal = True
-                            step_value = -node.step.operand.value
-            
-            # Generate step expression code
-            # For literal negatives, use the negated value directly to avoid runtime sub
-            if step_is_literal and step_value < 0:
-                step_reg = str(step_value)  # LLVM accepts negative integer literals
-            else:
-                step_reg = self._generate_expression(node.step, indent)
-        else:
-            step_reg = '1'
-            step_is_literal = True
-            step_value = 1
+        step_node = node.step if hasattr(node, 'step') else None
+        step_is_literal, step_value, step_reg = self._detect_step_direction(step_node, indent)
         
         # Allocate iterator variable
         iter_alloca = self._new_temp()
@@ -7535,6 +7548,27 @@ class LLVMIRGenerator(CodeGenerator):
         self.emit(f'{indent}{env_ptr_i8} = bitcast {env_struct_type}* {env_ptr} to i8*')
         return env_ptr_i8
     
+    def _generate_comprehension_append(self, expr_node, count_ptr, result_list, max_size, indent):
+        """Evaluate expr_node, store the result into result_list at the current count, then
+        increment count_ptr by 1.  This is the common 'append one element' pattern shared by
+        the conditional and unconditional paths in list comprehension generation."""
+        # Evaluate the comprehension expression
+        expr_val = self._generate_expression(expr_node, indent)
+
+        # Get current count
+        count_val = self._new_temp()
+        self.emit(f'{indent}{count_val} = load i64, i64* {count_ptr}, align 8')
+
+        # Store in result array
+        elem_ptr = self._new_temp()
+        self.emit(f'{indent}{elem_ptr} = getelementptr inbounds [{max_size} x i64], [{max_size} x i64]* {result_list}, i64 0, i64 {count_val}')
+        self.emit(f'{indent}store i64 {expr_val}, i64* {elem_ptr}, align 8')
+
+        # Increment count
+        new_count = self._new_temp()
+        self.emit(f'{indent}{new_count} = add i64 {count_val}, 1')
+        self.emit(f'{indent}store i64 {new_count}, i64* {count_ptr}, align 8')
+
     def _generate_list_comprehension_expression(self, expr, indent='') -> str:
         """
         Generate list comprehension: [expr for target in iterable if condition]
@@ -7691,42 +7725,13 @@ class LLVMIRGenerator(CodeGenerator):
             self.emit(f'{indent}    br i1 {cond_reg}, label %{append_label}, label %{skip_label}')
             self.emit(f'{append_label}:')
             
-            # Evaluate expression and append
-            expr_val = self._generate_expression(expr.expr, indent + '      ')
-            
-            # Get current count
-            count_val = self._new_temp()
-            self.emit(f'{indent}      {count_val} = load i64, i64* {count_ptr}, align 8')
-            
-            # Store in result array
-            elem_ptr = self._new_temp()
-            self.emit(f'{indent}      {elem_ptr} = getelementptr inbounds [{max_size} x i64], [{max_size} x i64]* {result_list}, i64 0, i64 {count_val}')
-            self.emit(f'{indent}      store i64 {expr_val}, i64* {elem_ptr}, align 8')
-            
-            # Increment count
-            new_count = self._new_temp()
-            self.emit(f'{indent}      {new_count} = add i64 {count_val}, 1')
-            self.emit(f'{indent}      store i64 {new_count}, i64* {count_ptr}, align 8')
+            self._generate_comprehension_append(expr.expr, count_ptr, result_list, max_size, indent + '      ')
             
             self.emit(f'{indent}      br label %{skip_label}')
             self.emit(f'{skip_label}:')
         else:
             # No condition - always append
-            expr_val = self._generate_expression(expr.expr, indent + '    ')
-            
-            # Get current count
-            count_val = self._new_temp()
-            self.emit(f'{indent}    {count_val} = load i64, i64* {count_ptr}, align 8')
-            
-            # Store in result array
-            elem_ptr = self._new_temp()
-            self.emit(f'{indent}    {elem_ptr} = getelementptr inbounds [{max_size} x i64], [{max_size} x i64]* {result_list}, i64 0, i64 {count_val}')
-            self.emit(f'{indent}    store i64 {expr_val}, i64* {elem_ptr}, align 8')
-            
-            # Increment count
-            new_count = self._new_temp()
-            self.emit(f'{indent}    {new_count} = add i64 {count_val}, 1')
-            self.emit(f'{indent}    store i64 {new_count}, i64* {count_ptr}, align 8')
+            self._generate_comprehension_append(expr.expr, count_ptr, result_list, max_size, indent + '    ')
         
         # Restore local vars (remove target variable)
         self.local_vars = saved_local_vars
@@ -8999,6 +9004,119 @@ class LLVMIRGenerator(CodeGenerator):
         
         return '0'
     
+    def _generate_arrpush_call(self, args, indent='') -> str:
+        """Generate code for the arrpush(array, elem) built-in.
+
+        Handles:
+        - Looking up array size (compile-time alloca vs runtime)
+        - Handling i8-variant arrays (i1/i8 element types)
+        - Calling the right LLVM function
+        - Updating array size tracking and storing the new pointer
+        """
+        if len(args) < 2:
+            raise ValueError("arrpush requires 2 arguments: array, element")
+        
+        arr_reg = self._generate_expression(args[0], indent)
+        elem_reg = self._generate_expression(args[1], indent)
+        
+        # Get array size (compile-time or runtime)
+        arr_size = 0
+        arr_size_reg = None
+        arr_name = None
+        
+        if type(args[0]).__name__ == 'Identifier':
+            arr_name = args[0].name
+            if arr_name in self.array_size_allocas:
+                # Already has a persistent size alloca - load current size from it
+                size_alloca = self.array_size_allocas[arr_name]
+                arr_size_reg = self._new_temp()
+                self.emit(f'{indent}{arr_size_reg} = load i64, i64* {size_alloca}, align 8')
+            elif arr_name in self.array_sizes:
+                # First append to a compile-time-sized array.
+                # Create a persistent size alloca in the function entry block so it
+                # dominates all uses (including later iterations of loop bodies).
+                initial_size = self.array_sizes[arr_name]
+                size_alloca = f'%{arr_name}_size_alloca'
+                # Insert alloca + initial store into the entry block so the alloca
+                # dominates its uses regardless of which loop/block calls arrpush first.
+                entry_lines = [
+                    f'  {size_alloca} = alloca i64, align 8',
+                    f'  store i64 {initial_size}, i64* {size_alloca}, align 8',
+                ]
+                for offset, line in enumerate(entry_lines):
+                    self.ir_lines.insert(self.entry_block_end_idx + offset, line)
+                self.entry_block_end_idx += len(entry_lines)
+                self.array_size_allocas[arr_name] = size_alloca
+                # Remove from static tracking; bounds check will use alloca going forward
+                del self.array_sizes[arr_name]
+                arr_size_reg = self._new_temp()
+                self.emit(f'{indent}{arr_size_reg} = load i64, i64* {size_alloca}, align 8')
+            elif arr_name in self.runtime_array_sizes:
+                # Runtime size - use it directly
+                arr_size_reg = self.runtime_array_sizes[arr_name]
+        
+        # Determine if this is a byte-sized array (i1/i8 booleans/chars)
+        # that needs arrpush_i8 instead of arrpush (which uses i64 strides).
+        arr_elem_type = 'i64'  # default
+        arr_ptr_type = 'i64*'  # default
+        if arr_name and arr_name in self.local_vars:
+            arr_var_type, _ = self.local_vars[arr_name]
+            arr_ptr_type = arr_var_type  # e.g. 'i1*' or 'i64*'
+            arr_elem_type = arr_var_type[:-1] if arr_var_type.endswith('*') else 'i64'
+        
+        use_i8_variant = arr_elem_type in ('i1', 'i8')
+        
+        if use_i8_variant:
+            # Convert element to i8, bitcast array ptr to i8*
+            arr_i8_reg = self._new_temp()
+            self.emit(f'{indent}{arr_i8_reg} = bitcast {arr_ptr_type} {arr_reg} to i8*')
+            elem_i8_reg = self._new_temp()
+            if arr_elem_type == 'i1':
+                self.emit(f'{indent}{elem_i8_reg} = zext i1 {elem_reg} to i8')
+            else:
+                self.emit(f'{indent}{elem_i8_reg} = and i8 {elem_reg}, {elem_reg}  ; noop, keep as i8')
+            result_i8 = self._new_temp()
+            if arr_size_reg:
+                self.emit(f'{indent}{result_i8} = call i8* @arrpush_i8(i8* {arr_i8_reg}, i64 {arr_size_reg}, i8 {elem_i8_reg})')
+            else:
+                self.emit(f'{indent}{result_i8} = call i8* @arrpush_i8(i8* {arr_i8_reg}, i64 {arr_size}, i8 {elem_i8_reg})')
+            # Bitcast result back to original element pointer type
+            result_reg = self._new_temp()
+            self.emit(f'{indent}{result_reg} = bitcast i8* {result_i8} to {arr_ptr_type}')
+        elif arr_size_reg:
+            # Use runtime/alloca size with i64 variant
+            result_reg = self._new_temp()
+            self.emit(f'{indent}{result_reg} = call i64* @arrpush(i64* {arr_reg}, i64 {arr_size_reg}, i64 {elem_reg})')
+        else:
+            # Use compile-time size (no arr_name tracking, or arr_name not tracked)
+            result_reg = self._new_temp()
+            self.emit(f'{indent}{result_reg} = call i64* @arrpush(i64* {arr_reg}, i64 {arr_size}, i64 {elem_reg})')
+        
+        # Update array size and store new pointer
+        if arr_name:
+            if arr_name in self.array_size_allocas:
+                # Update persistent size alloca: size += 1
+                size_alloca = self.array_size_allocas[arr_name]
+                new_size_reg = self._new_temp()
+                self.emit(f'{indent}{new_size_reg} = add i64 {arr_size_reg}, 1')
+                self.emit(f'{indent}store i64 {new_size_reg}, i64* {size_alloca}, align 8')
+                # Store new array pointer back into the variable's alloca
+                # so subsequent accesses (and bounds checks) use the grown array
+                if arr_name in self.local_vars:
+                    arr_type, arr_alloca = self.local_vars[arr_name]
+                    self.emit(f'{indent}store {arr_type} {result_reg}, {arr_type}* {arr_alloca}, align 8')
+            elif arr_name in self.array_sizes:
+                # Untouched compile-time array (no alloca created yet) - increment static size
+                self.array_sizes[arr_name] = arr_size + 1
+            elif arr_name in self.runtime_array_sizes:
+                # Update runtime size: new_size = old_size + 1
+                old_size_reg = self.runtime_array_sizes[arr_name]
+                new_size_reg = self._new_temp()
+                self.emit(f'{indent}{new_size_reg} = add i64 {old_size_reg}, 1')
+                self.runtime_array_sizes[arr_name] = new_size_reg
+        
+        return result_reg
+
     def _generate_array_function_call(self, func_name: str, expr, indent='') -> str:
         """Generate built-in array function calls."""
         args = expr.arguments if hasattr(expr, 'arguments') else []
@@ -9031,109 +9149,7 @@ class LLVMIRGenerator(CodeGenerator):
             # Also handles 'list_append' (append X to arr) which is the NLPL append statement.
             # Arrays grown via append get a persistent size alloca so their size is correct
             # across loop iterations.
-            if len(args) < 2:
-                raise ValueError("arrpush requires 2 arguments: array, element")
-            
-            arr_reg = self._generate_expression(args[0], indent)
-            elem_reg = self._generate_expression(args[1], indent)
-            
-            # Get array size (compile-time or runtime)
-            arr_size = 0
-            arr_size_reg = None
-            arr_name = None
-            
-            if type(args[0]).__name__ == 'Identifier':
-                arr_name = args[0].name
-                if arr_name in self.array_size_allocas:
-                    # Already has a persistent size alloca - load current size from it
-                    size_alloca = self.array_size_allocas[arr_name]
-                    arr_size_reg = self._new_temp()
-                    self.emit(f'{indent}{arr_size_reg} = load i64, i64* {size_alloca}, align 8')
-                elif arr_name in self.array_sizes:
-                    # First append to a compile-time-sized array.
-                    # Create a persistent size alloca in the function entry block so it
-                    # dominates all uses (including later iterations of loop bodies).
-                    initial_size = self.array_sizes[arr_name]
-                    size_alloca = f'%{arr_name}_size_alloca'
-                    # Insert alloca + initial store into the entry block so the alloca
-                    # dominates its uses regardless of which loop/block calls arrpush first.
-                    entry_lines = [
-                        f'  {size_alloca} = alloca i64, align 8',
-                        f'  store i64 {initial_size}, i64* {size_alloca}, align 8',
-                    ]
-                    for offset, line in enumerate(entry_lines):
-                        self.ir_lines.insert(self.entry_block_end_idx + offset, line)
-                    self.entry_block_end_idx += len(entry_lines)
-                    self.array_size_allocas[arr_name] = size_alloca
-                    # Remove from static tracking; bounds check will use alloca going forward
-                    del self.array_sizes[arr_name]
-                    arr_size_reg = self._new_temp()
-                    self.emit(f'{indent}{arr_size_reg} = load i64, i64* {size_alloca}, align 8')
-                elif arr_name in self.runtime_array_sizes:
-                    # Runtime size - use it directly
-                    arr_size_reg = self.runtime_array_sizes[arr_name]
-            
-            # Determine if this is a byte-sized array (i1/i8 booleans/chars)
-            # that needs arrpush_i8 instead of arrpush (which uses i64 strides).
-            arr_elem_type = 'i64'  # default
-            arr_ptr_type = 'i64*'  # default
-            if arr_name and arr_name in self.local_vars:
-                arr_var_type, _ = self.local_vars[arr_name]
-                arr_ptr_type = arr_var_type  # e.g. 'i1*' or 'i64*'
-                arr_elem_type = arr_var_type[:-1] if arr_var_type.endswith('*') else 'i64'
-            
-            use_i8_variant = arr_elem_type in ('i1', 'i8')
-            
-            if use_i8_variant:
-                # Convert element to i8, bitcast array ptr to i8*
-                arr_i8_reg = self._new_temp()
-                self.emit(f'{indent}{arr_i8_reg} = bitcast {arr_ptr_type} {arr_reg} to i8*')
-                elem_i8_reg = self._new_temp()
-                if arr_elem_type == 'i1':
-                    self.emit(f'{indent}{elem_i8_reg} = zext i1 {elem_reg} to i8')
-                else:
-                    self.emit(f'{indent}{elem_i8_reg} = and i8 {elem_reg}, {elem_reg}  ; noop, keep as i8')
-                result_i8 = self._new_temp()
-                if arr_size_reg:
-                    self.emit(f'{indent}{result_i8} = call i8* @arrpush_i8(i8* {arr_i8_reg}, i64 {arr_size_reg}, i8 {elem_i8_reg})')
-                else:
-                    self.emit(f'{indent}{result_i8} = call i8* @arrpush_i8(i8* {arr_i8_reg}, i64 {arr_size}, i8 {elem_i8_reg})')
-                # Bitcast result back to original element pointer type
-                result_reg = self._new_temp()
-                self.emit(f'{indent}{result_reg} = bitcast i8* {result_i8} to {arr_ptr_type}')
-            elif arr_size_reg:
-                # Use runtime/alloca size with i64 variant
-                result_reg = self._new_temp()
-                self.emit(f'{indent}{result_reg} = call i64* @arrpush(i64* {arr_reg}, i64 {arr_size_reg}, i64 {elem_reg})')
-            else:
-                # Use compile-time size (no arr_name tracking, or arr_name not tracked)
-                result_reg = self._new_temp()
-                self.emit(f'{indent}{result_reg} = call i64* @arrpush(i64* {arr_reg}, i64 {arr_size}, i64 {elem_reg})')
-            
-            # Update array size and store new pointer
-            if arr_name:
-                if arr_name in self.array_size_allocas:
-                    # Update persistent size alloca: size += 1
-                    size_alloca = self.array_size_allocas[arr_name]
-                    new_size_reg = self._new_temp()
-                    self.emit(f'{indent}{new_size_reg} = add i64 {arr_size_reg}, 1')
-                    self.emit(f'{indent}store i64 {new_size_reg}, i64* {size_alloca}, align 8')
-                    # Store new array pointer back into the variable's alloca
-                    # so subsequent accesses (and bounds checks) use the grown array
-                    if arr_name in self.local_vars:
-                        arr_type, arr_alloca = self.local_vars[arr_name]
-                        self.emit(f'{indent}store {arr_type} {result_reg}, {arr_type}* {arr_alloca}, align 8')
-                elif arr_name in self.array_sizes:
-                    # Untouched compile-time array (no alloca created yet) - increment static size
-                    self.array_sizes[arr_name] = arr_size + 1
-                elif arr_name in self.runtime_array_sizes:
-                    # Update runtime size: new_size = old_size + 1
-                    old_size_reg = self.runtime_array_sizes[arr_name]
-                    new_size_reg = self._new_temp()
-                    self.emit(f'{indent}{new_size_reg} = add i64 {old_size_reg}, 1')
-                    self.runtime_array_sizes[arr_name] = new_size_reg
-            
-            return result_reg
+            return self._generate_arrpush_call(args, indent)
         
         elif func_name == 'arrpop':
             # arrpop(array) -> new_array
