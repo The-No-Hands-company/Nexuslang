@@ -6619,26 +6619,43 @@ class LLVMIRGenerator(CodeGenerator):
         return errors
 
     def _collect_enum_definition(self, node):
-        """Collect enum definition and create integer constants for each member.
+        """Collect enum definition and create tagged union representation.
         
-        Enums in NLPL are compiled to integer constants. For example:
-            enum Color
-                Red      # = 0
-                Green    # = 1
-                Blue     # = 2
-            
-        Becomes global constants that can be accessed as Color.Red, Color.Green, etc.
+        Enums in NLPL can be:
+        1. Simple enums (integer constants):
+           enum Color { Red, Green, Blue }
+           
+        2. Tagged unions with associated data:
+           enum Result<T, E> { Ok(T), Err(E) }
+           
+        Compiled as:
+        - Simple enum: i64 constants  
+        - Tagged union: struct { i32 tag, union { ...variants... } data }
         """
         enum_name = node.name
         members = {}
+        has_associated_data = False
         
+        # Check if any variant has associated data
+        for member in node.members:
+            if hasattr(member, 'associated_types') and member.associated_types:
+                has_associated_data = True
+                break
+        
+        if not has_associated_data:
+            # Simple enum - compile as integer constants
+            self._collect_simple_enum(node, enum_name, members)
+        else:
+            # Tagged union - compile as struct with tag and union
+            self._collect_tagged_union_enum(node, enum_name)
+    
+    def _collect_simple_enum(self, node, enum_name, members):
+        """Collect simple enum without associated data as integer constants."""
         for member in node.members:
             # Extract the value from the Literal node
             if hasattr(member.value, 'value'):
-                # Explicit or auto-numbered value
                 value = member.value.value
             else:
-                # Should not happen as parser assigns auto values
                 value = 0
             
             members[member.name] = value
@@ -6647,11 +6664,175 @@ class LLVMIRGenerator(CodeGenerator):
         self.enum_types[enum_name] = members
         
         # Create global constants for each enum member
-        # These are defined as read-only integer constants
         for member_name, value in members.items():
-            # Define as global constant: @EnumName.MemberName = constant i64 value
             global_name = f'@{enum_name}.{member_name}'
             self.emit(f'{global_name} = private unnamed_addr constant i64 {value}, align 8')
+    
+    def _collect_tagged_union_enum(self, node, enum_name):
+        """Collect tagged union enum with associated data.
+        
+        Creates:
+        - Enum struct type: %EnumName = type { i32, %EnumName.Union }
+        - Union type containing all variant data
+        - Constructor functions for each variant
+        - Pattern matching helper functions
+        """
+        variants = []
+        variant_types = {}
+        
+        # Collect variant information
+        for i, member in enumerate(node.members):
+            variant_name = member.name
+            variant_tag = i
+            
+            # Get associated types
+            associated_types = []
+            if hasattr(member, 'associated_types') and member.associated_types:
+                for assoc_type in member.associated_types:
+                    llvm_type = self._map_nlpl_type_to_llvm(assoc_type)
+                    associated_types.append(llvm_type)
+            
+            variants.append({
+                'name': variant_name,
+                'tag': variant_tag,
+                'types': associated_types
+            })
+            variant_types[variant_name] = {
+                'tag': variant_tag,
+                'types': associated_types
+            }
+        
+        # Store enum metadata
+        self.enum_types[enum_name] = {
+            'is_tagged_union': True,
+            'variants': variant_types
+        }
+        
+        # Emit union type for variant data
+        union_members = []
+        for variant in variants:
+            if variant['types']:
+                # Create struct for this variant's data
+                if len(variant['types']) == 1:
+                    union_members.append(variant['types'][0])
+                else:
+                    # Multiple fields - create struct
+                    struct_type = '{ ' + ', '.join(variant['types']) + ' }'
+                    union_members.append(struct_type)
+            else:
+                # No data - use i8 placeholder
+                union_members.append('i8')
+        
+        # Emit union type
+        if union_members:
+            union_type = f'%{enum_name}.Union'
+            # In LLVM, unions are represented as the largest member
+            # We'll use a simple representation: largest type
+            max_size_type = 'i64'  # Default to i64
+            for member_type in union_members:
+                if 'i8*' in member_type or 'ptr' in member_type:
+                    max_size_type = 'i8*'
+                    break
+            
+            # For simplicity, use i64 array to hold any variant data
+            self.emit(f'{union_type} = type {{ [4 x i64] }}')
+        
+        # Emit enum struct type: { i32 tag, union data }
+        enum_struct_type = f'%{enum_name}'
+        if union_members:
+            self.emit(f'{enum_struct_type} = type {{ i32, %{enum_name}.Union }}')
+        else:
+            # All variants are empty - just the tag
+            self.emit(f'{enum_struct_type} = type {{ i32 }}')
+        
+        # Generate constructor functions for each variant
+        self._generate_enum_constructors(enum_name, variants)
+        
+        # Generate pattern matching helpers
+        self._generate_enum_pattern_helpers(enum_name, variants)
+    
+    def _generate_enum_constructors(self, enum_name, variants):
+        """Generate constructor functions for enum variants.
+        
+        Example: Result.Ok(value) becomes call @Result_Ok_new(i64 %value)
+        """
+        for variant in variants:
+            variant_name = variant['name']
+            variant_tag = variant['tag']
+            variant_types = variant['types']
+            
+            # Constructor function name: EnumName_Variant_new
+            func_name = f'{enum_name}_{variant_name}_new'
+            
+            # Build parameter list
+            if variant_types:
+                params = ', '.join(f'{t} %arg{i}' for i, t in enumerate(variant_types))
+                param_stores = []
+                for i, t in enumerate(variant_types):
+                    param_stores.append((i, t, f'%arg{i}'))
+            else:
+                params = ''
+                param_stores = []
+            
+            # Emit constructor function
+            self.emit(f'define %{enum_name}* @{func_name}({params}) {{')
+            self.emit('entry:')
+            
+            # Allocate enum struct
+            self.emit(f'  %enum_ptr = call i8* @malloc(i64 16)')
+            self.emit(f'  %enum = bitcast i8* %enum_ptr to %{enum_name}*')
+            
+            # Set tag
+            self.emit(f'  %tag_ptr = getelementptr inbounds %{enum_name}, %{enum_name}* %enum, i32 0, i32 0')
+            self.emit(f'  store i32 {variant_tag}, i32* %tag_ptr')
+            
+            # Store variant data if present
+            if param_stores:
+                self.emit(f'  %data_ptr = getelementptr inbounds %{enum_name}, %{enum_name}* %enum, i32 0, i32 1')
+                for idx, typ, val in param_stores:
+                    # Cast union to appropriate type and store
+                    self.emit(f'  %data_cast_{idx} = bitcast %{enum_name}.Union* %data_ptr to {typ}*')
+                    self.emit(f'  store {typ} {val}, {typ}* %data_cast_{idx}')
+                    if idx == 0:  # Only store first value for simplicity
+                        break
+            
+            self.emit(f'  ret %{enum_name}* %enum')
+            self.emit('}')
+            self.emit('')
+    
+    def _generate_enum_pattern_helpers(self, enum_name, variants):
+        """Generate helper functions for pattern matching enum variants.
+        
+        Example: is_ok(result) checks if result.tag == Ok_tag
+        """
+        for variant in variants:
+            variant_name = variant['name']
+            variant_tag = variant['tag']
+            
+            # Helper function: is_Variant
+            func_name = f'{enum_name}_is_{variant_name}'
+            self.emit(f'define i1 @{func_name}(%{enum_name}* %enum) {{')
+            self.emit('entry:')
+            self.emit(f'  %tag_ptr = getelementptr inbounds %{enum_name}, %{enum_name}* %enum, i32 0, i32 0')
+            self.emit(f'  %tag = load i32, i32* %tag_ptr')
+            self.emit(f'  %is_variant = icmp eq i32 %tag, {variant_tag}')
+            self.emit(f'  ret i1 %is_variant')
+            self.emit('}')
+            self.emit('')
+            
+            # Extractor function: get_Variant_data (if variant has data)
+            if variant['types']:
+                extractor_name = f'{enum_name}_get_{variant_name}_data'
+                data_type = variant['types'][0]  # Use first type for simplicity
+                
+                self.emit(f'define {data_type} @{extractor_name}(%{enum_name}* %enum) {{')
+                self.emit('entry:')
+                self.emit(f'  %data_ptr = getelementptr inbounds %{enum_name}, %{enum_name}* %enum, i32 0, i32 1')
+                self.emit(f'  %data_cast = bitcast %{enum_name}.Union* %data_ptr to {data_type}*')
+                self.emit(f'  %data = load {data_type}, {data_type}* %data_cast')
+                self.emit(f'  ret {data_type} %data')
+                self.emit('}')
+                self.emit('')
     
     def _generate_nested_member_assignment(self, node, target, member_name, indent):
         """Handle nested member assignment like rect.top_left.x = value."""
