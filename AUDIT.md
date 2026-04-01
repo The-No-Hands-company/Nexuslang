@@ -68,7 +68,7 @@ live view of HEAD. The following values were re-measured directly from the curre
 
 | Item | AUDIT table value | Verified current value |
 |------|-------------------|------------------------|
-| Total functions >150 lines (src/nlpl scope) | 18 (all files) | 2 |
+| Total functions >150 lines (src/nlpl scope) | 18 (all files) | 1 |
 | parser.py functions >150 lines | 3 | 0 |
 | `primary()` size | 162 | 54 |
 | `statement()` size | 172 | 20 |
@@ -85,6 +85,7 @@ live view of HEAD. The following values were re-measured directly from the curre
 | `register_graphics_functions()` size | 204 | 41 |
 | `register_ffi_functions()` size | 175 | 9 |
 | `register_testing_functions()` size | 160 | 5 |
+| `register_benchmark_functions()` size | 152 | 5 |
 
 Notes:
 - The commit history does contain the referenced refactor commits, but some
@@ -245,6 +246,14 @@ Notes:
   - `_register_assertion_aliases()`
   - `_register_test_management_functions()`
 
+### Benchmark registration refactoring
+
+- **`register_benchmark_functions()`** reduced 152 → 5 lines by lifting all inner functions to module scope and extracting grouped registrars:
+  - `_register_benchmark_run_functions()` — benchmark, benchmark_range, time_function
+  - `_register_benchmark_suite_functions()` — create_benchmark_suite, run_benchmark_suite, save_benchmark_baseline, check_benchmark_regression, benchmark_stats
+  - `_register_benchmark_aliases()` — bench, timeit
+- `_get_or_create_suite()` lifted to module scope (was a closure capturing globals)
+
 ---
 
 ## Remaining large functions (tracked, not yet split)
@@ -254,7 +263,6 @@ Notes:
 | File | Function | Lines | Notes |
 |------|----------|-------|-------|
 | `lexer.py` | `_build_keywords()` | 278 | Pure data definition (dict literal) — intentionally large |
-| `stdlib/benchmark/__init__.py` | `register_benchmark_functions()` | 152 | Pure data registration — intentionally large |
 
 ---
 
