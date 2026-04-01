@@ -1966,5 +1966,3 @@ int nlpl_random_int(int min_val, int max_val) {
         self._collect_console_and_array_runtime(code_parts)
         self._collect_math_runtime(code_parts)
         return "\n".join(code_parts)
-        
-        return '\n'.join(code_parts)
