@@ -119,6 +119,88 @@ class DataFlowChecker(BaseChecker):
     # AST walker
     # ------------------------------------------------------------------
 
+    def _walk_variable_declaration(self, node: Any, scope: _Scope, depth: int) -> None:
+        """Handle VariableDeclaration nodes: check for shadowing and define the variable."""
+        name = getattr(node, "name", None) or ""
+        line = getattr(node, "line", 0)
+        value = getattr(node, "value", None)
+        if value is not None:
+            self._walk(value, scope, depth + 1)
+        if name:
+            outer_line = scope.outer_defines(name)
+            if outer_line is not None:
+                self.issues.append(Issue(
+                    code="DF003",
+                    severity=Severity.WARNING,
+                    category=Category.BEST_PRACTICE,
+                    message=(
+                        f"Variable `{name}` shadows an outer variable defined at "
+                        f"line {outer_line}. Consider renaming."
+                    ),
+                    location=self.get_node_location(node),
+                    source_line=self.get_source_line(line),
+                ))
+            scope.define(name, line)
+
+    def _walk_assignment(self, node: Any, scope: _Scope, depth: int) -> None:
+        """Handle Assignment nodes: check for self-assignment and dead assignments."""
+        target = getattr(node, "target", None)
+        value = getattr(node, "value", None)
+        line = getattr(node, "line", 0)
+        target_name = self._extract_name(target)
+        if value is not None:
+            self._walk(value, scope, depth + 1)
+        if target_name:
+            value_name = self._extract_name(value)
+            if value_name and target_name == value_name:
+                self.issues.append(Issue(
+                    code="DF006",
+                    severity=Severity.WARNING,
+                    category=Category.BEST_PRACTICE,
+                    message=f"Redundant self-assignment: `{target_name} = {target_name}` has no effect.",
+                    location=self.get_node_location(node),
+                    source_line=self.get_source_line(line),
+                ))
+            if scope.is_defined(target_name):
+                unread, old_line = scope.overwrite(target_name, line)
+                if unread and old_line > 0:
+                    self.issues.append(Issue(
+                        code="DF002",
+                        severity=Severity.WARNING,
+                        category=Category.DEAD_CODE,
+                        message=(
+                            f"Dead assignment: `{target_name}` was written at line "
+                            f"{old_line} but never read before being overwritten at line {line}."
+                        ),
+                        location=self.get_node_location(node),
+                        source_line=self.get_source_line(old_line),
+                    ))
+            else:
+                scope.define(target_name, line)
+
+    def _walk_if_statement(self, node: Any, scope: _Scope, depth: int) -> None:
+        """Handle IfStatement nodes: check for tautological conditions."""
+        cond = getattr(node, "condition", None)
+        then_body = getattr(node, "then_body", None) or getattr(node, "body", []) or []
+        else_body = getattr(node, "else_body", None) or getattr(node, "else_branch", []) or []
+        if cond is not None and type(cond).__name__ in ("BoolLiteral", "BooleanLiteral"):
+            val = getattr(cond, "value", None)
+            dead = "else" if val else "then"
+            self.issues.append(Issue(
+                code="DF005",
+                severity=Severity.WARNING,
+                category=Category.DEAD_CODE,
+                message=(
+                    f"Condition is always `{val}`. The `{dead}` branch is unreachable."
+                ),
+                location=self.get_node_location(cond),
+                source_line=self.get_source_line(getattr(cond, "line", 0)),
+            ))
+        if cond is not None:
+            self._walk(cond, scope, depth + 1)
+        self._walk_block(then_body if isinstance(then_body, list) else [then_body], scope, depth)
+        self._walk_block(else_body if isinstance(else_body, list) else [else_body], scope, depth)
+
     def _walk(self, node: Any, scope: _Scope, depth: int = 0) -> None:
         if node is None or depth > 80:
             return
@@ -137,69 +219,10 @@ class DataFlowChecker(BaseChecker):
                 self._walk(stmt, inner, depth + 1)
 
         elif node_type == "VariableDeclaration":
-            name = getattr(node, "name", None) or ""
-            line = getattr(node, "line", 0)
-            value = getattr(node, "value", None)
-
-            if value is not None:
-                self._walk(value, scope, depth + 1)
-
-            if name:
-                # DF003: shadowing
-                outer_line = scope.outer_defines(name)
-                if outer_line is not None:
-                    self.issues.append(Issue(
-                        code="DF003",
-                        severity=Severity.WARNING,
-                        category=Category.BEST_PRACTICE,
-                        message=(
-                            f"Variable `{name}` shadows an outer variable defined at "
-                            f"line {outer_line}. Consider renaming."
-                        ),
-                        location=self.get_node_location(node),
-                        source_line=self.get_source_line(line),
-                    ))
-                scope.define(name, line)
+            self._walk_variable_declaration(node, scope, depth)
 
         elif node_type == "Assignment":
-            target = getattr(node, "target", None)
-            value = getattr(node, "value", None)
-            line = getattr(node, "line", 0)
-            target_name = self._extract_name(target)
-
-            if value is not None:
-                self._walk(value, scope, depth + 1)
-
-            if target_name:
-                # DF006: x = x
-                value_name = self._extract_name(value)
-                if value_name and target_name == value_name:
-                    self.issues.append(Issue(
-                        code="DF006",
-                        severity=Severity.WARNING,
-                        category=Category.BEST_PRACTICE,
-                        message=f"Redundant self-assignment: `{target_name} = {target_name}` has no effect.",
-                        location=self.get_node_location(node),
-                        source_line=self.get_source_line(line),
-                    ))
-
-                if scope.is_defined(target_name):
-                    unread, old_line = scope.overwrite(target_name, line)
-                    # DF002: dead assignment
-                    if unread and old_line > 0:
-                        self.issues.append(Issue(
-                            code="DF002",
-                            severity=Severity.WARNING,
-                            category=Category.DEAD_CODE,
-                            message=(
-                                f"Dead assignment: `{target_name}` was written at line "
-                                f"{old_line} but never read before being overwritten at line {line}."
-                            ),
-                            location=self.get_node_location(node),
-                            source_line=self.get_source_line(old_line),
-                        ))
-                else:
-                    scope.define(target_name, line)
+            self._walk_assignment(node, scope, depth)
 
         elif node_type in ("Name", "Identifier", "VariableRef", "NameExpression"):
             name = (
@@ -222,29 +245,7 @@ class DataFlowChecker(BaseChecker):
                 scope.use(name)
 
         elif node_type == "IfStatement":
-            cond = getattr(node, "condition", None)
-            then_body = getattr(node, "then_body", None) or getattr(node, "body", []) or []
-            else_body = getattr(node, "else_body", None) or getattr(node, "else_branch", []) or []
-
-            # DF005: tautological condition
-            if cond is not None and type(cond).__name__ in ("BoolLiteral", "BooleanLiteral"):
-                val = getattr(cond, "value", None)
-                dead = "else" if val else "then"
-                self.issues.append(Issue(
-                    code="DF005",
-                    severity=Severity.WARNING,
-                    category=Category.DEAD_CODE,
-                    message=(
-                        f"Condition is always `{val}`. The `{dead}` branch is unreachable."
-                    ),
-                    location=self.get_node_location(cond),
-                    source_line=self.get_source_line(getattr(cond, "line", 0)),
-                ))
-
-            if cond is not None:
-                self._walk(cond, scope, depth + 1)
-            self._walk_block(then_body if isinstance(then_body, list) else [then_body], scope, depth)
-            self._walk_block(else_body if isinstance(else_body, list) else [else_body], scope, depth)
+            self._walk_if_statement(node, scope, depth)
 
         elif node_type in ("WhileLoop", "ForEachLoop", "ForLoop", "ForInLoop"):
             cond = getattr(node, "condition", None)

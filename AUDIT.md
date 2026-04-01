@@ -1,6 +1,6 @@
 # NLPL Code Quality Audit Report
 
-*Last updated: March 2026*
+*Last updated: April 2026*
 
 This document tracks code quality findings and what has been fixed.
 
@@ -11,17 +11,19 @@ This document tracks code quality findings and what has been fixed.
 | Metric | Before Audit | After Audit |
 |--------|-------------|-------------|
 | Tests passing | 4,288 | 4,812 |
-| Total functions >150 lines (all files) | 58 | 27 |
-| parser.py functions >150 lines | 29 | 10 |
-| llvm_ir_generator.py functions >150 lines | 29 | 13 |
-| interpreter.py functions >150 lines | 8 | 4 |
-| typechecker.py functions >150 lines | 3 | 1 |
-| Duplicate 8-line blocks (parser) | 36 | 32 |
+| Total functions >150 lines (all files) | 58 | 18 |
+| parser.py functions >150 lines | 29 | 3 |
+| llvm_ir_generator.py functions >150 lines | 29 | 0 |
+| interpreter.py functions >150 lines | 8 | 0 |
+| typechecker.py functions >150 lines | 3 | 0 |
+| Duplicate 8-line blocks (parser) | 36 | 30 |
 | Stale user-facing docs | 190 files | <5 files |
 | `class_definition()` size | 487 lines | 9 lines |
 | `primary()` size | 441 lines | 162 lines |
 | `statement()` size | 250 lines | 172 lines |
 | `trait_definition()` size | 298 lines | 88 lines |
+| `_parse_trait_body()` size | 217 lines | 70 lines |
+| `parse_type()` size | 212 lines | 115 lines |
 | `_generate_variable_declaration()` size | 276 lines | 79 lines |
 | `function_definition_short()` size | 219 lines | 36 lines |
 | `extern_declaration()` size | 228 lines | 30 lines |
@@ -30,6 +32,29 @@ This document tracks code quality findings and what has been fixed.
 | `_generate_inline_assembly()` size | 310 lines | ~60 lines |
 | `_infer_expression_type()` size | 298 lines | 175 lines |
 | `_generate_member_access()` size | 271 lines | ~50 lines |
+| `_generate_pattern_bindings()` size | 228 lines | 59 lines |
+| `_generate_foreach_loop()` size | 210 lines | 128 lines |
+| `_generate_range_for_loop()` size | 181 lines | 146 lines |
+| `_generate_array_function_call()` size | 221 lines | 119 lines |
+| `_generate_member_assignment()` size | 185 lines | ~50 lines |
+| `_generate_async_function_definition()` size | 177 lines | ~140 lines |
+| `_generate_new_local_variable()` size | 175 lines | ~100 lines |
+| `_infer_expression_type()` size | 175 lines | ~107 lines |
+| `_generate_list_comprehension_expression()` size | 180 lines | ~129 lines |
+| `_generate_math_function_call()` size | 168 lines | ~40 lines |
+| `_generate_binary_operation()` size | 165 lines | ~111 lines |
+| `_generate_runtime_functions()` size (c_generator) | 523 lines | 12 lines |
+| `_infer_type()` size (c_generator) | 229 lines | ~25 lines |
+| `parse_expect_statement()` size | 212 lines | 140 lines |
+| `type_alias_definition()` size | 176 lines | 97 lines |
+| `abstract_class_definition()` size | 162 lines | 41 lines |
+| `interface_definition()` size | 151 lines | 60 lines |
+| `_parse_class_verbose()` size | 173 lines | 68 lines |
+| `Lexer.__init__()` size | 293 lines | 18 lines |
+| `main()` size (main.py) | 300 lines | 207 lines |
+| `_build_parser()` size (cli) | 215 lines | ~20 lines |
+| `_extract_symbols_from_ast()` size | 164 lines | ~60 lines |
+| `_walk()` size (data_flow) | 171 lines | ~80 lines |
 | Missing `stdlib/env` module | absent | added |
 | README accuracy | Outdated | Rewritten |
 
@@ -46,6 +71,12 @@ This document tracks code quality findings and what has been fixed.
   - `_primary_identifier()` (156 lines) — identifier/function call/member access
   - `_primary_new_object()` (90 lines) — `new ClassName(args)` instantiation
   - `_primary_fstring()` (36 lines) — f-string literal parsing
+- **`parse_type()`** reduced 212 → 115 lines by extracting:
+  - `_parse_generic_type_suffix()` — consumes `<T, K, V>` generic arguments after a base type name
+  - `_parse_list_dict_of_type()` — handles `List of T`, `Dictionary of K, V`/`K to V` forms; eliminated a near-identical duplicate block
+- **`_parse_trait_body()`** reduced 217 → 70 lines by extracting:
+  - `_parse_that_method_entry()` — handles the `that requires/provides a method called …` token path
+  - `_parse_identifier_method_entry()` — handles the legacy single-token IDENTIFIER method spec path
 - **`_parse_multiword_name()`** helper added, eliminating 4 duplicate
   `function_name_parts = []` loop blocks
 - **`set_statement_as_property()`** fixed to handle all three property forms:
@@ -81,28 +112,99 @@ This document tracks code quality findings and what has been fixed.
 
 ---
 
+### LLVM IR generator refactoring
+
+- **`_generate_pattern_bindings()`** reduced 228 → 59 lines by extracting:
+  - `_generate_variant_pattern_binding()` — handles `VariantPattern` with property getter resolution and generic type substitution
+  - `_generate_list_pattern_binding()` — handles `ListPattern` with length checks, element matching, rest binding, and AND-combination
+- **`_generate_foreach_loop()`** reduced 210 → 128 lines by extracting:
+  - `_resolve_iterable()` — resolves iterable expression to `(array_ptr, array_type, array_size, length_reg)`
+  - `_emit_foreach_loop_body_element()` — loads and stores the current array element into the iterator variable
+  - `_emit_foreach_loop_increment()` — increments the loop index
+- **`_generate_range_for_loop()`** reduced 181 → 146 lines by extracting:
+  - `_detect_step_direction()` — analyses the step AST node and returns `(step_is_literal, step_value, step_reg)`
+- **`_generate_array_function_call()`** reduced 221 → 119 lines by extracting:
+  - `_generate_arrpush_call()` — handles array push with size-alloca lookup, i8-variant handling, and size tracking update
+- **`_generate_member_assignment()`** reduced 185 → ~50 lines by extracting:
+  - `_generate_nested_member_assignment()`, `_store_struct_field()`, `_store_union_field()`, `_store_class_property()`
+- **`_generate_async_function_definition()`** reduced 177 → ~140 lines by extracting:
+  - `_emit_async_coroutine_init()`, `_emit_async_coroutine_cleanup()`
+- **`_generate_new_local_variable()`** reduced 175 → ~100 lines by extracting:
+  - `_track_rc_variable_assignment()` — handles reference-counted variable tracking
+- **`_infer_expression_type()`** reduced 175 → ~107 lines by extracting:
+  - `_infer_binary_op_type()`, `_infer_object_instantiation_type()`, `_infer_address_of_type()`
+- **`_generate_list_comprehension_expression()`** reduced 180 → ~129 lines by extracting:
+  - `_resolve_comprehension_iterable()` — resolves the iterable variable to a pointer and size
+- **`_generate_math_function_call()`** reduced 168 → ~40 lines by extracting:
+  - `_generate_single_arg_double_math_call()`, `_generate_double_minmax_call()`
+- **`_generate_binary_operation()`** reduced 165 → ~111 lines by extracting:
+  - `_emit_integer_binary_op()`, `_emit_float_binary_op()`
+
+### C generator refactoring
+
+- **`_generate_runtime_functions()`** reduced 523 → 12 lines by extracting 5 category helpers:
+  - `_collect_bounds_and_ffi_runtime()` — bounds check + FFI pointer validation
+  - `_collect_file_and_dir_runtime()` — all file I/O + directory functions
+  - `_collect_string_runtime()` — all string utility functions
+  - `_collect_console_and_array_runtime()` — console I/O + dynamic array struct and functions
+  - `_collect_math_runtime()` — math utility functions
+- **`_infer_type()`** reduced 229 → ~25 lines by extracting:
+  - `_infer_type_from_literal()` — handles Literal AST nodes
+  - `_infer_type_from_binary_op()` — handles BinaryOperation AST nodes
+
+### Parser refactoring (continued)
+
+- **`parse_expect_statement()`** reduced 212 → 140 lines by extracting `_parse_expect_be_matcher()`
+- **`type_alias_definition()`** reduced 176 → 97 lines by extracting `_parse_type_alias_from_single_token()`
+- **`abstract_class_definition()`** reduced 162 → 41 lines by extracting `_parse_abstract_class_header()`, `_parse_abstract_method_entry()`
+- **`interface_definition()`** reduced 151 → 60 lines by extracting `_parse_interface_header()`, `_consume_interface_end()`
+- **`_parse_class_verbose()`** reduced 173 → 68 lines by extracting `_parse_class_verbose_generic_param()`, `_parse_class_verbose_properties()`, `_parse_class_verbose_methods()`
+
+### Lexer refactoring
+
+- **`Lexer.__init__()`** reduced 293 → 18 lines by extracting `_build_keywords()` — returns the complete keywords/token-type mapping dictionary
+
+### CLI and main refactoring
+
+- **`_build_parser()`** (cli) reduced 215 → ~20 lines by extracting 16 per-subcommand helpers (`_add_run_subcommand`, `_add_build_subcommand`, `_add_lint_subcommand`, etc.)
+- **`_build_argument_parser()`** extracted from `main()` — all `add_argument()` calls moved into a standalone function; `main()` reduced 300 → 207 lines
+
+### LSP and tooling refactoring
+
+- **`_extract_symbols_from_ast()`** reduced 164 → ~60 lines by extracting `_extract_function_symbol()`, `_extract_class_symbol()`
+- **`_walk()`** (data_flow) reduced 171 → ~80 lines by extracting `_walk_variable_declaration()`, `_walk_assignment()`, `_walk_if_statement()`
+
+---
+
 ## Remaining large functions (tracked, not yet split)
 
 ### parser.py
 
 | Function | Lines | Notes |
 |----------|-------|-------|
-| `statement()` | 250 | Large dispatch table — low risk |
-| `trait_definition()` | 298 | Complex, mirrors class_definition structure |
-| `extern_declaration()` | 227 | Long but linear |
-| `_parse_class_simple()` | 227 | Extracted from class_definition, still large |
-| `function_definition_short()` | 218 | Core function syntax parser |
-| `parse_type()` | 211 | Type expression grammar |
+| `statement()` | 172 | Large dispatch table — low risk, intentional |
+| `primary()` | 163 | Stable after prior extraction |
+| `_primary_identifier()` | 157 | Stable after prior extraction |
 
-### llvm_ir_generator.py
+### Other files
 
-| Function | Lines | Notes |
-|----------|-------|-------|
-| `_generate_function_call_expression()` | 327 | Complex dispatch for all call forms |
-| `_generate_inline_assembly()` | 309 | Inline asm validation + emission |
-| `_infer_expression_type()` | 297 | Type inference for IR generation |
-| `_generate_variable_declaration()` | 276 | Handles all declaration forms |
-| `_generate_member_access()` | 270 | Struct/class/module member lookup |
+| File | Function | Lines | Notes |
+|------|----------|-------|-------|
+| `main.py` | `main()` | 207 | Execution dispatch — complex state flow |
+| `c_generator.py` | `_collect_console_and_array_runtime()` | 202 | Two separable groups |
+| `c_generator.py` | `_infer_type()` | 191 | Needs further extraction |
+| `lexer.py` | `_build_keywords()` | 278 | Pure data definition (dict literal) — intentionally large |
+| `lexer.py` | `scan_token()` | 162 | Token dispatch |
+| `stdlib/__init__.py` | `register_stdlib()` | 353 | Pure registration dispatch — intentionally large |
+| `stdlib/drivers/__init__.py` | `register_driver_functions()` | 414 | Pure data registration — intentionally large |
+| `stdlib/ffi/__init__.py` | `register_ffi_functions()` | 175 | Pure data registration — intentionally large |
+| `stdlib/graphics/__init__.py` | `register_graphics_functions()` | 204 | Pure data registration — intentionally large |
+| `stdlib/testing/__init__.py` | `register_testing_functions()` | 160 | Pure data registration — intentionally large |
+| `stdlib/benchmark/__init__.py` | `register_benchmark_functions()` | 152 | Pure data registration — intentionally large |
+| `build/builder.py` | `build()` | 160 | Complex build orchestration |
+| `tooling/builder.py` | `_build_internal()` | 157 | Complex build orchestration |
+| `tooling/registry.py` | `publish()` | 152 | Complex publish orchestration |
+| `typesystem/type_inference.py` | `infer_pattern_binding_type()` | 150 | Complex type inference |
 
 ---
 

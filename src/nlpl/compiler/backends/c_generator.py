@@ -575,51 +575,53 @@ class CCodeGenerator(CodeGenerator):
                     self._expression_contains_param(param_name, expr.right))
         return False
     
+    def _infer_type_from_literal(self, node: Any) -> str:
+        """Infer C type from a Literal AST node."""
+        if node.type == "string":
+            return "const char*"
+        elif node.type == "integer":
+            return "int"
+        elif node.type == "float":
+            return "double"
+        elif node.type == "boolean":
+            return "bool"
+        else:
+            return "void*"
+
+    def _infer_type_from_binary_op(self, node: Any) -> str:
+        """Infer C type from a BinaryOperation AST node."""
+        left_type = self._infer_type(node.left)
+        right_type = self._infer_type(node.right)
+
+        if left_type == right_type and left_type in ["int", "double"]:
+            return left_type
+
+        if set([left_type, right_type]) == {"int", "double"}:
+            return "double"
+
+        if left_type == "int" and right_type == "int":
+            return "int"
+
+        from ...parser.lexer import TokenType
+        comparison_ops = {
+            TokenType.EQUAL_TO, TokenType.NOT_EQUAL_TO,
+            TokenType.LESS_THAN, TokenType.GREATER_THAN,
+            TokenType.LESS_THAN_OR_EQUAL_TO, TokenType.GREATER_THAN_OR_EQUAL_TO
+        }
+
+        op_type = node.operator.type if hasattr(node.operator, 'type') else node.operator
+        if op_type in comparison_ops:
+            return "bool"
+
+        return left_type
+
     def _infer_type(self, expr: Any) -> str:
         """Infer C type from NLPL expression."""
         if isinstance(expr, Literal):
-            if expr.type == "string":
-                return "const char*"
-            elif expr.type == "integer":
-                return "int"
-            elif expr.type == "float":
-                return "double"
-            elif expr.type == "boolean":
-                return "bool"
-            else:
-                return "void*"
+            return self._infer_type_from_literal(expr)
         
         elif isinstance(expr, BinaryOperation):
-            # Infer from operands
-            left_type = self._infer_type(expr.left)
-            right_type = self._infer_type(expr.right)
-            
-            # If both are same numeric type, result is that type
-            if left_type == right_type and left_type in ["int", "double"]:
-                return left_type
-            
-            # If one is double and other is int, result is double
-            if set([left_type, right_type]) == {"int", "double"}:
-                return "double"
-            
-            # If both are int, result is int
-            if left_type == "int" and right_type == "int":
-                return "int"
-            
-            # Comparison operators return bool
-            from ...parser.lexer import TokenType
-            comparison_ops = {
-                TokenType.EQUAL_TO, TokenType.NOT_EQUAL_TO,
-                TokenType.LESS_THAN, TokenType.GREATER_THAN,
-                TokenType.LESS_THAN_OR_EQUAL_TO, TokenType.GREATER_THAN_OR_EQUAL_TO
-            }
-            
-            op_type = expr.operator.type if hasattr(expr.operator, 'type') else expr.operator
-            if op_type in comparison_ops:
-                return "bool"
-            
-            # Default to left operand type
-            return left_type
+            return self._infer_type_from_binary_op(expr)
         
         elif isinstance(expr, Identifier):
             # Check if it's a property in the current class
@@ -1436,14 +1438,8 @@ class CCodeGenerator(CodeGenerator):
             self._generate_statement(stmt)
         self.emit("/* unsafe block end */")
 
-    def _generate_runtime_functions(self) -> str:
-        """Generate inline C implementations of NLPL runtime functions."""
-        if not self.needed_runtime_functions:
-            return ""
-        
-        code_parts = ["// NLPL Runtime Functions"]
-        
-        # Array bounds checking
+    def _collect_bounds_and_ffi_runtime(self, code_parts: list) -> None:
+        """Append bounds check and FFI pointer validation C implementations to code_parts."""
         if "nlpl_bounds_check" in self.needed_runtime_functions:
             code_parts.append('''
 void nlpl_bounds_check(int index, int size, const char* array_name, int line) {
@@ -1455,7 +1451,6 @@ void nlpl_bounds_check(int index, int size, const char* array_name, int line) {
     }
 }''')
 
-        # FFI pointer validation
         if "nlpl_ffi_check_ptr" in self.needed_runtime_functions:
             code_parts.append('''
 // FFI pointer validation: checks for NULL and (when compiled with ASan) poisoned memory.
@@ -1475,8 +1470,9 @@ static inline void* nlpl_ffi_check_ptr(void* ptr, const char* name, int line) {
     NLPL_VALGRIND_CHECK(ptr);
     return ptr;
 }''')
-        
-        # File I/O functions
+
+    def _collect_file_and_dir_runtime(self, code_parts: list) -> None:
+        """Append file I/O and directory C implementations to code_parts."""
         if "nlpl_read_file" in self.needed_runtime_functions:
             code_parts.append('''
 char* nlpl_read_file(const char* filepath) {
@@ -1492,7 +1488,7 @@ char* nlpl_read_file(const char* filepath) {
     fclose(file);
     return buffer;
 }''')
-        
+
         if "nlpl_write_file" in self.needed_runtime_functions:
             code_parts.append('''
 bool nlpl_write_file(const char* filepath, const char* content) {
@@ -1503,7 +1499,7 @@ bool nlpl_write_file(const char* filepath, const char* content) {
     fclose(file);
     return written == len;
 }''')
-        
+
         if "nlpl_append_file" in self.needed_runtime_functions:
             code_parts.append('''
 bool nlpl_append_file(const char* filepath, const char* content) {
@@ -1514,14 +1510,14 @@ bool nlpl_append_file(const char* filepath, const char* content) {
     fclose(file);
     return written == len;
 }''')
-        
+
         if "nlpl_file_exists" in self.needed_runtime_functions:
             code_parts.append('''
 bool nlpl_file_exists(const char* filepath) {
     struct stat st;
     return stat(filepath, &st) == 0;
 }''')
-        
+
         if "nlpl_file_size" in self.needed_runtime_functions:
             code_parts.append('''
 long nlpl_file_size(const char* filepath) {
@@ -1529,13 +1525,13 @@ long nlpl_file_size(const char* filepath) {
     if (stat(filepath, &st) != 0) return -1;
     return st.st_size;
 }''')
-        
+
         if "nlpl_delete_file" in self.needed_runtime_functions:
             code_parts.append('''
 bool nlpl_delete_file(const char* filepath) {
     return remove(filepath) == 0;
 }''')
-        
+
         if "nlpl_copy_file" in self.needed_runtime_functions:
             code_parts.append('''
 bool nlpl_copy_file(const char* src, const char* dst) {
@@ -1553,7 +1549,7 @@ bool nlpl_copy_file(const char* src, const char* dst) {
     fclose(source); fclose(dest);
     return true;
 }''')
-        
+
         if "nlpl_create_directory" in self.needed_runtime_functions:
             code_parts.append('''
 #ifdef _WIN32
@@ -1562,7 +1558,7 @@ bool nlpl_create_directory(const char* path) { return _mkdir(path) == 0; }
 #else
 bool nlpl_create_directory(const char* path) { return mkdir(path, 0755) == 0; }
 #endif''')
-        
+
         if "nlpl_is_directory" in self.needed_runtime_functions:
             code_parts.append('''
 bool nlpl_is_directory(const char* path) {
@@ -1570,7 +1566,7 @@ bool nlpl_is_directory(const char* path) {
     if (stat(path, &st) != 0) return false;
     return S_ISDIR(st.st_mode);
 }''')
-        
+
         if "nlpl_is_file" in self.needed_runtime_functions:
             code_parts.append('''
 bool nlpl_is_file(const char* path) {
@@ -1578,14 +1574,15 @@ bool nlpl_is_file(const char* path) {
     if (stat(path, &st) != 0) return false;
     return S_ISREG(st.st_mode);
 }''')
-        
-        # String utility functions
+
+    def _collect_string_runtime(self, code_parts: list) -> None:
+        """Append string utility C implementations to code_parts."""
         if "nlpl_string_length" in self.needed_runtime_functions:
             code_parts.append('''
 int nlpl_string_length(const char* str) {
     return str ? (int)strlen(str) : 0;
 }''')
-        
+
         if "nlpl_uppercase" in self.needed_runtime_functions:
             code_parts.append('''
 char* nlpl_uppercase(const char* str) {
@@ -1597,7 +1594,7 @@ char* nlpl_uppercase(const char* str) {
     result[len] = '\\0';
     return result;
 }''')
-        
+
         if "nlpl_lowercase" in self.needed_runtime_functions:
             code_parts.append('''
 char* nlpl_lowercase(const char* str) {
@@ -1609,7 +1606,7 @@ char* nlpl_lowercase(const char* str) {
     result[len] = '\\0';
     return result;
 }''')
-        
+
         if "nlpl_concat" in self.needed_runtime_functions:
             code_parts.append('''
 char* nlpl_concat(const char* str1, const char* str2) {
@@ -1622,14 +1619,14 @@ char* nlpl_concat(const char* str1, const char* str2) {
     strcat(result, str2);
     return result;
 }''')
-        
+
         if "nlpl_string_contains" in self.needed_runtime_functions:
             code_parts.append('''
 bool nlpl_string_contains(const char* str, const char* substr) {
     if (!str || !substr) return false;
     return strstr(str, substr) != NULL;
 }''')
-        
+
         if "nlpl_substring" in self.needed_runtime_functions:
             code_parts.append('''
 char* nlpl_substring(const char* str, int start, int length) {
@@ -1651,8 +1648,82 @@ char* nlpl_substring(const char* str, int start, int length) {
     result[length] = '\\0';
     return result;
 }''')
-        
-        # Console I/O functions
+
+        if "nlpl_index_of" in self.needed_runtime_functions:
+            code_parts.append('''
+int nlpl_index_of(const char* str, const char* substr) {
+    if (!str || !substr) return -1;
+    const char* found = strstr(str, substr);
+    return found ? (int)(found - str) : -1;
+}''')
+
+        if "nlpl_replace" in self.needed_runtime_functions:
+            code_parts.append('''
+char* nlpl_replace(const char* str, const char* old_sub, const char* new_sub) {
+    if (!str || !old_sub || !new_sub) return NULL;
+    size_t str_len = strlen(str), old_len = strlen(old_sub), new_len = strlen(new_sub);
+    if (old_len == 0) return strdup(str);
+    
+    // Count occurrences
+    int count = 0;
+    const char* p = str;
+    while ((p = strstr(p, old_sub)) != NULL) { count++; p += old_len; }
+    
+    // Allocate result
+    size_t result_len = str_len + count * (new_len - old_len);
+    char* result = (char*)malloc(result_len + 1);
+    if (!result) return NULL;
+    
+    // Build result
+    char* r = result;
+    p = str;
+    while (*p) {
+        if (strstr(p, old_sub) == p) {
+            memcpy(r, new_sub, new_len);
+            r += new_len;
+            p += old_len;
+        } else {
+            *r++ = *p++;
+        }
+    }
+    *r = '\\0';
+    return result;
+}''')
+
+        if "nlpl_trim" in self.needed_runtime_functions:
+            code_parts.append('''
+char* nlpl_trim(const char* str) {
+    if (!str) return NULL;
+    while (isspace((unsigned char)*str)) str++;
+    if (*str == '\\0') return strdup("");
+    const char* end = str + strlen(str) - 1;
+    while (end > str && isspace((unsigned char)*end)) end--;
+    size_t len = end - str + 1;
+    char* result = (char*)malloc(len + 1);
+    if (!result) return NULL;
+    memcpy(result, str, len);
+    result[len] = '\\0';
+    return result;
+}''')
+
+        if "nlpl_starts_with" in self.needed_runtime_functions:
+            code_parts.append('''
+bool nlpl_starts_with(const char* str, const char* prefix) {
+    if (!str || !prefix) return false;
+    return strncmp(str, prefix, strlen(prefix)) == 0;
+}''')
+
+        if "nlpl_ends_with" in self.needed_runtime_functions:
+            code_parts.append('''
+bool nlpl_ends_with(const char* str, const char* suffix) {
+    if (!str || !suffix) return false;
+    size_t str_len = strlen(str), suf_len = strlen(suffix);
+    if (suf_len > str_len) return false;
+    return strcmp(str + str_len - suf_len, suffix) == 0;
+}''')
+
+    def _collect_console_and_array_runtime(self, code_parts: list) -> None:
+        """Append console I/O and dynamic array C implementations to code_parts."""
         if "nlpl_read_line" in self.needed_runtime_functions:
             code_parts.append('''
 char* nlpl_read_line(void) {
@@ -1662,7 +1733,7 @@ char* nlpl_read_line(void) {
     if (len > 0 && buffer[len - 1] == '\\n') buffer[len - 1] = '\\0';
     return strdup(buffer);
 }''')
-        
+
         if "nlpl_read_int" in self.needed_runtime_functions:
             code_parts.append('''
 int nlpl_read_int(void) {
@@ -1671,7 +1742,7 @@ int nlpl_read_int(void) {
     while ((c = getchar()) != '\\n' && c != EOF);
     return value;
 }''')
-        
+
         if "nlpl_read_float" in self.needed_runtime_functions:
             code_parts.append('''
 double nlpl_read_float(void) {
@@ -1680,8 +1751,7 @@ double nlpl_read_float(void) {
     while ((c = getchar()) != '\\n' && c != EOF);
     return value;
 }''')
-        
-        # Dynamic array structure and functions
+
         if any(fn.startswith("nlpl_array_") for fn in self.needed_runtime_functions):
             code_parts.append('''
 // Static array length macro (for compile-time known arrays)
@@ -1732,13 +1802,13 @@ void nlpl_array_free(NLPLArray* arr) {
         free(arr);
     }
 }''')
-        
+
         if "nlpl_array_length" in self.needed_runtime_functions:
             code_parts.append('''
 int nlpl_array_length(NLPLArray* arr) {
     return arr ? arr->size : 0;
 }''')
-        
+
         if "nlpl_array_push" in self.needed_runtime_functions:
             code_parts.append('''
 void nlpl_array_push(NLPLArray* arr, void* elem) {
@@ -1750,28 +1820,28 @@ void nlpl_array_push(NLPLArray* arr, void* elem) {
     }
     arr->data[arr->size++] = elem;
 }''')
-        
+
         if "nlpl_array_pop" in self.needed_runtime_functions:
             code_parts.append('''
 void* nlpl_array_pop(NLPLArray* arr) {
     if (!arr || arr->size == 0) return NULL;
     return arr->data[--arr->size];
 }''')
-        
+
         if "nlpl_array_get" in self.needed_runtime_functions:
             code_parts.append('''
 void* nlpl_array_get(NLPLArray* arr, int index) {
     if (!arr || index < 0 || index >= arr->size) return NULL;
     return arr->data[index];
 }''')
-        
+
         if "nlpl_array_set" in self.needed_runtime_functions:
             code_parts.append('''
 void nlpl_array_set(NLPLArray* arr, int index, void* elem) {
     if (!arr || index < 0 || index >= arr->size) return;
     arr->data[index] = elem;
 }''')
-        
+
         if "nlpl_array_insert" in self.needed_runtime_functions:
             code_parts.append('''
 void nlpl_array_insert(NLPLArray* arr, int index, void* elem) {
@@ -1787,7 +1857,7 @@ void nlpl_array_insert(NLPLArray* arr, int index, void* elem) {
     arr->data[index] = elem;
     arr->size++;
 }''')
-        
+
         if "nlpl_array_remove" in self.needed_runtime_functions:
             code_parts.append('''
 void* nlpl_array_remove(NLPLArray* arr, int index) {
@@ -1799,7 +1869,7 @@ void* nlpl_array_remove(NLPLArray* arr, int index) {
     arr->size--;
     return elem;
 }''')
-        
+
         if "nlpl_array_find" in self.needed_runtime_functions:
             code_parts.append('''
 int nlpl_array_find(NLPLArray* arr, void* elem) {
@@ -1809,7 +1879,7 @@ int nlpl_array_find(NLPLArray* arr, void* elem) {
     }
     return -1;
 }''')
-        
+
         if "nlpl_array_reverse" in self.needed_runtime_functions:
             code_parts.append('''
 void nlpl_array_reverse(NLPLArray* arr) {
@@ -1820,13 +1890,13 @@ void nlpl_array_reverse(NLPLArray* arr) {
         arr->data[arr->size - 1 - i] = temp;
     }
 }''')
-        
+
         if "nlpl_array_clear" in self.needed_runtime_functions:
             code_parts.append('''
 void nlpl_array_clear(NLPLArray* arr) {
     if (arr) arr->size = 0;
 }''')
-        
+
         if "nlpl_array_slice" in self.needed_runtime_functions:
             code_parts.append('''
 NLPLArray* nlpl_array_slice(NLPLArray* arr, int start, int end) {
@@ -1841,8 +1911,7 @@ NLPLArray* nlpl_array_slice(NLPLArray* arr, int start, int end) {
     }
     return result;
 }''')
-        
-        # Integer array sort helper
+
         if "nlpl_array_sort" in self.needed_runtime_functions:
             code_parts.append('''
 static int nlpl_int_compare(const void* a, const void* b) {
@@ -1855,20 +1924,21 @@ void nlpl_array_sort(NLPLArray* arr) {
     if (!arr || arr->size < 2) return;
     qsort(arr->data, arr->size, sizeof(void*), nlpl_int_compare);
 }''')
-        
-        # Math utility functions
+
+    def _collect_math_runtime(self, code_parts: list) -> None:
+        """Append math utility C implementations to code_parts."""
         if "nlpl_min" in self.needed_runtime_functions:
             code_parts.append('''
 int nlpl_min(int a, int b) {
     return a < b ? a : b;
 }''')
-        
+
         if "nlpl_max" in self.needed_runtime_functions:
             code_parts.append('''
 int nlpl_max(int a, int b) {
     return a > b ? a : b;
 }''')
-        
+
         if "nlpl_random" in self.needed_runtime_functions:
             code_parts.append('''
 static int nlpl_random_seeded = 0;
@@ -1876,86 +1946,23 @@ double nlpl_random(void) {
     if (!nlpl_random_seeded) { srand((unsigned)time(NULL)); nlpl_random_seeded = 1; }
     return (double)rand() / RAND_MAX;
 }''')
-        
+
         if "nlpl_random_int" in self.needed_runtime_functions:
             code_parts.append('''
 int nlpl_random_int(int min_val, int max_val) {
     if (!nlpl_random_seeded) { srand((unsigned)time(NULL)); nlpl_random_seeded = 1; }
     return min_val + rand() % (max_val - min_val + 1);
 }''')
-        
-        # String utility functions (additional)
-        if "nlpl_index_of" in self.needed_runtime_functions:
-            code_parts.append('''
-int nlpl_index_of(const char* str, const char* substr) {
-    if (!str || !substr) return -1;
-    const char* found = strstr(str, substr);
-    return found ? (int)(found - str) : -1;
-}''')
-        
-        if "nlpl_replace" in self.needed_runtime_functions:
-            code_parts.append('''
-char* nlpl_replace(const char* str, const char* old_sub, const char* new_sub) {
-    if (!str || !old_sub || !new_sub) return NULL;
-    size_t str_len = strlen(str), old_len = strlen(old_sub), new_len = strlen(new_sub);
-    if (old_len == 0) return strdup(str);
-    
-    // Count occurrences
-    int count = 0;
-    const char* p = str;
-    while ((p = strstr(p, old_sub)) != NULL) { count++; p += old_len; }
-    
-    // Allocate result
-    size_t result_len = str_len + count * (new_len - old_len);
-    char* result = (char*)malloc(result_len + 1);
-    if (!result) return NULL;
-    
-    // Build result
-    char* r = result;
-    p = str;
-    while (*p) {
-        if (strstr(p, old_sub) == p) {
-            memcpy(r, new_sub, new_len);
-            r += new_len;
-            p += old_len;
-        } else {
-            *r++ = *p++;
-        }
-    }
-    *r = '\\0';
-    return result;
-}''')
-        
-        if "nlpl_trim" in self.needed_runtime_functions:
-            code_parts.append('''
-char* nlpl_trim(const char* str) {
-    if (!str) return NULL;
-    while (isspace((unsigned char)*str)) str++;
-    if (*str == '\\0') return strdup("");
-    const char* end = str + strlen(str) - 1;
-    while (end > str && isspace((unsigned char)*end)) end--;
-    size_t len = end - str + 1;
-    char* result = (char*)malloc(len + 1);
-    if (!result) return NULL;
-    memcpy(result, str, len);
-    result[len] = '\\0';
-    return result;
-}''')
-        
-        if "nlpl_starts_with" in self.needed_runtime_functions:
-            code_parts.append('''
-bool nlpl_starts_with(const char* str, const char* prefix) {
-    if (!str || !prefix) return false;
-    return strncmp(str, prefix, strlen(prefix)) == 0;
-}''')
-        
-        if "nlpl_ends_with" in self.needed_runtime_functions:
-            code_parts.append('''
-bool nlpl_ends_with(const char* str, const char* suffix) {
-    if (!str || !suffix) return false;
-    size_t str_len = strlen(str), suf_len = strlen(suffix);
-    if (suf_len > str_len) return false;
-    return strcmp(str + str_len - suf_len, suffix) == 0;
-}''')
-        
-        return '\n'.join(code_parts)
+
+    def _generate_runtime_functions(self) -> str:
+        """Generate inline C implementations of NLPL runtime functions."""
+        if not self.needed_runtime_functions:
+            return ""
+
+        code_parts = ["// NLPL Runtime Functions"]
+        self._collect_bounds_and_ffi_runtime(code_parts)
+        self._collect_file_and_dir_runtime(code_parts)
+        self._collect_string_runtime(code_parts)
+        self._collect_console_and_array_runtime(code_parts)
+        self._collect_math_runtime(code_parts)
+        return "\n".join(code_parts)

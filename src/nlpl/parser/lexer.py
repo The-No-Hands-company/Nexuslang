@@ -341,25 +341,10 @@ class Token:
 
 class Lexer:
     """Lexer for NLPL that recognizes natural English-like patterns."""
-    
-    def __init__(self, source: str):
-        self.source = source
-        self.tokens: List[Token] = []
-        self.start = 0
-        self.current = 0
-        self.line = 1
-        self.column = 1
-        
-        # Split source into lines for error reporting
-        self.source_lines = source.split('\n')
-        
-        # Indentation tracking for Python-style blocks
-        self.indent_stack: List[int] = [0]  # Stack of indentation levels
-        self.at_line_start = True  # Track if we're at the start of a line
-        self.pending_dedents = 0  # Number of DEDENT tokens to emit
-        
-        # Keywords mapping with natural English-like patterns
-        self.keywords: Dict[str, TokenType] = {
+
+    def _build_keywords(self) -> Dict[str, TokenType]:
+        """Return the complete keywords mapping for NLPL."""
+        return {
             # Class and function related
             "class": TokenType.CLASS,
             "function": TokenType.FUNCTION,
@@ -408,7 +393,7 @@ class Lexer:
             "import": TokenType.IMPORT,
             "trait": TokenType.TRAIT,
             "type": TokenType.TYPE,
-            
+
             # FFI keywords
             "extern": TokenType.EXTERN,
             "external": TokenType.EXTERN,
@@ -419,11 +404,11 @@ class Lexer:
             "callback": TokenType.CALLBACK,
             "lambda": TokenType.LAMBDA,
             "unsafe": TokenType.UNSAFE,
-            
+
             # Macros
             "macro": TokenType.MACRO,
             "expand": TokenType.EXPAND,
-            
+
             # Struct/Union/Enum keywords
             "struct": TokenType.STRUCT,
             "structure": TokenType.STRUCT,
@@ -436,12 +421,12 @@ class Lexer:
             "offsetof": TokenType.OFFSETOF,
             "offset of": TokenType.OFFSETOF,
             "opaque": TokenType.OPAQUE,
-            
+
             # Smart pointers
             "rc": TokenType.RC,
             "weak": TokenType.WEAK,
             "arc": TokenType.ARC,
-            
+
             # Natural language operators
             "plus": TokenType.PLUS,
             "minus": TokenType.MINUS,
@@ -465,7 +450,7 @@ class Lexer:
             "and": TokenType.AND,
             "or": TokenType.OR,
             "not": TokenType.NOT,
-            
+
             # Bitwise operators (natural language)
             "bitwise and": TokenType.BITWISE_AND,
             "bitwise or": TokenType.BITWISE_OR,
@@ -473,14 +458,14 @@ class Lexer:
             "bitwise not": TokenType.BITWISE_NOT,
             "shift left": TokenType.LEFT_SHIFT,
             "shift right": TokenType.RIGHT_SHIFT,
-            
+
             # Pointer operations (natural language)
             "address of": TokenType.ADDRESS_OF,
             "dereference": TokenType.DEREFERENCE,
             "value at": TokenType.DEREFERENCE,
             "sizeof": TokenType.SIZEOF,
             "size of": TokenType.SIZEOF,
-            
+
             # Smart pointer operations (Rc/Weak)
             "downgrade": TokenType.DOWNGRADE,
             "upgrade": TokenType.UPGRADE,
@@ -515,7 +500,7 @@ class Lexer:
             "match": TokenType.MATCH,
             "when": TokenType.WHEN,  # Guard condition in pattern matching
             "label": TokenType.LABEL,
-            
+
             # Error handling
             "try": TokenType.TRY,
             "catch": TokenType.CATCH,
@@ -525,20 +510,20 @@ class Lexer:
             "message": TokenType.MESSAGE,
             "panic": TokenType.PANIC,
             "of": TokenType.OF,  # For "create list of Integer", "array of 10 bytes"
-            
+
             # Async/Await
             "async": TokenType.ASYNC,
             "asynchronous": TokenType.ASYNC,
             "await": TokenType.AWAIT,
             "wait": TokenType.AWAIT,  # More natural alias
-            
+
             # Contextual keywords (can be used as variable names in certain contexts)
             "value": TokenType.VALUE,
             "name": TokenType.NAME,
             "data": TokenType.DATA,
             "info": TokenType.INFO,
             "status": TokenType.STATUS,
-            
+
             # I/O and data manipulation
             "print": TokenType.PRINT,
             "text": TokenType.TEXT,
@@ -554,7 +539,7 @@ class Lexer:
             "length": TokenType.LENGTH,
             "empty": TokenType.EMPTY,
             "contains": TokenType.CONTAINS,
-            
+
             # Database operations
             "export": TokenType.EXPORT,
             "database": TokenType.DATABASE,
@@ -567,7 +552,7 @@ class Lexer:
             "delete": TokenType.DELETE,
             "select": TokenType.SELECT,
             "where": TokenType.WHERE,
-            
+
             # Network operations
             "network": TokenType.NETWORK,
             "send": TokenType.SEND,
@@ -578,7 +563,7 @@ class Lexer:
             "websocket": TokenType.WEBSOCKET,
             "connect to": TokenType.CONNECT_TO,
             "disconnect from": TokenType.DISCONNECT_FROM,
-            
+
             # File operations
             "file": TokenType.FILE,
             "open": TokenType.OPEN,
@@ -586,7 +571,7 @@ class Lexer:
             "exists": TokenType.EXISTS,
             "directory": TokenType.DIRECTORY,
             "path": TokenType.PATH,
-            
+
             # Types
             "integer": TokenType.INTEGER,
             "float": TokenType.FLOAT,
@@ -599,18 +584,18 @@ class Lexer:
             "object": TokenType.OBJECT,
             "pointer": TokenType.POINTER,
             "reference": TokenType.REFERENCE,
-            
+
             # Literals
             "true": TokenType.TRUE,
             "false": TokenType.FALSE,
-            
+
             # New keywords
             "extends": TokenType.EXTENDS,
             "inherits": TokenType.INHERITS,
             "implements": TokenType.IMPLEMENTS,
             "interface": TokenType.INTERFACE,
             "generic": TokenType.GENERIC,
-            
+
             # Inline assembly
             "inline": TokenType.INLINE,
             "assembly": TokenType.ASSEMBLY,
@@ -635,6 +620,25 @@ class Lexer:
             "comptime": TokenType.COMPTIME,
             "attribute": TokenType.ATTRIBUTE,
         }
+
+    def __init__(self, source: str):
+        self.source = source
+        self.tokens: List[Token] = []
+        self.start = 0
+        self.current = 0
+        self.line = 1
+        self.column = 1
+
+        # Split source into lines for error reporting
+        self.source_lines = source.split('\n')
+
+        # Indentation tracking for Python-style blocks
+        self.indent_stack: List[int] = [0]  # Stack of indentation levels
+        self.at_line_start = True  # Track if we're at the start of a line
+        self.pending_dedents = 0  # Number of DEDENT tokens to emit
+
+        # Keywords mapping with natural English-like patterns
+        self.keywords: Dict[str, TokenType] = self._build_keywords()
     
     def scan_tokens(self) -> List[Token]:
         """Scan the source code and return a list of tokens with indentation handling."""
