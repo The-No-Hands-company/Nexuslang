@@ -4937,164 +4937,153 @@ class Parser:
         token = self.current_token
         
         if not token:
-            return None  # Silently return None at end of input
+            return None
         
-        # Skip structural tokens - they should be handled by block-level constructs
         if token.type in [TokenType.INDENT, TokenType.DEDENT, TokenType.NEWLINE]:
             return None
         
-        # Handle 'match' expression (can be used in expression context)
+        # Handle special keywords and constructs
         if token.type == TokenType.MATCH:
             return self.match_expression()
-        
-        # Handle 'this' keyword for self-reference in class methods
         if token.type == TokenType.THIS:
-            line_num = token.line if hasattr(token, 'line') else 0
-            self.advance()  # consume 'this'
-            expr = Identifier('this', line_num)
-            return self._parse_member_access(expr)
-        
-        # Handle 'empty list' or 'empty dictionary' syntax for empty collections
+            return self._primary_this(token)
         if token.type == TokenType.EMPTY:
-            line_num = token.line if hasattr(token, 'line') else 0
-            self.advance()  # consume 'empty'
-            
-            # Check what type of empty collection
-            if self.current_token and self.current_token.type == TokenType.LIST:
-                self.advance()  # consume 'list'
-                
-                # Check for "of Type" (e.g., "empty List of Float")
-                if self.current_token and self.current_token.type == TokenType.OF:
-                    self.advance()  # consume 'of'
-                    # Parse the element type but don't use it (just consume tokens)
-                    # The runtime will handle the empty list
-                    element_type = self.parse_type()
-                
-                return ListExpression([], line_num)
-            elif self.current_token and self.current_token.type == TokenType.DICTIONARY:
-                self.advance()  # consume 'dictionary'
-                return DictExpression({}, line_num)
-            elif self.current_token and self.current_token.type == TokenType.IDENTIFIER:
-                # Handle "empty array" or other collection types
-                type_name = self.current_token.lexeme.lower()
-                if type_name in ('array',):
-                    self.advance()  # consume 'array'
-                    return ListExpression([], line_num)
-                elif type_name in ('dict', 'map'):
-                    self.advance()  # consume 'dict' or 'map'
-                    return DictExpression({}, line_num)
-                else:
-                    # Unknown type after 'empty', treat 'empty' as identifier
-                    # Don't advance - leave the unknown identifier for next parse
-                    return Identifier('empty', line_num)
-            else:
-                # Just 'empty' by itself, treat as identifier
-                return Identifier('empty', line_num)
-        
-        # Handle 'create list of Type' or 'create dict of KeyType to ValueType'
+            return self._primary_empty(token)
         if token.type == TokenType.CREATE:
             return self.parse_generic_type_instantiation()
-        
-        # Handle 'Rc of Type with value' for smart pointer creation
         if token.type in (TokenType.RC, TokenType.WEAK, TokenType.ARC):
             return self.parse_rc_creation()
-        
-        # Handle 'new ClassName' for object instantiation
         if token.type == TokenType.NEW:
             return self._primary_new_object(token)
-        elif token.type == TokenType.CONVERT:
+        if token.type == TokenType.CONVERT:
             return self.convert_expression()
-            
+        
+        # Handle literals
+        if token.type in (TokenType.INTEGER_LITERAL, TokenType.FLOAT_LITERAL, 
+                         TokenType.STRING_LITERAL, TokenType.TRUE, TokenType.FALSE, TokenType.NULL):
+            return self._primary_literal(token)
+        
+        # Handle special expressions
+        if token.type == TokenType.FSTRING_LITERAL:
+            return self._primary_fstring(token)
+        if token.type == TokenType.CALLBACK:
+            return self._primary_callback(token)
+        if token.type == TokenType.LAMBDA:
+            return self.parse_lambda_expression()
+        if token.type == TokenType.OLD:
+            return self._primary_old(token)
+        
+        # Handle identifiers
+        if token.type == TokenType.IDENTIFIER or self._can_be_identifier(token):
+            return self._primary_identifier(token)
+        
+        # Handle grouping and collections
+        if token.type == TokenType.LEFT_PAREN:
+            return self._primary_grouping(token)
+        if token.type == TokenType.LEFT_BRACKET:
+            return self.parse_list_expression()
+        if token.type == TokenType.LEFT_BRACE:
+            return self.parse_dict_expression()
+        
+        self.error(f"Unexpected token: {token.type}", error_type_key="unexpected_token")
+
+    def _primary_this(self, token):
+        """Handle 'this' keyword."""
+        line_num = token.line if hasattr(token, 'line') else 0
+        self.advance()
+        expr = Identifier('this', line_num)
+        return self._parse_member_access(expr)
+
+    def _primary_empty(self, token):
+        """Handle 'empty' collection syntax."""
+        line_num = token.line if hasattr(token, 'line') else 0
+        self.advance()
+        
+        if self.current_token and self.current_token.type == TokenType.LIST:
+            self.advance()
+            if self.current_token and self.current_token.type == TokenType.OF:
+                self.advance()
+                element_type = self.parse_type()
+            return ListExpression([], line_num)
+        elif self.current_token and self.current_token.type == TokenType.DICTIONARY:
+            self.advance()
+            return DictExpression({}, line_num)
+        elif self.current_token and self.current_token.type == TokenType.IDENTIFIER:
+            type_name = self.current_token.lexeme.lower()
+            if type_name in ('array',):
+                self.advance()
+                return ListExpression([], line_num)
+            elif type_name in ('dict', 'map'):
+                self.advance()
+                return DictExpression({}, line_num)
+            else:
+                return Identifier('empty', line_num)
+        else:
+            return Identifier('empty', line_num)
+
+    def _primary_literal(self, token):
+        """Handle literal values."""
         if token.type == TokenType.INTEGER_LITERAL:
             self.advance()
             return Literal("integer", token.literal)
-            
         elif token.type == TokenType.FLOAT_LITERAL:
             self.advance()
             return Literal("float", token.literal)
-            
-        elif token.type == TokenType.CALLBACK:
-            # Handle "callback function_name" syntax
-            line_num = token.line if hasattr(token, 'line') else 0
-            self.advance()  # consume 'callback'
-            
-            # Expect function name
-            if not self.current_token or self.current_token.type != TokenType.IDENTIFIER:
-                self.error("Expected function name after 'callback'")
-            
-            func_name = self.current_token.lexeme
-            # Import the CallbackReference node
-            from ..parser.ast import CallbackReference
-            return CallbackReference(func_name, line_num)
-        
-        elif token.type == TokenType.LAMBDA:
-            # Handle "lambda params: expr" syntax
-            return self.parse_lambda_expression()
-            
         elif token.type == TokenType.STRING_LITERAL:
-            value = token.literal
             self.advance()
-            return Literal('string', value)
-        
-        # F-string literal with interpolation
-        elif token.type == TokenType.FSTRING_LITERAL:
-            return self._primary_fstring(token)
+            return Literal('string', token.literal)
         elif token.type == TokenType.TRUE:
             self.advance()
             return Literal("boolean", True)
-
         elif token.type == TokenType.FALSE:
             self.advance()
             return Literal("boolean", False)
-
         elif token.type == TokenType.NULL:
             self.advance()
             return Literal('null', None)
 
-        elif token.type == TokenType.OLD:
-            # old(expr) — pre-call value capture for use in postconditions
-            line_num = token.line if hasattr(token, 'line') else 0
-            self.advance()  # consume 'old'
-            # Expect opening paren
-            if self.current_token and self.current_token.type == TokenType.LPAREN:
-                self.advance()  # consume '('
-                inner_expr = self.expression()
-                if self.current_token and self.current_token.type == TokenType.RPAREN:
-                    self.advance()  # consume ')'
-                return OldExpression(inner_expr, line_number=line_num)
-            else:
-                # Treat as identifier if no paren follows (graceful fallback)
-                return Identifier('old', line_num)
+    def _primary_callback(self, token):
+        """Handle callback function references."""
+        line_num = token.line if hasattr(token, 'line') else 0
+        self.advance()
+        
+        if not self.current_token or self.current_token.type != TokenType.IDENTIFIER:
+            self.error("Expected function name after 'callback'")
+        
+        func_name = self.current_token.lexeme
+        from ..parser.ast import CallbackReference
+        return CallbackReference(func_name, line_num)
 
-        elif token.type == TokenType.IDENTIFIER or self._can_be_identifier(token):
-            return self._primary_identifier(token)
-        elif token.type == TokenType.LEFT_PAREN:
-            line_num = token.line if hasattr(token, 'line') else 0
-            self.advance()  # consume (
-            expr = self.expression()
-            
-            # Check for type cast: (expression as TargetType)
-            if self.current_token and self.current_token.type == TokenType.AS:
-                self.advance()  # consume 'as'
-                target_type = self.parse_type()  # Parse the target type
-                self.eat(TokenType.RIGHT_PAREN)
-                # Return type cast expression
-                type_cast = TypeCastExpression(expr, target_type, line_num)
-                return self._parse_member_access(type_cast)
-            
+    def _primary_old(self, token):
+        """Handle 'old' expression for postconditions."""
+        line_num = token.line if hasattr(token, 'line') else 0
+        self.advance()
+        
+        if self.current_token and self.current_token.type == TokenType.LPAREN:
+            self.advance()
+            inner_expr = self.expression()
+            if self.current_token and self.current_token.type == TokenType.RPAREN:
+                self.advance()
+            return OldExpression(inner_expr, line_number=line_num)
+        else:
+            return Identifier('old', line_num)
+
+    def _primary_grouping(self, token):
+        """Handle parenthesized expressions and type casts."""
+        line_num = token.line if hasattr(token, 'line') else 0
+        self.advance()
+        expr = self.expression()
+        
+        if self.current_token and self.current_token.type == TokenType.AS:
+            self.advance()
+            target_type = self.parse_type()
             self.eat(TokenType.RIGHT_PAREN)
-            # Check for member access on parenthesized expression
-            return self._parse_member_access(expr)
-            
-        elif token.type == TokenType.LEFT_BRACKET:
-            # List literal: [1, 2, 3]
-            return self.parse_list_expression()
-            
-        elif token.type == TokenType.LEFT_BRACE:
-            # Dict literal: {key: value}
-            return self.parse_dict_expression()
-            
-        self.error(f"Unexpected token: {token.type}", error_type_key="unexpected_token")
+            type_cast = TypeCastExpression(expr, target_type, line_num)
+            return self._parse_member_access(type_cast)
+        
+        self.eat(TokenType.RIGHT_PAREN)
+        return self._parse_member_access(expr)
+
     
 
 
@@ -5233,161 +5222,145 @@ class Parser:
 
     def _primary_identifier(self, token):
         """Parse an identifier primary expression (variable, function call, member access)."""
-        # Accept IDENTIFIER or keywords that can be used as variable names
         name = token.lexeme if hasattr(token, 'lexeme') else str(token.type)
         line_num = token.line if hasattr(token, 'line') else 0
         self.advance()
         
-        # Special case: "length of X" syntax - parse as property access
+        # Special case: "length of X" syntax
         if name.lower() == 'length' and self.current_token and self.current_token.type == TokenType.OF:
-            self.advance()  # consume 'of'
-            
-            # Parse the target expression - just get identifier or literal
-            # Use primary() but avoid infinite recursion by getting the next primary element
-            if not self.current_token:
-                self.error("Expected expression after 'of'")
-            
-            # Get the target (identifier or expression)
-            target_expr = Identifier(self.current_token.lexeme, self.current_token.line if hasattr(self.current_token, 'line') else 0)
-            self.advance()
-            
-            # Allow chaining with member access (e.g., "length of myObj.name")
-            target_expr = self._parse_member_access(target_expr)
-
-            # Return as a function call: length(target_expr)
-            return FunctionCall("length", [target_expr], line_number=line_num)
+            return self._handle_length_of(line_num)
         
-        # Check for generic type arguments early (before other patterns)
+        # Parse generic type arguments if present
         type_arguments = []
         if self.current_token and self.current_token.type == TokenType.LESS_THAN:
             type_arguments = self._parse_generic_type_arguments()
         
-        # Special case: "call <function_name> with <args>" or "call (<expression>) with <args>" syntax
+        # Special case: "call <function>" syntax
         if name.lower() == 'call':
-            func_name_or_expr = None
-            
-            # Check for parenthesized expression: call (value at ptr) with args
-            if self.current_token and self.current_token.type == TokenType.LEFT_PAREN:
-                self.advance()  # consume (
-                func_name_or_expr = self.expression()  # Parse the expression (e.g., value at ptr)
-                self.eat(TokenType.RIGHT_PAREN)
-            # Check for direct identifier: call func_name with args OR call object.method
-            elif self.current_token and self.current_token.type == TokenType.IDENTIFIER:
-                # Parse the identifier first
-                identifier = self.current_token.lexeme
-                id_line = self.current_token.line if hasattr(self.current_token, 'line') else 0
-                self.advance()  # consume identifier
-                
-                # Check if this is member access: call object.method
-                if self.current_token and self.current_token.type == TokenType.DOT:
-                    # Create Identifier node and parse member access with call context
-                    func_name_or_expr = Identifier(identifier, id_line)
-                    func_name_or_expr = self._parse_member_access(func_name_or_expr, is_call_context=True)
-                    # If member access parsed successfully, return it directly (it's already marked as method call)
-                    return func_name_or_expr
-                else:
-                    # Simple function call: call func_name
-                    func_name_or_expr = identifier
-                
-                # Check for generic type arguments after function name
-                call_type_arguments = []
-                if self.current_token and self.current_token.type == TokenType.LESS_THAN:
-                    call_type_arguments = self._parse_generic_type_arguments()
-            
-            # Now expect "with" keyword (for arguments) or no arguments
-            if func_name_or_expr and self.current_token and self.current_token.type == TokenType.WITH:
-                self.advance()  # consume "with"
-                arguments = []
-                
-                # Parse first argument
-                arg = self.comparison()
-                if arg:
-                    arguments.append(arg)
-                
-                # Parse additional arguments (comma or "and" separated)
-                while self.current_token and (self.current_token.type == TokenType.COMMA or
-                                               self.current_token.type == TokenType.AND):
-                    self.advance()
-                    arg = self.comparison()
-                    if arg:
-                        arguments.append(arg)
-                
-                # If func_name_or_expr is already a parsed expression (Identifier), create FunctionCall
-                if isinstance(func_name_or_expr, str):
-                    expr = FunctionCall(func_name_or_expr, arguments, call_type_arguments, line_number=line_num)
-                else:
-                    # It's already an expression node, just return it
-                    expr = func_name_or_expr
-                return self._parse_member_access(expr, is_call_context=True)
-            elif func_name_or_expr:
-                # "call <function_name>" or "call (<expr>)" without "with" - no args
-                if isinstance(func_name_or_expr, str):
-                    expr = FunctionCall(func_name_or_expr, [], call_type_arguments if 'call_type_arguments' in locals() else [], line_number=line_num)
-                else:
-                    # Already parsed as expression (e.g., member access)
-                    expr = func_name_or_expr
-                return self._parse_member_access(expr, is_call_context=True)
+            return self._handle_call_syntax(line_num)
         
-        # Check if this is a function call with parentheses (e.g., "func(args)" or "func<T>(args)")
+        # Function call with parentheses: func(args) or func<T>(args)
         if self.current_token and self.current_token.type == TokenType.LEFT_PAREN:
-            self.advance()  # consume (
-            arguments = []
-            
-            # Parse arguments
-            if self.current_token.type != TokenType.RIGHT_PAREN:
-                arguments.append(self.expression())
-                while self.current_token.type == TokenType.COMMA:
-                    self.advance()  # consume ,
-                    arguments.append(self.expression())
-                    
-            self.eat(TokenType.RIGHT_PAREN)
-            expr = FunctionCall(name, arguments, type_arguments, named_arguments=None, trailing_block=None, line_number=line_num)
-            # Check for member access on function result
-            return self._parse_member_access(expr)
+            return self._handle_paren_call(name, type_arguments, line_num)
         
-        # Check if this is a function call with "with" keyword (e.g., "func with args")
-        # This enables inline function calls without needing the 'call' keyword
-        elif self.current_token and self.current_token.type == TokenType.WITH:
-            # Use the full function_call parser which handles named arguments
-            # Need to backtrack since function_call expects to be at the 'with' token
-            # But we've already consumed the function name, so pass it along
+        # Function call with "with" keyword: func with args
+        if self.current_token and self.current_token.type == TokenType.WITH:
             func_call = self.function_call(name, line_num)
-            # Check for member access on function result
             return self._parse_member_access(func_call)
         
-        # Check if this is a zero-argument function call (just identifier, but it's a function)
-        # This is tricky: we need to distinguish between variable reference and function call
-        # For now, we'll treat it as an identifier and let the interpreter handle it
-        # The interpreter can check if it's a function and call it if needed
-        # Or we can require explicit '()' for zero-arg functions: func()
-        # 
-        # SPECIAL CASE: Check for trailing block without 'with'
-        # This handles: "func_name do ... end" (zero-arg function with trailing block)
-        # But NOT: "variable do" in argument contexts (which would be a bug)
-        
-        # First parse member access to handle chaining like obj.method
+        # Parse as identifier with potential member access
         expr = Identifier(name)
         expr = self._parse_member_access(expr)
         
-        # Now check if this is followed by 'do' - but NOT if we're parsing function arguments
+        # Check for trailing block: func do ... end
         if (self.current_token and self.current_token.type == TokenType.DO 
             and not self._in_argument_context):
-            trailing_block = self.parse_trailing_block()
-            # Convert to function call
-            if isinstance(expr, Identifier):
-                # Simple case: func_name do
-                func_call = FunctionCall(expr.name, [], None, None, trailing_block, line_num)
-                return func_call
-            elif isinstance(expr, MemberAccess):
-                # Method call: obj.method do
-                # Keep the member access but mark it as having a trailing block
-                # We'll handle this in the interpreter
-                # For now, treat it as a function call to the method
-                return FunctionCall(expr, [], None, None, trailing_block, line_num)
-            else:
-                self.error(f"Cannot attach trailing block to {type(expr).__name__}")
+            return self._handle_trailing_block(expr, line_num)
         
         return expr
+
+    def _handle_length_of(self, line_num):
+        """Handle 'length of X' syntax."""
+        self.advance()  # consume 'of'
+        
+        if not self.current_token:
+            self.error("Expected expression after 'of'")
+        
+        target_expr = Identifier(self.current_token.lexeme, 
+                                self.current_token.line if hasattr(self.current_token, 'line') else 0)
+        self.advance()
+        target_expr = self._parse_member_access(target_expr)
+        
+        return FunctionCall("length", [target_expr], line_number=line_num)
+
+    def _handle_call_syntax(self, line_num):
+        """Handle 'call <function>' syntax."""
+        func_name_or_expr = None
+        
+        # call (expression) with args
+        if self.current_token and self.current_token.type == TokenType.LEFT_PAREN:
+            self.advance()
+            func_name_or_expr = self.expression()
+            self.eat(TokenType.RIGHT_PAREN)
+        # call func_name or call object.method
+        elif self.current_token and self.current_token.type == TokenType.IDENTIFIER:
+            identifier = self.current_token.lexeme
+            id_line = self.current_token.line if hasattr(self.current_token, 'line') else 0
+            self.advance()
+            
+            # call object.method
+            if self.current_token and self.current_token.type == TokenType.DOT:
+                func_name_or_expr = Identifier(identifier, id_line)
+                func_name_or_expr = self._parse_member_access(func_name_or_expr, is_call_context=True)
+                return func_name_or_expr
+            else:
+                func_name_or_expr = identifier
+            
+            # Parse generic type arguments
+            call_type_arguments = []
+            if self.current_token and self.current_token.type == TokenType.LESS_THAN:
+                call_type_arguments = self._parse_generic_type_arguments()
+        
+        # Parse arguments with "with" keyword
+        if func_name_or_expr and self.current_token and self.current_token.type == TokenType.WITH:
+            self.advance()
+            arguments = []
+            
+            arg = self.comparison()
+            if arg:
+                arguments.append(arg)
+            
+            while self.current_token and (self.current_token.type == TokenType.COMMA or
+                                         self.current_token.type == TokenType.AND):
+                self.advance()
+                arg = self.comparison()
+                if arg:
+                    arguments.append(arg)
+            
+            if isinstance(func_name_or_expr, str):
+                expr = FunctionCall(func_name_or_expr, arguments, 
+                                  call_type_arguments if 'call_type_arguments' in locals() else [], 
+                                  line_number=line_num)
+            else:
+                expr = func_name_or_expr
+            return self._parse_member_access(expr, is_call_context=True)
+        elif func_name_or_expr:
+            # No arguments
+            if isinstance(func_name_or_expr, str):
+                expr = FunctionCall(func_name_or_expr, [], 
+                                  call_type_arguments if 'call_type_arguments' in locals() else [], 
+                                  line_number=line_num)
+            else:
+                expr = func_name_or_expr
+            return self._parse_member_access(expr, is_call_context=True)
+
+    def _handle_paren_call(self, name, type_arguments, line_num):
+        """Handle function call with parentheses: func(args)."""
+        self.advance()  # consume (
+        arguments = []
+        
+        if self.current_token.type != TokenType.RIGHT_PAREN:
+            arguments.append(self.expression())
+            while self.current_token.type == TokenType.COMMA:
+                self.advance()
+                arguments.append(self.expression())
+        
+        self.eat(TokenType.RIGHT_PAREN)
+        expr = FunctionCall(name, arguments, type_arguments, named_arguments=None, 
+                          trailing_block=None, line_number=line_num)
+        return self._parse_member_access(expr)
+
+    def _handle_trailing_block(self, expr, line_num):
+        """Handle trailing block: func do ... end."""
+        trailing_block = self.parse_trailing_block()
+        
+        if isinstance(expr, Identifier):
+            return FunctionCall(expr.name, [], None, None, trailing_block, line_num)
+        elif isinstance(expr, MemberAccess):
+            return FunctionCall(expr, [], None, None, trailing_block, line_num)
+        else:
+            self.error(f"Cannot attach trailing block to {type(expr).__name__}")
+
         
 
     def convert_expression(self):
