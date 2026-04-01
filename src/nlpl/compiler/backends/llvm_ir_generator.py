@@ -5700,7 +5700,7 @@ class LLVMIRGenerator(CodeGenerator):
         """
         from ...parser.ast import (
             LiteralPattern, IdentifierPattern, WildcardPattern, 
-            VariantPattern, TuplePattern, ListPattern
+            VariantPattern, TuplePattern, ListPattern, OptionPattern, ResultPattern
         )
         
         pattern_type = type(pattern).__name__
@@ -5741,61 +5741,179 @@ class LLVMIRGenerator(CodeGenerator):
 
         # Variant pattern: matches Result.Ok(val) or Optional.Some(val)
         elif pattern_type == 'VariantPattern':
-            # This requires inspecting the object struct at runtime
-            # We assume Result/Optional are structs with specific fields
-            
-            # 1. inner value extraction will happen in the case body if matched
-            
-            # 2. check if variant matches
-            result_reg = self._new_temp()
-            
-            # Helper to check boolean property
-            def check_property(prop_name):
-                 # Get property pointer
-                 # Note: This heavily assumes the memory layout or uses a property getter
-                 # For simplicity in this phase, we'll assume we can access the field index corresponding to properties
-                 # Result: value(0), error(1), is_ok(2)
-                 # Optional: value(0), has_value(1)
-                 
-                 # We need to look up class definition to find index, but for now specific valid implementation:
-                 # Using property getter method would be safer but requires vtable or method lookup
-                 
-                 # Let's assume we generated getter methods `is_ok` and `has_value` as defined in the stdlib files.
-                 # Call the reader method.
-                 
-                 # Construct method name: Class_method
-                 # We need to know the type of value_reg. `value_type` argument provides this.
-                 class_name = value_type # e.g. "Result" or "Optional"
-                 
-                 # Mangle name: NLPL_Class_method
-                 method_name = f"NLPL_{class_name}_{prop_name}"
-                 
-                 # Call it. Expect i1 return (Boolean)
-                 call_res = self._new_temp()
-                 self.emit(f'{indent}{call_res} = call i1 @{method_name}(%{class_name}* {value_reg})')
-                 return call_res
-
-            if pattern.variant_name == 'Ok' or pattern.variant_name.endswith('.Ok'):
-                 return check_property('is_ok')
-            elif pattern.variant_name == 'Err' or pattern.variant_name.endswith('.Err'):
-                 # is_ok returns true for Ok, so we want not is_ok
-                 is_ok = check_property('is_ok')
-                 not_ok = self._new_temp()
-                 self.emit(f'{indent}{not_ok} = xor i1 {is_ok}, true')
-                 return not_ok
-            elif pattern.variant_name == 'Some' or pattern.variant_name.endswith('.Some'):
-                 return check_property('is_some')
-            elif pattern.variant_name == 'None' or pattern.variant_name.endswith('.None'):
-                 return check_property('is_none')
-            else:
-                     return result_reg
+            return self._generate_variant_pattern_match(pattern, value_reg, value_type, indent)
         
-        # Identifier pattern: binds value to variable (always matches if type compatible)
-        elif pattern_type == 'IdentifierPattern':
-            # Binding happens in _generate_pattern_bindings
-            return 'true'
+        # Option pattern: matches Some(value) or None
+        elif pattern_type == 'OptionPattern':
+            return self._generate_option_pattern_match(pattern, value_reg, value_type, indent)
+        
+        # Result pattern: matches Ok(value) or Err(error)
+        elif pattern_type == 'ResultPattern':
+            return self._generate_result_pattern_match(pattern, value_reg, value_type, indent)
+        
+        # Tuple pattern: matches tuple structure
+        elif pattern_type == 'TuplePattern':
+            return self._generate_tuple_pattern_match(pattern, value_reg, value_type, case_label, indent)
+        
+        # List pattern: matches list structure
+        elif pattern_type == 'ListPattern':
+            return self._generate_list_pattern_match(pattern, value_reg, value_type, case_label, indent)
             
         return 'false'
+
+    def _generate_variant_pattern_match(self, pattern, value_reg, value_type, indent):
+        """Generate match code for VariantPattern (generic variant checking)."""
+        result_reg = self._new_temp()
+        
+        # Helper to check boolean property
+        def check_property(prop_name):
+             # Construct method name: Class_method
+             class_name = value_type # e.g. "Result" or "Optional"
+             
+             # Mangle name: NLPL_Class_method
+             method_name = f"NLPL_{class_name}_{prop_name}"
+             
+             # Call it. Expect i1 return (Boolean)
+             call_res = self._new_temp()
+             self.emit(f'{indent}{call_res} = call i1 @{method_name}(%{class_name}* {value_reg})')
+             return call_res
+
+        if pattern.variant_name == 'Ok' or pattern.variant_name.endswith('.Ok'):
+             return check_property('is_ok')
+        elif pattern.variant_name == 'Err' or pattern.variant_name.endswith('.Err'):
+             # is_ok returns true for Ok, so we want not is_ok
+             is_ok = check_property('is_ok')
+             not_ok = self._new_temp()
+             self.emit(f'{indent}{not_ok} = xor i1 {is_ok}, true')
+             return not_ok
+        elif pattern.variant_name == 'Some' or pattern.variant_name.endswith('.Some'):
+             return check_property('is_some')
+        elif pattern.variant_name == 'None' or pattern.variant_name.endswith('.None'):
+             return check_property('is_none')
+        else:
+             return result_reg
+
+    def _generate_option_pattern_match(self, pattern, value_reg, value_type, indent):
+        """Generate match code for OptionPattern (Some/None specific)."""
+        # OptionPattern is specifically for Optional<T> types
+        # Check if it's Some or None variant
+        if hasattr(pattern, 'is_some') and pattern.is_some:
+            # Match Some(inner)
+            has_value = self._new_temp()
+            self.emit(f'{indent}{has_value} = call i1 @NLPL_Optional_has_value({value_type}* {value_reg})')
+            return has_value
+        else:
+            # Match None
+            has_value = self._new_temp()
+            self.emit(f'{indent}{has_value} = call i1 @NLPL_Optional_has_value({value_type}* {value_reg})')
+            is_none = self._new_temp()
+            self.emit(f'{indent}{is_none} = xor i1 {has_value}, true')
+            return is_none
+
+    def _generate_result_pattern_match(self, pattern, value_reg, value_type, indent):
+        """Generate match code for ResultPattern (Ok/Err specific)."""
+        # ResultPattern is specifically for Result<T, E> types
+        # Check if it's Ok or Err variant
+        if hasattr(pattern, 'is_ok') and pattern.is_ok:
+            # Match Ok(value)
+            is_ok = self._new_temp()
+            self.emit(f'{indent}{is_ok} = call i1 @NLPL_Result_is_ok({value_type}* {value_reg})')
+            return is_ok
+        else:
+            # Match Err(error)
+            is_ok = self._new_temp()
+            self.emit(f'{indent}{is_ok} = call i1 @NLPL_Result_is_ok({value_type}* {value_reg})')
+            is_err = self._new_temp()
+            self.emit(f'{indent}{is_err} = xor i1 {is_ok}, true')
+            return is_err
+
+    def _generate_tuple_pattern_match(self, pattern, value_reg, value_type, case_label, indent):
+        """Generate match code for TuplePattern."""
+        # Tuples are represented as structs: { elem0_type, elem1_type, ... }
+        # Match each element pattern against corresponding tuple element
+        
+        match_results = []
+        
+        for i, elem_pattern in enumerate(pattern.patterns):
+            # Extract tuple element
+            elem_reg = self._new_temp()
+            self.emit(f'{indent}{elem_reg} = extractvalue {value_type} {value_reg}, {i}')
+            
+            # Determine element type
+            elem_type = self._get_tuple_element_type(value_type, i)
+            
+            # Recursively match element pattern
+            elem_match = self._generate_pattern_match(
+                elem_pattern, elem_reg, elem_type, case_label, indent
+            )
+            match_results.append(elem_match)
+        
+        # Combine all element matches with AND
+        if len(match_results) == 0:
+            return 'true'
+        elif len(match_results) == 1:
+            return match_results[0]
+        else:
+            # AND all match results together
+            combined_reg = match_results[0]
+            for next_result in match_results[1:]:
+                and_reg = self._new_temp()
+                self.emit(f'{indent}{and_reg} = and i1 {combined_reg}, {next_result}')
+                combined_reg = and_reg
+            return combined_reg
+
+    def _generate_list_pattern_match(self, pattern, value_reg, value_type, case_label, indent):
+        """Generate match code for ListPattern."""
+        # Lists are dynamic arrays with length + data pointer
+        # Structure: { i64 length, element_type* data }
+        
+        patterns = pattern.patterns
+        
+        # Extract list length
+        length_reg = self._new_temp()
+        self.emit(f'{indent}{length_reg} = extractvalue {value_type} {value_reg}, 0')
+        
+        # Check minimum length requirement
+        min_length = len(patterns)
+        length_check_reg = self._new_temp()
+        
+        if hasattr(pattern, 'rest_binding') and pattern.rest_binding:
+            # With rest binding [a, b, ...rest], length must be >= pattern count
+            self.emit(f'{indent}{length_check_reg} = icmp uge i64 {length_reg}, {min_length}')
+        else:
+            # Without rest, length must be exactly pattern count
+            self.emit(f'{indent}{length_check_reg} = icmp eq i64 {length_reg}, {min_length}')
+        
+        # Extract data pointer
+        data_ptr_reg = self._new_temp()
+        self.emit(f'{indent}{data_ptr_reg} = extractvalue {value_type} {value_reg}, 1')
+        
+        # Match each element pattern
+        match_results = [length_check_reg]
+        
+        for i, elem_pattern in enumerate(patterns):
+            # Get pointer to element i
+            elem_ptr_reg = self._new_temp()
+            self.emit(f'{indent}{elem_ptr_reg} = getelementptr inbounds i64, i64* {data_ptr_reg}, i64 {i}')
+            
+            # Load element value
+            elem_val_reg = self._new_temp()
+            self.emit(f'{indent}{elem_val_reg} = load i64, i64* {elem_ptr_reg}')
+            
+            # Match element pattern
+            elem_match = self._generate_pattern_match(
+                elem_pattern, elem_val_reg, 'i64', case_label, indent
+            )
+            match_results.append(elem_match)
+        
+        # Combine all matches with AND
+        combined_reg = match_results[0]
+        for next_result in match_results[1:]:
+            and_reg = self._new_temp()
+            self.emit(f'{indent}{and_reg} = and i1 {combined_reg}, {next_result}')
+            combined_reg = and_reg
+        
+        return combined_reg
 
     def _generate_variant_pattern_binding(self, pattern, value_reg, value_type, indent):
         """
@@ -5987,6 +6105,8 @@ class LLVMIRGenerator(CodeGenerator):
 
     def _generate_pattern_bindings(self, pattern, value_reg, value_type, indent='', case_label=''):
         """Generate code to extract values and bind variables for a pattern."""
+        from ...parser.ast import OptionPattern, ResultPattern
+        
         pattern_type = type(pattern).__name__
 
         if pattern_type == 'IdentifierPattern':
@@ -6001,6 +6121,12 @@ class LLVMIRGenerator(CodeGenerator):
 
         elif pattern_type == 'VariantPattern':
             self._generate_variant_pattern_binding(pattern, value_reg, value_type, indent)
+        
+        elif pattern_type == 'OptionPattern':
+            self._generate_option_pattern_binding(pattern, value_reg, value_type, indent)
+        
+        elif pattern_type == 'ResultPattern':
+            self._generate_result_pattern_binding(pattern, value_reg, value_type, indent)
 
         # Tuple pattern: match each element
         elif pattern_type == 'TuplePattern':
@@ -6044,6 +6170,57 @@ class LLVMIRGenerator(CodeGenerator):
         else:
             # Unknown pattern type
             return 'false'
+    
+    def _generate_option_pattern_binding(self, pattern, value_reg, value_type, indent):
+        """Generate bindings for OptionPattern (Some(value) extraction)."""
+        if not hasattr(pattern, 'inner_pattern') or not pattern.inner_pattern:
+            return
+        
+        # Extract inner value from Optional<T>
+        # Call NLPL_Optional_get_value to extract the value
+        inner_val = self._new_temp()
+        # Assume inner type is i64 for simplicity (can be enhanced with type inference)
+        inner_type = 'i64'
+        self.emit(f'{indent}{inner_val} = call {inner_type} @NLPL_Optional_get_value({value_type}* {value_reg})')
+        
+        # Recursively bind inner pattern
+        if type(pattern.inner_pattern).__name__ == 'IdentifierPattern':
+            var_name = pattern.inner_pattern.name
+            var_addr = self._new_temp()
+            self.emit(f'{indent}{var_addr} = alloca {inner_type}')
+            self.emit(f'{indent}store {inner_type} {inner_val}, {inner_type}* {var_addr}')
+            self.local_vars[var_name] = (inner_type, var_addr)
+        else:
+            # Recursively handle complex inner patterns
+            self._generate_pattern_bindings(pattern.inner_pattern, inner_val, inner_type, indent)
+    
+    def _generate_result_pattern_binding(self, pattern, value_reg, value_type, indent):
+        """Generate bindings for ResultPattern (Ok(value) or Err(error) extraction)."""
+        if not hasattr(pattern, 'inner_pattern') or not pattern.inner_pattern:
+            return
+        
+        # Determine which field to extract based on Ok vs Err
+        if hasattr(pattern, 'is_ok') and pattern.is_ok:
+            # Extract value from Result.Ok
+            inner_val = self._new_temp()
+            inner_type = 'i64'  # Can be enhanced with type inference
+            self.emit(f'{indent}{inner_val} = call {inner_type} @NLPL_Result_get_value({value_type}* {value_reg})')
+        else:
+            # Extract error from Result.Err
+            inner_val = self._new_temp()
+            inner_type = 'i8*'  # Error is typically a string
+            self.emit(f'{indent}{inner_val} = call {inner_type} @NLPL_Result_get_error({value_type}* {value_reg})')
+        
+        # Recursively bind inner pattern
+        if type(pattern.inner_pattern).__name__ == 'IdentifierPattern':
+            var_name = pattern.inner_pattern.name
+            var_addr = self._new_temp()
+            self.emit(f'{indent}{var_addr} = alloca {inner_type}')
+            self.emit(f'{indent}store {inner_type} {inner_val}, {inner_type}* {var_addr}')
+            self.local_vars[var_name] = (inner_type, var_addr)
+        else:
+            # Recursively handle complex inner patterns
+            self._generate_pattern_bindings(pattern.inner_pattern, inner_val, inner_type, indent)
     
     def _get_variant_tag(self, variant_name):
         """Map variant name to numeric tag."""
