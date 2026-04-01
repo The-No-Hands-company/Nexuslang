@@ -5033,6 +5033,46 @@ class LLVMIRGenerator(CodeGenerator):
 
         return array_ptr, array_type, array_size, length_reg
 
+    def _emit_foreach_loop_body_element(self, body_label, index_alloca, iter_alloca, elem_type, array_type, array_ptr, inc_label, node, indent):
+        """Emit the foreach loop body block: load current element and execute loop body statements."""
+        # Body: load element, execute statements
+        self.emit(f'{body_label}:')
+
+        # Array pointer is already loaded in array_ptr variable
+        # No need to reload it
+
+        # Load index again for GEP
+        index_reg2 = self._new_temp()
+        self.emit(f'{indent}{index_reg2} = load i64, i64* {index_alloca}, align 8')
+
+        # Get element pointer - use elem_type determined earlier
+        elem_ptr = self._new_temp()
+        self.emit(f'{indent}{elem_ptr} = getelementptr inbounds {elem_type}, {array_type} {array_ptr}, i64 {index_reg2}')
+
+        # Load element value into iterator variable
+        elem_val = self._new_temp()
+        self.emit(f'{indent}{elem_val} = load {elem_type}, {elem_type}* {elem_ptr}, align 8')
+        self.emit(f'{indent}store {elem_type} {elem_val}, {elem_type}* {iter_alloca}, align 8')
+
+        # Execute loop body
+        if hasattr(node, 'body') and node.body:
+            for stmt in node.body:
+                self._generate_statement(stmt, indent)
+
+        # Jump to increment
+        self.emit(f'{indent}br label %{inc_label}')
+
+    def _emit_foreach_loop_increment(self, inc_label, index_alloca, cond_label, indent):
+        """Emit the foreach loop increment block: i++."""
+        # Increment: i++
+        self.emit(f'{inc_label}:')
+        index_reg3 = self._new_temp()
+        self.emit(f'{indent}{index_reg3} = load i64, i64* {index_alloca}, align 8')
+        inc_reg = self._new_temp()
+        self.emit(f'{indent}{inc_reg} = add nsw i64 {index_reg3}, 1')
+        self.emit(f'{indent}store i64 {inc_reg}, i64* {index_alloca}, align 8')
+        self.emit(f'{indent}br label %{cond_label}')
+
     def _generate_foreach_loop(self, node, indent=''):
         """
         Generate for-each loop over array: for each item in array
@@ -5138,43 +5178,10 @@ class LLVMIRGenerator(CodeGenerator):
                 return
         
         self.emit(f'{indent}br i1 {limit_reg}, label %{body_label}, label %{end_label if not has_else else else_label}')
-        
-        # Body: load element, execute statements
-        self.emit(f'{body_label}:')
-        
-        # Array pointer is already loaded in array_ptr variable
-        # No need to reload it
-        
-        
-        # Load index again for GEP
-        index_reg2 = self._new_temp()
-        self.emit(f'{indent}{index_reg2} = load i64, i64* {index_alloca}, align 8')
-        
-        # Get element pointer - use elem_type determined earlier
-        elem_ptr = self._new_temp()
-        self.emit(f'{indent}{elem_ptr} = getelementptr inbounds {elem_type}, {array_type} {array_ptr}, i64 {index_reg2}')
-        
-        # Load element value into iterator variable
-        elem_val = self._new_temp()
-        self.emit(f'{indent}{elem_val} = load {elem_type}, {elem_type}* {elem_ptr}, align 8')
-        self.emit(f'{indent}store {elem_type} {elem_val}, {elem_type}* {iter_alloca}, align 8')
-        
-        # Execute loop body
-        if hasattr(node, 'body') and node.body:
-            for stmt in node.body:
-                self._generate_statement(stmt, indent)
-        
-        # Jump to increment
-        self.emit(f'{indent}br label %{inc_label}')
-        
-        # Increment: i++
-        self.emit(f'{inc_label}:')
-        index_reg3 = self._new_temp()
-        self.emit(f'{indent}{index_reg3} = load i64, i64* {index_alloca}, align 8')
-        inc_reg = self._new_temp()
-        self.emit(f'{indent}{inc_reg} = add nsw i64 {index_reg3}, 1')
-        self.emit(f'{indent}store i64 {inc_reg}, i64* {index_alloca}, align 8')
-        self.emit(f'{indent}br label %{cond_label}')
+
+        self._emit_foreach_loop_body_element(body_label, index_alloca, iter_alloca, elem_type, array_type, array_ptr, inc_label, node, indent)
+
+        self._emit_foreach_loop_increment(inc_label, index_alloca, cond_label, indent)
         
         # Else block (if present)
         if has_else:
