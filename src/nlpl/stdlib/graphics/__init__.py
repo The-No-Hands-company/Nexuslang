@@ -4,15 +4,16 @@ Provides window management, shader compilation, VAO/VBO, and texture loading
 """
 
 import ctypes
-import numpy as np
 from typing import List, Tuple, Optional
 
 try:
+    import numpy as np
     import glfw
     from OpenGL.GL import *
     from OpenGL.GL.shaders import compileProgram, compileShader
     GLFW_AVAILABLE = True
 except ImportError:
+    np = None
     GLFW_AVAILABLE = False
     print("Warning: GLFW or PyOpenGL not installed. Graphics module functionality limited.")
     print("Install with: pip install glfw PyOpenGL numpy")

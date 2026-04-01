@@ -210,6 +210,7 @@ class TypeChecker:
     
     def check_statement(self, statement: Any, env: TypeEnvironment) -> Type:
         """Check the type of a statement."""
+        # Standard AST nodes with dedicated check methods
         if isinstance(statement, VariableDeclaration):
             return self.check_variable_declaration(statement, env)
         elif isinstance(statement, FunctionDefinition):
@@ -230,11 +231,7 @@ class TypeChecker:
             return self.check_repeat_while_loop(statement, env)
         elif isinstance(statement, ReturnStatement):
             return self.check_return_statement(statement, env)
-        elif statement.__class__.__name__ == 'BreakStatement':
-            # Break statements are valid in loop contexts
-            return ANY_TYPE
-        elif statement.__class__.__name__ == 'ContinueStatement':
-            # Continue statements are valid in loop contexts
+        elif statement.__class__.__name__ in ('BreakStatement', 'ContinueStatement'):
             return ANY_TYPE
         elif isinstance(statement, Block):
             return self.check_block(statement, env)
@@ -262,259 +259,233 @@ class TypeChecker:
             return self.check_type_alias_definition(statement)
         elif isinstance(statement, PrintStatement):
             return self.check_print_statement(statement, env)
-        elif statement.__class__.__name__ == 'ImportStatement':
-            # Import statements bring modules into scope
-            # Register the module name (or alias if provided) as a variable
+        # Delegate remaining groups to focused helpers
+        handled, result = self._check_import_statement(statement, env)
+        if handled:
+            return result
+        handled, result = self._check_data_structure_statement(statement, env)
+        if handled:
+            return result
+        handled, result = self._check_collection_expression(statement, env)
+        if handled:
+            return result
+        handled, result = self._check_ffi_statement(statement, env)
+        if handled:
+            return result
+        handled, result = self._check_inline_assembly_statement(statement, env)
+        if handled:
+            return result
+        handled, result = self._check_match_expression_statement(statement, env)
+        if handled:
+            return result
+        handled, result = self._check_ownership_statement(statement, env)
+        if handled:
+            return result
+        raise TypeCheckError(f"Unsupported statement type: {statement.__class__.__name__}")
+
+    def _check_import_statement(self, statement: Any, env: TypeEnvironment) -> Tuple[bool, Any]:
+        """Handle import-related statement nodes. Returns (handled, type)."""
+        cls = statement.__class__.__name__
+        if cls == 'ImportStatement':
             if hasattr(statement, 'module_name'):
-                # Use alias if provided, otherwise extract last part of module name
                 if hasattr(statement, 'alias') and statement.alias:
                     module_name = statement.alias
                 else:
-                    # Extract the last part of dotted names (e.g., "test_modules.math_utils" -> "math_utils")
                     module_name = statement.module_name
                     if '.' in module_name:
                         module_name = module_name.split('.')[-1]
                 env.define_variable(module_name, ANY_TYPE)
-            return ANY_TYPE
-        elif statement.__class__.__name__ == 'SelectiveImport':
-            # Selective imports bring specific names into scope
-            # Register each imported name as a variable
+            return True, ANY_TYPE
+        if cls == 'SelectiveImport':
             if hasattr(statement, 'imported_names'):
                 for name in statement.imported_names:
                     env.define_variable(name, ANY_TYPE)
-            return ANY_TYPE
-        elif statement.__class__.__name__ == 'ModuleAccess':
-            # Module access expressions (module.member) are valid
-            return ANY_TYPE
-        elif isinstance(statement, StructDefinition):
-            return ANY_TYPE  # Struct definitions are valid, return ANY for now
-        elif isinstance(statement, UnionDefinition):
-            return ANY_TYPE  # Union definitions are valid, return ANY for now  
-        elif isinstance(statement, ObjectInstantiation):
-            return ANY_TYPE  # Object instantiation valid, return ANY for now
-        elif isinstance(statement, MemberAssignment):
-            return ANY_TYPE  # Member assignment valid, return ANY for now
-        elif statement.__class__.__name__ == 'IndexAssignment':
-            # Handle index assignment: set array[index] to value
-            # Check that the target (IndexExpression) is valid
+            return True, ANY_TYPE
+        if cls == 'ModuleAccess':
+            return True, ANY_TYPE
+        return False, None
+
+    def _check_data_structure_statement(self, statement: Any, env: TypeEnvironment) -> Tuple[bool, Any]:
+        """Handle struct/union/object/memory statement nodes. Returns (handled, type)."""
+        cls = statement.__class__.__name__
+        if isinstance(statement, (StructDefinition, UnionDefinition, ObjectInstantiation, MemberAssignment)):
+            return True, ANY_TYPE
+        if cls == 'IndexAssignment':
             if hasattr(statement, 'target'):
                 self.check_expression(statement.target, env)
-            # Check that the value is valid
             if hasattr(statement, 'value'):
-                return self.check_expression(statement.value, env)
-            return ANY_TYPE
-        elif isinstance(statement, SizeofExpression):
-            return INTEGER_TYPE  # sizeof returns integer
-        elif isinstance(statement, AddressOfExpression):
-            return ANY_TYPE  # Address-of returns pointer type (simplified)
-        elif isinstance(statement, DereferenceExpression):
-            return ANY_TYPE  # Dereference returns the pointed-to type (simplified)
-        elif isinstance(statement, TypeCastExpression):
-            return self.check_type_cast(statement, env)
-        elif statement.__class__.__name__ == 'LambdaExpression':
-            # Handle lambda expressions
-            return self.check_lambda_expression(statement, env)
-        elif statement.__class__.__name__ == 'ListExpression':
-            # Handle list literals: [1, 2, 3]
-            return self.check_list_expression(statement, env)
-        elif statement.__class__.__name__ == 'DictExpression':
-            # Handle dict literals: {"key": "value"}
-            return self.check_dict_expression(statement, env)
-        elif statement.__class__.__name__ == 'ListComprehension':
-            # Handle list comprehensions: [x for x in range(10)]
-            return self.check_list_comprehension(statement, env)
-        elif statement.__class__.__name__ == 'DictComprehension':
-            # Handle dict comprehensions: {k: v for k, v in items}
-            return self.check_dict_comprehension(statement, env)
-        elif statement.__class__.__name__ == 'MemberAccess':
-            # Handle member access: object.property or object.method()
-            return self.check_member_access(statement, env)
-        elif statement.__class__.__name__ == 'IndexExpression':
-            # Handle index expressions: array[index] or dict[key]
-            return self.check_index_expression(statement, env)
-        elif statement.__class__.__name__ == 'GenericTypeInstantiation':
-            # Handle generic type instantiation: create list, create list of Integer
-            return self.check_generic_type_instantiation(statement, env)
-        elif statement.__class__.__name__ == 'ExternFunctionDeclaration':
-            # Handle extern function declarations (FFI)
-            # Register the extern function so it can be type-checked when called
-            if hasattr(statement, 'name'):
-                # Create a function type for the extern function
-                param_types = []
-                if hasattr(statement, 'parameters'):
-                    for param in statement.parameters:
-                        param_type = get_type_by_name(param.type_annotation) if hasattr(param, 'type_annotation') else ANY_TYPE
-                        param_types.append(param_type)
-                
-                return_type = get_type_by_name(statement.return_type) if hasattr(statement, 'return_type') else ANY_TYPE
-                func_type = FunctionType(param_types, return_type)
-                
-                # Mark as variadic if specified (allows variable number of arguments)
-                if hasattr(statement, 'variadic') and statement.variadic:
-                    func_type.variadic = True
-                
-                env.define_function(statement.name, func_type)
-            return ANY_TYPE
-        elif statement.__class__.__name__ == 'ExternVariableDeclaration':
-            # Handle extern variable declarations (FFI)
-            if hasattr(statement, 'name') and hasattr(statement, 'type_annotation'):
-                var_type = get_type_by_name(statement.type_annotation)
-                env.define_variable(statement.name, var_type)
-            return ANY_TYPE
-        elif statement.__class__.__name__ == 'ExternTypeDeclaration':
-            # Handle extern type declarations (FFI)
-            # These define type aliases for FFI types, just accept them
-            return ANY_TYPE
-        elif statement.__class__.__name__ == 'InlineAssembly':
-            # Handle inline assembly blocks
-            # Assembly can read/write variables, but we can't statically type check it
-            # Just verify that input/output operands exist in scope
-            if hasattr(statement, 'inputs'):
-                # inputs is a list of (constraint, expr) tuples
-                for constraint, expr in statement.inputs:
-                    # Check that input expressions are valid
-                    self.check_expression(expr, env)
-            
-            if hasattr(statement, 'outputs'):
-                # outputs is a list of (constraint, var) tuples
-                for constraint, var in statement.outputs:
-                    # Outputs should be identifiers (variables)
-                    # They can be assigned to, so we don't need to check if they exist yet
-                    pass
-            
-            # Assembly return type is typically Integer (return value in register)
-            return INTEGER_TYPE
-        elif statement.__class__.__name__ == 'MatchExpression':
-            # Handle pattern matching expressions with enhanced type inference
-            # Check the match expression type
-            match_expr_type = self.check_expression(statement.expression, env)
-            
-            # Check each case
-            result_types = []
-            for case in statement.cases:
-                # Create a new scope for pattern bindings
-                case_env = TypeEnvironment(parent=env)
-                
-                # Infer types for pattern bindings using TypeInferenceEngine
-                pattern = case.pattern
-                
-                # Use type inference to get precise pattern binding types
-                if hasattr(self, 'type_inference_engine'):
-                    # Use the inference engine if available
-                    bindings = self.type_inference_engine.infer_pattern_binding_type(pattern, match_expr_type)
-                    for var_name, var_type in bindings.items():
-                        case_env.define_variable(var_name, var_type)
-                else:
-                    # Fall back to basic inference
-                    if hasattr(pattern, 'name'):  # IdentifierPattern
-                        case_env.define_variable(pattern.name, match_expr_type)
-                    elif hasattr(pattern, 'binding'):  # OptionPattern, ResultPattern
-                        if pattern.binding:
-                            # For Option<T>/Result<T,E>, unwrap the type
-                            inner_type = ANY_TYPE
-                            if hasattr(match_expr_type, 'type_parameters') and match_expr_type.type_parameters:
-                                inner_type = match_expr_type.type_parameters[0]
-                            case_env.define_variable(pattern.binding, inner_type)
-                    elif hasattr(pattern, 'bindings'):  # VariantPattern
-                        for binding in pattern.bindings:
-                            case_env.define_variable(binding, ANY_TYPE)
-                
-                # Check guard if present
-                if case.guard:
-                    guard_type = self.check_expression(case.guard, case_env)
-                    if guard_type != BOOLEAN_TYPE and guard_type != ANY_TYPE:
-                        self.errors.append(
-                            f"Line {getattr(case, 'line_number', '?')}: Guard condition must be boolean, "
-                            f"got {guard_type}"
-                        )
-                
-                # Check case body and collect return type
-                body_type = ANY_TYPE
-                for stmt in case.body:
-                    body_type = self.check_statement(stmt, case_env)
-                result_types.append(body_type)
-            
-            # Match expression type is the union of all case body types
-            # If all types are the same, use that; otherwise try to unify or use ANY_TYPE
-            if result_types:
-                if all(t == result_types[0] for t in result_types):
-                    return result_types[0]
-                # Try to unify types using type inference engine
-                if hasattr(self, 'type_inference_engine'):
-                    unified_type = result_types[0]
-                    for rt in result_types[1:]:
-                        unified = self.type_inference_engine.unify_types(unified_type, rt)
-                        if unified:
-                            unified_type = unified
-                        else:
-                            return ANY_TYPE  # Can't unify - use ANY
-                    return unified_type
-            return ANY_TYPE
-        elif isinstance(statement, RaiseStatement):
-            # Raise statements don't return a value, but we check the message type
+                return True, self.check_expression(statement.value, env)
+            return True, ANY_TYPE
+        if isinstance(statement, SizeofExpression):
+            return True, INTEGER_TYPE
+        if isinstance(statement, (AddressOfExpression, DereferenceExpression)):
+            return True, ANY_TYPE
+        if isinstance(statement, TypeCastExpression):
+            return True, self.check_type_cast(statement, env)
+        if cls == 'LambdaExpression':
+            return True, self.check_lambda_expression(statement, env)
+        if isinstance(statement, RaiseStatement):
             if statement.message:
                 message_type = self.check_statement(statement.message, env)
-                # Message should be a string, but we're lenient
                 if message_type != STRING_TYPE and message_type != ANY_TYPE:
                     self.errors.append(
                         f"Line {getattr(statement, 'line_number', '?')}: Raise message should be String, got {message_type}"
                     )
-            return ANY_TYPE  # Raise statements don't produce a value
-        elif hasattr(statement, 'node_type') and getattr(statement, 'node_type', None) == 'conditional_compilation_block':
-            # Conditional compilation block - type-check both branches
+            return True, ANY_TYPE
+        if hasattr(statement, 'node_type') and getattr(statement, 'node_type', None) == 'conditional_compilation_block':
             branch_env = env.create_child_scope() if hasattr(env, 'create_child_scope') else env
             for stmt in (statement.body or []):
                 self.check_statement(stmt, branch_env)
             if statement.else_body:
                 for stmt in statement.else_body:
                     self.check_statement(stmt, branch_env)
+            return True, ANY_TYPE
+        return False, None
+
+    def _check_collection_expression(self, statement: Any, env: TypeEnvironment) -> Tuple[bool, Any]:
+        """Handle collection literal and comprehension nodes. Returns (handled, type)."""
+        cls = statement.__class__.__name__
+        if cls == 'ListExpression':
+            return True, self.check_list_expression(statement, env)
+        if cls == 'DictExpression':
+            return True, self.check_dict_expression(statement, env)
+        if cls == 'ListComprehension':
+            return True, self.check_list_comprehension(statement, env)
+        if cls == 'DictComprehension':
+            return True, self.check_dict_comprehension(statement, env)
+        if cls == 'MemberAccess':
+            return True, self.check_member_access(statement, env)
+        if cls == 'IndexExpression':
+            return True, self.check_index_expression(statement, env)
+        if cls == 'GenericTypeInstantiation':
+            return True, self.check_generic_type_instantiation(statement, env)
+        return False, None
+
+    def _check_ffi_statement(self, statement: Any, env: TypeEnvironment) -> Tuple[bool, Any]:
+        """Handle FFI extern declaration nodes. Returns (handled, type)."""
+        cls = statement.__class__.__name__
+        if cls == 'ExternFunctionDeclaration':
+            if hasattr(statement, 'name'):
+                param_types = []
+                if hasattr(statement, 'parameters'):
+                    for param in statement.parameters:
+                        param_type = get_type_by_name(param.type_annotation) if hasattr(param, 'type_annotation') else ANY_TYPE
+                        param_types.append(param_type)
+                return_type = get_type_by_name(statement.return_type) if hasattr(statement, 'return_type') else ANY_TYPE
+                func_type = FunctionType(param_types, return_type)
+                if hasattr(statement, 'variadic') and statement.variadic:
+                    func_type.variadic = True
+                env.define_function(statement.name, func_type)
+            return True, ANY_TYPE
+        if cls == 'ExternVariableDeclaration':
+            if hasattr(statement, 'name') and hasattr(statement, 'type_annotation'):
+                var_type = get_type_by_name(statement.type_annotation)
+                env.define_variable(statement.name, var_type)
+            return True, ANY_TYPE
+        if cls == 'ExternTypeDeclaration':
+            return True, ANY_TYPE
+        return False, None
+
+    def _check_inline_assembly_statement(self, statement: Any, env: TypeEnvironment) -> Tuple[bool, Any]:
+        """Handle inline assembly nodes. Returns (handled, type)."""
+        if statement.__class__.__name__ != 'InlineAssembly':
+            return False, None
+        if hasattr(statement, 'inputs'):
+            for _constraint, expr in statement.inputs:
+                self.check_expression(expr, env)
+        return True, INTEGER_TYPE
+
+    def _check_match_expression_statement(self, statement: Any, env: TypeEnvironment) -> Tuple[bool, Any]:
+        """Handle match/case expression nodes. Returns (handled, type)."""
+        if statement.__class__.__name__ != 'MatchExpression':
+            return False, None
+        match_expr_type = self.check_expression(statement.expression, env)
+        result_types = []
+        for case in statement.cases:
+            case_env = TypeEnvironment(parent=env)
+            self._bind_pattern_types(case.pattern, match_expr_type, case_env)
+            if case.guard:
+                guard_type = self.check_expression(case.guard, case_env)
+                if guard_type != BOOLEAN_TYPE and guard_type != ANY_TYPE:
+                    self.errors.append(
+                        f"Line {getattr(case, 'line_number', '?')}: Guard condition must be boolean, "
+                        f"got {guard_type}"
+                    )
+            body_type = ANY_TYPE
+            for stmt in case.body:
+                body_type = self.check_statement(stmt, case_env)
+            result_types.append(body_type)
+        return True, self._unify_result_types(result_types)
+
+    def _bind_pattern_types(self, pattern: Any, match_expr_type: Type, case_env: TypeEnvironment) -> None:
+        """Bind pattern variable names to their inferred types in *case_env*."""
+        if hasattr(self, 'type_inference_engine'):
+            bindings = self.type_inference_engine.infer_pattern_binding_type(pattern, match_expr_type)
+            for var_name, var_type in bindings.items():
+                case_env.define_variable(var_name, var_type)
+            return
+        if hasattr(pattern, 'name'):
+            case_env.define_variable(pattern.name, match_expr_type)
+        elif hasattr(pattern, 'binding') and pattern.binding:
+            inner_type = ANY_TYPE
+            if hasattr(match_expr_type, 'type_parameters') and match_expr_type.type_parameters:
+                inner_type = match_expr_type.type_parameters[0]
+            case_env.define_variable(pattern.binding, inner_type)
+        elif hasattr(pattern, 'bindings'):
+            for binding in pattern.bindings:
+                case_env.define_variable(binding, ANY_TYPE)
+
+    def _unify_result_types(self, result_types: List[Type]) -> Type:
+        """Return the unified type of *result_types*, or ANY_TYPE if unification fails."""
+        if not result_types:
             return ANY_TYPE
-        elif statement.__class__.__name__ == 'RcCreation':
-            # Rc/Arc/Weak creation: Rc of T with value
-            # Type-check the inner value expression if present.
+        if all(t == result_types[0] for t in result_types):
+            return result_types[0]
+        if hasattr(self, 'type_inference_engine'):
+            unified_type = result_types[0]
+            for rt in result_types[1:]:
+                unified = self.type_inference_engine.unify_types(unified_type, rt)
+                if unified:
+                    unified_type = unified
+                else:
+                    return ANY_TYPE
+            return unified_type
+        return ANY_TYPE
+
+    def _check_ownership_statement(self, statement: Any, env: TypeEnvironment) -> Tuple[bool, Any]:
+        """Handle ownership/smart-pointer nodes. Returns (handled, type)."""
+        cls = statement.__class__.__name__
+        if cls == 'RcCreation':
             if hasattr(statement, 'value') and statement.value is not None:
                 self.check_statement(statement.value, env)
-            return ANY_TYPE
-        elif statement.__class__.__name__ == 'DowngradeExpression':
-            # downgrade rc_value -> Weak
+            return True, ANY_TYPE
+        if cls == 'DowngradeExpression':
             if hasattr(statement, 'rc_expr') and statement.rc_expr is not None:
                 self.check_statement(statement.rc_expr, env)
-            return ANY_TYPE
-        elif statement.__class__.__name__ == 'UpgradeExpression':
-            # upgrade weak_value -> Rc or None
+            return True, ANY_TYPE
+        if cls == 'UpgradeExpression':
             if hasattr(statement, 'weak_expr') and statement.weak_expr is not None:
                 self.check_statement(statement.weak_expr, env)
-            return ANY_TYPE
-        elif statement.__class__.__name__ == 'MoveExpression':
-            # move x -> transfers ownership; source becomes inaccessible
+            return True, ANY_TYPE
+        if cls == 'MoveExpression':
             var_name = getattr(statement, 'var_name', None)
             if var_name is not None:
                 try:
-                    return env.get_variable_type(var_name)
+                    return True, env.get_variable_type(var_name)
                 except Exception:
                     pass
-            return ANY_TYPE
-        elif statement.__class__.__name__ in ('BorrowExpression', 'BorrowExpressionWithLifetime'):
-            # borrow x / borrow mutable x / borrow x with lifetime L
+            return True, ANY_TYPE
+        if cls in ('BorrowExpression', 'BorrowExpressionWithLifetime'):
             var_name = getattr(statement, 'var_name', None)
             if var_name is not None:
                 try:
-                    return env.get_variable_type(var_name)
+                    return True, env.get_variable_type(var_name)
                 except Exception:
                     pass
-            return ANY_TYPE
-        elif statement.__class__.__name__ == 'DropBorrowStatement':
-            # drop borrow x / drop borrow mutable x
-            return ANY_TYPE
-        elif statement.__class__.__name__ == 'LifetimeAnnotation':
-            # Lifetime annotation node (pure metadata at runtime)
-            return ANY_TYPE
-        elif statement.__class__.__name__ == 'MovedValue':
-            # Sentinel value placed after a move — accessing this is a runtime error.
-            return ANY_TYPE
-        else:
-            raise TypeCheckError(f"Unsupported statement type: {statement.__class__.__name__}")
-            return ANY_TYPE
+            return True, ANY_TYPE
+        if cls in ('DropBorrowStatement', 'LifetimeAnnotation', 'MovedValue'):
+            return True, ANY_TYPE
+        return False, None
     
     def check_expression(self, expression: Any, env: TypeEnvironment) -> Type:
         """Check the type of an expression. Alias for check_statement for compatibility."""

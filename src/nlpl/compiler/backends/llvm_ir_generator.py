@@ -772,11 +772,9 @@ class LLVMIRGenerator(CodeGenerator):
         self.ir_lines = []
         self.debug_enabled = debug_info
         
-        # Apply optimization passes to AST before code generation
         if self.enable_dead_code_elimination:
             ast.statements = self.dead_code_eliminator.eliminate_dead_code(ast.statements)
         
-        # Initialize debug info generator if enabled
         if self.debug_enabled and source_file:
             from ...debugger import DebugInfoGenerator
             with open(source_file, 'r') as f:
@@ -786,27 +784,59 @@ class LLVMIRGenerator(CodeGenerator):
         else:
             self.debug_gen = None
         
-        # Determine source directory for module imports
         source_dir = os.path.dirname(source_file) if source_file else "."
-        
-        # Process import statements first
         self._process_imports(ast, source_dir)
         
-        # Module metadata
+        self._emit_module_header()
+        self._emit_exception_infrastructure()
+        self._generate_module_declarations()
+        self._collect_first_pass(ast)
+        self._detect_rc_usage(ast)
+        self._declare_external_functions()
+        self._emit_type_declarations()
+        
+        self.late_type_insertion_point = len(self.ir_lines)
+        
+        self._emit_global_variable_declarations()
+        self._emit_extern_function_declarations()
+        self._generate_function_definitions(ast)
+        
+        if not self.module_name:
+            self._define_throw_helper_function()
+        if not self.module_name:
+            self._generate_main_function(ast)
+        
+        while self.pending_specializations or self.pending_class_specializations:
+            if self.pending_class_specializations:
+                self.emit('')
+                self.emit('; Generic class specializations')
+                self._generate_pending_class_specializations()
+            if self.pending_specializations:
+                self.emit('')
+                self.emit('; Generic function specializations')
+                self._generate_pending_specializations()
+        
+        self._insert_late_type_declarations()
+        self._emit_lambda_definitions()
+        self._emit_string_constants()
+        
+        if self.debug_enabled and self.debug_gen:
+            debug_metadata = self.debug_gen.get_debug_metadata()
+            self.emit(debug_metadata)
+        
+        return '\n'.join(self.ir_lines)
+
+    def _emit_module_header(self) -> None:
+        """Emit the LLVM IR module identifier, data layout and target triple."""
         module_id = self.module_name or "nlpl_module"
         self.emit(f'; ModuleID = "{module_id}"')
         self.emit(f'source_filename = "{module_id}.nlpl"')
         self.emit(f'target datalayout = "{self.target_datalayout}"')
         self.emit(f'target triple = "{self.target_triple}"')
         self.emit('')
-        
-        # Emit exception handling infrastructure (C++ RTTI vtable, typeinfo)
-        self._emit_exception_infrastructure()
-        
-        # Declare imported module functions
-        self._generate_module_declarations()
-        
-        # First pass: collect struct definitions, union definitions, class definitions, interface definitions, global variables, extern functions, and function declarations
+
+    def _collect_first_pass(self, ast) -> None:
+        """First pass: collect all top-level declarations (types, globals, functions)."""
         for stmt in ast.statements:
             stmt_type = type(stmt).__name__
             if stmt_type == 'StructDefinition':
@@ -831,14 +861,9 @@ class LLVMIRGenerator(CodeGenerator):
                 self._collect_function_signature(stmt)
             elif stmt_type == 'ExportStatement':
                 self._collect_export_statement(stmt)
-        
-        # Pre-scan for Rc<T> usage to enable runtime declarations
-        self._detect_rc_usage(ast)
-        
-        # Declare external C library functions (after collecting FFI declarations)
-        self._declare_external_functions()
-        
-        # Emit struct type declarations
+
+    def _emit_type_declarations(self) -> None:
+        """Emit LLVM struct, union and class type declarations."""
         if self.struct_types:
             self.emit('')
             self.emit('; Struct type declarations')
@@ -846,25 +871,16 @@ class LLVMIRGenerator(CodeGenerator):
                 field_types = ', '.join(ftype for fname, ftype in fields)
                 self.emit(f'%{struct_name} = type {{ {field_types} }}')
         
-        # Emit union type declarations
         if self.union_types:
             self.emit('')
             self.emit('; Union type declarations')
             for union_name, fields in self.union_types.items():
-                # Unions in LLVM: find the largest field and use that size
-                # Calculate actual size of largest field (NO SHORTCUTS)
                 max_size_bits = 0
-                max_size_type = 'i64'  # Default fallback
-                
                 if fields:
-                    # Find the field with maximum size
-                    for field_name, field_type in fields:
+                    for _field_name, field_type in fields:
                         size_bits = self._get_type_size_bits(field_type)
                         if size_bits > max_size_bits:
                             max_size_bits = size_bits
-                            max_size_type = field_type
-                
-                # If all fields fit in standard type, use that; otherwise use byte array
                 if max_size_bits <= 8:
                     union_storage = 'i8'
                 elif max_size_bits <= 16:
@@ -874,86 +890,60 @@ class LLVMIRGenerator(CodeGenerator):
                 elif max_size_bits <= 64:
                     union_storage = 'i64'
                 else:
-                    # Large struct/array - use byte array
-                    num_bytes = (max_size_bits + 7) // 8  # Round up to nearest byte
+                    num_bytes = (max_size_bits + 7) // 8
                     union_storage = f'[{num_bytes} x i8]'
-                
                 self.emit(f'%{union_name} = type {{ {union_storage} }}')
         
-        # Emit class type declarations
         if self.class_types:
             self.emit('')
             self.emit('; Class type declarations')
             for class_name, class_info in self.class_types.items():
-                # Skip generic specializations - they're emitted via late_type_declarations
-                # during code generation when actually instantiated
                 if class_info.get('is_specialization', False):
                     continue
-                    
-                # Class is represented as a struct with fields for properties
-                # Format: %ClassName = type { field1_type, field2_type, ... }
-                # For inheritance, include parent class properties first
                 field_types = []
-                
-                # Collect all properties including inherited ones
                 all_properties = self._get_all_class_properties(class_name)
-                
                 for prop in all_properties:
                     prop_type = self._map_nlpl_type_to_llvm(prop.get('type', 'Integer'))
                     field_types.append(prop_type)
-                
                 if field_types:
                     fields_str = ', '.join(field_types)
                     self.emit(f'%{class_name} = type {{ {fields_str} }}')
                 else:
-                    # Empty class (no properties) - LLVM empty struct
-                    # NO SHORTCUTS - proper 0-byte representation
                     self.emit(f'%{class_name} = type {{}}')
-        
-        # Mark position for late type declarations (discovered during code generation)
-        # This must be after user-defined types but before any code that uses them
-        self.late_type_insertion_point = len(self.ir_lines)
-        
-        # Emit global variable declarations
-        if self.global_vars:
-            self.emit('')
-            self.emit('; Global variables')
-            for var_name, (llvm_type, global_name) in self.global_vars.items():
-                # Initialize to zero
-                if llvm_type == 'i8*':
-                    self.emit(f'{global_name} = global {llvm_type} null, align 8')
-                elif llvm_type in ('i64', 'i32', 'i16', 'i8'):
-                    self.emit(f'{global_name} = global {llvm_type} 0, align 8')
-                elif llvm_type in ('double', 'float'):
-                    self.emit(f'{global_name} = global {llvm_type} 0.0, align 8')
-                elif llvm_type.endswith('*'):
-                    self.emit(f'{global_name} = global {llvm_type} null, align 8')
-                else:
-                    self.emit(f'{global_name} = global {llvm_type} zeroinitializer, align 8')
-        
-        # Emit extern function declarations from FFI
-        if self.extern_functions:
-            self.emit('')
-            self.emit('; FFI extern function declarations')
-            for func_name, (ret_type, param_types, library, variadic) in self.extern_functions.items():
-                # Format parameter types
-                if param_types:
-                    params_str = ', '.join(param_types)
-                else:
-                    params_str = ''
-                
-                # Generate declaration
-                if variadic:
-                    # Variadic function
-                    self.emit(f'declare {ret_type} @{func_name}({params_str}, ...)')
-                else:
-                    # Regular function
-                    self.emit(f'declare {ret_type} @{func_name}({params_str})')
-        
-        # Don't generate forward declarations for user functions
-        # They will be defined below with full implementations
-        
-        # Second pass: generate function definitions
+
+    def _emit_global_variable_declarations(self) -> None:
+        """Emit LLVM global variable declarations."""
+        if not self.global_vars:
+            return
+        self.emit('')
+        self.emit('; Global variables')
+        for var_name, (llvm_type, global_name) in self.global_vars.items():
+            if llvm_type == 'i8*':
+                self.emit(f'{global_name} = global {llvm_type} null, align 8')
+            elif llvm_type in ('i64', 'i32', 'i16', 'i8'):
+                self.emit(f'{global_name} = global {llvm_type} 0, align 8')
+            elif llvm_type in ('double', 'float'):
+                self.emit(f'{global_name} = global {llvm_type} 0.0, align 8')
+            elif llvm_type.endswith('*'):
+                self.emit(f'{global_name} = global {llvm_type} null, align 8')
+            else:
+                self.emit(f'{global_name} = global {llvm_type} zeroinitializer, align 8')
+
+    def _emit_extern_function_declarations(self) -> None:
+        """Emit LLVM declare statements for FFI extern functions."""
+        if not self.extern_functions:
+            return
+        self.emit('')
+        self.emit('; FFI extern function declarations')
+        for func_name, (ret_type, param_types, library, variadic) in self.extern_functions.items():
+            params_str = ', '.join(param_types) if param_types else ''
+            if variadic:
+                self.emit(f'declare {ret_type} @{func_name}({params_str}, ...)')
+            else:
+                self.emit(f'declare {ret_type} @{func_name}({params_str})')
+
+    def _generate_function_definitions(self, ast) -> None:
+        """Second pass: generate function definitions and class method implementations."""
         for stmt in ast.statements:
             stmt_type = type(stmt).__name__
             if stmt_type == 'FunctionDefinition':
@@ -961,69 +951,41 @@ class LLVMIRGenerator(CodeGenerator):
             elif stmt_type == 'AsyncFunctionDefinition':
                 self._generate_async_function_definition(stmt)
         
-        # Generate class methods as functions
         for class_name, class_info in self.class_types.items():
-            # Skip generic class templates - they should only exist in generic_classes dict
             if class_name in self.generic_classes:
                 continue
-            # Skip specializations - they're generated separately via _generate_specialized_class_impl
             if class_info.get('is_specialization'):
                 continue
             for method_info in class_info['methods']:
                 self._generate_class_method(class_name, method_info)
-        
-        # Generate exception throw helper before main (needs to be defined before use)
-        if not self.module_name:
-            self._define_throw_helper_function()
-        
-        # Generate main function (only for non-module compilation)
-        if not self.module_name:
-            self._generate_main_function(ast)
-        
-        # Process pending specializations (functions and classes) iteratively
-        # New specializations might trigger more specializations (e.g. nested types, methods using generics)
-        while self.pending_specializations or self.pending_class_specializations:
-            if self.pending_class_specializations:
-                self.emit('')
-                self.emit('; Generic class specializations')
-                self._generate_pending_class_specializations()
-                
-            if self.pending_specializations:
-                self.emit('')
-                self.emit('; Generic function specializations')
-                self._generate_pending_specializations()
-        
-        # Insert late type declarations at the marked position (after user types, before code)
-        # Must be done as insertion because types are discovered during function generation
-        if self.late_type_declarations:
-            late_lines = ['', '; Late type declarations (closure environments, etc.)']
-            late_lines.extend(self.late_type_declarations)
-            # Insert at the marked position
-            for i, line in enumerate(late_lines):
-                self.ir_lines.insert(self.late_type_insertion_point + i, line)
-        
-        # Emit lambda functions (collected during code generation)
-        if self.lambda_definitions:
-            # Note: Closure environment struct types are inserted above at late_type_insertion_point
-            self.emit('')
-            self.emit('; Lambda function definitions')
-            for lambda_ir in self.lambda_definitions:
-                self.emit(lambda_ir)
-        
-        # Generate string constants
-        if self.global_strings:
-            self.emit('')
-            self.emit('; String constants')
-            for value, (name, length) in self.global_strings.items():
-                escaped = self._escape_string(value)
-                self.emit(f'{name} = private unnamed_addr constant [{length} x i8] c"{escaped}\\00", align 1')
-        
-        # Append debug information if enabled
-        if self.debug_enabled and self.debug_gen:
-            debug_metadata = self.debug_gen.get_debug_metadata()
-            self.emit(debug_metadata)
-        
-        return '\n'.join(self.ir_lines)
+
+    def _insert_late_type_declarations(self) -> None:
+        """Insert late type declarations (e.g. closure environments) at the pre-recorded position."""
+        if not self.late_type_declarations:
+            return
+        late_lines = ['', '; Late type declarations (closure environments, etc.)']
+        late_lines.extend(self.late_type_declarations)
+        for i, line in enumerate(late_lines):
+            self.ir_lines.insert(self.late_type_insertion_point + i, line)
+
+    def _emit_lambda_definitions(self) -> None:
+        """Emit collected lambda function IR definitions."""
+        if not self.lambda_definitions:
+            return
+        self.emit('')
+        self.emit('; Lambda function definitions')
+        for lambda_ir in self.lambda_definitions:
+            self.emit(lambda_ir)
+
+    def _emit_string_constants(self) -> None:
+        """Emit LLVM string constant globals."""
+        if not self.global_strings:
+            return
+        self.emit('')
+        self.emit('; String constants')
+        for value, (name, length) in self.global_strings.items():
+            escaped = self._escape_string(value)
+            self.emit(f'{name} = private unnamed_addr constant [{length} x i8] c"{escaped}\\00", align 1')
     
     def _detect_rc_usage(self, ast):
         """
@@ -7338,256 +7300,206 @@ class LLVMIRGenerator(CodeGenerator):
         Note: Simplified implementation without closure support.
         Full closures would require capturing environment variables.
         """
-        # Generate unique lambda name
         lambda_name = f"lambda_{self.lambda_counter}"
         self.lambda_counter += 1
         
-        # Determine return type by inferring from body expression
-        ret_type = 'i64'  # Default
-        if hasattr(expr, 'return_type') and expr.return_type:
-            ret_type = self._map_nlpl_type_to_llvm(expr.return_type)
-        elif hasattr(expr, 'body') and expr.body:
-            # Infer from body expression type
-            body_type = self._infer_expression_type(expr.body)
-            if body_type:
-                ret_type = body_type
+        ret_type = self._infer_lambda_return_type(expr)
         
-        # Process parameters
         param_types = []
         param_names = []
         if hasattr(expr, 'parameters') and expr.parameters:
             for param in expr.parameters:
-                param_type = self._map_nlpl_type_to_llvm(param.type_annotation) if hasattr(param, 'type_annotation') and param.type_annotation else 'i64'
+                param_type = self._map_nlpl_type_to_llvm(param.type_annotation) \
+                    if hasattr(param, 'type_annotation') and param.type_annotation else 'i64'
                 param_types.append(param_type)
                 param_names.append(param.name)
         
-        # Phase 1-2: Analyze captured variables and create environment struct
-        # NO SHORTCUTS - full closure implementation
         captured_vars = self._analyze_closure_captures(expr, param_names)
-        
         has_captures = len(captured_vars) > 0
         env_struct_type = None
         env_param_added = False
         
         if has_captures:
-            # Phase 2: Generate environment struct type
-            # Create unique struct name for this closure's environment
             env_struct_name = f"closure_env_{lambda_name}"
             env_struct_type = f"%{env_struct_name}"
-            
-            # Build struct with fields for each captured variable
             env_field_types = [var_type for _, var_type in captured_vars]
             env_fields_str = ', '.join(env_field_types)
-            
-            # Register struct for emission AND emit it to late type declarations
-            # NO SHORTCUTS - proper forward declaration to avoid ordering issues
             self.closure_env_structs[env_struct_name] = env_field_types
-            
-            # Add to late type declarations (emitted after class types but before code)
             if env_field_types:
                 self.late_type_declarations.append(f'%{env_struct_name} = type {{ {env_fields_str} }}')
-            
-            # Add environment pointer as first parameter to lambda
             param_types.insert(0, f'{env_struct_type}*')
             param_names.insert(0, 'env')
             env_param_added = True
         
-        # Register the lambda as a function
         self.functions[lambda_name] = (ret_type, param_types, param_names)
         
-        # Save current function context
+        saved_local_vars = self._generate_lambda_body_ir(
+            lambda_name, ret_type, param_types, param_names,
+            expr, has_captures, env_struct_type, env_param_added, captured_vars,
+        )
+        
+        return self._emit_closure_struct(
+            lambda_name, param_types, ret_type, captured_vars,
+            has_captures, env_struct_type, saved_local_vars, indent,
+        )
+
+    def _infer_lambda_return_type(self, expr) -> str:
+        """Infer the LLVM return type for a lambda expression."""
+        if hasattr(expr, 'return_type') and expr.return_type:
+            return self._map_nlpl_type_to_llvm(expr.return_type)
+        if hasattr(expr, 'body') and expr.body:
+            body_type = self._infer_expression_type(expr.body)
+            if body_type:
+                return body_type
+        return 'i64'
+
+    def _generate_lambda_body_ir(
+        self, lambda_name: str, ret_type: str, param_types, param_names,
+        expr, has_captures: bool, env_struct_type, env_param_added: bool, captured_vars,
+    ) -> dict:
+        """Generate the lambda function IR into a separate buffer, save to lambda_definitions,
+        and return the saved local_vars snapshot from the outer context."""
         saved_function = self.current_function_name
         saved_return_type = self.current_return_type
         saved_local_vars = self.local_vars.copy()
         saved_temp_counter = self.temp_counter
         saved_label_counter = self.label_counter
-        saved_ir_lines = self.ir_lines.copy()  # Save current IR output
+        saved_ir_lines = self.ir_lines.copy()
         
-        # Set lambda context and use fresh output buffer
         self.current_function_name = lambda_name
         self.current_return_type = ret_type
         self.local_vars = {}
         self.temp_counter = 0
         self.label_counter = 0
-        self.ir_lines = []  # Fresh buffer for lambda
+        self.ir_lines = []
         
-        # Generate lambda function definition with exception handling personality
         params = ', '.join(f'{pt} %{pn}' for pt, pn in zip(param_types, param_names))
         self.emit(f'define {ret_type} @{lambda_name}({params}) personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*) {{')
         self.emit('entry:')
         
-        # Emit environment struct definition if we have captures
-        if has_captures and env_struct_type:
-            # The struct definition should go in the module header
-            # For now, we'll track it to emit later
-            pass
-        
-        # Allocate stack space for parameters
         for ptype, pname in zip(param_types, param_names):
             alloca_name = f'%{pname}.addr'
             self.emit(f'  {alloca_name} = alloca {ptype}, align 8')
             self.emit(f'  store {ptype} %{pname}, {ptype}* {alloca_name}, align 8')
             self.local_vars[pname] = (ptype, alloca_name)
         
-        # Phase 3: Extract captured variables from environment struct
-        # NO SHORTCUTS - proper environment struct field access
         if has_captures and env_param_added:
-            # Load environment pointer (it's the first parameter: %env)
             env_ptr_alloca = self.local_vars.get('env')
             if env_ptr_alloca:
                 env_ptr_type, env_ptr_addr = env_ptr_alloca
-                
-                # Load the environment pointer
                 env_ptr = self._new_temp()
                 self.emit(f'  {env_ptr} = load {env_ptr_type}, {env_ptr_type}* {env_ptr_addr}, align 8')
-                
-                # Extract each captured variable from environment struct
                 for idx, (var_name, var_type) in enumerate(captured_vars):
-                    # GEP to get pointer to field
                     field_ptr = self._new_temp()
                     self.emit(f'  {field_ptr} = getelementptr inbounds {env_struct_type}, {env_struct_type}* {env_ptr}, i32 0, i32 {idx}')
-                    
-                    # Load the value
                     var_val = self._new_temp()
                     self.emit(f'  {var_val} = load {var_type}, {var_type}* {field_ptr}, align 8')
-                    
-                    # Allocate local storage for this captured variable
                     var_alloca = self._new_temp()
                     self.emit(f'  {var_alloca} = alloca {var_type}, align 8')
                     self.emit(f'  store {var_type} {var_val}, {var_type}* {var_alloca}, align 8')
-                    
-                    # Register in local_vars so lambda body can access it
                     self.local_vars[var_name] = (var_type, var_alloca)
         
-        # Generate lambda body
-        # For single-expression lambdas (lambda x, y: x + y), body is an expression, not a list
+        has_return = False
         if hasattr(expr, 'body') and expr.body:
             if isinstance(expr.body, list):
-                # Multi-statement body (shouldn't happen with Python-style lambdas but handle it)
                 for stmt in expr.body:
                     self._generate_statement(stmt, indent='  ')
             else:
-                # Single expression body - generate it and return the result
                 result_reg = self._generate_expression(expr.body, indent='  ')
                 if result_reg:
                     self.emit(f'  ret {ret_type} {result_reg}')
-                    # Mark that we've generated a return
                     has_return = True
-                else:
-                    has_return = False
-        else:
-            has_return = False
         
-        # Ensure lambda has a return if we didn't already generate one
-        if not locals().get('has_return', False):
+        if not has_return:
             if ret_type == 'void':
                 self.emit('  ret void')
+            elif ret_type.endswith('*'):
+                self.emit(f'  ret {ret_type} null')
             else:
-                if ret_type.endswith('*'):
-                    self.emit(f'  ret {ret_type} null')
-                else:
-                    self.emit(f'  ret {ret_type} 0')
+                self.emit(f'  ret {ret_type} 0')
         
         self.emit('}')
         self.emit('')
         
-        # Save lambda definition for later emission
-        lambda_ir = '\n'.join(self.ir_lines)
-        self.lambda_definitions.append(lambda_ir)
+        self.lambda_definitions.append('\n'.join(self.ir_lines))
         
-        # Restore context and output
         self.current_function_name = saved_function
         self.current_return_type = saved_return_type
         self.local_vars = saved_local_vars
         self.temp_counter = saved_temp_counter
         self.label_counter = saved_label_counter
-        self.ir_lines = saved_ir_lines  # Restore original IR output
+        self.ir_lines = saved_ir_lines
         
-        # Phase 4c-d: Create closure struct (fat pointer)
-        # NO SHORTCUTS - proper closure representation for ALL lambdas
-        
-        # Define closure struct type if not already done
-        # %closure_type = type { i8*, i8* } - { function_ptr, environment_ptr }
+        return saved_local_vars
+
+    def _emit_closure_struct(
+        self, lambda_name: str, param_types, ret_type: str, captured_vars,
+        has_captures: bool, env_struct_type, saved_local_vars: dict, indent: str,
+    ) -> str:
+        """Emit the closure fat-pointer struct and return a register holding it as i64."""
         if not self.closure_struct_defined:
             self.late_type_declarations.append('%closure_type = type { i8*, i8* }')
             self.closure_struct_defined = True
         
-        # Get function pointer as i8*
         func_ptr_type = f'{ret_type} ({", ".join(param_types)})*'
         func_ptr_i8 = self._new_temp()
         self.emit(f'{indent}{func_ptr_i8} = bitcast {func_ptr_type} @{lambda_name} to i8*')
         
-        # Allocate and populate environment struct if captures exist
         if has_captures:
-            # Allocate environment struct on heap
-            env_size_gep = self._new_temp()
-            self.emit(f'{indent}{env_size_gep} = getelementptr {env_struct_type}, {env_struct_type}* null, i32 1')
-            
-            env_size = self._new_temp()
-            self.emit(f'{indent}{env_size} = ptrtoint {env_struct_type}* {env_size_gep} to i64')
-            
-            env_malloc = self._new_temp()
-            self.emit(f'{indent}{env_malloc} = call i8* @malloc(i64 {env_size})')
-            
-            env_ptr = self._new_temp()
-            self.emit(f'{indent}{env_ptr} = bitcast i8* {env_malloc} to {env_struct_type}*')
-            
-            # Store captured values into environment struct
-            for idx, (var_name, var_type) in enumerate(captured_vars):
-                # Get the current value of the variable
-                if var_name in saved_local_vars:
-                    var_type_saved, var_alloca = saved_local_vars[var_name]
-                    
-                    # Load current value
-                    var_val = self._new_temp()
-                    self.emit(f'{indent}{var_val} = load {var_type_saved}, {var_type_saved}* {var_alloca}, align 8')
-                    
-                    # GEP to environment struct field
-                    field_ptr = self._new_temp()
-                    self.emit(f'{indent}{field_ptr} = getelementptr inbounds {env_struct_type}, {env_struct_type}* {env_ptr}, i32 0, i32 {idx}')
-                    
-                    # Store value into environment
-                    self.emit(f'{indent}store {var_type_saved} {var_val}, {var_type_saved}* {field_ptr}, align 8')
-            
-            # Convert environment pointer to i8*
-            env_ptr_i8 = self._new_temp()
-            self.emit(f'{indent}{env_ptr_i8} = bitcast {env_struct_type}* {env_ptr} to i8*')
+            env_ptr_i8 = self._emit_closure_environment(
+                env_struct_type, captured_vars, saved_local_vars, indent
+            )
         else:
-            # No captures - use null environment pointer (inline, no temp needed)
             env_ptr_i8 = 'null'
         
-        # Allocate closure struct on heap
         closure_size = self._new_temp()
         self.emit(f'{indent}{closure_size} = getelementptr %closure_type, %closure_type* null, i32 1')
-        
         closure_size_i64 = self._new_temp()
         self.emit(f'{indent}{closure_size_i64} = ptrtoint %closure_type* {closure_size} to i64')
-        
         closure_malloc = self._new_temp()
         self.emit(f'{indent}{closure_malloc} = call i8* @malloc(i64 {closure_size_i64})')
-        
         closure_ptr = self._new_temp()
         self.emit(f'{indent}{closure_ptr} = bitcast i8* {closure_malloc} to %closure_type*')
         
-        # Store function pointer into closure.field[0]
         func_field_ptr = self._new_temp()
         self.emit(f'{indent}{func_field_ptr} = getelementptr inbounds %closure_type, %closure_type* {closure_ptr}, i32 0, i32 0')
         self.emit(f'{indent}store i8* {func_ptr_i8}, i8** {func_field_ptr}, align 8')
         
-        # Store environment pointer into closure.field[1]
         env_field_ptr = self._new_temp()
         self.emit(f'{indent}{env_field_ptr} = getelementptr inbounds %closure_type, %closure_type* {closure_ptr}, i32 0, i32 1')
         self.emit(f'{indent}store i8* {env_ptr_i8}, i8** {env_field_ptr}, align 8')
         
-        # Return closure pointer as i64 (for storage in variables)
         closure_as_i64 = self._new_temp()
         self.emit(f'{indent}{closure_as_i64} = ptrtoint %closure_type* {closure_ptr} to i64')
         
-        # Track whether this lambda has captures for call site handling
         self.lambda_captures[lambda_name] = has_captures
-        self.last_lambda_has_captures = has_captures  # For variable declaration tracking
+        self.last_lambda_has_captures = has_captures
         
         return closure_as_i64
+
+    def _emit_closure_environment(self, env_struct_type: str, captured_vars, saved_local_vars: dict, indent: str) -> str:
+        """Allocate and populate the closure environment struct. Returns the i8* env pointer register."""
+        env_size_gep = self._new_temp()
+        self.emit(f'{indent}{env_size_gep} = getelementptr {env_struct_type}, {env_struct_type}* null, i32 1')
+        env_size = self._new_temp()
+        self.emit(f'{indent}{env_size} = ptrtoint {env_struct_type}* {env_size_gep} to i64')
+        env_malloc = self._new_temp()
+        self.emit(f'{indent}{env_malloc} = call i8* @malloc(i64 {env_size})')
+        env_ptr = self._new_temp()
+        self.emit(f'{indent}{env_ptr} = bitcast i8* {env_malloc} to {env_struct_type}*')
+        
+        for idx, (var_name, var_type) in enumerate(captured_vars):
+            if var_name in saved_local_vars:
+                var_type_saved, var_alloca = saved_local_vars[var_name]
+                var_val = self._new_temp()
+                self.emit(f'{indent}{var_val} = load {var_type_saved}, {var_type_saved}* {var_alloca}, align 8')
+                field_ptr = self._new_temp()
+                self.emit(f'{indent}{field_ptr} = getelementptr inbounds {env_struct_type}, {env_struct_type}* {env_ptr}, i32 0, i32 {idx}')
+                self.emit(f'{indent}store {var_type_saved} {var_val}, {var_type_saved}* {field_ptr}, align 8')
+        
+        env_ptr_i8 = self._new_temp()
+        self.emit(f'{indent}{env_ptr_i8} = bitcast {env_struct_type}* {env_ptr} to i8*')
+        return env_ptr_i8
     
     def _generate_list_comprehension_expression(self, expr, indent='') -> str:
         """
