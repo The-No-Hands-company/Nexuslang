@@ -615,6 +615,114 @@ class CCodeGenerator(CodeGenerator):
 
         return left_type
 
+    def _infer_member_access_type(self, expr: Any) -> str:
+        """Infer C type for a MemberAccess expression."""
+        obj_type = self._infer_type(expr.object_expr)
+
+        # Handle case where object is wrapped in FunctionCall due to "call" keyword
+        if isinstance(expr.object_expr, FunctionCall) and not expr.object_expr.arguments:
+            obj_name = expr.object_expr.name
+            if obj_name in self.symbol_table:
+                obj_type = self.symbol_table[obj_name]
+
+        # Strip pointer suffix to get class name
+        class_name = obj_type[:-1] if obj_type.endswith("*") else obj_type
+
+        # Method call: look up method return type
+        is_method_call = expr.is_method_call or len(expr.arguments) > 0 or isinstance(expr.object_expr, FunctionCall)
+        if is_method_call:
+            method_key = f"{class_name}_{expr.member_name}"
+            if method_key in self.function_types:
+                return self.function_types[method_key]
+
+        # Property: look up in property_types table
+        if (class_name, expr.member_name) in self.property_types:
+            return self.property_types[(class_name, expr.member_name)]
+
+        return "void*"
+
+    # Stdlib function return-type table shared by _infer_function_call_type
+    _STDLIB_RETURN_TYPES: dict = {
+        # String functions
+        "length": "int",
+        "uppercase": "char*",
+        "lowercase": "char*",
+        "concatenate": "char*",
+        "contains": "bool",
+        "substring": "char*",
+        # Math functions
+        "sqrt": "double",
+        "abs": "int",
+        "power": "double",
+        "floor": "double",
+        "ceil": "double",
+        "round": "double",
+        "sin": "double",
+        "cos": "double",
+        "tan": "double",
+        # File I/O functions
+        "read_file": "char*",
+        "read_text": "char*",
+        "write_file": "bool",
+        "write_text": "bool",
+        "append_file": "bool",
+        "file_exists": "bool",
+        "file_size": "long",
+        "delete_file": "bool",
+        "copy_file": "bool",
+        "create_directory": "bool",
+        "is_directory": "bool",
+        "is_file": "bool",
+        # Console I/O
+        "read_line": "char*",
+        "read_int": "int",
+        "read_float": "double",
+        # Array functions
+        "array_length": "int",
+        "array_push": "void",
+        "array_pop": "void*",
+        "array_get": "void*",
+        "array_set": "void",
+        "array_slice": "void*",
+        "array_reverse": "void",
+        "array_sort": "void",
+        "array_find": "int",
+        # Short array function names
+        "arrlen": "int",
+        "arrpush": "void*",
+        "arrpop": "void*",
+        "arrget": "void*",
+        "arrset": "void",
+        "arrslice": "void*",
+        "arrreverse": "void",
+        "arrsort": "void",
+        "arrfind": "int",
+        "arrclear": "void",
+        "arrinsert": "void",
+        "arrremove": "void*",
+        # Additional string functions
+        "index_of": "int",
+        "replace": "char*",
+        "trim": "char*",
+        "split": "char**",
+        "join": "char*",
+        "starts_with": "bool",
+        "ends_with": "bool",
+        # Additional math functions
+        "min": "int",
+        "max": "int",
+        "random": "double",
+        "random_int": "int",
+    }
+
+    def _infer_function_call_type(self, expr: Any) -> str:
+        """Infer C type for a FunctionCall expression."""
+        if expr.name in self.function_types:
+            return self.function_types[expr.name]
+        if expr.name in self._STDLIB_RETURN_TYPES:
+            return self._STDLIB_RETURN_TYPES[expr.name]
+        return "int"
+
     def _infer_type(self, expr: Any) -> str:
         """Infer C type from NLPL expression."""
         if isinstance(expr, Literal):
@@ -627,145 +735,22 @@ class CCodeGenerator(CodeGenerator):
             # Check if it's a property in the current class
             if self.current_class and (self.current_class, expr.name) in self.property_types:
                 return self.property_types[(self.current_class, expr.name)]
-            
             # Look up variable type from symbol table
             if expr.name in self.symbol_table:
                 return self.symbol_table[expr.name]
-            
-            # Default to int if not found
             return "int"
         
         elif isinstance(expr, UnaryOperation):
-            # Unary operations preserve the type of the operand
             return self._infer_type(expr.operand)
         
         elif isinstance(expr, ObjectInstantiation):
-            # Object instantiation returns pointer to class type
             return f"{expr.class_name}*"
         
         elif isinstance(expr, MemberAccess):
-            # Member access: infer type from the property or method return type
-            # Get the object type
-            obj_type = self._infer_type(expr.object_expr)
-            
-            # Handle case where object is wrapped in FunctionCall due to "call" keyword
-            if isinstance(expr.object_expr, FunctionCall) and not expr.object_expr.arguments:
-                obj_name = expr.object_expr.name
-                if obj_name in self.symbol_table:
-                    obj_type = self.symbol_table[obj_name]
-            
-            # Strip pointer suffix to get class name
-            if obj_type.endswith("*"):
-                class_name = obj_type[:-1]
-            else:
-                class_name = obj_type
-            
-            # Check if this is a method call (function pointer being called)
-            is_method_call = expr.is_method_call or len(expr.arguments) > 0 or isinstance(expr.object_expr, FunctionCall)
-            
-            if is_method_call:
-                # This is a method call - look up method return type
-                method_key = f"{class_name}_{expr.member_name}"
-                if method_key in self.function_types:
-                    return self.function_types[method_key]
-            
-            # Look up property type in property_types
-            if (class_name, expr.member_name) in self.property_types:
-                return self.property_types[(class_name, expr.member_name)]
-            
-            # Default to void pointer if not found
-            return "void*"
+            return self._infer_member_access_type(expr)
         
         elif isinstance(expr, FunctionCall):
-            # Look up function return type from function_types table
-            if expr.name in self.function_types:
-                return self.function_types[expr.name]
-            
-            # Check stdlib function return types
-            stdlib_return_types = {
-                # String functions - return string
-                "length": "int",
-                "uppercase": "char*",
-                "lowercase": "char*",
-                "concatenate": "char*",
-                "contains": "bool",
-                "substring": "char*",
-                
-                # Math functions
-                "sqrt": "double",
-                "abs": "int",
-                "power": "double",
-                "floor": "double",
-                "ceil": "double",
-                "round": "double",
-                "sin": "double",
-                "cos": "double",
-                "tan": "double",
-                
-                # File I/O functions
-                "read_file": "char*",
-                "read_text": "char*",
-                "write_file": "bool",
-                "write_text": "bool",
-                "append_file": "bool",
-                "file_exists": "bool",
-                "file_size": "long",
-                "delete_file": "bool",
-                "copy_file": "bool",
-                "create_directory": "bool",
-                "is_directory": "bool",
-                "is_file": "bool",
-                
-                # Console I/O
-                "read_line": "char*",
-                "read_int": "int",
-                "read_float": "double",
-                
-                # Array functions
-                "array_length": "int",
-                "array_push": "void",
-                "array_pop": "void*",
-                "array_get": "void*",
-                "array_set": "void",
-                "array_slice": "void*",
-                "array_reverse": "void",
-                "array_sort": "void",
-                "array_find": "int",
-                
-                # Short array function names
-                "arrlen": "int",
-                "arrpush": "void*",  # Returns new array pointer
-                "arrpop": "void*",   # Returns new array pointer
-                "arrget": "void*",
-                "arrset": "void",
-                "arrslice": "void*", # Returns new array pointer
-                "arrreverse": "void",
-                "arrsort": "void",
-                "arrfind": "int",
-                "arrclear": "void",
-                "arrinsert": "void",
-                "arrremove": "void*",
-                
-                # Additional string functions
-                "index_of": "int",
-                "replace": "char*",
-                "trim": "char*",
-                "split": "char**",
-                "join": "char*",
-                "starts_with": "bool",
-                "ends_with": "bool",
-                
-                # Additional math functions
-                "min": "int",
-                "max": "int",
-                "random": "double",
-                "random_int": "int",
-            }
-            if expr.name in stdlib_return_types:
-                return stdlib_return_types[expr.name]
-            
-            # Default to int for unknown functions
-            return "int"
+            return self._infer_function_call_type(expr)
         
         elif isinstance(expr, ListExpression):
             # Infer array type from elements
@@ -1722,8 +1707,8 @@ bool nlpl_ends_with(const char* str, const char* suffix) {
     return strcmp(str + str_len - suf_len, suffix) == 0;
 }''')
 
-    def _collect_console_and_array_runtime(self, code_parts: list) -> None:
-        """Append console I/O and dynamic array C implementations to code_parts."""
+    def _collect_console_runtime(self, code_parts: list) -> None:
+        """Append console I/O C implementations (read_line, read_int, read_float) to code_parts."""
         if "nlpl_read_line" in self.needed_runtime_functions:
             code_parts.append('''
 char* nlpl_read_line(void) {
@@ -1751,6 +1736,9 @@ double nlpl_read_float(void) {
     while ((c = getchar()) != '\\n' && c != EOF);
     return value;
 }''')
+
+    def _collect_array_runtime(self, code_parts: list) -> None:
+        """Append dynamic array struct and all nlpl_array_* C implementations to code_parts."""
 
         if any(fn.startswith("nlpl_array_") for fn in self.needed_runtime_functions):
             code_parts.append('''
@@ -1963,6 +1951,7 @@ int nlpl_random_int(int min_val, int max_val) {
         self._collect_bounds_and_ffi_runtime(code_parts)
         self._collect_file_and_dir_runtime(code_parts)
         self._collect_string_runtime(code_parts)
-        self._collect_console_and_array_runtime(code_parts)
+        self._collect_console_runtime(code_parts)
+        self._collect_array_runtime(code_parts)
         self._collect_math_runtime(code_parts)
         return "\n".join(code_parts)

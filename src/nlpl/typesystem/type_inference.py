@@ -773,6 +773,60 @@ class TypeInferenceEngine:
             context.add_type_parameter(param_name, constraints if constraints else None)
         
         return context
+    def _infer_option_pattern_bindings(self, pattern, match_value_type: "Type") -> dict:
+        """Return bindings for an OptionPattern (Some/None)."""
+        bindings = {}
+        if pattern.variant == "Some" and pattern.binding:
+            is_option = (
+                (hasattr(match_value_type, 'name') and match_value_type.name == 'Option')
+                or (isinstance(match_value_type, GenericType) and match_value_type.name == 'Option')
+            )
+            if is_option and hasattr(match_value_type, 'type_parameters') and match_value_type.type_parameters:
+                bindings[pattern.binding] = match_value_type.type_parameters[0]
+            else:
+                bindings[pattern.binding] = ANY_TYPE
+        # None variant has no bindings
+        return bindings
+
+    def _infer_result_pattern_bindings(self, pattern, match_value_type: "Type") -> dict:
+        """Return bindings for a ResultPattern (Ok/Err)."""
+        bindings = {}
+        is_result = (
+            (hasattr(match_value_type, 'name') and match_value_type.name == 'Result')
+            or (isinstance(match_value_type, GenericType) and match_value_type.name == 'Result')
+        )
+        has_params = is_result and hasattr(match_value_type, 'type_parameters') and match_value_type.type_parameters
+
+        if pattern.variant == "Ok" and pattern.binding:
+            if has_params and len(match_value_type.type_parameters) >= 1:
+                bindings[pattern.binding] = match_value_type.type_parameters[0]
+            else:
+                bindings[pattern.binding] = ANY_TYPE
+        elif pattern.variant == "Err" and pattern.binding:
+            if has_params and len(match_value_type.type_parameters) >= 2:
+                bindings[pattern.binding] = match_value_type.type_parameters[1]
+            else:
+                bindings[pattern.binding] = ANY_TYPE
+        return bindings
+
+    def _infer_list_pattern_bindings(self, pattern, match_value_type: "Type") -> dict:
+        """Return bindings for a ListPattern ([head, ...tail])."""
+        bindings = {}
+        if isinstance(match_value_type, ListType):
+            element_type = match_value_type.element_type
+            if hasattr(pattern, 'elements') and pattern.elements:
+                for elem_pattern in pattern.elements:
+                    bindings.update(self.infer_pattern_binding_type(elem_pattern, element_type))
+            if hasattr(pattern, 'rest') and pattern.rest:
+                bindings[pattern.rest] = ListType(element_type)
+        else:
+            if hasattr(pattern, 'elements') and pattern.elements:
+                for elem_pattern in pattern.elements:
+                    bindings.update(self.infer_pattern_binding_type(elem_pattern, ANY_TYPE))
+            if hasattr(pattern, 'rest') and pattern.rest:
+                bindings[pattern.rest] = ANY_TYPE
+        return bindings
+
     def infer_pattern_binding_type(self, pattern, match_value_type: Type) -> Dict[str, Type]:
         """
         Infer types for variables bound in a pattern based on the matched value type.
@@ -796,130 +850,44 @@ class TypeInferenceEngine:
             OptionPattern, ResultPattern, VariantPattern,
             TuplePattern, ListPattern
         )
-        
-        bindings = {}
-        
-        # Wildcard pattern: no bindings
-        if isinstance(pattern, WildcardPattern):
-            return bindings
-        
-        # Literal pattern: no bindings
-        if isinstance(pattern, LiteralPattern):
-            return bindings
-        
+
+        # Wildcard / literal patterns: no bindings
+        if isinstance(pattern, (WildcardPattern, LiteralPattern)):
+            return {}
+
         # Identifier pattern: binds the whole value
         if isinstance(pattern, IdentifierPattern):
-            bindings[pattern.name] = match_value_type
-            return bindings
-        
-        # Option pattern: case Some with value, case None
+            return {pattern.name: match_value_type}
+
+        # Option pattern: Some(x) / None
         if isinstance(pattern, OptionPattern):
-            if pattern.variant == "Some" and pattern.binding:
-                # Unwrap Option<T> to get T
-                # Check if it's an Option type (by name or isinstance)
-                is_option = False
-                if hasattr(match_value_type, 'name') and match_value_type.name == 'Option':
-                    is_option = True
-                elif isinstance(match_value_type, GenericType) and match_value_type.name == 'Option':
-                    is_option = True
-                
-                if is_option:
-                    # Extract inner type from Option<T>
-                    if hasattr(match_value_type, 'type_parameters') and match_value_type.type_parameters:
-                        inner_type = match_value_type.type_parameters[0]
-                        bindings[pattern.binding] = inner_type
-                    else:
-                        bindings[pattern.binding] = ANY_TYPE
-                else:
-                    bindings[pattern.binding] = ANY_TYPE
-            # None has no bindings
-            return bindings
-        
-        # Result pattern: case Ok with value, case Err with error
+            return self._infer_option_pattern_bindings(pattern, match_value_type)
+
+        # Result pattern: Ok(x) / Err(e)
         if isinstance(pattern, ResultPattern):
-            # Check if it's a Result type
-            is_result = False
-            if hasattr(match_value_type, 'name') and match_value_type.name == 'Result':
-                is_result = True
-            elif isinstance(match_value_type, GenericType) and match_value_type.name == 'Result':
-                is_result = True
-            
-            if pattern.variant == "Ok" and pattern.binding:
-                # Unwrap Result<T, E> to get T
-                if is_result:
-                    if hasattr(match_value_type, 'type_parameters') and match_value_type.type_parameters:
-                        if len(match_value_type.type_parameters) >= 1:
-                            ok_type = match_value_type.type_parameters[0]
-                            bindings[pattern.binding] = ok_type
-                        else:
-                            bindings[pattern.binding] = ANY_TYPE
-                    else:
-                        bindings[pattern.binding] = ANY_TYPE
-                else:
-                    bindings[pattern.binding] = ANY_TYPE
-            elif pattern.variant == "Err" and pattern.binding:
-                # Unwrap Result<T, E> to get E
-                if is_result:
-                    if hasattr(match_value_type, 'type_parameters') and match_value_type.type_parameters:
-                        if len(match_value_type.type_parameters) >= 2:
-                            err_type = match_value_type.type_parameters[1]
-                            bindings[pattern.binding] = err_type
-                        else:
-                            bindings[pattern.binding] = ANY_TYPE
-                    else:
-                        bindings[pattern.binding] = ANY_TYPE
-                else:
-                    bindings[pattern.binding] = ANY_TYPE
-            return bindings
-        
-        # Variant pattern: generic variant matching
+            return self._infer_result_pattern_bindings(pattern, match_value_type)
+
+        # Variant pattern: generic enum variant
         if isinstance(pattern, VariantPattern):
             if hasattr(pattern, 'bindings') and pattern.bindings:
-                for binding_name in pattern.bindings:
-                    # For now, use ANY_TYPE (future: infer from variant definition)
-                    bindings[binding_name] = ANY_TYPE
-            return bindings
-        
+                return {name: ANY_TYPE for name in pattern.bindings}
+            return {}
+
         # List pattern: [head, ...tail]
-        # Check by isinstance OR by checking for elements/rest attributes (duck typing)
         is_list_pattern = isinstance(pattern, ListPattern) or (
-            hasattr(pattern, 'elements') and 
+            hasattr(pattern, 'elements') and
             pattern.__class__.__name__ == 'ListPattern'
         )
-        
         if is_list_pattern:
-            if isinstance(match_value_type, ListType):
-                element_type = match_value_type.element_type
-                
-                # Bind elements
-                if hasattr(pattern, 'elements') and pattern.elements:
-                    for elem_pattern in pattern.elements:
-                        # Recursively infer bindings for nested patterns
-                        nested_bindings = self.infer_pattern_binding_type(elem_pattern, element_type)
-                        bindings.update(nested_bindings)
-                
-                # Bind rest/tail (if present)
-                if hasattr(pattern, 'rest') and pattern.rest:
-                    # Rest captures remaining elements as a list
-                    bindings[pattern.rest] = ListType(element_type)
-            else:
-                # Not a list type - bindings get ANY_TYPE
-                if hasattr(pattern, 'elements') and pattern.elements:
-                    for elem_pattern in pattern.elements:
-                        nested_bindings = self.infer_pattern_binding_type(elem_pattern, ANY_TYPE)
-                        bindings.update(nested_bindings)
-                if hasattr(pattern, 'rest') and pattern.rest:
-                    bindings[pattern.rest] = ANY_TYPE
-            return bindings
-        
+            return self._infer_list_pattern_bindings(pattern, match_value_type)
+
         # Tuple pattern: (x, y, z)
         if isinstance(pattern, TuplePattern):
-            # For now, use ANY_TYPE for tuple elements (future: proper tuple types)
+            bindings: Dict[str, Type] = {}
             if hasattr(pattern, 'elements'):
                 for elem_pattern in pattern.elements:
-                    nested_bindings = self.infer_pattern_binding_type(elem_pattern, ANY_TYPE)
-                    bindings.update(nested_bindings)
+                    bindings.update(self.infer_pattern_binding_type(elem_pattern, ANY_TYPE))
             return bindings
-        
-        # Unknown pattern type - no bindings
-        return bindings
+
+        # Unknown pattern type — no bindings
+        return {}

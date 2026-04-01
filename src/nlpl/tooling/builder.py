@@ -463,6 +463,57 @@ class BuildSystem:
         except Exception as exc:
             return source_path, False, [f"{source_path}: {exc}"]
 
+    def _compile_files(
+        self,
+        to_compile: List[str],
+        out_dir: str,
+        prof,
+        active_features: List[str],
+        check_only: bool,
+        optimize_bounds_checks: bool,
+        max_workers: int,
+        cache,
+    ):
+        """Compile *to_compile* files serially or in parallel.
+
+        Updates *cache* with successfully compiled files.
+
+        Returns:
+            (compiled_ok, all_errors, all_warnings)
+        """
+        all_errors: List[str] = []
+        all_warnings: List[str] = []
+        compiled_ok = 0
+
+        if max_workers == 1:
+            for src in to_compile:
+                _, ok, errs = self._compile_one(
+                    src, out_dir, prof, active_features, check_only, optimize_bounds_checks
+                )
+                if ok:
+                    compiled_ok += 1
+                    cache.mark_built(src)
+                else:
+                    all_errors.extend(errs)
+        else:
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futures = {
+                    executor.submit(
+                        self._compile_one,
+                        src, out_dir, prof, active_features, check_only, optimize_bounds_checks,
+                    ): src
+                    for src in to_compile
+                }
+                for future in as_completed(futures):
+                    src_path, ok, errs = future.result()
+                    if ok:
+                        compiled_ok += 1
+                        cache.mark_built(src_path)
+                    else:
+                        all_errors.extend(errs)
+
+        return compiled_ok, all_errors, all_warnings
+
     def _build_internal(
         self,
         release: bool,
@@ -555,36 +606,12 @@ class BuildSystem:
 
         all_errors: List[str] = []
         all_warnings: List[str] = []
-        compiled_ok = 0
 
-        if max_workers == 1:
-            # Serial path
-            for src in to_compile:
-                _, ok, errs = self._compile_one(
-                    src, out_dir, prof, active_features, check_only, optimize_bounds_checks
-                )
-                if ok:
-                    compiled_ok += 1
-                    cache.mark_built(src)
-                else:
-                    all_errors.extend(errs)
-        else:
-            # Parallel path
-            with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                futures = {
-                    executor.submit(
-                        self._compile_one,
-                        src, out_dir, prof, active_features, check_only, optimize_bounds_checks,
-                    ): src
-                    for src in to_compile
-                }
-                for future in as_completed(futures):
-                    src_path, ok, errs = future.result()
-                    if ok:
-                        compiled_ok += 1
-                        cache.mark_built(src_path)
-                    else:
-                        all_errors.extend(errs)
+        compiled_ok, compile_errors, _compile_warnings = self._compile_files(
+            to_compile, out_dir, prof, active_features, check_only, optimize_bounds_checks,
+            max_workers, cache,
+        )
+        all_errors.extend(compile_errors)
 
         # Persist updated cache entries
         cache.save()

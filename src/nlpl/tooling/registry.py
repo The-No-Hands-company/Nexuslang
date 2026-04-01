@@ -639,6 +639,86 @@ class RegistryClient:
 
         return extracted_dir
 
+    def _build_upload_body(
+        self,
+        name: str,
+        version: str,
+        pkg_meta: dict,
+        archive_bytes: bytes,
+        checksum_str: str,
+    ):
+        """Build multipart form body for package upload.
+
+        Returns:
+            (body: bytes, content_type: str)
+        """
+        boundary = "----NLPLPublishBoundary"
+        header_meta = json.dumps({
+            "name": name,
+            "version": version,
+            "description": pkg_meta.get("description", ""),
+            "authors": pkg_meta.get("authors", []),
+            "license": pkg_meta.get("license"),
+            "checksum": checksum_str,
+        }).encode("utf-8")
+
+        body_parts = [
+            (
+                f'--{boundary}\r\n'
+                f'Content-Disposition: form-data; name="metadata"\r\n'
+                f'Content-Type: application/json\r\n\r\n'
+            ).encode("utf-8"),
+            header_meta,
+            (
+                f'\r\n--{boundary}\r\n'
+                f'Content-Disposition: form-data; name="archive"; '
+                f'filename="{name}-{version}.tar.gz"\r\n'
+                f'Content-Type: application/gzip\r\n\r\n'
+            ).encode("utf-8"),
+            archive_bytes,
+            f"\r\n--{boundary}--\r\n".encode("utf-8"),
+        ]
+        body = b"".join(body_parts)
+        content_type = f"multipart/form-data; boundary={boundary}"
+        return body, content_type
+
+    def _upload_package(
+        self,
+        name: str,
+        version: str,
+        body: bytes,
+        content_type: str,
+    ) -> None:
+        """POST archive to the registry.  Raises RegistryError / AuthError on failure."""
+        upload_url = f"{self.config.url}/api/v1/packages"
+        try:
+            _make_request(
+                upload_url,
+                method="POST",
+                headers={
+                    **self._auth_headers(),
+                    "Content-Type": content_type,
+                    "Content-Length": str(len(body)),
+                },
+                body=body,
+            )
+        except urllib.error.HTTPError as exc:
+            if exc.code == 401:
+                raise AuthError(
+                    "Registry authentication failed. "
+                    "Check your API token."
+                ) from exc
+            if exc.code == 409:
+                raise RegistryError(
+                    f"Version '{name}@{version}' already exists in the registry. "
+                    "Bump the version in nlpl.toml and try again."
+                ) from exc
+            raise RegistryError(
+                f"Upload failed (HTTP {exc.code}): {exc.reason}"
+            ) from exc
+        except (urllib.error.URLError, OSError) as exc:
+            raise RegistryError(f"Network error during publish: {exc}") from exc
+
     def publish(
         self,
         project_root: Path,
@@ -681,7 +761,7 @@ class RegistryClient:
                 "environment variable."
             )
 
-        # Read package metadata
+        # Read and validate package metadata
         pkg_meta = _read_package_metadata(manifest_path)
         name = pkg_meta.get("name", "").strip()
         version = pkg_meta.get("version", "").strip()
@@ -695,7 +775,6 @@ class RegistryClient:
                 "Package version is missing from nlpl.toml [package] section."
             )
 
-        # Validate name
         import re
         if not re.match(r'^[a-z0-9_-]+$', name):
             raise ValueError(
@@ -711,7 +790,6 @@ class RegistryClient:
             archive_path = Path(tmp_dir) / f"{name}-{version}.tar.gz"
             _create_archive(project_root, archive_path)
 
-            checksum_str = ""
             sha256 = hashlib.sha256()
             with open(archive_path, "rb") as f:
                 while chunk := f.read(65536):
@@ -727,67 +805,11 @@ class RegistryClient:
                     print("  Dry run: skipping upload.")
                 return
 
-            # Upload the archive
             archive_bytes = archive_path.read_bytes()
-            upload_url = f"{self.config.url}/api/v1/packages"
-
-            # Multipart form data (boundary-based)
-            boundary = "----NLPLPublishBoundary"
-            header_meta = json.dumps({
-                "name": name,
-                "version": version,
-                "description": pkg_meta.get("description", ""),
-                "authors": pkg_meta.get("authors", []),
-                "license": pkg_meta.get("license"),
-                "checksum": checksum_str,
-            }).encode("utf-8")
-
-            body_parts = [
-                (
-                    f'--{boundary}\r\n'
-                    f'Content-Disposition: form-data; name="metadata"\r\n'
-                    f'Content-Type: application/json\r\n\r\n'
-                ).encode("utf-8"),
-                header_meta,
-                (
-                    f'\r\n--{boundary}\r\n'
-                    f'Content-Disposition: form-data; name="archive"; '
-                    f'filename="{name}-{version}.tar.gz"\r\n'
-                    f'Content-Type: application/gzip\r\n\r\n'
-                ).encode("utf-8"),
-                archive_bytes,
-                f"\r\n--{boundary}--\r\n".encode("utf-8"),
-            ]
-            body = b"".join(body_parts)
-            content_type = f"multipart/form-data; boundary={boundary}"
-
-            try:
-                _make_request(
-                    upload_url,
-                    method="POST",
-                    headers={
-                        **self._auth_headers(),
-                        "Content-Type": content_type,
-                        "Content-Length": str(len(body)),
-                    },
-                    body=body,
-                )
-            except urllib.error.HTTPError as exc:
-                if exc.code == 401:
-                    raise AuthError(
-                        "Registry authentication failed. "
-                        "Check your API token."
-                    ) from exc
-                if exc.code == 409:
-                    raise RegistryError(
-                        f"Version '{name}@{version}' already exists in the registry. "
-                        "Bump the version in nlpl.toml and try again."
-                    ) from exc
-                raise RegistryError(
-                    f"Upload failed (HTTP {exc.code}): {exc.reason}"
-                ) from exc
-            except (urllib.error.URLError, OSError) as exc:
-                raise RegistryError(f"Network error during publish: {exc}") from exc
+            body, content_type = self._build_upload_body(
+                name, version, pkg_meta, archive_bytes, checksum_str
+            )
+            self._upload_package(name, version, body, content_type)
 
         if not quiet:
             print(f"  Published   {name}@{version} -> {self.config.url}")

@@ -73,6 +73,64 @@ class Builder:
         
         raise FileNotFoundError("NLPL compiler (nlplc_llvm.py) not found")
     
+    def _prepare_build_flags(
+        self,
+        release: bool,
+    ):
+        """Compute (opt_level, lto_mode, use_lto, cross_flags, base_flags) for the build.
+
+        Returns:
+            Tuple of (opt_level, lto_mode, use_lto, base_flags, error)
+            where error is a BuildResult on failure or None on success.
+        """
+        opt_level = 3 if release else self.project.build.optimization_level
+
+        lto_str = self.project.build.lto
+        if release and lto_str == "disabled":
+            lto_str = "thin"
+        lto_mode = {
+            "thin": LTOMode.THIN,
+            "full": LTOMode.FULL,
+        }.get(lto_str, LTOMode.DISABLED)
+        use_lto = lto_mode != LTOMode.DISABLED
+
+        cross_flags: List[str] = []
+        if self.project.build.target_triple:
+            _, toolchain = get_cross_compiler(
+                self.project.build.target_triple,
+                verbose=self.verbose,
+            )
+            if toolchain.is_complete:
+                from .cross import CrossCompiler as _CC
+                cc = _CC(toolchain, verbose=self.verbose)
+                cross_flags = cc.get_compiler_flags()
+                if self.verbose:
+                    print(f"Cross-compiling for {self.project.build.target_triple}")
+            else:
+                error = BuildResult(
+                    success=False,
+                    errors=[
+                        f"No toolchain found for target "
+                        f"{self.project.build.target_triple}. "
+                        f"Install clang or a cross-gcc for that target."
+                    ],
+                )
+                return opt_level, lto_mode, use_lto, [], error
+
+        base_flags: List[str] = []
+        if opt_level > 0:
+            base_flags.append(f"-O{opt_level}")
+        if self.project.build.debug_info and not release:
+            base_flags.append("-g")
+        if cross_flags:
+            base_flags.extend(cross_flags)
+        if use_lto:
+            lto_cfg = LTOConfig(mode=lto_mode, opt_level=min(opt_level, 3))
+            lto_linker = LTOLinker(lto_cfg)
+            base_flags.extend(lto_linker.emit_bitcode_flags())
+
+        return opt_level, lto_mode, use_lto, base_flags, None
+
     def build(self, release: bool = False, clean: bool = False) -> BuildResult:
         """
         Build the project.
@@ -124,41 +182,10 @@ class Builder:
         output_dir.mkdir(exist_ok=True)
         output_file = output_dir / self.project.name
 
-        # --- Optimization level ------------------------------------------
-        opt_level = 3 if release else self.project.build.optimization_level
-
-        # --- LTO mode ----------------------------------------------------
-        lto_str = self.project.build.lto
-        if release and lto_str == "disabled":
-            lto_str = "thin"   # default: enable ThinLTO for release builds
-        lto_mode = {
-            "thin": LTOMode.THIN,
-            "full": LTOMode.FULL,
-        }.get(lto_str, LTOMode.DISABLED)
-        use_lto = lto_mode != LTOMode.DISABLED
-
-        # --- Cross-compilation -------------------------------------------
-        cross_flags: List[str] = []
-        if self.project.build.target_triple:
-            _, toolchain = get_cross_compiler(
-                self.project.build.target_triple,
-                verbose=self.verbose,
-            )
-            if toolchain.is_complete:
-                from .cross import CrossCompiler as _CC
-                cc = _CC(toolchain, verbose=self.verbose)
-                cross_flags = cc.get_compiler_flags()
-                if self.verbose:
-                    print(f"Cross-compiling for {self.project.build.target_triple}")
-            else:
-                return BuildResult(
-                    success=False,
-                    errors=[
-                        f"No toolchain found for target "
-                        f"{self.project.build.target_triple}. "
-                        f"Install clang or a cross-gcc for that target."
-                    ],
-                )
+        # --- Optimization level, LTO, cross-compilation, base flags ------
+        _opt_level, lto_mode, use_lto, base_flags, flag_error = self._prepare_build_flags(release)
+        if flag_error is not None:
+            return flag_error
 
         # --- Decide: parallel or serial ----------------------------------
         effective_jobs = self._jobs
@@ -175,19 +202,6 @@ class Builder:
                 print(f"  Parallel: {workers} workers")
             if use_lto:
                 print(f"  LTO: {lto_mode.value}")
-
-        # --- Build compiler base flags -----------------------------------
-        base_flags: List[str] = []
-        if opt_level > 0:
-            base_flags.append(f"-O{opt_level}")
-        if self.project.build.debug_info and not release:
-            base_flags.append("-g")
-        if cross_flags:
-            base_flags.extend(cross_flags)
-        if use_lto:
-            lto_cfg = LTOConfig(mode=lto_mode, opt_level=min(opt_level, 3))
-            lto_linker = LTOLinker(lto_cfg)
-            base_flags.extend(lto_linker.emit_bitcode_flags())
 
         # --- Compile step ------------------------------------------------
         try:
