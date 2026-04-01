@@ -5654,7 +5654,7 @@ class LLVMIRGenerator(CodeGenerator):
                 self.emit(f'\n{case_label}.body:')
             
             # Generate variable bindings for pattern
-            self._generate_pattern_bindings(case.pattern, match_value_reg, match_value_type, indent + '  ', case_label)
+            self._generate_pattern_bindings(case.pattern, match_value_reg, match_value_type, indent + '  ', case_label=case_label)
             
             for stmt in case.body:
                 self._generate_statement(stmt, indent + '  ')
