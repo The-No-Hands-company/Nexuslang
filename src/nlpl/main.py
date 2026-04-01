@@ -258,11 +258,11 @@ def _build_argument_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main():
-    """Main entry point for the NLPL interpreter."""
-    args = _build_argument_parser().parse_args()
+def _handle_emit_commands(args: argparse.Namespace) -> bool:
+    """Handle --emit-entry-stub and --emit-linker-script early-exit commands.
 
-    # Handle --emit-entry-stub (write stub and exit)
+    Returns True if a command was handled (caller should return immediately).
+    """
     if args.emit_entry_stub:
         from .compiler.freestanding import generate_entry_stub
         arch = getattr(args, 'arch', 'x86_64') or 'x86_64'
@@ -270,9 +270,8 @@ def main():
         with open(args.emit_entry_stub, 'w') as _f:
             _f.write(stub)
         print(f"Entry stub for '{arch}' written to: {args.emit_entry_stub}")
-        return
+        return True
 
-    # Handle --emit-linker-script (write script and exit)
     if args.emit_linker_script:
         from .compiler.linker import get_linker_script_for_arch
         arch = getattr(args, 'arch', 'x86_64') or 'x86_64'
@@ -280,9 +279,16 @@ def main():
         with open(args.emit_linker_script, 'w') as _f:
             _f.write(script)
         print(f"Linker script for '{arch}' written to: {args.emit_linker_script}")
-        return
-    
-    # Handle --explain command
+        return True
+
+    return False
+
+
+def _handle_error_code_commands(args: argparse.Namespace) -> bool:
+    """Handle --explain and --list-errors early-exit commands.
+
+    Returns True if a command was handled (caller should return immediately).
+    """
     if args.explain:
         from .error_codes import get_error_info
         error_info = get_error_info(args.explain.upper())
@@ -291,30 +297,102 @@ def main():
         else:
             print(f"Error code '{args.explain}' not found.")
             print("Use --list-errors to see all available error codes.")
-        return
-    
-    # Handle --list-errors command
+        return True
+
     if args.list_errors:
         from .error_codes import ERROR_CODES
         print("NLPL Error Codes")
         print("=" * 60)
-        
-        # Group by category
-        categories = {}
+        categories: dict = {}
         for code, info in sorted(ERROR_CODES.items()):
             if info.category not in categories:
                 categories[info.category] = []
             categories[info.category].append((code, info.title))
-        
         for category, errors in sorted(categories.items()):
             print(f"\n{category.upper()} ERRORS:")
             for code, title in errors:
                 print(f"  {code}: {title}")
-        
         print(f"\nTotal: {len(ERROR_CODES)} error codes")
         print("Use 'nlpl --explain CODE' for details on a specific error.")
+        return True
+
+    return False
+
+
+def _run_debugger_mode(args: argparse.Namespace, source_code: str) -> None:
+    """Run the program under the interactive debugger."""
+    from .debugger.debugger import Debugger
+    from .parser.lexer import Lexer as _Lexer
+    from .parser.parser import Parser as _Parser
+
+    runtime = Runtime()
+    runtime.module_path = os.path.abspath(args.file)
+    register_stdlib(runtime)
+    _fs_config = _apply_freestanding(args, runtime)
+    interpreter = Interpreter(runtime, enable_type_checking=not args.no_type_check)
+
+    debugger = Debugger(interpreter, interactive=True)
+    interpreter.debugger = debugger
+    interpreter.current_file = args.file
+
+    if args.breakpoints:
+        for bp in args.breakpoints:
+            try:
+                line = int(bp)
+                debugger.add_breakpoint(args.file, line)
+            except ValueError:
+                print(f"Warning: Invalid breakpoint: {bp}")
+
+    print(f"Debugging: {args.file}")
+    if args.breakpoints:
+        print(f"Breakpoints: {len(debugger.list_breakpoints())}")
+    print()
+
+    try:
+        lexer = _Lexer(source_code)
+        tokens = lexer.tokenize()
+
+        if args.debug:
+            print("Tokens:")
+            for token in tokens:
+                print(f"  {token}")
+
+        parser = _Parser(tokens)
+        ast = parser.parse()
+
+        if args.debug:
+            print("\nAST:")
+            print_ast(ast)
+
+        result = interpreter.interpret(ast, optimization_level=getattr(args, 'optimize', 0))
+
+        if result is not None:
+            print(f"\nProgram result: {result}")
+
+        print("\n" + "=" * 60)
+        debugger.print_statistics()
+
+    except Exception as e:
+        if hasattr(e, 'format_error'):
+            print(f"\n{e.format_error()}")
+        else:
+            print(f"\nError: {e}")
+        if args.debug:
+            import traceback
+            traceback.print_exc()
+        sys.exit(1)
+
+
+def main():
+    """Main entry point for the NLPL interpreter."""
+    args = _build_argument_parser().parse_args()
+
+    if _handle_emit_commands(args):
         return
-    
+
+    if _handle_error_code_commands(args):
+        return
+
     # Initialize profiler if requested
     profiler = None
     if args.profile:
@@ -328,7 +406,7 @@ def main():
             "type errors will only be caught at runtime",
             file=sys.stderr,
         )
-    
+
     # Start REPL if no file specified or --repl flag
     if args.file is None or (args.repl and not args.file):
         from .repl.repl import REPL
@@ -342,87 +420,21 @@ def main():
                 traceback.print_exc()
             sys.exit(1)
         return
-    
+
     # Check if the file exists
     if not os.path.isfile(args.file):
         print(f"Error: File '{args.file}' not found")
         sys.exit(1)
-    
+
     # Read the file
     with open(args.file, 'r') as f:
         source_code = f.read()
-    
+
     # Run with debugger if requested
     if args.debugger or args.breakpoints:
-        from .debugger.debugger import Debugger
-        from .parser.lexer import Lexer
-        from .parser.parser import Parser
-        
-        # Setup runtime and interpreter
-        runtime = Runtime()
-        runtime.module_path = os.path.abspath(args.file)
-        register_stdlib(runtime)
-        _fs_config = _apply_freestanding(args, runtime)
-        interpreter = Interpreter(runtime, enable_type_checking=not args.no_type_check)
-        
-        # Create and attach debugger
-        debugger = Debugger(interpreter, interactive=True)
-        interpreter.debugger = debugger
-        interpreter.current_file = args.file
-        
-        # Set breakpoints from command line
-        if args.breakpoints:
-            for bp in args.breakpoints:
-                try:
-                    line = int(bp)
-                    debugger.add_breakpoint(args.file, line)
-                except ValueError:
-                    print(f"Warning: Invalid breakpoint: {bp}")
-        
-        print(f"Debugging: {args.file}")
-        if args.breakpoints:
-            print(f"Breakpoints: {len(debugger.list_breakpoints())}")
-        print()
-        
-        try:
-            # Parse
-            lexer = Lexer(source_code)
-            tokens = lexer.tokenize()
-            
-            if args.debug:
-                print("Tokens:")
-                for token in tokens:
-                    print(f"  {token}")
-            
-            parser = Parser(tokens)
-            ast = parser.parse()
-            
-            if args.debug:
-                print("\nAST:")
-                print_ast(ast)
-            
-            # Execute with debugger
-            result = interpreter.interpret(ast, optimization_level=getattr(args, 'optimize', 0))
-            
-            if result is not None:
-                print(f"\nProgram result: {result}")
-            
-            print("\n" + "="*60)
-            debugger.print_statistics()
-        
-        except Exception as e:
-            # Check if this is one of our NLPL errors with rich formatting
-            if hasattr(e, 'format_error'):
-                print(f"\n{e.format_error()}")
-            else:
-                print(f"\nError: {e}")
-            if args.debug:
-                import traceback
-                traceback.print_exc()
-            sys.exit(1)
-        
+        _run_debugger_mode(args, source_code)
         return
-    
+
     # Resolve --target triple into a CompileTarget (for conditional compilation)
     _compile_target = None
     if getattr(args, 'target', None):
@@ -441,22 +453,21 @@ def main():
                              freestanding_config=_fs_cfg, target=_compile_target)
         if result is not None:
             print(f"Program result: {result}")
-        
+
         # Print and export profiling results if enabled
         if profiler:
             profiler.stop()
-            print("\n" + "="*70)
+            print("\n" + "=" * 70)
             profiler.print_report()
-            
+
             if args.profile_output:
                 profiler.export_json(args.profile_output)
                 print(f"\nProfile results saved to: {args.profile_output}")
-            
+
             if args.profile_flamegraph:
                 profiler.export_flamegraph(args.profile_flamegraph)
                 print(f"Flamegraph data saved to: {args.profile_flamegraph}")
     except Exception as e:
-        # Check if this is one of our NLPL errors with rich formatting
         if hasattr(e, 'format_error'):
             print(e.format_error())
         else:
