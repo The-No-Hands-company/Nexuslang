@@ -2423,6 +2423,88 @@ class LLVMIRGenerator(CodeGenerator):
         self.emit('}')
         self.emit('')
     
+    def _emit_async_coroutine_init(self):
+        """Emit the coroutine initialization sequence: promise alloca, coro.id, coro.alloc, coro.begin, frame promise."""
+        # === Coroutine Initialization ===
+        # Create promise (for storing result) - stack temporary for initialization
+        self.emit('  ; Create promise for async result')
+        self.emit('  %promise = alloca %Promise, align 8')
+        self.emit('  %promise.i8 = bitcast %Promise* %promise to i8*')
+
+        # Initialize promise to pending state (on stack)
+        self.emit('  %promise.state.init = getelementptr inbounds %Promise, %Promise* %promise, i32 0, i32 0')
+        self.emit('  store i8 0, i8* %promise.state.init')  # PROMISE_PENDING
+        self.emit('  %promise.result.init = getelementptr inbounds %Promise, %Promise* %promise, i32 0, i32 1')
+        self.emit('  store i8* null, i8** %promise.result.init')
+        self.emit('  %promise.error.init = getelementptr inbounds %Promise, %Promise* %promise, i32 0, i32 2')
+        self.emit('  store i8* null, i8** %promise.error.init')
+        self.emit('  %promise.waiting.init = getelementptr inbounds %Promise, %Promise* %promise, i32 0, i32 3')
+        self.emit('  store i8* null, i8** %promise.waiting.init')
+
+        # Create coroutine ID
+        self.emit('  ; Initialize coroutine')
+        self.emit('  %coro.id = call token @llvm.coro.id(i32 0, i8* %promise.i8, i8* null, i8* null)')
+
+        # Check if allocation is needed
+        self.emit('  %coro.need.alloc = call i1 @llvm.coro.alloc(token %coro.id)')
+        self.emit('  br i1 %coro.need.alloc, label %coro.alloc, label %coro.begin')
+
+        # Allocation block
+        self.emit('coro.alloc:')
+        self.emit('  %coro.size = call i64 @llvm.coro.size.i64()')
+        self.emit('  %coro.mem = call i8* @malloc(i64 %coro.size)')
+        self.emit('  br label %coro.begin')
+
+        # Begin coroutine block
+        self.emit('coro.begin:')
+        self.emit('  %coro.mem.phi = phi i8* [ null, %entry ], [ %coro.mem, %coro.alloc ]')
+        self.emit('  %coro.hdl = call i8* @llvm.coro.begin(token %coro.id, i8* %coro.mem.phi)')
+
+        # Get pointer to the promise in the frame (after coro.begin)
+        # This is the ACTUAL promise that persists, not the stack copy
+        self.emit('  ; Get pointer to frame\'s promise (not stack)')
+        self.emit('  %frame.promise.i8 = call i8* @llvm.coro.promise(i8* %coro.hdl, i32 8, i1 false)')
+        self.emit('  %frame.promise = bitcast i8* %frame.promise.i8 to %Promise*')
+        self.emit('  %promise.state = getelementptr inbounds %Promise, %Promise* %frame.promise, i32 0, i32 0')
+        self.emit('  %promise.result = getelementptr inbounds %Promise, %Promise* %frame.promise, i32 0, i32 1')
+        self.emit('  %promise.error = getelementptr inbounds %Promise, %Promise* %frame.promise, i32 0, i32 2')
+
+    def _emit_async_coroutine_cleanup(self):
+        """Emit the final suspend, cleanup, free, and suspend return blocks for a coroutine."""
+        # Final suspend point
+        self.emit('coro.final:')
+        self.emit('  ; Set promise to resolved state')
+        self.emit('  store i8 1, i8* %promise.state')  # PROMISE_RESOLVED
+        self.emit('  ; Final suspend - save state and suspend')
+        self.emit('  %coro.final.save = call token @llvm.coro.save(i8* %coro.hdl)')
+        self.emit('  %coro.final.suspend = call i8 @llvm.coro.suspend(token %coro.final.save, i1 true)')
+        self.emit('  switch i8 %coro.final.suspend, label %coro.suspend [')
+        self.emit('    i8 0, label %coro.final.ready')
+        self.emit('    i8 1, label %coro.cleanup')
+        self.emit('  ]')
+
+        # Final ready (should not happen for final suspend)
+        self.emit('coro.final.ready:')
+        self.emit('  unreachable')
+
+        # Cleanup block - free coroutine frame
+        self.emit('coro.cleanup:')
+        self.emit('  %coro.cleanup.mem = call i8* @llvm.coro.free(token %coro.id, i8* %coro.hdl)')
+        self.emit('  %coro.cleanup.need.free = icmp ne i8* %coro.cleanup.mem, null')
+        self.emit('  br i1 %coro.cleanup.need.free, label %coro.free, label %coro.suspend')
+
+        self.emit('coro.free:')
+        self.emit('  call void @free(i8* %coro.cleanup.mem)')
+        self.emit('  br label %coro.suspend')
+
+        # Suspend block - return coroutine handle
+        self.emit('coro.suspend:')
+        self.emit('  %coro.end.result = call i1 @llvm.coro.end(i8* %coro.hdl, i1 false)')
+        self.emit('  ret i8* %coro.hdl')
+
+        self.emit('}')
+        self.emit('')
+
     def _generate_async_function_definition(self, node):
         """
         Generate async function using LLVM coroutines.
@@ -2488,49 +2570,7 @@ class LLVMIRGenerator(CodeGenerator):
         # Entry block
         self.emit('entry:')
         
-        # === Coroutine Initialization ===
-        # Create promise (for storing result) - stack temporary for initialization
-        self.emit('  ; Create promise for async result')
-        self.emit('  %promise = alloca %Promise, align 8')
-        self.emit('  %promise.i8 = bitcast %Promise* %promise to i8*')
-        
-        # Initialize promise to pending state (on stack)
-        self.emit('  %promise.state.init = getelementptr inbounds %Promise, %Promise* %promise, i32 0, i32 0')
-        self.emit('  store i8 0, i8* %promise.state.init')  # PROMISE_PENDING
-        self.emit('  %promise.result.init = getelementptr inbounds %Promise, %Promise* %promise, i32 0, i32 1')
-        self.emit('  store i8* null, i8** %promise.result.init')
-        self.emit('  %promise.error.init = getelementptr inbounds %Promise, %Promise* %promise, i32 0, i32 2')
-        self.emit('  store i8* null, i8** %promise.error.init')
-        self.emit('  %promise.waiting.init = getelementptr inbounds %Promise, %Promise* %promise, i32 0, i32 3')
-        self.emit('  store i8* null, i8** %promise.waiting.init')
-        
-        # Create coroutine ID
-        self.emit('  ; Initialize coroutine')
-        self.emit('  %coro.id = call token @llvm.coro.id(i32 0, i8* %promise.i8, i8* null, i8* null)')
-        
-        # Check if allocation is needed
-        self.emit('  %coro.need.alloc = call i1 @llvm.coro.alloc(token %coro.id)')
-        self.emit('  br i1 %coro.need.alloc, label %coro.alloc, label %coro.begin')
-        
-        # Allocation block
-        self.emit('coro.alloc:')
-        self.emit('  %coro.size = call i64 @llvm.coro.size.i64()')
-        self.emit('  %coro.mem = call i8* @malloc(i64 %coro.size)')
-        self.emit('  br label %coro.begin')
-        
-        # Begin coroutine block
-        self.emit('coro.begin:')
-        self.emit('  %coro.mem.phi = phi i8* [ null, %entry ], [ %coro.mem, %coro.alloc ]')
-        self.emit('  %coro.hdl = call i8* @llvm.coro.begin(token %coro.id, i8* %coro.mem.phi)')
-        
-        # Get pointer to the promise in the frame (after coro.begin)
-        # This is the ACTUAL promise that persists, not the stack copy
-        self.emit('  ; Get pointer to frame\'s promise (not stack)')
-        self.emit('  %frame.promise.i8 = call i8* @llvm.coro.promise(i8* %coro.hdl, i32 8, i1 false)')
-        self.emit('  %frame.promise = bitcast i8* %frame.promise.i8 to %Promise*')
-        self.emit('  %promise.state = getelementptr inbounds %Promise, %Promise* %frame.promise, i32 0, i32 0')
-        self.emit('  %promise.result = getelementptr inbounds %Promise, %Promise* %frame.promise, i32 0, i32 1')
-        self.emit('  %promise.error = getelementptr inbounds %Promise, %Promise* %frame.promise, i32 0, i32 2')
+        self._emit_async_coroutine_init()
         
         # Store coroutine handle for use in body
         self.current_coro_id = '%coro.id'
@@ -2562,39 +2602,7 @@ class LLVMIRGenerator(CodeGenerator):
         if not body_ends_with_return:
             self.emit('  br label %coro.final')
         
-        # Final suspend point
-        self.emit('coro.final:')
-        self.emit('  ; Set promise to resolved state')
-        self.emit('  store i8 1, i8* %promise.state')  # PROMISE_RESOLVED
-        self.emit('  ; Final suspend - save state and suspend')
-        self.emit('  %coro.final.save = call token @llvm.coro.save(i8* %coro.hdl)')
-        self.emit('  %coro.final.suspend = call i8 @llvm.coro.suspend(token %coro.final.save, i1 true)')
-        self.emit('  switch i8 %coro.final.suspend, label %coro.suspend [')
-        self.emit('    i8 0, label %coro.final.ready')
-        self.emit('    i8 1, label %coro.cleanup')
-        self.emit('  ]')
-        
-        # Final ready (should not happen for final suspend)
-        self.emit('coro.final.ready:')
-        self.emit('  unreachable')
-        
-        # Cleanup block - free coroutine frame
-        self.emit('coro.cleanup:')
-        self.emit('  %coro.cleanup.mem = call i8* @llvm.coro.free(token %coro.id, i8* %coro.hdl)')
-        self.emit('  %coro.cleanup.need.free = icmp ne i8* %coro.cleanup.mem, null')
-        self.emit('  br i1 %coro.cleanup.need.free, label %coro.free, label %coro.suspend')
-        
-        self.emit('coro.free:')
-        self.emit('  call void @free(i8* %coro.cleanup.mem)')
-        self.emit('  br label %coro.suspend')
-        
-        # Suspend block - return coroutine handle
-        self.emit('coro.suspend:')
-        self.emit('  %coro.end.result = call i1 @llvm.coro.end(i8* %coro.hdl, i1 false)')
-        self.emit('  ret i8* %coro.hdl')
-        
-        self.emit('}')
-        self.emit('')
+        self._emit_async_coroutine_cleanup()
         
         # Reset async context
         self.in_async_function = False
@@ -3202,6 +3210,113 @@ class LLVMIRGenerator(CodeGenerator):
         return False
 
 
+    def _track_rc_variable_assignment(self, node, var_name: str, value_reg: str, indent: str) -> str:
+        """Track Rc/Weak/Arc reference-counted variables and handle retain operations.
+        
+        Returns potentially updated value_reg (for Rc-to-Rc retain cloning).
+        """
+        value_node_type = type(node.value).__name__
+
+        # Track Rc/Weak/Arc variables for automatic cleanup
+        if value_node_type == 'RcCreation':
+            rc_kind = node.value.rc_kind
+            inner_type = node.value.inner_type
+            # Store in rc_variables for scope-based cleanup
+            self.rc_variables[var_name] = {
+                'kind': rc_kind,
+                'inner_type': inner_type,
+                'ptr': value_reg
+            }
+            # Add to cleanup stack for current scope
+            if self.current_function_name:
+                if self.current_function_name not in self.rc_cleanup_stack:
+                    self.rc_cleanup_stack[self.current_function_name] = []
+                self.rc_cleanup_stack[self.current_function_name].append(var_name)
+
+        # Automatic retain on Rc-to-Rc assignment (cloning)
+        elif value_node_type == 'Identifier':
+            source_var = node.value.name
+            # Check if source is an Rc variable
+            if source_var in self.rc_variables:
+                rc_info = self.rc_variables[source_var]
+                rc_kind = rc_info['kind']
+                inner_type = rc_info['inner_type']
+
+                # Call rc_retain/arc_retain to increment reference count
+                # Note: Weak references use rc_downgrade, not weak_retain
+                retained_ptr = self._new_temp()
+                if rc_kind == 'rc':
+                    self.emit(f'{indent}{retained_ptr} = call i8* @rc_retain(i8* {value_reg})')
+                elif rc_kind == 'arc':
+                    self.emit(f'{indent}{retained_ptr} = call i8* @arc_retain(i8* {value_reg})')
+                elif rc_kind == 'weak':
+                    # Weak-to-weak copy: increment weak count via rc_downgrade
+                    # This is a copy of an existing weak reference
+                    self.emit(f'{indent}{retained_ptr} = call i8* @rc_downgrade(i8* {value_reg})')
+
+                # Use retained pointer instead of original
+                value_reg = retained_ptr
+
+                # Track this new variable as an Rc variable too
+                self.rc_variables[var_name] = {
+                    'kind': rc_kind,
+                    'inner_type': inner_type,
+                    'ptr': value_reg
+                }
+
+                # Add to cleanup stack for current scope
+                if self.current_function_name:
+                    if self.current_function_name not in self.rc_cleanup_stack:
+                        self.rc_cleanup_stack[self.current_function_name] = []
+                    self.rc_cleanup_stack[self.current_function_name].append(var_name)
+
+        # Track downgrade expression results (Rc -> Weak)
+        elif value_node_type == 'DowngradeExpression':
+            # Get the source Rc variable to determine inner_type
+            if hasattr(node.value, 'rc_expr') and type(node.value.rc_expr).__name__ == 'Identifier':
+                source_var = node.value.rc_expr.name
+                if source_var in self.rc_variables:
+                    rc_info = self.rc_variables[source_var]
+                    inner_type = rc_info['inner_type']
+
+                    # Track as weak reference
+                    self.rc_variables[var_name] = {
+                        'kind': 'weak',
+                        'inner_type': inner_type,
+                        'ptr': value_reg
+                    }
+
+                    # Add to cleanup stack (uses weak_release instead of rc_release)
+                    if self.current_function_name:
+                        if self.current_function_name not in self.rc_cleanup_stack:
+                            self.rc_cleanup_stack[self.current_function_name] = []
+                        self.rc_cleanup_stack[self.current_function_name].append(var_name)
+
+        # Track upgrade expression results (Weak -> Rc, may be null)
+        elif value_node_type == 'UpgradeExpression':
+            # Get the source Weak variable to determine inner_type
+            if hasattr(node.value, 'weak_expr') and type(node.value.weak_expr).__name__ == 'Identifier':
+                source_var = node.value.weak_expr.name
+                if source_var in self.rc_variables:
+                    rc_info = self.rc_variables[source_var]
+                    inner_type = rc_info['inner_type']
+
+                    # Track as Rc (upgrade creates strong reference)
+                    # Note: upgrade may return null if object was deallocated
+                    self.rc_variables[var_name] = {
+                        'kind': 'rc',  # Upgraded to strong reference
+                        'inner_type': inner_type,
+                        'ptr': value_reg
+                    }
+
+                    # Add to cleanup stack (uses rc_release)
+                    if self.current_function_name:
+                        if self.current_function_name not in self.rc_cleanup_stack:
+                            self.rc_cleanup_stack[self.current_function_name] = []
+                        self.rc_cleanup_stack[self.current_function_name].append(var_name)
+
+        return value_reg
+
     def _generate_new_local_variable(self, node, var_name, var_type, indent='  '):
         """Generate LLVM IR for a new local variable declaration."""
         # Determine type
@@ -3232,103 +3347,7 @@ class LLVMIRGenerator(CodeGenerator):
             value_reg = self._generate_expression(node.value, indent)
             value_type = self._infer_expression_type(node.value)
             
-            # Track Rc/Weak/Arc variables for automatic cleanup
-            if type(node.value).__name__ == 'RcCreation':
-                rc_kind = node.value.rc_kind
-                inner_type = node.value.inner_type
-                # Store in rc_variables for scope-based cleanup
-                self.rc_variables[var_name] = {
-                    'kind': rc_kind,
-                    'inner_type': inner_type,
-                    'ptr': value_reg
-                }
-                # Add to cleanup stack for current scope
-                if self.current_function_name:
-                    if self.current_function_name not in self.rc_cleanup_stack:
-                        self.rc_cleanup_stack[self.current_function_name] = []
-                    self.rc_cleanup_stack[self.current_function_name].append(var_name)
-            
-            # Automatic retain on Rc-to-Rc assignment (cloning)
-            elif type(node.value).__name__ == 'Identifier':
-                source_var = node.value.name
-                # Check if source is an Rc variable
-                if source_var in self.rc_variables:
-                    rc_info = self.rc_variables[source_var]
-                    rc_kind = rc_info['kind']
-                    inner_type = rc_info['inner_type']
-                    
-                    # Call rc_retain/arc_retain to increment reference count
-                    # Note: Weak references use rc_downgrade, not weak_retain
-                    retained_ptr = self._new_temp()
-                    if rc_kind == 'rc':
-                        self.emit(f'{indent}{retained_ptr} = call i8* @rc_retain(i8* {value_reg})')
-                    elif rc_kind == 'arc':
-                        self.emit(f'{indent}{retained_ptr} = call i8* @arc_retain(i8* {value_reg})')
-                    elif rc_kind == 'weak':
-                        # Weak-to-weak copy: increment weak count via rc_downgrade
-                        # This is a copy of an existing weak reference
-                        self.emit(f'{indent}{retained_ptr} = call i8* @rc_downgrade(i8* {value_reg})')
-                    
-                    # Use retained pointer instead of original
-                    value_reg = retained_ptr
-                    
-                    # Track this new variable as an Rc variable too
-                    self.rc_variables[var_name] = {
-                        'kind': rc_kind,
-                        'inner_type': inner_type,
-                        'ptr': value_reg
-                    }
-                    
-                    # Add to cleanup stack for current scope
-                    if self.current_function_name:
-                        if self.current_function_name not in self.rc_cleanup_stack:
-                            self.rc_cleanup_stack[self.current_function_name] = []
-                        self.rc_cleanup_stack[self.current_function_name].append(var_name)
-            
-            # Track downgrade expression results (Rc -> Weak)
-            elif type(node.value).__name__ == 'DowngradeExpression':
-                # Get the source Rc variable to determine inner_type
-                if hasattr(node.value, 'rc_expr') and type(node.value.rc_expr).__name__ == 'Identifier':
-                    source_var = node.value.rc_expr.name
-                    if source_var in self.rc_variables:
-                        rc_info = self.rc_variables[source_var]
-                        inner_type = rc_info['inner_type']
-                        
-                        # Track as weak reference
-                        self.rc_variables[var_name] = {
-                            'kind': 'weak',
-                            'inner_type': inner_type,
-                            'ptr': value_reg
-                        }
-                        
-                        # Add to cleanup stack (uses weak_release instead of rc_release)
-                        if self.current_function_name:
-                            if self.current_function_name not in self.rc_cleanup_stack:
-                                self.rc_cleanup_stack[self.current_function_name] = []
-                            self.rc_cleanup_stack[self.current_function_name].append(var_name)
-            
-            # Track upgrade expression results (Weak -> Rc, may be null)
-            elif type(node.value).__name__ == 'UpgradeExpression':
-                # Get the source Weak variable to determine inner_type
-                if hasattr(node.value, 'weak_expr') and type(node.value.weak_expr).__name__ == 'Identifier':
-                    source_var = node.value.weak_expr.name
-                    if source_var in self.rc_variables:
-                        rc_info = self.rc_variables[source_var]
-                        inner_type = rc_info['inner_type']
-                        
-                        # Track as Rc (upgrade creates strong reference)
-                        # Note: upgrade may return null if object was deallocated
-                        self.rc_variables[var_name] = {
-                            'kind': 'rc',  # Upgraded to strong reference
-                            'inner_type': inner_type,
-                            'ptr': value_reg
-                        }
-                        
-                        # Add to cleanup stack (uses rc_release)
-                        if self.current_function_name:
-                            if self.current_function_name not in self.rc_cleanup_stack:
-                                self.rc_cleanup_stack[self.current_function_name] = []
-                            self.rc_cleanup_stack[self.current_function_name].append(var_name)
+            value_reg = self._track_rc_variable_assignment(node, var_name, value_reg, indent)
             
             # Track if this is a closure assignment (lambda expression)
             if type(node.value).__name__ == 'LambdaExpression':
@@ -6450,6 +6469,103 @@ class LLVMIRGenerator(CodeGenerator):
             global_name = f'@{enum_name}.{member_name}'
             self.emit(f'{global_name} = private unnamed_addr constant i64 {value}, align 8')
     
+    def _generate_nested_member_assignment(self, node, target, member_name, indent):
+        """Handle nested member assignment like rect.top_left.x = value."""
+        parent_ptr = self._generate_member_access_pointer(target.object_expr, indent)
+        parent_type = self._infer_member_access_type(target.object_expr)
+
+        if parent_type and parent_type.startswith('%') and parent_type.endswith('*'):
+            type_name = parent_type[1:-1]
+
+            if type_name in self.struct_types:
+                fields = self.struct_types[type_name]
+                for i, (fname, ftype) in enumerate(fields):
+                    if fname == member_name:
+                        value_reg = self._generate_expression(node.value, indent)
+                        value_type = self._infer_expression_type(node.value)
+                        if value_type != ftype:
+                            value_reg = self._convert_type(value_reg, value_type, ftype, indent)
+                        field_ptr = self._new_temp()
+                        self.emit(f'{indent}{field_ptr} = getelementptr inbounds %{type_name}, %{type_name}* {parent_ptr}, i32 0, i32 {i}')
+                        self.emit(f'{indent}store {ftype} {value_reg}, {ftype}* {field_ptr}, align 8')
+                        return
+
+            elif type_name in self.class_types:
+                properties = self._get_all_class_properties(type_name)
+                for i, prop in enumerate(properties):
+                    if prop['name'] == member_name:
+                        prop_type = self._map_nlpl_type_to_llvm(prop.get('type', 'Integer'))
+                        value_reg = self._generate_expression(node.value, indent)
+                        value_type = self._infer_expression_type(node.value)
+                        if value_type != prop_type:
+                            value_reg = self._convert_type(value_reg, value_type, prop_type, indent)
+                        prop_ptr = self._new_temp()
+                        self.emit(f'{indent}{prop_ptr} = getelementptr inbounds %{type_name}, %{type_name}* {parent_ptr}, i32 0, i32 {i}')
+                        self.emit(f'{indent}store {prop_type} {value_reg}, {prop_type}* {prop_ptr}, align 8')
+                        return
+
+    def _store_struct_field(self, struct_name, member_name, node, obj_ptr, indent):
+        """Store a value into a named field of a struct."""
+        fields = self.struct_types[struct_name]
+        field_index = -1
+        field_type = None
+        for i, (fname, ftype) in enumerate(fields):
+            if fname == member_name:
+                field_index = i
+                field_type = ftype
+                break
+        if field_index >= 0 and field_type:
+            value_reg = self._generate_expression(node.value, indent)
+            value_type = self._infer_expression_type(node.value)
+            if value_type != field_type:
+                value_reg = self._convert_type(value_reg, value_type, field_type, indent)
+            field_ptr = self._new_temp()
+            self.emit(f'{indent}{field_ptr} = getelementptr inbounds %{struct_name}, %{struct_name}* {obj_ptr}, i32 0, i32 {field_index}')
+            self.emit(f'{indent}store {field_type} {value_reg}, {field_type}* {field_ptr}, align 8')
+
+    def _store_union_field(self, struct_name, member_name, node, obj_ptr, indent):
+        """Store a value into a named field of a union."""
+        # In a union, all fields share the same memory location (index 0)
+        # We cast the union storage to the appropriate field type
+        fields = self.union_types[struct_name]
+        field_type = None
+        for fname, ftype in fields:
+            if fname == member_name:
+                field_type = ftype
+                break
+        if field_type:
+            value_reg = self._generate_expression(node.value, indent)
+            value_type = self._infer_expression_type(node.value)
+            if value_type != field_type:
+                value_reg = self._convert_type(value_reg, value_type, field_type, indent)
+            # Get pointer to union storage (always at index 0)
+            storage_ptr = self._new_temp()
+            self.emit(f'{indent}{storage_ptr} = getelementptr inbounds %{struct_name}, %{struct_name}* {obj_ptr}, i32 0, i32 0')
+            # Cast storage pointer to field type pointer
+            field_ptr = self._new_temp()
+            self.emit(f'{indent}{field_ptr} = bitcast i64* {storage_ptr} to {field_type}*')
+            self.emit(f'{indent}store {field_type} {value_reg}, {field_type}* {field_ptr}, align 8')
+
+    def _store_class_property(self, struct_name, member_name, node, obj_ptr, indent):
+        """Store a value into a class property (with inheritance support)."""
+        # Handle class property assignment (with inheritance support)
+        properties = self._get_all_class_properties(struct_name)
+        prop_index = -1
+        prop_type = None
+        for i, prop in enumerate(properties):
+            if prop['name'] == member_name:
+                prop_index = i
+                prop_type = self._map_nlpl_type_to_llvm(prop.get('type', 'Integer'))
+                break
+        if prop_index >= 0 and prop_type:
+            value_reg = self._generate_expression(node.value, indent)
+            value_type = self._infer_expression_type(node.value)
+            if value_type != prop_type:
+                value_reg = self._convert_type(value_reg, value_type, prop_type, indent)
+            prop_ptr = self._new_temp()
+            self.emit(f'{indent}{prop_ptr} = getelementptr inbounds %{struct_name}, %{struct_name}* {obj_ptr}, i32 0, i32 {prop_index}')
+            self.emit(f'{indent}store {prop_type} {value_reg}, {prop_type}* {prop_ptr}, align 8')
+
     def _generate_member_assignment(self, node, indent=''):
         """Generate member assignment with support for nested access: object.field = value or rect.top_left.x = value."""
         # Get target which is a MemberAccess node
@@ -6467,57 +6583,7 @@ class LLVMIRGenerator(CodeGenerator):
         
         # NESTED MEMBER ASSIGNMENT: rect.top_left.x = value
         if obj_expr_type == 'MemberAccess':
-            # Get pointer to the parent struct (e.g., rect.top_left)
-            parent_ptr = self._generate_member_access_pointer(target.object_expr, indent)
-            parent_type = self._infer_member_access_type(target.object_expr)
-            
-            if parent_type and parent_type.startswith('%') and parent_type.endswith('*'):
-                type_name = parent_type[1:-1]
-                
-                if type_name in self.struct_types:
-                    fields = self.struct_types[type_name]
-                    
-                    # Find the field index
-                    for i, (fname, ftype) in enumerate(fields):
-                        if fname == member_name:
-                            # Generate value to store
-                            value_reg = self._generate_expression(node.value, indent)
-                            value_type = self._infer_expression_type(node.value)
-                            
-                            # Convert if needed
-                            if value_type != ftype:
-                                value_reg = self._convert_type(value_reg, value_type, ftype, indent)
-                            
-                            # Get field pointer
-                            field_ptr = self._new_temp()
-                            self.emit(f'{indent}{field_ptr} = getelementptr inbounds %{type_name}, %{type_name}* {parent_ptr}, i32 0, i32 {i}')
-                            
-                            # Store value
-                            self.emit(f'{indent}store {ftype} {value_reg}, {ftype}* {field_ptr}, align 8')
-                            return
-                
-                elif type_name in self.class_types:
-                    properties = self._get_all_class_properties(type_name)
-                    
-                    for i, prop in enumerate(properties):
-                        if prop['name'] == member_name:
-                            prop_type = self._map_nlpl_type_to_llvm(prop.get('type', 'Integer'))
-                            
-                            # Generate value to store
-                            value_reg = self._generate_expression(node.value, indent)
-                            value_type = self._infer_expression_type(node.value)
-                            
-                            # Convert if needed
-                            if value_type != prop_type:
-                                value_reg = self._convert_type(value_reg, value_type, prop_type, indent)
-                            
-                            # Get property pointer
-                            prop_ptr = self._new_temp()
-                            self.emit(f'{indent}{prop_ptr} = getelementptr inbounds %{type_name}, %{type_name}* {parent_ptr}, i32 0, i32 {i}')
-                            
-                            # Store value
-                            self.emit(f'{indent}store {prop_type} {value_reg}, {prop_type}* {prop_ptr}, align 8')
-                            return
+            self._generate_nested_member_assignment(node, target, member_name, indent)
             return
         
         # SIMPLE IDENTIFIER ASSIGNMENT: object.field = value
@@ -6547,94 +6613,14 @@ class LLVMIRGenerator(CodeGenerator):
                 struct_name = llvm_type[1:-1]  # Remove % and *
                 
                 if struct_name in self.struct_types:
-                    fields = self.struct_types[struct_name]
-                    
-                    # Find field index
-                    field_index = -1
-                    field_type = None
-                    for i, (fname, ftype) in enumerate(fields):
-                        if fname == member_name:
-                            field_index = i
-                            field_type = ftype
-                            break
-                    
-                    if field_index >= 0 and field_type:
-                        # Generate value
-                        value_reg = self._generate_expression(node.value, indent)
-                        value_type = self._infer_expression_type(node.value)
-                        
-                        # Convert if needed
-                        if value_type != field_type:
-                            value_reg = self._convert_type(value_reg, value_type, field_type, indent)
-                        
-                        # Get field pointer using getelementptr
-                        field_ptr = self._new_temp()
-                        self.emit(f'{indent}{field_ptr} = getelementptr inbounds %{struct_name}, %{struct_name}* {obj_ptr}, i32 0, i32 {field_index}')
-                        
-                        # Store value
-                        self.emit(f'{indent}store {field_type} {value_reg}, {field_type}* {field_ptr}, align 8')
+                    self._store_struct_field(struct_name, member_name, node, obj_ptr, indent)
                 
                 elif struct_name in self.union_types:
-                    # Handle union member assignment
-                    # In a union, all fields share the same memory location (index 0)
-                    # We cast the union storage to the appropriate field type
-                    fields = self.union_types[struct_name]
-                    
-                    # Find the field type
-                    field_type = None
-                    for fname, ftype in fields:
-                        if fname == member_name:
-                            field_type = ftype
-                            break
-                    
-                    if field_type:
-                        # Generate value
-                        value_reg = self._generate_expression(node.value, indent)
-                        value_type = self._infer_expression_type(node.value)
-                        
-                        # Convert if needed
-                        if value_type != field_type:
-                            value_reg = self._convert_type(value_reg, value_type, field_type, indent)
-                        
-                        # Get pointer to union storage (always at index 0)
-                        storage_ptr = self._new_temp()
-                        self.emit(f'{indent}{storage_ptr} = getelementptr inbounds %{struct_name}, %{struct_name}* {obj_ptr}, i32 0, i32 0')
-                        
-                        # Cast storage pointer to field type pointer
-                        field_ptr = self._new_temp()
-                        self.emit(f'{indent}{field_ptr} = bitcast i64* {storage_ptr} to {field_type}*')
-                        
-                        # Store value
-                        self.emit(f'{indent}store {field_type} {value_reg}, {field_type}* {field_ptr}, align 8')
+                    self._store_union_field(struct_name, member_name, node, obj_ptr, indent)
                 
                 elif struct_name in self.class_types:
-                    # Handle class property assignment (with inheritance support)
-                    properties = self._get_all_class_properties(struct_name)
-                    
-                    # Find property index
-                    prop_index = -1
-                    prop_type = None
-                    for i, prop in enumerate(properties):
-                        if prop['name'] == member_name:
-                            prop_index = i
-                            prop_type = self._map_nlpl_type_to_llvm(prop.get('type', 'Integer'))
-                            break
-                    
-                    if prop_index >= 0 and prop_type:
-                        # Generate value
-                        value_reg = self._generate_expression(node.value, indent)
-                        value_type = self._infer_expression_type(node.value)
-                        
-                        # Convert if needed
-                        if value_type != prop_type:
-                            value_reg = self._convert_type(value_reg, value_type, prop_type, indent)
-                        
-                        # Get property pointer using getelementptr
-                        prop_ptr = self._new_temp()
-                        self.emit(f'{indent}{prop_ptr} = getelementptr inbounds %{struct_name}, %{struct_name}* {obj_ptr}, i32 0, i32 {prop_index}')
-                        
-                        # Store value
-                        self.emit(f'{indent}store {prop_type} {value_reg}, {prop_type}* {prop_ptr}, align 8')    
+                    self._store_class_property(struct_name, member_name, node, obj_ptr, indent)
+
     def _generate_type_cast_expression(self, node, indent=''):
         """Generate IR for type casting."""
         expr_reg = self._generate_expression(node.expression, indent)
@@ -7567,6 +7553,65 @@ class LLVMIRGenerator(CodeGenerator):
         self.emit(f'{indent}{new_count} = add i64 {count_val}, 1')
         self.emit(f'{indent}store i64 {new_count}, i64* {count_ptr}, align 8')
 
+    def _resolve_comprehension_iterable(self, expr, indent: str):
+        """Resolve the iterable for a list comprehension, returning (iterable_ptr, list_size, is_global_array).
+        
+        Raises Exception if the iterable cannot be resolved.
+        """
+        iterable_ptr = None
+        list_size = None
+        is_global_array = False  # Track if we loaded from global
+
+        # Check if iterable is a simple variable reference
+        if hasattr(expr.iterable, 'name'):
+            iterable_name = expr.iterable.name
+
+            # Check local variables first
+            if iterable_name in self.local_vars:
+                llvm_type, alloca_ptr = self.local_vars[iterable_name]
+                # Load the value from the alloca (which is a pointer for arrays)
+                loaded_ptr = self._new_temp()
+                self.emit(f'{indent}{loaded_ptr} = load {llvm_type}, {llvm_type}* {alloca_ptr}, align 8')
+                iterable_ptr = loaded_ptr
+                is_global_array = True  # Treat same as global since we loaded a pointer
+
+                # Get size from metadata
+                if iterable_name in self.array_sizes:
+                    list_size = self.array_sizes[iterable_name]
+                elif iterable_name in self.runtime_array_sizes:
+                    # Runtime size - load it
+                    list_size_reg = self.runtime_array_sizes[iterable_name]
+                    list_size = list_size_reg  # Use register directly
+                else:
+                    raise Exception(f"Cannot iterate over '{iterable_name}': size unknown")
+
+            # Check global variables if not found in local
+            elif iterable_name in self.global_vars:
+                llvm_type, global_name = self.global_vars[iterable_name]
+                # For globals, we need to load the value (which is a pointer to the array)
+                loaded_ptr = self._new_temp()
+                self.emit(f'{indent}{loaded_ptr} = load {llvm_type}, {llvm_type}* {global_name}, align 8')
+                iterable_ptr = loaded_ptr
+                is_global_array = True  # Mark that this came from a global
+
+                # Get size from metadata
+                if iterable_name in self.array_sizes:
+                    list_size = self.array_sizes[iterable_name]
+                elif iterable_name in self.runtime_array_sizes:
+                    # Runtime size - load it
+                    list_size_reg = self.runtime_array_sizes[iterable_name]
+                    list_size = list_size_reg  # Use register directly
+                else:
+                    raise Exception(f"Cannot iterate over '{iterable_name}': size unknown")
+
+            else:
+                raise Exception(f"Variable '{iterable_name}' not found in scope")
+        else:
+            # Complex expression - evaluate it (future enhancement for expressions)
+            raise Exception(f"List comprehensions currently only support variable iterables, not expressions")
+
+        return iterable_ptr, list_size, is_global_array
+
     def _generate_list_comprehension_expression(self, expr, indent='') -> str:
         """
         Generate list comprehension: [expr for target in iterable if condition]
@@ -7595,58 +7640,7 @@ class LLVMIRGenerator(CodeGenerator):
         self.emit(f'{indent}store i64 0, i64* {count_ptr}, align 8')
         
         # Get iterable - must be a variable (array/list) with known size
-        iterable_name = None
-        iterable_ptr = None
-        list_size = None
-        is_global_array = False  # Track if we loaded from global
-        
-        # Check if iterable is a simple variable reference
-        if hasattr(expr.iterable, 'name'):
-            iterable_name = expr.iterable.name
-            
-            # Check local variables first
-            if iterable_name in self.local_vars:
-                llvm_type, alloca_ptr = self.local_vars[iterable_name]
-                # Load the value from the alloca (which is a pointer for arrays)
-                loaded_ptr = self._new_temp()
-                self.emit(f'{indent}{loaded_ptr} = load {llvm_type}, {llvm_type}* {alloca_ptr}, align 8')
-                iterable_ptr = loaded_ptr
-                is_global_array = True  # Treat same as global since we loaded a pointer
-                
-                # Get size from metadata
-                if iterable_name in self.array_sizes:
-                    list_size = self.array_sizes[iterable_name]
-                elif iterable_name in self.runtime_array_sizes:
-                    # Runtime size - load it
-                    list_size_reg = self.runtime_array_sizes[iterable_name]
-                    list_size = list_size_reg  # Use register directly
-                else:
-                    raise Exception(f"Cannot iterate over '{iterable_name}': size unknown")
-            
-            # Check global variables if not found in local
-            elif iterable_name in self.global_vars:
-                llvm_type, global_name = self.global_vars[iterable_name]
-                # For globals, we need to load the value (which is a pointer to the array)
-                loaded_ptr = self._new_temp()
-                self.emit(f'{indent}{loaded_ptr} = load {llvm_type}, {llvm_type}* {global_name}, align 8')
-                iterable_ptr = loaded_ptr
-                is_global_array = True  # Mark that this came from a global
-                
-                # Get size from metadata
-                if iterable_name in self.array_sizes:
-                    list_size = self.array_sizes[iterable_name]
-                elif iterable_name in self.runtime_array_sizes:
-                    # Runtime size - load it
-                    list_size_reg = self.runtime_array_sizes[iterable_name]
-                    list_size = list_size_reg  # Use register directly
-                else:
-                    raise Exception(f"Cannot iterate over '{iterable_name}': size unknown")
-            
-            else:
-                raise Exception(f"Variable '{iterable_name}' not found in scope")
-        else:
-            # Complex expression - evaluate it (future enhancement for expressions)
-            raise Exception(f"List comprehensions currently only support variable iterables, not expressions")
+        iterable_ptr, list_size, is_global_array = self._resolve_comprehension_iterable(expr, indent)
         
         # Generate loop
         loop_start_label = f'comp_loop_{self.label_counter}'
@@ -8113,6 +8107,72 @@ class LLVMIRGenerator(CodeGenerator):
             return '0'
         return '0'
     
+    def _emit_integer_binary_op(self, result_reg: str, result_type: str, left_reg: str, right_reg: str, op: str, indent: str) -> bool:
+        """Emit integer binary operation instruction. Returns False if op is unknown."""
+        if op in ('+', 'plus'):
+            self.emit(f'{indent}{result_reg} = add nsw {result_type} {left_reg}, {right_reg}')
+        elif op in ('-', 'minus'):
+            self.emit(f'{indent}{result_reg} = sub nsw {result_type} {left_reg}, {right_reg}')
+        elif op in ('*', 'times', 'multiplied by'):
+            self.emit(f'{indent}{result_reg} = mul nsw {result_type} {left_reg}, {right_reg}')
+        elif op in ('/', 'divided by'):
+            self.emit(f'{indent}{result_reg} = sdiv {result_type} {left_reg}, {right_reg}')
+        elif op in ('%', 'mod', 'modulo'):
+            self.emit(f'{indent}{result_reg} = srem {result_type} {left_reg}, {right_reg}')
+        elif op in ('==', 'equals', 'equal to', 'is equal to'):
+            self.emit(f'{indent}{result_reg} = icmp eq {result_type} {left_reg}, {right_reg}')
+        elif op in ('!=', 'not equal to', 'is not equal to', 'is not'):
+            self.emit(f'{indent}{result_reg} = icmp ne {result_type} {left_reg}, {right_reg}')
+        elif op in ('<', 'less than', 'is less than'):
+            self.emit(f'{indent}{result_reg} = icmp slt {result_type} {left_reg}, {right_reg}')
+        elif op in ('<=', 'less than or equal to', 'is less than or equal to'):
+            self.emit(f'{indent}{result_reg} = icmp sle {result_type} {left_reg}, {right_reg}')
+        elif op in ('>', 'greater than', 'is greater than'):
+            self.emit(f'{indent}{result_reg} = icmp sgt {result_type} {left_reg}, {right_reg}')
+        elif op in ('>=', 'greater than or equal to', 'is greater than or equal to'):
+            self.emit(f'{indent}{result_reg} = icmp sge {result_type} {left_reg}, {right_reg}')
+        # Bitwise operations
+        elif op in ('&', 'bitwise and'):
+            self.emit(f'{indent}{result_reg} = and {result_type} {left_reg}, {right_reg}')
+        elif op in ('|', 'bitwise or'):
+            self.emit(f'{indent}{result_reg} = or {result_type} {left_reg}, {right_reg}')
+        elif op in ('^', 'bitwise xor'):
+            self.emit(f'{indent}{result_reg} = xor {result_type} {left_reg}, {right_reg}')
+        elif op in ('<<', 'shift left'):
+            self.emit(f'{indent}{result_reg} = shl {result_type} {left_reg}, {right_reg}')
+        elif op in ('>>', 'shift right'):
+            # Arithmetic right shift (preserves sign)
+            self.emit(f'{indent}{result_reg} = ashr {result_type} {left_reg}, {right_reg}')
+        else:
+            return False
+        return True
+
+    def _emit_float_binary_op(self, result_reg: str, result_type: str, left_reg: str, right_reg: str, op: str, indent: str) -> bool:
+        """Emit floating-point binary operation instruction. Returns False if op is unknown."""
+        if op in ('+', 'plus'):
+            self.emit(f'{indent}{result_reg} = fadd {result_type} {left_reg}, {right_reg}')
+        elif op in ('-', 'minus'):
+            self.emit(f'{indent}{result_reg} = fsub {result_type} {left_reg}, {right_reg}')
+        elif op in ('*', 'times', 'multiplied by'):
+            self.emit(f'{indent}{result_reg} = fmul {result_type} {left_reg}, {right_reg}')
+        elif op in ('/', 'divided by'):
+            self.emit(f'{indent}{result_reg} = fdiv {result_type} {left_reg}, {right_reg}')
+        elif op in ('==', 'equals', 'is equal to'):
+            self.emit(f'{indent}{result_reg} = fcmp oeq {result_type} {left_reg}, {right_reg}')
+        elif op in ('!=', 'is not equal to'):
+            self.emit(f'{indent}{result_reg} = fcmp une {result_type} {left_reg}, {right_reg}')
+        elif op in ('<', 'is less than'):
+            self.emit(f'{indent}{result_reg} = fcmp olt {result_type} {left_reg}, {right_reg}')
+        elif op in ('<=', 'is less than or equal to'):
+            self.emit(f'{indent}{result_reg} = fcmp ole {result_type} {left_reg}, {right_reg}')
+        elif op in ('>', 'is greater than'):
+            self.emit(f'{indent}{result_reg} = fcmp ogt {result_type} {left_reg}, {right_reg}')
+        elif op in ('>=', 'is greater than or equal to'):
+            self.emit(f'{indent}{result_reg} = fcmp oge {result_type} {left_reg}, {right_reg}')
+        else:
+            return False
+        return True
+
     def _generate_binary_operation(self, expr, indent='') -> str:
         """Generate binary operation (arithmetic, comparison, logical)."""
         left_reg = self._generate_expression(expr.left, indent)
@@ -8211,68 +8271,14 @@ class LLVMIRGenerator(CodeGenerator):
         
         # Integer operations (includes i1 booleans)
         if result_type in ('i64', 'i32', 'i16', 'i8', 'i1'):
-            if op in ('+', 'plus'):
-                self.emit(f'{indent}{result_reg} = add nsw {result_type} {left_reg}, {right_reg}')
-            elif op in ('-', 'minus'):
-                self.emit(f'{indent}{result_reg} = sub nsw {result_type} {left_reg}, {right_reg}')
-            elif op in ('*', 'times', 'multiplied by'):
-                self.emit(f'{indent}{result_reg} = mul nsw {result_type} {left_reg}, {right_reg}')
-            elif op in ('/', 'divided by'):
-                self.emit(f'{indent}{result_reg} = sdiv {result_type} {left_reg}, {right_reg}')
-            elif op in ('%', 'mod', 'modulo'):
-                self.emit(f'{indent}{result_reg} = srem {result_type} {left_reg}, {right_reg}')
-            elif op in ('==', 'equals', 'equal to', 'is equal to'):
-                self.emit(f'{indent}{result_reg} = icmp eq {result_type} {left_reg}, {right_reg}')
-            elif op in ('!=', 'not equal to', 'is not equal to', 'is not'):
-                self.emit(f'{indent}{result_reg} = icmp ne {result_type} {left_reg}, {right_reg}')
-            elif op in ('<', 'less than', 'is less than'):
-                self.emit(f'{indent}{result_reg} = icmp slt {result_type} {left_reg}, {right_reg}')
-            elif op in ('<=', 'less than or equal to', 'is less than or equal to'):
-                self.emit(f'{indent}{result_reg} = icmp sle {result_type} {left_reg}, {right_reg}')
-            elif op in ('>', 'greater than', 'is greater than'):
-                self.emit(f'{indent}{result_reg} = icmp sgt {result_type} {left_reg}, {right_reg}')
-            elif op in ('>=', 'greater than or equal to', 'is greater than or equal to'):
-                self.emit(f'{indent}{result_reg} = icmp sge {result_type} {left_reg}, {right_reg}')
-            # Bitwise operations
-            elif op in ('&', 'bitwise and'):
-                self.emit(f'{indent}{result_reg} = and {result_type} {left_reg}, {right_reg}')
-            elif op in ('|', 'bitwise or'):
-                self.emit(f'{indent}{result_reg} = or {result_type} {left_reg}, {right_reg}')
-            elif op in ('^', 'bitwise xor'):
-                self.emit(f'{indent}{result_reg} = xor {result_type} {left_reg}, {right_reg}')
-            elif op in ('<<', 'shift left'):
-                self.emit(f'{indent}{result_reg} = shl {result_type} {left_reg}, {right_reg}')
-            elif op in ('>>', 'shift right'):
-                # Arithmetic right shift (preserves sign)
-                self.emit(f'{indent}{result_reg} = ashr {result_type} {left_reg}, {right_reg}')
-            else:
+            if not self._emit_integer_binary_op(result_reg, result_type, left_reg, right_reg, op, indent):
                 # Unknown operator - log warning and return zero
                 print(f"Warning: Unknown integer operator '{op}' in binary operation")
                 return '0'
         
         # Float operations
         elif result_type in ('double', 'float'):
-            if op in ('+', 'plus'):
-                self.emit(f'{indent}{result_reg} = fadd {result_type} {left_reg}, {right_reg}')
-            elif op in ('-', 'minus'):
-                self.emit(f'{indent}{result_reg} = fsub {result_type} {left_reg}, {right_reg}')
-            elif op in ('*', 'times', 'multiplied by'):
-                self.emit(f'{indent}{result_reg} = fmul {result_type} {left_reg}, {right_reg}')
-            elif op in ('/', 'divided by'):
-                self.emit(f'{indent}{result_reg} = fdiv {result_type} {left_reg}, {right_reg}')
-            elif op in ('==', 'equals', 'is equal to'):
-                self.emit(f'{indent}{result_reg} = fcmp oeq {result_type} {left_reg}, {right_reg}')
-            elif op in ('!=', 'is not equal to'):
-                self.emit(f'{indent}{result_reg} = fcmp une {result_type} {left_reg}, {right_reg}')
-            elif op in ('<', 'is less than'):
-                self.emit(f'{indent}{result_reg} = fcmp olt {result_type} {left_reg}, {right_reg}')
-            elif op in ('<=', 'is less than or equal to'):
-                self.emit(f'{indent}{result_reg} = fcmp ole {result_type} {left_reg}, {right_reg}')
-            elif op in ('>', 'is greater than'):
-                self.emit(f'{indent}{result_reg} = fcmp ogt {result_type} {left_reg}, {right_reg}')
-            elif op in ('>=', 'is greater than or equal to'):
-                self.emit(f'{indent}{result_reg} = fcmp oge {result_type} {left_reg}, {right_reg}')
-            else:
+            if not self._emit_float_binary_op(result_reg, result_type, left_reg, right_reg, op, indent):
                 # Unknown operator - log warning and return zero
                 print(f"Warning: Unknown float operator '{op}' in binary operation")
                 return '0'
@@ -9733,24 +9739,45 @@ class LLVMIRGenerator(CodeGenerator):
         
         return '0'
     
+    def _generate_single_arg_double_math_call(self, llvm_func_name: str, args, indent='') -> str:
+        """Generate a single-argument double math function call (converts arg to double if needed)."""
+        if len(args) < 1:
+            raise ValueError(f"{llvm_func_name} requires 1 argument")
+        arg_reg = self._generate_expression(args[0], indent)
+        arg_type = self._infer_expression_type(args[0])
+        if arg_type != 'double':
+            arg_reg = self._convert_type(arg_reg, arg_type, 'double', indent)
+        result_reg = self._new_temp()
+        self.emit(f'{indent}{result_reg} = call double @{llvm_func_name}(double {arg_reg})')
+        return result_reg
+
+    def _generate_double_minmax_call(self, is_min: bool, args, indent='') -> str:
+        """Generate min or max over two double arguments using fcmp + select."""
+        func_label = 'min' if is_min else 'max'
+        if len(args) < 2:
+            raise ValueError(f"{func_label} requires 2 arguments")
+        a_reg = self._generate_expression(args[0], indent)
+        a_type = self._infer_expression_type(args[0])
+        b_reg = self._generate_expression(args[1], indent)
+        b_type = self._infer_expression_type(args[1])
+        if a_type != 'double':
+            a_reg = self._convert_type(a_reg, a_type, 'double', indent)
+        if b_type != 'double':
+            b_reg = self._convert_type(b_reg, b_type, 'double', indent)
+        cmp_op = 'olt' if is_min else 'ogt'
+        cmp_reg = self._new_temp()
+        self.emit(f'{indent}{cmp_reg} = fcmp {cmp_op} double {a_reg}, {b_reg}')
+        result_reg = self._new_temp()
+        self.emit(f'{indent}{result_reg} = select i1 {cmp_reg}, double {a_reg}, double {b_reg}')
+        return result_reg
+
     def _generate_math_function_call(self, func_name: str, expr, indent='') -> str:
         """Generate built-in math function calls."""
         args = expr.arguments if hasattr(expr, 'arguments') else []
         
         if func_name == 'sqrt':
             # sqrt(x) -> double
-            if len(args) < 1:
-                raise ValueError("sqrt requires 1 argument")
-            arg_reg = self._generate_expression(args[0], indent)
-            arg_type = self._infer_expression_type(args[0])
-            
-            # Convert to double if needed
-            if arg_type != 'double':
-                arg_reg = self._convert_type(arg_reg, arg_type, 'double', indent)
-            
-            result_reg = self._new_temp()
-            self.emit(f'{indent}{result_reg} = call double @sqrt(double {arg_reg})')
-            return result_reg
+            return self._generate_single_arg_double_math_call('sqrt', args, indent)
         
         elif func_name == 'pow':
             # pow(base, exponent) -> double
@@ -9773,132 +9800,35 @@ class LLVMIRGenerator(CodeGenerator):
         
         elif func_name == 'abs':
             # abs(x) -> double (using fabs for floating point)
-            if len(args) < 1:
-                raise ValueError("abs requires 1 argument")
-            arg_reg = self._generate_expression(args[0], indent)
-            arg_type = self._infer_expression_type(args[0])
-            
-            # Convert to double if needed
-            if arg_type != 'double':
-                arg_reg = self._convert_type(arg_reg, arg_type, 'double', indent)
-            
-            result_reg = self._new_temp()
-            self.emit(f'{indent}{result_reg} = call double @fabs(double {arg_reg})')
-            return result_reg
+            return self._generate_single_arg_double_math_call('fabs', args, indent)
         
         elif func_name == 'min':
             # min(a, b) -> double
-            if len(args) < 2:
-                raise ValueError("min requires 2 arguments")
-            a_reg = self._generate_expression(args[0], indent)
-            a_type = self._infer_expression_type(args[0])
-            b_reg = self._generate_expression(args[1], indent)
-            b_type = self._infer_expression_type(args[1])
-            
-            # Convert to double if needed
-            if a_type != 'double':
-                a_reg = self._convert_type(a_reg, a_type, 'double', indent)
-            if b_type != 'double':
-                b_reg = self._convert_type(b_reg, b_type, 'double', indent)
-            
-            # Use fcmp + select for min
-            cmp_reg = self._new_temp()
-            self.emit(f'{indent}{cmp_reg} = fcmp olt double {a_reg}, {b_reg}')
-            result_reg = self._new_temp()
-            self.emit(f'{indent}{result_reg} = select i1 {cmp_reg}, double {a_reg}, double {b_reg}')
-            return result_reg
+            return self._generate_double_minmax_call(True, args, indent)
         
         elif func_name == 'max':
             # max(a, b) -> double
-            if len(args) < 2:
-                raise ValueError("max requires 2 arguments")
-            a_reg = self._generate_expression(args[0], indent)
-            a_type = self._infer_expression_type(args[0])
-            b_reg = self._generate_expression(args[1], indent)
-            b_type = self._infer_expression_type(args[1])
-            
-            # Convert to double if needed
-            if a_type != 'double':
-                a_reg = self._convert_type(a_reg, a_type, 'double', indent)
-            if b_type != 'double':
-                b_reg = self._convert_type(b_reg, b_type, 'double', indent)
-            
-            # Use fcmp + select for max
-            cmp_reg = self._new_temp()
-            self.emit(f'{indent}{cmp_reg} = fcmp ogt double {a_reg}, {b_reg}')
-            result_reg = self._new_temp()
-            self.emit(f'{indent}{result_reg} = select i1 {cmp_reg}, double {a_reg}, double {b_reg}')
-            return result_reg
+            return self._generate_double_minmax_call(False, args, indent)
         
         elif func_name == 'sin':
             # sin(x) -> double
-            if len(args) < 1:
-                raise ValueError("sin requires 1 argument")
-            arg_reg = self._generate_expression(args[0], indent)
-            arg_type = self._infer_expression_type(args[0])
-            
-            if arg_type != 'double':
-                arg_reg = self._convert_type(arg_reg, arg_type, 'double', indent)
-            
-            result_reg = self._new_temp()
-            self.emit(f'{indent}{result_reg} = call double @sin(double {arg_reg})')
-            return result_reg
+            return self._generate_single_arg_double_math_call('sin', args, indent)
         
         elif func_name == 'cos':
             # cos(x) -> double
-            if len(args) < 1:
-                raise ValueError("cos requires 1 argument")
-            arg_reg = self._generate_expression(args[0], indent)
-            arg_type = self._infer_expression_type(args[0])
-            
-            if arg_type != 'double':
-                arg_reg = self._convert_type(arg_reg, arg_type, 'double', indent)
-            
-            result_reg = self._new_temp()
-            self.emit(f'{indent}{result_reg} = call double @cos(double {arg_reg})')
-            return result_reg
+            return self._generate_single_arg_double_math_call('cos', args, indent)
         
         elif func_name == 'tan':
             # tan(x) -> double
-            if len(args) < 1:
-                raise ValueError("tan requires 1 argument")
-            arg_reg = self._generate_expression(args[0], indent)
-            arg_type = self._infer_expression_type(args[0])
-            
-            if arg_type != 'double':
-                arg_reg = self._convert_type(arg_reg, arg_type, 'double', indent)
-            
-            result_reg = self._new_temp()
-            self.emit(f'{indent}{result_reg} = call double @tan(double {arg_reg})')
-            return result_reg
+            return self._generate_single_arg_double_math_call('tan', args, indent)
         
         elif func_name == 'floor':
             # floor(x) -> double
-            if len(args) < 1:
-                raise ValueError("floor requires 1 argument")
-            arg_reg = self._generate_expression(args[0], indent)
-            arg_type = self._infer_expression_type(args[0])
-            
-            if arg_type != 'double':
-                arg_reg = self._convert_type(arg_reg, arg_type, 'double', indent)
-            
-            result_reg = self._new_temp()
-            self.emit(f'{indent}{result_reg} = call double @floor(double {arg_reg})')
-            return result_reg
+            return self._generate_single_arg_double_math_call('floor', args, indent)
         
         elif func_name == 'ceil':
             # ceil(x) -> double
-            if len(args) < 1:
-                raise ValueError("ceil requires 1 argument")
-            arg_reg = self._generate_expression(args[0], indent)
-            arg_type = self._infer_expression_type(args[0])
-            
-            if arg_type != 'double':
-                arg_reg = self._convert_type(arg_reg, arg_type, 'double', indent)
-            
-            result_reg = self._new_temp()
-            self.emit(f'{indent}{result_reg} = call double @ceil(double {arg_reg})')
-            return result_reg
+            return self._generate_single_arg_double_math_call('ceil', args, indent)
         
         return '0'
     
@@ -10787,6 +10717,94 @@ class LLVMIRGenerator(CodeGenerator):
                 return ret_type
         return 'i64'
     
+    def _infer_binary_op_type(self, expr) -> str:
+        """Infer the LLVM type of a BinaryOperation expression."""
+        if hasattr(expr, 'operator'):
+            op = expr.operator
+            # If it's a Token, get the lexeme
+            if hasattr(op, 'lexeme'):
+                op = op.lexeme
+            # If it's a TokenType enum, get the name
+            elif hasattr(op, 'name'):
+                op = op.name.lower()
+
+            # Comparison operators return i1 (boolean)
+            if op in ('==', '!=', '<', '<=', '>', '>=', 'equal to', 'not equal to',
+                     'less than', 'less than or equal to', 'greater than',
+                     'greater than or equal to',
+                     # Natural language NLPL comparison operators
+                     'equals', 'is', 'is equal to', 'is not', 'is not equal to',
+                     'is less than', 'is less than or equal to',
+                     'is greater than', 'is greater than or equal to',
+                     # TokenType name forms (lowercased)
+                     'equal_to', 'not_equal_to', 'less_than', 'greater_than',
+                     'less_than_or_equal_to', 'greater_than_or_equal_to'):
+                return 'i1'
+            # Logical operators return i1 (boolean)
+            if op in ('and', '&&', 'or', '||'):
+                return 'i1'
+
+        # For arithmetic operations, promote types to match _generate_binary_operation behavior
+        left_type = self._infer_expression_type(expr.left)
+        right_type = self._infer_expression_type(expr.right)
+
+        # Apply same type promotion logic as code generation
+        return self._promote_types(left_type, right_type)
+
+    def _infer_object_instantiation_type(self, expr) -> str:
+        """Infer the LLVM type of an ObjectInstantiation expression."""
+        if hasattr(expr, 'class_name'):
+            name = expr.class_name
+            # Check for generic arguments
+            if hasattr(expr, 'type_arguments') and expr.type_arguments:
+                # Construct specialized name
+                type_args_names = []
+                type_args_objects = []
+                for arg in expr.type_arguments:
+                    arg_name = arg if isinstance(arg, str) else arg.name
+                    type_args_names.append(arg_name)
+                    type_args_objects.append(self._create_type_object(arg))
+
+                name = self.monomorphizer.get_specialized_name(name, type_args_objects)
+
+                # Register specialized class metadata early so it's available for type inference
+                # This ensures subsequent references to methods/properties work correctly
+                if name in self.generic_classes:
+                    self._register_specialized_class_metadata(name, type_args_names, name)
+                elif expr.class_name in self.generic_classes:  # Use original name for lookup
+                    self._register_specialized_class_metadata(expr.class_name, type_args_names, name)
+
+            return f'%{name}*'
+        return 'i64'
+
+    def _infer_address_of_type(self, expr) -> str:
+        """Infer the LLVM type of an AddressOfExpression."""
+        if hasattr(expr, 'target'):
+            target = expr.target
+            target_type_name = type(target).__name__
+
+            if target_type_name == 'Identifier':
+                identifier_name = target.name
+
+                # Check if it's a function - return function pointer type (i8* for simplicity)
+                if identifier_name in self.functions:
+                    # For function pointers, we use i8* (generic pointer)
+                    # In a full implementation, we'd use the actual function type
+                    return 'i8*'
+
+                # Check if it's a variable - return pointer to that type
+                elif identifier_name in self.local_vars:
+                    var_type = self.local_vars[identifier_name][0]
+                    return f'{var_type}*'
+
+                elif identifier_name in self.global_vars:
+                    var_type = self.global_vars[identifier_name][0]
+                    return f'{var_type}*'
+
+            # For other targets (like IndexExpression), return generic pointer
+            return 'i64*'
+        return 'i8*'  # Default function pointer type
+
     def _infer_expression_type(self, expr) -> str:
         """Infer LLVM type of an expression."""
         expr_type = type(expr).__name__
@@ -10809,37 +10827,7 @@ class LLVMIRGenerator(CodeGenerator):
                 elif expr.name in self.global_vars:
                     return self.global_vars[expr.name][0]
         elif expr_type == 'BinaryOperation':
-            if hasattr(expr, 'operator'):
-                op = expr.operator
-                # If it's a Token, get the lexeme
-                if hasattr(op, 'lexeme'):
-                    op = op.lexeme
-                # If it's a TokenType enum, get the name
-                elif hasattr(op, 'name'):
-                    op = op.name.lower()
-                    
-                # Comparison operators return i1 (boolean)
-                if op in ('==', '!=', '<', '<=', '>', '>=', 'equal to', 'not equal to',
-                         'less than', 'less than or equal to', 'greater than',
-                         'greater than or equal to',
-                         # Natural language NLPL comparison operators
-                         'equals', 'is', 'is equal to', 'is not', 'is not equal to',
-                         'is less than', 'is less than or equal to',
-                         'is greater than', 'is greater than or equal to',
-                         # TokenType name forms (lowercased)
-                         'equal_to', 'not_equal_to', 'less_than', 'greater_than',
-                         'less_than_or_equal_to', 'greater_than_or_equal_to'):
-                    return 'i1'
-                # Logical operators return i1 (boolean)
-                if op in ('and', '&&', 'or', '||'):
-                    return 'i1'
-            
-            # For arithmetic operations, promote types to match _generate_binary_operation behavior
-            left_type = self._infer_expression_type(expr.left)
-            right_type = self._infer_expression_type(expr.right)
-            
-            # Apply same type promotion logic as code generation
-            return self._promote_types(left_type, right_type)
+            return self._infer_binary_op_type(expr)
         elif expr_type == 'UnaryOperation':
             if hasattr(expr, 'operator'):
                 op = expr.operator
@@ -10872,61 +10860,13 @@ class LLVMIRGenerator(CodeGenerator):
             # Fallback
             return 'i64'
         elif expr_type == 'ObjectInstantiation':
-            # new StructName - return %StructName*
-            if hasattr(expr, 'class_name'):
-                name = expr.class_name
-                # Check for generic arguments
-                if hasattr(expr, 'type_arguments') and expr.type_arguments:
-                    # Construct specialized name
-                    type_args_names = []
-                    type_args_objects = []
-                    for arg in expr.type_arguments:
-                        arg_name = arg if isinstance(arg, str) else arg.name
-                        type_args_names.append(arg_name)
-                        type_args_objects.append(self._create_type_object(arg))
-                    
-                    name = self.monomorphizer.get_specialized_name(name, type_args_objects)
-                    
-                    # Register specialized class metadata early so it's available for type inference
-                    # This ensures subsequent references to methods/properties work correctly
-                    if name in self.generic_classes:
-                        self._register_specialized_class_metadata(name, type_args_names, name)
-                    elif expr.class_name in self.generic_classes:  # Use original name for lookup
-                        self._register_specialized_class_metadata(expr.class_name, type_args_names, name)
-                        
-                return f'%{name}*'
-            return 'i64'
+            return self._infer_object_instantiation_type(expr)
         elif expr_type == 'MemberAccess':
             return self._infer_member_access_type_expr(expr)
         elif expr_type == 'FunctionCall':
             return self._infer_function_call_type(expr)
         elif expr_type == 'AddressOfExpression':
-            # address of variable or function
-            if hasattr(expr, 'target'):
-                target = expr.target
-                target_type_name = type(target).__name__
-                
-                if target_type_name == 'Identifier':
-                    identifier_name = target.name
-                    
-                    # Check if it's a function - return function pointer type (i8* for simplicity)
-                    if identifier_name in self.functions:
-                        # For function pointers, we use i8* (generic pointer)
-                        # In a full implementation, we'd use the actual function type
-                        return 'i8*'
-                    
-                    # Check if it's a variable - return pointer to that type
-                    elif identifier_name in self.local_vars:
-                        var_type = self.local_vars[identifier_name][0]
-                        return f'{var_type}*'
-                    
-                    elif identifier_name in self.global_vars:
-                        var_type = self.global_vars[identifier_name][0]
-                        return f'{var_type}*'
-                
-                # For other targets (like IndexExpression), return generic pointer
-                return 'i64*'
-            return 'i8*'  # Default function pointer type
+            return self._infer_address_of_type(expr)
         elif expr_type == 'DereferenceExpression':
             # value at ptr - returns the pointed-to type
             if hasattr(expr, 'pointer'):
