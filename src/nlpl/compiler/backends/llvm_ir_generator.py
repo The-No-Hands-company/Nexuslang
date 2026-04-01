@@ -3438,27 +3438,8 @@ class LLVMIRGenerator(CodeGenerator):
         self.emit(f'{indent}call void @nlpl_panic(i8* {msg_reg})')
         self.emit(f'{indent}unreachable')
     
-    def _generate_inline_assembly(self, node, indent=''):
-        """
-        Generate LLVM inline assembly from InlineAssembly AST node.
-        
-        Week 1-2 Implementation: Basic LLVM inline assembly generation.
-        Supports:
-        - Assembly code blocks
-        - Input operands with constraints ($0, $1, $2 references)
-        - Output operands with constraints
-        - Clobber lists
-        - Operand numbering (outputs first, then inputs)
-        
-        LLVM inline assembly syntax:
-        call <return_type> asm [sideeffect] "assembly_code", 
-                              "constraint_string" (operands)
-        
-        Operand numbering in LLVM:
-        - Output operands are numbered first: $0, $1, ...
-        - Input operands follow: $N, $N+1, ...
-        - Example: 1 output + 2 inputs = $0 (output), $1 (input1), $2 (input2)
-        """
+    def _prepare_asm_instructions(self, node):
+        """Extract, validate, and return list of assembly instruction strings from an InlineAssembly node."""
         # Extract assembly instructions
         asm_instructions = []
         if hasattr(node, 'asm_code') and node.asm_code:
@@ -3489,6 +3470,10 @@ class LLVMIRGenerator(CodeGenerator):
         for warning in memory_warnings:
             print(f"Warning (inline assembly): {warning}")
         
+        return asm_instructions
+    
+    def _determine_asm_code_and_dialect(self, asm_instructions):
+        """Join instructions and determine whether to use Intel dialect. Returns (asm_code, use_inteldialect)."""
         # Join instructions with newlines for multi-instruction blocks
         # Use actual newline character, not escaped \n
         asm_code = '\n'.join(asm_instructions)
@@ -3520,6 +3505,10 @@ class LLVMIRGenerator(CodeGenerator):
                 if asm_code and not asm_code.strip().startswith('.intel_syntax'):
                     asm_code = '.intel_syntax noprefix\n' + asm_code
         
+        return asm_code, use_inteldialect
+    
+    def _process_asm_output_operands(self, node, indent=''):
+        """Process output operands of inline assembly. Returns (output_allocas, output_constraints, input_constraints, readwrite_inputs, num_outputs)."""
         # Process output operands FIRST (they get numbered $0, $1, ...)
         output_allocas = []
         output_constraints = []
@@ -3585,10 +3574,14 @@ class LLVMIRGenerator(CodeGenerator):
                 
                 num_outputs += 1
         
+        return output_allocas, output_constraints, input_constraints, readwrite_inputs, num_outputs
+    
+    def _process_asm_input_operands(self, node, indent=''):
+        """Process input operands of inline assembly. Returns (input_regs, additional_input_constraints)."""
         # Process input operands SECOND (they get numbered $N, $N+1, ...)
         # where N = number of outputs
         input_regs = []
-        num_inputs = 0
+        additional_input_constraints = []
         if hasattr(node, 'inputs') and node.inputs:
             for constraint, expr in node.inputs:  # Now iterating over list of tuples
                 # Generate expression to get the input value
@@ -3610,9 +3603,12 @@ class LLVMIRGenerator(CodeGenerator):
                 
                 # Translate NLPL constraint to LLVM constraint
                 llvm_constraint = self._translate_asm_constraint(constraint, is_output=False)
-                input_constraints.append(llvm_constraint)
-                num_inputs += 1
+                additional_input_constraints.append(llvm_constraint)
         
+        return input_regs, additional_input_constraints
+    
+    def _process_asm_clobbers(self, node, output_constraints, input_constraints):
+        """Process clobber list of inline assembly. Returns clobber_constraints list."""
         # Process clobber list (Week 7: Architecture-aware validation)
         clobber_constraints = []
         clobber_list = []  # Track clobbers for Week 8 register analysis
@@ -3635,6 +3631,11 @@ class LLVMIRGenerator(CodeGenerator):
                     clobber_constraints.append(f'~{{{clobber_str}}}')
         
         # Week 8: Register usage analysis - suggest missing clobbers
+        # Re-derive asm_instructions from node (validation was already done in _prepare_asm_instructions)
+        asm_instructions = []
+        if hasattr(node, 'asm_code') and node.asm_code:
+            for instruction in node.asm_code:
+                asm_instructions.append(instruction.strip('"').strip("'"))
         register_suggestions = self._analyze_register_usage(asm_instructions, clobber_list)
         for suggestion in register_suggestions:
             print(f"Suggestion (inline assembly): {suggestion}")
@@ -3643,71 +3644,10 @@ class LLVMIRGenerator(CodeGenerator):
         if hasattr(node, 'clobbers') and node.clobbers:
             self._detect_register_conflicts(output_constraints, input_constraints, node.clobbers)
         
-        # Build constraint string
-        # Format: "output_constraints,input_constraints,clobber_constraints"
-        # Example: "=r,r,r,~{rax}" means: 1 output (=r), 2 inputs (r,r), 1 clobber (~{rax})
-        all_constraints = output_constraints + input_constraints + clobber_constraints
-        constraint_string = ','.join(all_constraints)
-        
-        # NOTE: Operand numbering explanation for developers
-        # If you have 1 output and 2 inputs:
-        # - $0 refers to the output operand
-        # - $1 refers to the first input operand
-        # - $2 refers to the second input operand
-        # Example assembly: "add $0, $1" means "add output, input1"
-        #
-        # The assembly code in asm_code should already contain $0, $1, etc.
-        # references if the user wants to reference operands.
-        # We don't automatically insert them - the user writes them in NLPL code.
-        
-        # Determine return type
-        # For read-write constraints (+r), LLVM inline asm returns the modified value
-        if output_allocas:
-            # If there are outputs, inline asm returns the output value(s)
-            if len(output_allocas) == 1:
-                return_type = output_allocas[0][1]
-            else:
-                # Multiple outputs: use struct type (Week 3-4 enhancement)
-                # Format: {i64, i64, i32} for 3 outputs of different types
-                output_types = [alloca[1] for alloca in output_allocas]
-                return_type = '{' + ', '.join(output_types) + '}'
-        else:
-            return_type = 'void'
-        
-        # Build operand list for call
-        # IMPORTANT: Order matters! Read-write initial values first, then regular inputs
-        # For read-write constraints (+r), the initial value is passed as an input
-        # and tied to the output using a matching constraint number (already added)
-        operand_list = []
-        
-        # Add read-write constraint initial values (Week 3-4)
-        # These are treated as inputs with matching constraint numbers
-        for rw_reg, rw_type, output_num in readwrite_inputs:
-            operand_list.append(f'{rw_type} {rw_reg}')
-        
-        # Add regular input operands
-        for input_reg, input_type in input_regs:
-            operand_list.append(f'{input_type} {input_reg}')
-        
-        # Generate the inline assembly call
-        # LLVM syntax: call <ret_type> asm [sideeffect] [inteldialect] "asm_code", "constraints" (operands)
-        # 
-        # Use "inteldialect" when operand substitution is needed ($0, $1, etc.)
-        # This tells LLVM to substitute operands using Intel syntax (rax, not %rax)
-        # Correct LLVM IR attribute order: sideeffect must come BEFORE inteldialect
-        asm_attrs = 'sideeffect inteldialect' if use_inteldialect else 'sideeffect'
-        
-        # IMPORTANT: Assembly code formatting for LLVM IR
-        # For inteldialect: use semicolon (;) to separate instructions
-        # For AT&T syntax (with .intel_syntax): use \0A (hex escape for newline)
-        if use_inteldialect:
-            # Intel dialect: separate instructions with semicolons
-            asm_code_formatted = asm_code.replace('\n', '; ')
-        else:
-            # AT&T syntax: use hex escape \0A for newlines in LLVM IR
-            # LLVM IR string literals support \0A but not \n
-            asm_code_formatted = asm_code.replace('\n', '\\0A')
-        
+        return clobber_constraints
+    
+    def _emit_asm_call(self, asm_code_formatted, asm_attrs, constraint_string, output_allocas, operand_list, return_type, indent=''):
+        """Emit the actual LLVM inline assembly call instruction and any follow-up stores."""
         if operand_list:
             operands_str = ', '.join(operand_list)
             if return_type != 'void':
@@ -3748,6 +3688,98 @@ class LLVMIRGenerator(CodeGenerator):
                             self.emit(f'{indent}store {output_type} {extract_reg}, {output_type}* {output_alloca}, align 8')
             else:
                 self.emit(f'{indent}call void asm {asm_attrs} "{asm_code_formatted}", "{constraint_string}" ()')
+    
+    def _generate_inline_assembly(self, node, indent=''):
+        """
+        Generate LLVM inline assembly from InlineAssembly AST node.
+        
+        Week 1-2 Implementation: Basic LLVM inline assembly generation.
+        Supports:
+        - Assembly code blocks
+        - Input operands with constraints ($0, $1, $2 references)
+        - Output operands with constraints
+        - Clobber lists
+        - Operand numbering (outputs first, then inputs)
+        
+        LLVM inline assembly syntax:
+        call <return_type> asm [sideeffect] "assembly_code", 
+                              "constraint_string" (operands)
+        
+        Operand numbering in LLVM:
+        - Output operands are numbered first: $0, $1, ...
+        - Input operands follow: $N, $N+1, ...
+        - Example: 1 output + 2 inputs = $0 (output), $1 (input1), $2 (input2)
+        """
+        asm_instructions = self._prepare_asm_instructions(node)
+        asm_code, use_inteldialect = self._determine_asm_code_and_dialect(asm_instructions)
+
+        output_allocas, output_constraints, input_constraints, readwrite_inputs, num_outputs = self._process_asm_output_operands(node, indent)
+
+        input_regs, additional_input_constraints = self._process_asm_input_operands(node, indent)
+        input_constraints.extend(additional_input_constraints)
+
+        clobber_constraints = self._process_asm_clobbers(node, output_constraints, input_constraints)
+
+        # Build constraint string
+        # Format: "output_constraints,input_constraints,clobber_constraints"
+        # Example: "=r,r,r,~{rax}" means: 1 output (=r), 2 inputs (r,r), 1 clobber (~{rax})
+        all_constraints = output_constraints + input_constraints + clobber_constraints
+        constraint_string = ','.join(all_constraints)
+
+        # NOTE: Operand numbering explanation for developers
+        # If you have 1 output and 2 inputs:
+        # - $0 refers to the output operand
+        # - $1 refers to the first input operand
+        # - $2 refers to the second input operand
+        # Example assembly: "add $0, $1" means "add output, input1"
+        #
+        # The assembly code in asm_code should already contain $0, $1, etc.
+        # references if the user wants to reference operands.
+        # We don't automatically insert them - the user writes them in NLPL code.
+
+        # Determine return type
+        # For read-write constraints (+r), LLVM inline asm returns the modified value
+        if output_allocas:
+            # If there are outputs, inline asm returns the output value(s)
+            if len(output_allocas) == 1:
+                return_type = output_allocas[0][1]
+            else:
+                # Multiple outputs: use struct type (Week 3-4 enhancement)
+                # Format: {i64, i64, i32} for 3 outputs of different types
+                output_types = [alloca[1] for alloca in output_allocas]
+                return_type = '{' + ', '.join(output_types) + '}'
+        else:
+            return_type = 'void'
+
+        # Build operand list for call
+        # IMPORTANT: Order matters! Read-write initial values first, then regular inputs
+        # For read-write constraints (+r), the initial value is passed as an input
+        # and tied to the output using a matching constraint number (already added)
+        operand_list = []
+
+        # Add read-write constraint initial values (Week 3-4)
+        # These are treated as inputs with matching constraint numbers
+        for rw_reg, rw_type, output_num in readwrite_inputs:
+            operand_list.append(f'{rw_type} {rw_reg}')
+
+        # Add regular input operands
+        for input_reg, input_type in input_regs:
+            operand_list.append(f'{input_type} {input_reg}')
+
+        asm_attrs = 'sideeffect inteldialect' if use_inteldialect else 'sideeffect'
+
+        # IMPORTANT: Assembly code formatting for LLVM IR
+        # For inteldialect: use semicolon (;) to separate instructions
+        # For AT&T syntax (with .intel_syntax): use \0A (hex escape for newline)
+        if use_inteldialect:
+            # Intel dialect: separate instructions with semicolons
+            asm_code_formatted = asm_code.replace('\n', '; ')
+        else:
+            # AT&T syntax: use hex escape \0A for newlines in LLVM IR
+            # LLVM IR string literals support \0A but not \n
+            asm_code_formatted = asm_code.replace('\n', '\\0A')
+
+        self._emit_asm_call(asm_code_formatted, asm_attrs, constraint_string, output_allocas, operand_list, return_type, indent)
     
     def _translate_asm_constraint(self, constraint: str, is_output: bool = False) -> str:
         """
@@ -8480,6 +8512,201 @@ class LLVMIRGenerator(CodeGenerator):
         
         return result_reg
     
+    def _generate_module_access_call(self, func_name, expr, indent='') -> str:
+        """Generate a call to a module-qualified function (e.g. module.function)."""
+        # Extract module and function names
+        module_name = func_name.module_name
+        member_name = func_name.member_name
+        mangled_name = f"{module_name}_{member_name}"
+        
+        # Check if this is an imported function
+        if mangled_name in self.external_symbols:
+            ret_type, param_types, param_names = self.external_symbols[mangled_name]
+            
+            # Generate arguments
+            args = []
+            if hasattr(expr, 'arguments'):
+                for arg_expr in expr.arguments:
+                    arg_reg = self._generate_expression(arg_expr, indent)
+                    arg_type = self._infer_expression_type(arg_expr)
+                    args.append(f'{arg_type} {arg_reg}')
+            
+            args_str = ', '.join(args)
+            
+            # Generate call
+            if ret_type == 'void':
+                self.emit(f'{indent}call void @{mangled_name}({args_str})')
+                return '0'
+            else:
+                result_reg = self._new_temp()
+                self.emit(f'{indent}{result_reg} = call {ret_type} @{mangled_name}({args_str})')
+                return result_reg
+        else:
+            print(f" Warning: Module function not found: {module_name}.{member_name}")
+            return '0'
+    
+    def _generate_closure_call(self, func_name, expr, indent='') -> str:
+        """Generate a call through a closure variable (Phase 5: proper closure invocation)."""
+        # Phase 5: Generate closure call with environment
+        # NO SHORTCUTS - proper closure invocation
+        ret_type, param_types, has_env = self.closure_variables[func_name]
+        
+        # Load the closure pointer (stored as i64)
+        if func_name in self.local_vars:
+            var_type, var_ptr = self.local_vars[func_name]
+            closure_as_i64 = self._new_temp()
+            self.emit(f'{indent}{closure_as_i64} = load i64, i64* {var_ptr}, align 8')
+        else:
+            var_type, global_name = self.global_vars[func_name]
+            closure_as_i64 = self._new_temp()
+            self.emit(f'{indent}{closure_as_i64} = load i64, i64* {global_name}, align 8')
+        
+        # Convert i64 to closure pointer
+        closure_ptr = self._new_temp()
+        self.emit(f'{indent}{closure_ptr} = inttoptr i64 {closure_as_i64} to %closure_type*')
+        
+        # Extract function pointer from closure.field[0]
+        func_field_ptr = self._new_temp()
+        self.emit(f'{indent}{func_field_ptr} = getelementptr inbounds %closure_type, %closure_type* {closure_ptr}, i32 0, i32 0')
+        
+        func_ptr_i8 = self._new_temp()
+        self.emit(f'{indent}{func_ptr_i8} = load i8*, i8** {func_field_ptr}, align 8')
+        
+        # Extract environment pointer from closure.field[1]
+        env_field_ptr = self._new_temp()
+        self.emit(f'{indent}{env_field_ptr} = getelementptr inbounds %closure_type, %closure_type* {closure_ptr}, i32 0, i32 1')
+        
+        env_ptr_i8 = self._new_temp()
+        self.emit(f'{indent}{env_ptr_i8} = load i8*, i8** {env_field_ptr}, align 8')
+        
+        # Generate argument registers
+        arg_types = []
+        arg_regs = []
+        if hasattr(expr, 'arguments'):
+            for arg_expr in expr.arguments:
+                arg_reg = self._generate_expression(arg_expr, indent)
+                arg_type = self._infer_expression_type(arg_expr)
+                arg_types.append(arg_type)
+                arg_regs.append(arg_reg)
+        
+        # Determine environment struct type if it exists
+        # For closures with env, prepend env pointer to signature
+        if has_env:
+            # Need to determine the env struct type
+            # For now, use generic i8* (will be bitcast by lambda)
+            env_param_type = 'i8*'
+            
+            # Function signature: ret_type (env_ptr_type*, arg_types...)*
+            func_signature_params = [env_param_type] + arg_types
+        else:
+            # No environment, just regular parameters
+            func_signature_params = arg_types
+        
+        # Construct function pointer type
+        func_ptr_type = f'{ret_type} ({", ".join(func_signature_params)})*'
+        
+        # Cast i8* function pointer to proper type
+        func_ptr_typed = self._new_temp()
+        self.emit(f'{indent}{func_ptr_typed} = bitcast i8* {func_ptr_i8} to {func_ptr_type}')
+        
+        # Build call arguments (env first if has_env, then user args)
+        call_args = []
+        if has_env:
+            call_args.append(f'{env_param_type} {env_ptr_i8}')
+        call_args.extend(f'{t} {r}' for t, r in zip(arg_types, arg_regs))
+        args_str = ', '.join(call_args)
+        
+        # Generate indirect call
+        result_reg = self._new_temp()
+        self.emit(f'{indent}{result_reg} = call {ret_type} {func_ptr_typed}({args_str})')
+        
+        return result_reg
+    
+    def _generate_function_pointer_call(self, func_name, expr, indent='') -> str:
+        """Generate a call through a plain function pointer variable (not a closure)."""
+        # Old behavior: plain function pointer (not a closure)
+        # Load the function pointer from the variable
+        if func_name in self.local_vars:
+            var_type, var_ptr = self.local_vars[func_name]
+            # Load the i64 value (which is ptrtoint of function pointer)
+            ptr_as_int = self._new_temp()
+            self.emit(f'{indent}{ptr_as_int} = load i64, i64* {var_ptr}, align 8')
+        else:
+            var_type, global_name = self.global_vars[func_name]
+            ptr_as_int = self._new_temp()
+            self.emit(f'{indent}{ptr_as_int} = load i64, i64* {global_name}, align 8')
+        
+        # Convert back from i64 to function pointer
+        # We need to infer the function signature from arguments
+        # For now, assume it takes i64 args and returns i64
+        arg_types = []
+        arg_regs = []
+        if hasattr(expr, 'arguments'):
+            for arg_expr in expr.arguments:
+                arg_reg = self._generate_expression(arg_expr, indent)
+                arg_type = self._infer_expression_type(arg_expr)
+                arg_types.append(arg_type)
+                arg_regs.append(arg_reg)
+        
+        # Construct function pointer type: i64 (i64, i64, ...)*
+        ret_type = 'i64'  # Assume i64 return for now
+        func_ptr_type = f'{ret_type} ({", ".join(arg_types)})*'
+        
+        # Convert i64 to function pointer
+        func_ptr = self._new_temp()
+        self.emit(f'{indent}{func_ptr} = inttoptr i64 {ptr_as_int} to {func_ptr_type}')
+        
+        # Call through function pointer
+        args_str = ', '.join(f'{t} {r}' for t, r in zip(arg_types, arg_regs))
+        result_reg = self._new_temp()
+        self.emit(f'{indent}{result_reg} = call {ret_type} {func_ptr}({args_str})')
+        
+        return result_reg
+    
+    def _generate_extern_call(self, func_name, expr, indent='') -> str:
+        """Generate a call to an extern (FFI) function."""
+        ret_type, param_types, library, variadic = self.extern_functions[func_name]
+        
+        # Generate arguments
+        args = []
+        if hasattr(expr, 'arguments'):
+            for i, arg_expr in enumerate(expr.arguments):
+                arg_reg = self._generate_expression(arg_expr, indent)
+                arg_type = self._infer_expression_type(arg_expr)
+                
+                # Convert to expected parameter type if needed
+                # For variadic functions, only convert declared parameters
+                if i < len(param_types):
+                    expected_type = param_types[i]
+                    if arg_type != expected_type:
+                        arg_reg = self._convert_type(arg_reg, arg_type, expected_type, indent)
+                        arg_type = expected_type
+                # For variadic args beyond declared params, keep original type
+                # This is crucial for printf with mixed int/float arguments
+                
+                args.append(f'{arg_type} {arg_reg}')
+        
+        args_str = ', '.join(args)
+        
+        # Check if variadic function
+        if variadic:
+            # Variadic call - need separate parameter type signature
+            # Format: call i32 (i8*, ...) @printf(i8* %fmt, i64 %val)
+            param_types_str = ', '.join(param_types)
+            if ret_type == 'void':
+                self.emit(f'{indent}call void ({param_types_str}, ...) @{func_name}({args_str})')
+                return '0'
+            else:
+                # For variadic functions, still use regular call (not invoke)
+                # as they're typically C library functions
+                result_reg = self._new_temp()
+                self.emit(f'{indent}{result_reg} = call {ret_type} ({param_types_str}, ...) @{func_name}({args_str})')
+                return result_reg
+        else:
+            # Normal call - use invoke if in try block
+            result_reg = self._emit_call_or_invoke(ret_type, func_name, args_str, indent)
+            return result_reg
+    
     def _generate_function_call_expression(self, expr, indent='') -> str:
         """Generate function call expression (with return value)."""
         if not hasattr(expr, 'name'):
@@ -8500,36 +8727,7 @@ class LLVMIRGenerator(CodeGenerator):
         
         # Check if this is a module access (e.g., module.function)
         if type(func_name).__name__ == 'ModuleAccess':
-            # Extract module and function names
-            module_name = func_name.module_name
-            member_name = func_name.member_name
-            mangled_name = f"{module_name}_{member_name}"
-            
-            # Check if this is an imported function
-            if mangled_name in self.external_symbols:
-                ret_type, param_types, param_names = self.external_symbols[mangled_name]
-                
-                # Generate arguments
-                args = []
-                if hasattr(expr, 'arguments'):
-                    for arg_expr in expr.arguments:
-                        arg_reg = self._generate_expression(arg_expr, indent)
-                        arg_type = self._infer_expression_type(arg_expr)
-                        args.append(f'{arg_type} {arg_reg}')
-                
-                args_str = ', '.join(args)
-                
-                # Generate call
-                if ret_type == 'void':
-                    self.emit(f'{indent}call void @{mangled_name}({args_str})')
-                    return '0'
-                else:
-                    result_reg = self._new_temp()
-                    self.emit(f'{indent}{result_reg} = call {ret_type} @{mangled_name}({args_str})')
-                    return result_reg
-            else:
-                print(f" Warning: Module function not found: {module_name}.{member_name}")
-                return '0'
+            return self._generate_module_access_call(func_name, expr, indent)
         
         # Check if this is an indirect call through a function pointer
         # Syntax: call (value at func_ptr) with args
@@ -8549,119 +8747,9 @@ class LLVMIRGenerator(CodeGenerator):
             if func_name not in self.functions and func_name not in self.extern_functions:
                 # Check if this is a tracked closure variable
                 if func_name in self.closure_variables:
-                    # Phase 5: Generate closure call with environment
-                    # NO SHORTCUTS - proper closure invocation
-                    ret_type, param_types, has_env = self.closure_variables[func_name]
-                    
-                    # Load the closure pointer (stored as i64)
-                    if func_name in self.local_vars:
-                        var_type, var_ptr = self.local_vars[func_name]
-                        closure_as_i64 = self._new_temp()
-                        self.emit(f'{indent}{closure_as_i64} = load i64, i64* {var_ptr}, align 8')
-                    else:
-                        var_type, global_name = self.global_vars[func_name]
-                        closure_as_i64 = self._new_temp()
-                        self.emit(f'{indent}{closure_as_i64} = load i64, i64* {global_name}, align 8')
-                    
-                    # Convert i64 to closure pointer
-                    closure_ptr = self._new_temp()
-                    self.emit(f'{indent}{closure_ptr} = inttoptr i64 {closure_as_i64} to %closure_type*')
-                    
-                    # Extract function pointer from closure.field[0]
-                    func_field_ptr = self._new_temp()
-                    self.emit(f'{indent}{func_field_ptr} = getelementptr inbounds %closure_type, %closure_type* {closure_ptr}, i32 0, i32 0')
-                    
-                    func_ptr_i8 = self._new_temp()
-                    self.emit(f'{indent}{func_ptr_i8} = load i8*, i8** {func_field_ptr}, align 8')
-                    
-                    # Extract environment pointer from closure.field[1]
-                    env_field_ptr = self._new_temp()
-                    self.emit(f'{indent}{env_field_ptr} = getelementptr inbounds %closure_type, %closure_type* {closure_ptr}, i32 0, i32 1')
-                    
-                    env_ptr_i8 = self._new_temp()
-                    self.emit(f'{indent}{env_ptr_i8} = load i8*, i8** {env_field_ptr}, align 8')
-                    
-                    # Generate argument registers
-                    arg_types = []
-                    arg_regs = []
-                    if hasattr(expr, 'arguments'):
-                        for arg_expr in expr.arguments:
-                            arg_reg = self._generate_expression(arg_expr, indent)
-                            arg_type = self._infer_expression_type(arg_expr)
-                            arg_types.append(arg_type)
-                            arg_regs.append(arg_reg)
-                    
-                    # Determine environment struct type if it exists
-                    # For closures with env, prepend env pointer to signature
-                    if has_env:
-                        # Need to determine the env struct type
-                        # For now, use generic i8* (will be bitcast by lambda)
-                        env_param_type = 'i8*'
-                        
-                        # Function signature: ret_type (env_ptr_type*, arg_types...)*
-                        func_signature_params = [env_param_type] + arg_types
-                    else:
-                        # No environment, just regular parameters
-                        func_signature_params = arg_types
-                    
-                    # Construct function pointer type
-                    func_ptr_type = f'{ret_type} ({", ".join(func_signature_params)})*'
-                    
-                    # Cast i8* function pointer to proper type
-                    func_ptr_typed = self._new_temp()
-                    self.emit(f'{indent}{func_ptr_typed} = bitcast i8* {func_ptr_i8} to {func_ptr_type}')
-                    
-                    # Build call arguments (env first if has_env, then user args)
-                    call_args = []
-                    if has_env:
-                        call_args.append(f'{env_param_type} {env_ptr_i8}')
-                    call_args.extend(f'{t} {r}' for t, r in zip(arg_types, arg_regs))
-                    args_str = ', '.join(call_args)
-                    
-                    # Generate indirect call
-                    result_reg = self._new_temp()
-                    self.emit(f'{indent}{result_reg} = call {ret_type} {func_ptr_typed}({args_str})')
-                    
-                    return result_reg
+                    return self._generate_closure_call(func_name, expr, indent)
                 else:
-                    # Old behavior: plain function pointer (not a closure)
-                    # Load the function pointer from the variable
-                    if func_name in self.local_vars:
-                        var_type, var_ptr = self.local_vars[func_name]
-                        # Load the i64 value (which is ptrtoint of function pointer)
-                        ptr_as_int = self._new_temp()
-                        self.emit(f'{indent}{ptr_as_int} = load i64, i64* {var_ptr}, align 8')
-                    else:
-                        var_type, global_name = self.global_vars[func_name]
-                        ptr_as_int = self._new_temp()
-                        self.emit(f'{indent}{ptr_as_int} = load i64, i64* {global_name}, align 8')
-                    
-                    # Convert back from i64 to function pointer
-                    # We need to infer the function signature from arguments
-                    # For now, assume it takes i64 args and returns i64
-                    arg_types = []
-                    arg_regs = []
-                    if hasattr(expr, 'arguments'):
-                        for arg_expr in expr.arguments:
-                            arg_reg = self._generate_expression(arg_expr, indent)
-                            arg_type = self._infer_expression_type(arg_expr)
-                            arg_types.append(arg_type)
-                            arg_regs.append(arg_reg)
-                    
-                    # Construct function pointer type: i64 (i64, i64, ...)*
-                    ret_type = 'i64'  # Assume i64 return for now
-                    func_ptr_type = f'{ret_type} ({", ".join(arg_types)})*'
-                    
-                    # Convert i64 to function pointer
-                    func_ptr = self._new_temp()
-                    self.emit(f'{indent}{func_ptr} = inttoptr i64 {ptr_as_int} to {func_ptr_type}')
-                    
-                    # Call through function pointer
-                    args_str = ', '.join(f'{t} {r}' for t, r in zip(arg_types, arg_regs))
-                    result_reg = self._new_temp()
-                    self.emit(f'{indent}{result_reg} = call {ret_type} {func_ptr}({args_str})')
-                    
-                    return result_reg
+                    return self._generate_function_pointer_call(func_name, expr, indent)
         
         # Delegate to builtin handler
         _builtin_result = self._generate_builtin_call(func_name, expr, indent)
@@ -8671,47 +8759,7 @@ class LLVMIRGenerator(CodeGenerator):
         
         # Check if it's an extern function
         if func_name in self.extern_functions:
-            ret_type, param_types, library, variadic = self.extern_functions[func_name]
-            
-            # Generate arguments
-            args = []
-            if hasattr(expr, 'arguments'):
-                for i, arg_expr in enumerate(expr.arguments):
-                    arg_reg = self._generate_expression(arg_expr, indent)
-                    arg_type = self._infer_expression_type(arg_expr)
-                    
-                    # Convert to expected parameter type if needed
-                    # For variadic functions, only convert declared parameters
-                    if i < len(param_types):
-                        expected_type = param_types[i]
-                        if arg_type != expected_type:
-                            arg_reg = self._convert_type(arg_reg, arg_type, expected_type, indent)
-                            arg_type = expected_type
-                    # For variadic args beyond declared params, keep original type
-                    # This is crucial for printf with mixed int/float arguments
-                    
-                    args.append(f'{arg_type} {arg_reg}')
-            
-            args_str = ', '.join(args)
-            
-            # Check if variadic function
-            if variadic:
-                # Variadic call - need separate parameter type signature
-                # Format: call i32 (i8*, ...) @printf(i8* %fmt, i64 %val)
-                param_types_str = ', '.join(param_types)
-                if ret_type == 'void':
-                    self.emit(f'{indent}call void ({param_types_str}, ...) @{func_name}({args_str})')
-                    return '0'
-                else:
-                    # For variadic functions, still use regular call (not invoke)
-                    # as they're typically C library functions
-                    result_reg = self._new_temp()
-                    self.emit(f'{indent}{result_reg} = call {ret_type} ({param_types_str}, ...) @{func_name}({args_str})')
-                    return result_reg
-            else:
-                # Normal call - use invoke if in try block
-                result_reg = self._emit_call_or_invoke(ret_type, func_name, args_str, indent)
-                return result_reg
+            return self._generate_extern_call(func_name, expr, indent)
         
         # Check if it's a known user function
         if func_name not in self.functions:
@@ -9894,6 +9942,197 @@ class LLVMIRGenerator(CodeGenerator):
         
         return '0'
     
+    def _generate_class_method_call(self, base_class_name, type_name, member_name, obj_ptr, expr, indent='') -> str:
+        """Generate a method call on a class instance (ClassName_methodName(this, args...))."""
+        # Find the method in the class
+        methods = self._get_all_class_methods(base_class_name)
+        for method_info in methods:
+            if method_info['name'] == member_name:
+                # Generate method call: ClassName_methodName(this, args...)
+                method_func_name = f'{type_name}_{member_name}'
+                
+                # Determine return type (None means void - no return value)
+                method_return_type = method_info.get('return_type') or 'void'
+                ret_type = self._map_nlpl_type_to_llvm(method_return_type)
+                
+                # Build arguments: first is 'this' pointer, then any other args
+                arg_strs = [f'%{type_name}* {obj_ptr}']
+                
+                # Add additional arguments if any
+                if hasattr(expr, 'arguments') and expr.arguments:
+                    for arg in expr.arguments:
+                        arg_reg = self._generate_expression(arg, indent)
+                        arg_type = self._infer_expression_type(arg)
+                        arg_strs.append(f'{arg_type} {arg_reg}')
+                
+                args_str = ', '.join(arg_strs)
+                
+                if ret_type == 'void':
+                    self.emit(f'{indent}call void @{method_func_name}({args_str})')
+                    return '0'
+                else:
+                    result_reg = self._new_temp()
+                    self.emit(f'{indent}{result_reg} = call {ret_type} @{method_func_name}({args_str})')
+                    return result_reg
+        
+        # Method not found - return 0
+        return '0'
+    
+    def _generate_class_property_access(self, type_name, member_name, obj_ptr, indent='') -> str:
+        """Generate a GEP+load to read a class property (not a method call)."""
+        # Property access (not a method call)
+        properties = self._get_all_class_properties(type_name)
+        
+        # Find property index
+        prop_index = -1
+        prop_type = None
+        for i, prop in enumerate(properties):
+            if prop['name'] == member_name:
+                prop_index = i
+                prop_type = self._map_nlpl_type_to_llvm(prop.get('type', 'Integer'))
+                break
+        
+        if prop_index >= 0 and prop_type:
+            # Get property pointer
+            prop_ptr = self._new_temp()
+            self.emit(f'{indent}{prop_ptr} = getelementptr inbounds %{type_name}, %{type_name}* {obj_ptr}, i32 0, i32 {prop_index}')
+            
+            # Load property value
+            result_reg = self._new_temp()
+            self.emit(f'{indent}{result_reg} = load {prop_type}, {prop_type}* {prop_ptr}, align 8')
+            
+            return result_reg
+        
+        return '0'
+    
+    def _generate_identifier_member_access(self, expr, var_name, indent='') -> str:
+        """Generate member access where the object is a simple identifier variable."""
+        member_name = expr.member_name
+        
+        # Check if it's a module access
+        mangled_name = f'{var_name}_{member_name}'
+        if mangled_name in self.external_symbols:
+            # This is a module function call
+            if hasattr(expr, 'is_method_call') and expr.is_method_call and hasattr(expr, 'arguments'):
+                # Generate the function call
+                ret_type, param_types, param_names = self.external_symbols[mangled_name]
+                
+                # Evaluate arguments
+                arg_regs = []
+                for arg in expr.arguments:
+                    arg_reg = self._generate_expression(arg, indent)
+                    arg_regs.append(arg_reg)
+                
+                # Build call instruction
+                args_str = ', '.join(f'{pt} {ar}' for pt, ar in zip(param_types, arg_regs))
+                result_reg = self._new_temp()
+                self.emit(f'{indent}{result_reg} = call {ret_type} @{mangled_name}({args_str})')
+                
+                return result_reg
+            else:
+                # Just accessing the function (not calling it)
+                return f'@{mangled_name}'
+        
+        # Not a module - check if it's a local or global variable for object property access
+        if var_name in self.local_vars:
+            llvm_type, alloca_ptr = self.local_vars[var_name]
+            # Check if alloca_ptr is already a pointer value (temp register from ObjectInstantiation)
+            # vs an alloca variable name that needs to be loaded
+            # Temp registers are like %4, %14 (number) vs alloca vars like %var_name (identifier)
+            if alloca_ptr.startswith('%') and alloca_ptr[1:].isdigit():
+                # This is already a pointer (from ObjectInstantiation)
+                obj_ptr = alloca_ptr
+            else:
+                # This is an alloca variable, need to load the pointer value
+                obj_ptr = self._new_temp()
+                self.emit(f'{indent}{obj_ptr} = load {llvm_type}, {llvm_type}* {alloca_ptr}, align 8')
+        elif var_name in self.global_vars:
+            llvm_type, global_name = self.global_vars[var_name]
+            # Load the global pointer value
+            obj_ptr = self._new_temp()
+            self.emit(f'{indent}{obj_ptr} = load {llvm_type}, {llvm_type}* {global_name}, align 8')
+        else:
+            return '0'  # Variable not found
+        
+        # Extract type name from type like "%Point*"
+        if llvm_type.startswith('%') and llvm_type.endswith('*'):
+            type_name = llvm_type[1:-1]  # Remove % and *
+            
+            # Check if it's a class (including generic specializations like Box_Integer)
+            # For generic specializations, check if base generic class exists
+            base_class_name = type_name
+            if type_name not in self.class_types:
+                # Check if this is a generic specialization (e.g., Box_Integer -> Box<T>)
+                # Look for any generic class that matches the pattern
+                for generic_name in self.class_types:
+                    if '<' in generic_name:  # It's a generic class
+                        # Extract base name (e.g., "Box" from "Box<T>")
+                        base_name = generic_name.split('<')[0]
+                        # Check if type_name starts with this base name
+                        if type_name.startswith(base_name + '_'):
+                            base_class_name = generic_name
+                            break
+            
+            if base_class_name in self.class_types:
+                # Check if this is a METHOD CALL (obj.method())
+                if hasattr(expr, 'is_method_call') and expr.is_method_call:
+                    return self._generate_class_method_call(base_class_name, type_name, member_name, obj_ptr, expr, indent)
+                
+                # Property access (not a method call)
+                return self._generate_class_property_access(type_name, member_name, obj_ptr, indent)
+            
+            # Check if it's a struct
+            elif type_name in self.struct_types:
+                fields = self.struct_types[type_name]
+                
+                # Find field index
+                field_index = -1
+                field_type = None
+                for i, (fname, ftype) in enumerate(fields):
+                    if fname == member_name:
+                        field_index = i
+                        field_type = ftype
+                        break
+                
+                if field_index >= 0 and field_type:
+                    # Get field pointer
+                    field_ptr = self._new_temp()
+                    self.emit(f'{indent}{field_ptr} = getelementptr inbounds %{type_name}, %{type_name}* {obj_ptr}, i32 0, i32 {field_index}')
+                    
+                    # Load field value
+                    result_reg = self._new_temp()
+                    self.emit(f'{indent}{result_reg} = load {field_type}, {field_type}* {field_ptr}, align 8')
+                    
+                    return result_reg
+            
+            # Check if it's a union
+            elif type_name in self.union_types:
+                fields = self.union_types[type_name]
+                
+                # Find field type
+                field_type = None
+                for fname, ftype in fields:
+                    if fname == member_name:
+                        field_type = ftype
+                        break
+                
+                if field_type:
+                    # Get pointer to union storage (always at index 0)
+                    storage_ptr = self._new_temp()
+                    self.emit(f'{indent}{storage_ptr} = getelementptr inbounds %{type_name}, %{type_name}* {obj_ptr}, i32 0, i32 0')
+                    
+                    # Cast storage pointer to field type pointer
+                    field_ptr = self._new_temp()
+                    self.emit(f'{indent}{field_ptr} = bitcast i64* {storage_ptr} to {field_type}*')
+                    
+                    # Load field value
+                    result_reg = self._new_temp()
+                    self.emit(f'{indent}{result_reg} = load {field_type}, {field_type}* {field_ptr}, align 8')
+                    
+                    return result_reg
+        
+        return '0'
+    
     def _generate_member_access(self, expr, indent='') -> str:
         """Generate member access (object.field or object.method()) with support for nested access."""
         if not hasattr(expr, 'object_expr') or not hasattr(expr, 'member_name'):
@@ -9988,181 +10227,7 @@ class LLVMIRGenerator(CodeGenerator):
         
         # SIMPLE IDENTIFIER ACCESS: object.field where object is a variable
         elif obj_expr_type == 'Identifier':
-            var_name = expr.object_expr.name
-            
-            # Check if it's a module access
-            mangled_name = f'{var_name}_{member_name}'
-            if mangled_name in self.external_symbols:
-                # This is a module function call
-                if hasattr(expr, 'is_method_call') and expr.is_method_call and hasattr(expr, 'arguments'):
-                    # Generate the function call
-                    ret_type, param_types, param_names = self.external_symbols[mangled_name]
-                    
-                    # Evaluate arguments
-                    arg_regs = []
-                    for arg in expr.arguments:
-                        arg_reg = self._generate_expression(arg, indent)
-                        arg_regs.append(arg_reg)
-                    
-                    # Build call instruction
-                    args_str = ', '.join(f'{pt} {ar}' for pt, ar in zip(param_types, arg_regs))
-                    result_reg = self._new_temp()
-                    self.emit(f'{indent}{result_reg} = call {ret_type} @{mangled_name}({args_str})')
-                    
-                    return result_reg
-                else:
-                    # Just accessing the function (not calling it)
-                    return f'@{mangled_name}'
-            
-            # Not a module - check if it's a local or global variable for object property access
-            if var_name in self.local_vars:
-                llvm_type, alloca_ptr = self.local_vars[var_name]
-                # Check if alloca_ptr is already a pointer value (temp register from ObjectInstantiation)
-                # vs an alloca variable name that needs to be loaded
-                # Temp registers are like %4, %14 (number) vs alloca vars like %var_name (identifier)
-                if alloca_ptr.startswith('%') and alloca_ptr[1:].isdigit():
-                    # This is already a pointer (from ObjectInstantiation)
-                    obj_ptr = alloca_ptr
-                else:
-                    # This is an alloca variable, need to load the pointer value
-                    obj_ptr = self._new_temp()
-                    self.emit(f'{indent}{obj_ptr} = load {llvm_type}, {llvm_type}* {alloca_ptr}, align 8')
-            elif var_name in self.global_vars:
-                llvm_type, global_name = self.global_vars[var_name]
-                # Load the global pointer value
-                obj_ptr = self._new_temp()
-                self.emit(f'{indent}{obj_ptr} = load {llvm_type}, {llvm_type}* {global_name}, align 8')
-            else:
-                return '0'  # Variable not found
-            
-            # Extract type name from type like "%Point*"
-            if llvm_type.startswith('%') and llvm_type.endswith('*'):
-                type_name = llvm_type[1:-1]  # Remove % and *
-                
-                # Check if it's a class (including generic specializations like Box_Integer)
-                # For generic specializations, check if base generic class exists
-                base_class_name = type_name
-                if type_name not in self.class_types:
-                    # Check if this is a generic specialization (e.g., Box_Integer -> Box<T>)
-                    # Look for any generic class that matches the pattern
-                    for generic_name in self.class_types:
-                        if '<' in generic_name:  # It's a generic class
-                            # Extract base name (e.g., "Box" from "Box<T>")
-                            base_name = generic_name.split('<')[0]
-                            # Check if type_name starts with this base name
-                            if type_name.startswith(base_name + '_'):
-                                base_class_name = generic_name
-                                break
-                
-                if base_class_name in self.class_types:
-                    # Check if this is a METHOD CALL (obj.method())
-                    if hasattr(expr, 'is_method_call') and expr.is_method_call:
-                        # Find the method in the class
-                        methods = self._get_all_class_methods(base_class_name)
-                        for method_info in methods:
-                            if method_info['name'] == member_name:
-                                # Generate method call: ClassName_methodName(this, args...)
-                                method_func_name = f'{type_name}_{member_name}'
-                                
-                                # Determine return type (None means void - no return value)
-                                method_return_type = method_info.get('return_type') or 'void'
-                                ret_type = self._map_nlpl_type_to_llvm(method_return_type)
-                                
-                                # Build arguments: first is 'this' pointer, then any other args
-                                arg_strs = [f'%{type_name}* {obj_ptr}']
-                                
-                                # Add additional arguments if any
-                                if hasattr(expr, 'arguments') and expr.arguments:
-                                    for arg in expr.arguments:
-                                        arg_reg = self._generate_expression(arg, indent)
-                                        arg_type = self._infer_expression_type(arg)
-                                        arg_strs.append(f'{arg_type} {arg_reg}')
-                                
-                                args_str = ', '.join(arg_strs)
-                                
-                                if ret_type == 'void':
-                                    self.emit(f'{indent}call void @{method_func_name}({args_str})')
-                                    return '0'
-                                else:
-                                    result_reg = self._new_temp()
-                                    self.emit(f'{indent}{result_reg} = call {ret_type} @{method_func_name}({args_str})')
-                                    return result_reg
-                        
-                        # Method not found - return 0
-                        return '0'
-                    
-                    # Property access (not a method call)
-                    properties = self._get_all_class_properties(type_name)
-                    
-                    # Find property index
-                    prop_index = -1
-                    prop_type = None
-                    for i, prop in enumerate(properties):
-                        if prop['name'] == member_name:
-                            prop_index = i
-                            prop_type = self._map_nlpl_type_to_llvm(prop.get('type', 'Integer'))
-                            break
-                    
-                    if prop_index >= 0 and prop_type:
-                        # Get property pointer
-                        prop_ptr = self._new_temp()
-                        self.emit(f'{indent}{prop_ptr} = getelementptr inbounds %{type_name}, %{type_name}* {obj_ptr}, i32 0, i32 {prop_index}')
-                        
-                        # Load property value
-                        result_reg = self._new_temp()
-                        self.emit(f'{indent}{result_reg} = load {prop_type}, {prop_type}* {prop_ptr}, align 8')
-                        
-                        return result_reg
-                
-                # Check if it's a struct
-                elif type_name in self.struct_types:
-                    fields = self.struct_types[type_name]
-                    
-                    # Find field index
-                    field_index = -1
-                    field_type = None
-                    for i, (fname, ftype) in enumerate(fields):
-                        if fname == member_name:
-                            field_index = i
-                            field_type = ftype
-                            break
-                    
-                    if field_index >= 0 and field_type:
-                        # Get field pointer
-                        field_ptr = self._new_temp()
-                        self.emit(f'{indent}{field_ptr} = getelementptr inbounds %{type_name}, %{type_name}* {obj_ptr}, i32 0, i32 {field_index}')
-                        
-                        # Load field value
-                        result_reg = self._new_temp()
-                        self.emit(f'{indent}{result_reg} = load {field_type}, {field_type}* {field_ptr}, align 8')
-                        
-                        return result_reg
-                
-                # Check if it's a union
-                elif type_name in self.union_types:
-                    fields = self.union_types[type_name]
-                    
-                    # Find field type
-                    field_type = None
-                    for fname, ftype in fields:
-                        if fname == member_name:
-                            field_type = ftype
-                            break
-                    
-                    if field_type:
-                        # Get pointer to union storage (always at index 0)
-                        storage_ptr = self._new_temp()
-                        self.emit(f'{indent}{storage_ptr} = getelementptr inbounds %{type_name}, %{type_name}* {obj_ptr}, i32 0, i32 0')
-                        
-                        # Cast storage pointer to field type pointer
-                        field_ptr = self._new_temp()
-                        self.emit(f'{indent}{field_ptr} = bitcast i64* {storage_ptr} to {field_type}*')
-                        
-                        # Load field value
-                        result_reg = self._new_temp()
-                        self.emit(f'{indent}{result_reg} = load {field_type}, {field_type}* {field_ptr}, align 8')
-                        
-                        return result_reg
+            return self._generate_identifier_member_access(expr, expr.object_expr.name, indent)
         
         return '0'
     
@@ -10630,6 +10695,138 @@ class LLVMIRGenerator(CodeGenerator):
         # Default to Integer for unknown types
         return 'Integer'
     
+    def _infer_member_access_type_expr(self, expr) -> str:
+        """Infer LLVM type for a MemberAccess expression."""
+        # Check for method calls or property access on objects
+        if hasattr(expr, 'object_expr') and hasattr(expr, 'member_name'):
+            obj_expr = expr.object_expr
+            member_name = expr.member_name
+            
+            # Get object variable name
+            obj_name = None
+            if type(obj_expr).__name__ == 'Identifier':
+                obj_name = obj_expr.name
+            elif type(obj_expr).__name__ == 'FunctionCall':
+                # This might be "call obj.method" where obj is FunctionCall wrapping an Identifier
+                if hasattr(obj_expr, 'name'):
+                    func_call_name = obj_expr.name
+                    if type(func_call_name).__name__ == 'Identifier':
+                        obj_name = func_call_name.name
+                    elif isinstance(func_call_name, str):
+                        obj_name = func_call_name
+            
+            # Check if this might be a method call even if is_method_call not set
+            # Look up the object type and see if member_name is a method
+            if obj_name:
+                llvm_type = None
+                if obj_name in self.local_vars:
+                    llvm_type = self.local_vars[obj_name][0]
+                elif obj_name in self.global_vars:
+                    llvm_type = self.global_vars[obj_name][0]
+                
+                # Extract class name from type like "%Point*" or "%Box_String*"
+                if llvm_type and llvm_type.startswith('%') and llvm_type.endswith('*'):
+                    class_name = llvm_type[1:-1]  # Remove % and *
+                    
+                    # Look up in class_types
+                    if class_name in self.class_types:
+                        # Check if member_name is a method
+                        methods = self.class_types[class_name]['methods']
+                        for method_info in methods:
+                            if method_info['name'] == member_name:
+                                # This is a method! Infer return type
+                                return_type_nlpl = method_info.get('return_type', 'Integer')
+                                return self._map_nlpl_type_to_llvm(return_type_nlpl)
+                        
+                        # Not a method, check if it's a property
+                        for prop in self._get_all_class_properties(class_name):
+                            if prop['name'] == member_name:
+                                return self._map_nlpl_type_to_llvm(prop.get('type', 'Integer'))
+                    
+                    # Look up in struct_types
+                    elif class_name in self.struct_types:
+                        # struct_types stores fields as list of (name, llvm_type) tuples
+                        fields = self.struct_types[class_name]
+                        for field_name, field_type in fields:
+                            if field_name == member_name:
+                                return field_type  # Already in LLVM type format
+        
+        # Fallback
+        return 'i64'
+    
+    def _infer_function_call_type(self, expr) -> str:
+        """Infer LLVM return type for a FunctionCall expression."""
+        if hasattr(expr, 'name'):
+            func_name = expr.name
+            # Handle Identifier wrapped names
+            if type(func_name).__name__ == 'Identifier':
+                func_name = func_name.name
+                
+            # Check built-in string functions
+            if func_name == 'strlen':
+                return 'i64'
+            elif func_name in ('substr', 'charat', 'strcpy', 'replace', 'trim', 'toupper', 'tolower', 'split', 'join'):
+                return 'i8*'
+            elif func_name == 'indexof':
+                return 'i64'
+            # Check built-in array functions
+            elif func_name == 'arrlen':
+                return 'i64'
+            elif func_name in ('arrpush', 'arrpop', 'arrslice'):
+                return 'i64*'
+            # Check built-in math functions
+            elif func_name in ('sqrt', 'pow', 'abs', 'min', 'max', 'sin', 'cos', 'tan', 'floor', 'ceil'):
+                return 'double'
+            # Check built-in memory management functions
+            elif func_name == 'alloc':
+                return 'i8*'
+            elif func_name == 'dealloc':
+                return 'void'
+            elif func_name == 'realloc':
+                return 'i8*'
+            # Check user-defined functions
+            elif func_name in self.functions:
+                return self.functions[func_name][0]
+            # Check if it's a generic function that needs specialization
+            elif func_name in self.generic_functions:
+                # Need to infer type arguments and construct specialized name
+                type_args = []
+                
+                # PRIORITY 1: Use explicit type arguments if provided
+                if hasattr(expr, 'type_arguments') and expr.type_arguments:
+                    type_args = expr.type_arguments
+                # PRIORITY 2: Infer from actual arguments
+                elif hasattr(expr, 'arguments') and expr.arguments:
+                    for arg_expr in expr.arguments:
+                        arg_type_llvm = self._infer_expression_type(arg_expr)
+                        # Map LLVM type back to NLPL type name
+                        nlpl_type = self._llvm_type_to_nlpl(arg_type_llvm)
+                        type_args.append(nlpl_type)
+                
+                if type_args:
+                    # Create specialized name
+                    type_names_capitalized = [t.capitalize() for t in type_args]
+                    specialized_name = f"{func_name}_{'_'.join(type_names_capitalized)}"
+                    
+                    # Check if already registered
+                    if specialized_name in self.functions:
+                        return self.functions[specialized_name][0]
+                    else:
+                        # Register it now so subsequent lookups work
+                        self._register_specialized_function_signature(func_name, type_args, specialized_name)
+                        if specialized_name not in self.specialized_functions:
+                            self.specialized_functions.add(specialized_name)
+                            self.pending_specializations.append((func_name, type_args, specialized_name))
+                        return self.functions[specialized_name][0]
+                else:
+                    # Can't infer type args - default to i64
+                    return 'i64'
+            # Check extern functions (FFI)
+            elif func_name in self.extern_functions:
+                ret_type, _, _, _ = self.extern_functions[func_name]
+                return ret_type
+        return 'i64'
+    
     def _infer_expression_type(self, expr) -> str:
         """Infer LLVM type of an expression."""
         expr_type = type(expr).__name__
@@ -10740,132 +10937,9 @@ class LLVMIRGenerator(CodeGenerator):
                 return f'%{name}*'
             return 'i64'
         elif expr_type == 'MemberAccess':
-            # Check for method calls or property access on objects
-            if hasattr(expr, 'object_expr') and hasattr(expr, 'member_name'):
-                obj_expr = expr.object_expr
-                member_name = expr.member_name
-                
-                # Get object variable name
-                obj_name = None
-                if type(obj_expr).__name__ == 'Identifier':
-                    obj_name = obj_expr.name
-                elif type(obj_expr).__name__ == 'FunctionCall':
-                    # This might be "call obj.method" where obj is FunctionCall wrapping an Identifier
-                    if hasattr(obj_expr, 'name'):
-                        func_call_name = obj_expr.name
-                        if type(func_call_name).__name__ == 'Identifier':
-                            obj_name = func_call_name.name
-                        elif isinstance(func_call_name, str):
-                            obj_name = func_call_name
-                
-                # Check if this might be a method call even if is_method_call not set
-                # Look up the object type and see if member_name is a method
-                if obj_name:
-                    llvm_type = None
-                    if obj_name in self.local_vars:
-                        llvm_type = self.local_vars[obj_name][0]
-                    elif obj_name in self.global_vars:
-                        llvm_type = self.global_vars[obj_name][0]
-                    
-                    # Extract class name from type like "%Point*" or "%Box_String*"
-                    if llvm_type and llvm_type.startswith('%') and llvm_type.endswith('*'):
-                        class_name = llvm_type[1:-1]  # Remove % and *
-                        
-                        # Look up in class_types
-                        if class_name in self.class_types:
-                            # Check if member_name is a method
-                            methods = self.class_types[class_name]['methods']
-                            for method_info in methods:
-                                if method_info['name'] == member_name:
-                                    # This is a method! Infer return type
-                                    return_type_nlpl = method_info.get('return_type', 'Integer')
-                                    return self._map_nlpl_type_to_llvm(return_type_nlpl)
-                            
-                            # Not a method, check if it's a property
-                            for prop in self._get_all_class_properties(class_name):
-                                if prop['name'] == member_name:
-                                    return self._map_nlpl_type_to_llvm(prop.get('type', 'Integer'))
-                        
-                        # Look up in struct_types
-                        elif class_name in self.struct_types:
-                            # struct_types stores fields as list of (name, llvm_type) tuples
-                            fields = self.struct_types[class_name]
-                            for field_name, field_type in fields:
-                                if field_name == member_name:
-                                    return field_type  # Already in LLVM type format
-            
-            # Fallback
-            return 'i64'
+            return self._infer_member_access_type_expr(expr)
         elif expr_type == 'FunctionCall':
-            if hasattr(expr, 'name'):
-                func_name = expr.name
-                # Handle Identifier wrapped names
-                if type(func_name).__name__ == 'Identifier':
-                    func_name = func_name.name
-                    
-                # Check built-in string functions
-                if func_name == 'strlen':
-                    return 'i64'
-                elif func_name in ('substr', 'charat', 'strcpy', 'replace', 'trim', 'toupper', 'tolower', 'split', 'join'):
-                    return 'i8*'
-                elif func_name == 'indexof':
-                    return 'i64'
-                # Check built-in array functions
-                elif func_name == 'arrlen':
-                    return 'i64'
-                elif func_name in ('arrpush', 'arrpop', 'arrslice'):
-                    return 'i64*'
-                # Check built-in math functions
-                elif func_name in ('sqrt', 'pow', 'abs', 'min', 'max', 'sin', 'cos', 'tan', 'floor', 'ceil'):
-                    return 'double'
-                # Check built-in memory management functions
-                elif func_name == 'alloc':
-                    return 'i8*'
-                elif func_name == 'dealloc':
-                    return 'void'
-                elif func_name == 'realloc':
-                    return 'i8*'
-                # Check user-defined functions
-                elif func_name in self.functions:
-                    return self.functions[func_name][0]
-                # Check if it's a generic function that needs specialization
-                elif func_name in self.generic_functions:
-                    # Need to infer type arguments and construct specialized name
-                    type_args = []
-                    
-                    # PRIORITY 1: Use explicit type arguments if provided
-                    if hasattr(expr, 'type_arguments') and expr.type_arguments:
-                        type_args = expr.type_arguments
-                    # PRIORITY 2: Infer from actual arguments
-                    elif hasattr(expr, 'arguments') and expr.arguments:
-                        for arg_expr in expr.arguments:
-                            arg_type_llvm = self._infer_expression_type(arg_expr)
-                            # Map LLVM type back to NLPL type name
-                            nlpl_type = self._llvm_type_to_nlpl(arg_type_llvm)
-                            type_args.append(nlpl_type)
-                    
-                    if type_args:
-                        # Create specialized name
-                        type_names_capitalized = [t.capitalize() for t in type_args]
-                        specialized_name = f"{func_name}_{'_'.join(type_names_capitalized)}"
-                        
-                        # Check if already registered
-                        if specialized_name in self.functions:
-                            return self.functions[specialized_name][0]
-                        else:
-                            # Register it now so subsequent lookups work
-                            self._register_specialized_function_signature(func_name, type_args, specialized_name)
-                            if specialized_name not in self.specialized_functions:
-                                self.specialized_functions.add(specialized_name)
-                                self.pending_specializations.append((func_name, type_args, specialized_name))
-                            return self.functions[specialized_name][0]
-                    else:
-                        # Can't infer type args - default to i64
-                        return 'i64'
-                # Check extern functions (FFI)
-                elif func_name in self.extern_functions:
-                    ret_type, _, _, _ = self.extern_functions[func_name]
-                    return ret_type
+            return self._infer_function_call_type(expr)
         elif expr_type == 'AddressOfExpression':
             # address of variable or function
             if hasattr(expr, 'target'):
