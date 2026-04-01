@@ -5654,7 +5654,7 @@ class LLVMIRGenerator(CodeGenerator):
                 self.emit(f'\n{case_label}.body:')
             
             # Generate variable bindings for pattern
-            self._generate_pattern_bindings(case.pattern, match_value_reg, match_value_type, indent + '  ')
+            self._generate_pattern_bindings(case.pattern, match_value_reg, match_value_type, indent + '  ', case_label)
             
             for stmt in case.body:
                 self._generate_statement(stmt, indent + '  ')
@@ -5851,7 +5851,7 @@ class LLVMIRGenerator(CodeGenerator):
         # Update symbol table with resolved type
         self.local_vars[var_name] = (return_type_ir, var_addr)
 
-    def _generate_list_pattern_binding(self, pattern, value_reg, value_type, indent):
+    def _generate_list_pattern_binding(self, pattern, value_reg, value_type, indent, case_label=''):
         """
         Generate code to match and bind variables for a ListPattern.
 
@@ -5901,8 +5901,6 @@ class LLVMIRGenerator(CodeGenerator):
             self.emit(f'{indent}{elem_value_reg} = load i64, i64* {elem_ptr_reg}, align 8')
 
             # Match element pattern
-            # NOTE: case_label is expected to be provided by the surrounding match
-            # context; this mirrors the pre-existing behaviour in the original code.
             elem_match = self._generate_pattern_match(
                 elem_pattern, elem_value_reg, 'i64', case_label, indent
             )
@@ -5961,7 +5959,7 @@ class LLVMIRGenerator(CodeGenerator):
 
         return combined_reg
 
-    def _generate_pattern_bindings(self, pattern, value_reg, value_type, indent=''):
+    def _generate_pattern_bindings(self, pattern, value_reg, value_type, indent='', case_label=''):
         """Generate code to extract values and bind variables for a pattern."""
         pattern_type = type(pattern).__name__
 
@@ -6015,7 +6013,7 @@ class LLVMIRGenerator(CodeGenerator):
 
         # List pattern: match list elements
         elif pattern_type == 'ListPattern':
-            return self._generate_list_pattern_binding(pattern, value_reg, value_type, indent)
+            return self._generate_list_pattern_binding(pattern, value_reg, value_type, indent, case_label)
 
         else:
             # Unknown pattern type
