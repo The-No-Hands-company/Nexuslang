@@ -6339,6 +6339,79 @@ class Parser:
         else:
             self.error("Expected an allocator name (identifier) after 'allocator'")
 
+    def _parse_generic_type_suffix(self, type_name):
+        """Parse generic type arguments ``<T, K, V>`` after a base type name.
+
+        Returns the formatted generic type string like ``'List<T>'``, or
+        *type_name* unchanged (the same object) if no ``<`` follows.
+        """
+        if not (self.current_token and self.current_token.type == TokenType.LESS_THAN):
+            return type_name
+
+        self.advance()  # Eat '<'
+
+        # Parse type arguments
+        type_args = []
+        type_args.append(self.parse_type())
+
+        while self.current_token and self.current_token.type == TokenType.COMMA:
+            self.advance()  # Eat ','
+            type_args.append(self.parse_type())
+
+        # Expect '>'
+        if self.current_token and self.current_token.type == TokenType.GREATER_THAN:
+            self.advance()  # Eat '>'
+        elif self.current_token and self.current_token.type == TokenType.RIGHT_SHIFT:
+            # Handle >> as > > for nested generics like List<List<T>>
+            # Replace >> with a single > for the next token
+            from ..parser.lexer import Token
+            self.current_token = Token(TokenType.GREATER_THAN, '>', None,
+                                       self.current_token.line, self.current_token.column + 1)
+        else:
+            self.error("Expected '>' to close generic type parameters")
+
+        # Return formatted generic type string
+        type_args_str = ", ".join(type_args)
+        return f"{type_name}<{type_args_str}>"
+
+    def _parse_list_dict_of_type(self, type_name):
+        """Parse ``List of T`` or ``Dictionary of K, V`` (or ``K to V``) forms.
+
+        *type_name* may be any capitalisation of ``list``, ``dictionary``, or
+        ``map``.  Returns the formatted type string like ``'List of Integer'``,
+        or *type_name* unchanged (the same object) if no ``of`` follows.
+        """
+        if not (self.current_token and
+                (self.current_token.type == TokenType.OF or
+                 (self.current_token.type == TokenType.IDENTIFIER and
+                  self.current_token.lexeme.lower() == "of"))):
+            return type_name
+
+        self.advance()  # Eat "of"
+
+        # Parse element type
+        element_type = self.parse_type()
+
+        canonical_name = type_name.capitalize()
+        if canonical_name == "Map":
+            canonical_name = "Dictionary"  # Normalize Map -> Dictionary
+
+        if canonical_name == "List":
+            return f"List of {element_type}"
+        else:  # Dictionary
+            # Check for COMMA or TO
+            if self.current_token and self.current_token.type == TokenType.COMMA:
+                self.advance()
+                value_type = self.parse_type()
+                return f"Dictionary of {element_type}, {value_type}"
+            elif self.current_token and self.current_token.type == TokenType.TO:
+                # Support Dictionary of K to V
+                self.advance()
+                value_type = self.parse_type()
+                return f"Dictionary of {element_type}, {value_type}"
+            else:
+                return f"Dictionary of {element_type}"
+
     def parse_type(self):
         """Parse a type annotation."""
         # Check for smart pointer types first: Rc, Weak, Arc
@@ -6381,66 +6454,15 @@ class Parser:
             self.advance()
             
             # Check for generic type parameters: TypeName<T, K, V>
-            if self.current_token and self.current_token.type == TokenType.LESS_THAN:
-                self.advance()  # Eat '<'
-                
-                # Parse type arguments
-                type_args = []
-                type_args.append(self.parse_type())
-                
-                while self.current_token and self.current_token.type == TokenType.COMMA:
-                    self.advance()  # Eat ','
-                    type_args.append(self.parse_type())
-                
-                # Expect '>'
-                if self.current_token and self.current_token.type == TokenType.GREATER_THAN:
-                    self.advance()  # Eat '>'
-                elif self.current_token and self.current_token.type == TokenType.RIGHT_SHIFT:
-                    # Handle >> as > > for nested generics like List<List<T>>
-                    # Replace >> with a single > for the next token
-                    from ..parser.lexer import Token
-                    self.current_token = Token(TokenType.GREATER_THAN, '>', None,
-                                              self.current_token.line, self.current_token.column + 1)
-                else:
-                    self.error("Expected '>' to close generic type parameters")
-                
-                # Return formatted generic type string
-                type_args_str = ", ".join(type_args)
-                return f"{type_name}<{type_args_str}>"
+            result = self._parse_generic_type_suffix(type_name)
+            if result is not type_name:
+                return result
             
             # Handle composite types like "List of Type" or "Dictionary of Type, Type"
             # This handles the case when List/Dictionary/Map are matched as contextual identifiers
             if type_name.lower() in ("list", "dictionary", "map"):
-                # Check for 'of' keyword (TokenType.OF) or identifier with value "of"
-                if (self.current_token and 
-                    (self.current_token.type == TokenType.OF or 
-                     (self.current_token.type == TokenType.IDENTIFIER and 
-                      self.current_token.lexeme.lower() == "of"))):
-                    self.advance()  # Eat "of"
-                    
-                    # Parse element type
-                    element_type = self.parse_type()
-                    
-                    canonical_name = type_name.capitalize()
-                    if canonical_name == "Map":
-                        canonical_name = "Dictionary" # Normalize Map -> Dictionary
-                    
-                    if canonical_name == "List":
-                        type_name = f"List of {element_type}"
-                    else: # Dictionary
-                        # Check for COMMA or TO
-                        if self.current_token and self.current_token.type == TokenType.COMMA:
-                            self.advance()
-                            value_type = self.parse_type()
-                            type_name = f"Dictionary of {element_type}, {value_type}"
-                        elif self.current_token and self.current_token.type == TokenType.TO:
-                            self.advance()
-                            value_type = self.parse_type()
-                            type_name = f"Dictionary of {element_type}, {value_type}"
-                        else:
-                             type_name = f"Dictionary of {element_type}"
-                    
-                    return self._try_parse_allocator_hint(type_name)
+                type_name = self._parse_list_dict_of_type(type_name)
+                return self._try_parse_allocator_hint(type_name)
             
             return type_name
             
@@ -6493,60 +6515,14 @@ class Parser:
                 return type_name
             
             # Check for generic syntax: List<T> or Dictionary<K, V>
-            if self.current_token and self.current_token.type == TokenType.LESS_THAN:
-                self.advance()  # Eat '<'
-                
-                # Parse type arguments
-                type_args = []
-                type_args.append(self.parse_type())
-                
-                while self.current_token and self.current_token.type == TokenType.COMMA:
-                    self.advance()  # Eat ','
-                    type_args.append(self.parse_type())
-                
-                # Expect '>'
-                if self.current_token and self.current_token.type == TokenType.GREATER_THAN:
-                    self.advance()  # Eat '>'
-                elif self.current_token and self.current_token.type == TokenType.RIGHT_SHIFT:
-                    # Handle >> as > > for nested generics like List<List<T>>
-                    # Replace >> with a single > for the next token
-                    from ..parser.lexer import Token
-                    self.current_token = Token(TokenType.GREATER_THAN, '>', None,
-                                              self.current_token.line, self.current_token.column + 1)
-                else:
-                    self.error("Expected '>' to close generic type parameters")
-                
-                # Return formatted generic type string
-                type_args_str = ", ".join(type_args)
-                return f"{type_name}<{type_args_str}>"
+            result = self._parse_generic_type_suffix(type_name)
+            if result is not type_name:
+                return result
             
             # Handle composite types like "List of Type" or "Dictionary of Type, Type"
             # This logic handles KEYWORDS (TokenType.LIST etc) that fell through
             if type_name in ("List", "Dictionary"):
-                # Check for 'of' keyword (TokenType.OF) or identifier with value "of"
-                if (self.current_token and 
-                    (self.current_token.type == TokenType.OF or 
-                     (self.current_token.type == TokenType.IDENTIFIER and 
-                      self.current_token.lexeme.lower() == "of"))):
-                    self.advance()  # Eat "of"
-                    
-                    # Parse element type (recursively to support nested types)
-                    element_type = self.parse_type()
-                    
-                    if type_name == "List":
-                        type_name = f"List of {element_type}"
-                    else: # Dictionary
-                        if self.current_token.type == TokenType.COMMA:
-                            self.advance()
-                            value_type = self.parse_type()
-                            type_name = f"Dictionary of {element_type}, {value_type}"
-                        elif self.current_token.type == TokenType.TO:
-                             # Support Dictionary of K to V
-                            self.advance()
-                            value_type = self.parse_type()
-                            type_name = f"Dictionary of {element_type}, {value_type}"
-                        else:
-                            type_name = f"Dictionary of {element_type}"
+                type_name = self._parse_list_dict_of_type(type_name)
             
             return self._try_parse_allocator_hint(type_name)
         else:
@@ -7301,6 +7277,180 @@ class Parser:
         )
 
 
+    def _parse_that_method_entry(self, line_number):
+        """Handle the ``that requires/provides a method called <name>...`` path.
+
+        The ``that`` token has already been consumed before calling this method.
+        Returns ``(method, is_required)`` where *is_required* is ``True`` for a
+        required method and ``False`` for a provided method.  Returns ``None``
+        when the tokens do not match the expected pattern.
+        """
+        is_required = False
+        is_provided = False
+
+        if self.current_token.type == TokenType.IDENTIFIER:
+            if self.current_token.lexeme.lower() == 'requires':
+                is_required = True
+                self.advance()  # Consume 'requires'
+            elif self.current_token.lexeme.lower() == 'provides':
+                is_provided = True
+                self.advance()  # Consume 'provides'
+
+        if not (is_required or is_provided):
+            return None
+
+        # Expect: a method called <name> [with <param> [as <type>]] [returning <type>]
+
+        # Skip 'a' if present
+        if self.current_token.type == TokenType.A:
+            self.advance()
+
+        # Expect 'method'
+        if self.current_token.type == TokenType.METHOD:
+            self.advance()
+        else:
+            self.error("Expected 'method' after 'requires' or 'provides'")
+
+        # Expect 'called'
+        if self.current_token.type == TokenType.CALLED:
+            self.advance()
+        else:
+            self.error("Expected 'called' after 'method'")
+
+        # Get method name
+        if self.current_token.type == TokenType.IDENTIFIER:
+            method_name = self.current_token.lexeme
+            self.advance()
+        else:
+            self.error("Expected method name")
+
+        # Parse parameters (optional)
+        parameters = []
+        if self.current_token.type == TokenType.WITH:
+            self.advance()  # Consume 'with'
+
+            # Get parameter name
+            if self.current_token.type == TokenType.IDENTIFIER:
+                param_name = self.current_token.lexeme
+                self.advance()
+
+                # Check for type annotation (as Type)
+                param_type = None
+                if self.current_token.type == TokenType.AS:
+                    self.advance()  # Consume 'as'
+                    param_type = self.parse_type()
+
+                parameters.append(Parameter(param_name, param_type))
+
+        # Parse return type (optional)
+        return_type = None
+        if self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() == 'returning':
+            self.advance()  # Consume 'returning'
+            return_type = self.parse_type()
+
+        # Create method definition
+        method = MethodDefinition(
+            name=method_name,
+            parameters=parameters,
+            body=[],  # Traits don't have method bodies (yet)
+            return_type=return_type,
+            line_number=line_number
+        )
+
+        return method, is_required
+
+    def _parse_identifier_method_entry(self, line_number):
+        """Handle legacy single-token method specs from an IDENTIFIER token.
+
+        The current token must be an IDENTIFIER.  Consumes the token (and an
+        optional trailing ``.``).
+        Returns ``(method, is_required)`` or ``None`` if the token is not
+        recognised as a method specification (the token is still consumed).
+        """
+        # Split into lowercase for matching
+        method_text_lower = self.current_token.lexeme.lower()
+        # Keep original for preserving case
+        method_text_original = self.current_token.lexeme
+        # Save line number before any advance
+        current_line = self.current_token.line
+
+        is_required = False
+        is_provided = False
+
+        # Check if it's a required method
+        if "required method" in method_text_lower or "a required method" in method_text_lower:
+            is_required = True
+        # Check if it's a provided method
+        elif "provided method" in method_text_lower or "a provided method" in method_text_lower:
+            is_provided = True
+
+        if not (is_required or is_provided):
+            # Skip unknown tokens
+            self.advance()
+            return None
+
+        # Extract method name and return type
+        parts_lower = method_text_lower.split()
+        parts_original = method_text_original.split()
+
+        method_name = None
+        param_name = None
+        return_type = None
+
+        # Try to extract method name (after "called")
+        try:
+            called_index = parts_lower.index("called")
+            if called_index + 1 < len(parts_original):
+                # Preserve original case
+                method_name = parts_original[called_index + 1]
+        except ValueError:
+            self.error("Could not find method name in method definition")
+
+        # Try to extract parameter (after "takes")
+        try:
+            takes_index = parts_lower.index("takes")
+            if takes_index + 1 < len(parts_original):
+                # Preserve original case
+                param_name = parts_original[takes_index + 1]
+        except ValueError:
+            pass  # Parameters might be optional
+
+        # Try to extract return type (after "returns")
+        try:
+            returns_index = parts_lower.index("returns")
+            if returns_index + 1 < len(parts_original):
+                # Get the return type and remove any trailing punctuation
+                return_type = parts_original[returns_index + 1].rstrip(".,;:")
+
+                # Skip 'a' or 'an' article if present
+                if return_type.lower() in ['a', 'an'] and returns_index + 2 < len(parts_original):
+                    return_type = parts_original[returns_index + 2].rstrip(".,;:")
+        except ValueError:
+            self.error("Could not find return type in method definition")
+
+        # Create parameters list (if any)
+        parameters = []
+        if param_name:
+            parameters.append(Parameter(param_name, None))
+
+        # Create method
+        method = MethodDefinition(
+            name=method_name,
+            parameters=parameters,
+            body=[],  # Empty body
+            return_type=return_type,
+            line_number=current_line
+        )
+
+        # Move past this token
+        self.advance()
+
+        # Skip period if present
+        if self.current_token and self.current_token.type == TokenType.DOT:
+            self.advance()
+
+        return method, is_required
+
     def _parse_trait_body(self, line_number):
         """Parse the body of a trait definition (required/provided methods).
 
@@ -7324,79 +7474,9 @@ class Parser:
             # Handle THAT token (start of method requirement/provision)
             if self.current_token.type == TokenType.THAT:
                 self.advance()  # Consume 'that'
-                
-                # Check if it's a required or provided method
-                is_required = False
-                is_provided = False
-                
-                if self.current_token.type == TokenType.IDENTIFIER:
-                    if self.current_token.lexeme.lower() == 'requires':
-                        is_required = True
-                        self.advance()  # Consume 'requires'
-                    elif self.current_token.lexeme.lower() == 'provides':
-                        is_provided = True
-                        self.advance()  # Consume 'provides'
-                
-                if is_required or is_provided:
-                    # Expect: a method called <name> [with <param> [as <type>]] [returning <type>]
-                    
-                    # Skip 'a' if present
-                    if self.current_token.type == TokenType.A:
-                        self.advance()
-                    
-                    # Expect 'method'
-                    if self.current_token.type == TokenType.METHOD:
-                        self.advance()
-                    else:
-                        self.error("Expected 'method' after 'requires' or 'provides'")
-                    
-                    # Expect 'called'
-                    if self.current_token.type == TokenType.CALLED:
-                        self.advance()
-                    else:
-                        self.error("Expected 'called' after 'method'")
-                    
-                    # Get method name
-                    if self.current_token.type == TokenType.IDENTIFIER:
-                        method_name = self.current_token.lexeme
-                        self.advance()
-                    else:
-                        self.error("Expected method name")
-                    
-                    # Parse parameters (optional)
-                    parameters = []
-                    if self.current_token.type == TokenType.WITH:
-                        self.advance()  # Consume 'with'
-                        
-                        # Get parameter name
-                        if self.current_token.type == TokenType.IDENTIFIER:
-                            param_name = self.current_token.lexeme
-                            self.advance()
-                            
-                            # Check for type annotation (as Type)
-                            param_type = None
-                            if self.current_token.type == TokenType.AS:
-                                self.advance()  # Consume 'as'
-                                param_type = self.parse_type()
-                            
-                            parameters.append(Parameter(param_name, param_type))
-                    
-                    # Parse return type (optional)
-                    return_type = None
-                    if self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() == 'returning':
-                        self.advance()  # Consume 'returning'
-                        return_type = self.parse_type()
-                    
-                    # Create method definition
-                    method = MethodDefinition(
-                        name=method_name,
-                        parameters=parameters,
-                        body=[],  # Traits don't have method bodies (yet)
-                        return_type=return_type,
-                        line_number=line_number
-                    )
-                    
-                    # Add to appropriate list
+                result = self._parse_that_method_entry(line_number)
+                if result is not None:
+                    method, is_required = result
                     if is_required:
                         required_methods.append(method)
                     else:
@@ -7407,90 +7487,13 @@ class Parser:
             
             # Handle method definitions which might be in a single IDENTIFIER token (legacy support)
             elif self.current_token.type == TokenType.IDENTIFIER:
-                # Split into lowercase for matching
-                method_text_lower = self.current_token.lexeme.lower()
-                # Keep original for preserving case
-                method_text_original = self.current_token.lexeme
-                
-                is_required = False
-                is_provided = False
-                
-                # Check if it's a required method
-                if "required method" in method_text_lower or "a required method" in method_text_lower:
-                    is_required = True
-                # Check if it's a provided method
-                elif "provided method" in method_text_lower or "a provided method" in method_text_lower:
-                    is_provided = True
-                
-                if is_required or is_provided:
-                    # Extract method name and return type
-                    parts_lower = method_text_lower.split()
-                    parts_original = method_text_original.split()
-                    
-                    method_name = None
-                    param_name = None
-                    return_type = None
-                    
-                    # Try to extract method name (after "called")
-                    try:
-                        called_index = parts_lower.index("called")
-                        if called_index + 1 < len(parts_original):
-                            # Preserve original case
-                            method_name = parts_original[called_index + 1]
-                    except ValueError:
-                        self.error("Could not find method name in method definition")
-                        
-                    # Try to extract parameter (after "takes")
-                    try:
-                        takes_index = parts_lower.index("takes")
-                        if takes_index + 1 < len(parts_original):
-                            # Preserve original case
-                            param_name = parts_original[takes_index + 1]
-                    except ValueError:
-                        pass  # Parameters might be optional
-                        
-                    # Try to extract return type (after "returns")
-                    try:
-                        returns_index = parts_lower.index("returns")
-                        if returns_index + 1 < len(parts_original):
-                            # Get the return type and remove any trailing punctuation
-                            return_type = parts_original[returns_index + 1].rstrip(".,;:")
-                            
-                            # Skip 'a' or 'an' article if present
-                            if return_type.lower() in ['a', 'an'] and returns_index + 2 < len(parts_original):
-                                return_type = parts_original[returns_index + 2].rstrip(".,;:")
-                    except ValueError:
-                        self.error("Could not find return type in method definition")
-                    
-                    # Create parameters list (if any)
-                    parameters = []
-                    if param_name:
-                        parameters.append(Parameter(param_name, None))
-                    
-                    # Create method
-                    method = MethodDefinition(
-                        name=method_name,
-                        parameters=parameters,
-                        body=[],  # Empty body
-                        return_type=return_type,
-                        line_number=self.current_token.line
-                    )
-                    
-                    # Add to appropriate list
+                result = self._parse_identifier_method_entry(line_number)
+                if result is not None:
+                    method, is_required = result
                     if is_required:
                         required_methods.append(method)
                     else:
                         provided_methods.append(method)
-                    
-                    # Move past this token
-                    self.advance()
-                    
-                    # Skip period if present
-                    if self.current_token and self.current_token.type == TokenType.DOT:
-                        self.advance()
-                else:
-                    # Skip unknown tokens
-                    self.advance()
                 
             # Check for end of trait definition
             elif self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() == "end":
