@@ -21,7 +21,7 @@ from nlpl.parser.ast import (
     TypeAliasDefinition, TypeParameter, TypeConstraint, TypeGuard,
     AbstractMethodDefinition,
     ListExpression, DictExpression, SliceExpression, IndexExpression,
-    ListComprehension, DictComprehension, TernaryExpression,
+    ListComprehension, DictComprehension, TernaryExpression, NullCoalesceExpression,
     LambdaExpression, AsyncExpression, AwaitExpression,
     YieldExpression, GeneratorExpression,
     # Low-level pointer operations
@@ -1950,6 +1950,86 @@ class Parser:
 
         return parent_classes, implemented_interfaces
 
+    # Map from operator surface symbol (as written in NLPL) to internal method name
+    _OPERATOR_METHOD_NAMES = {
+        "+": "__op_add__", "plus": "__op_add__",
+        "-": "__op_sub__", "minus": "__op_sub__",
+        "*": "__op_mul__", "times": "__op_mul__",
+        "/": "__op_div__", "divided by": "__op_div__",
+        "%": "__op_mod__", "modulo": "__op_mod__",
+        "**": "__op_pow__", "^": "__op_pow__",
+        "==": "__op_eq__", "equals": "__op_eq__",
+        "!=": "__op_ne__", "not equals": "__op_ne__",
+        "<": "__op_lt__", "less than": "__op_lt__",
+        ">": "__op_gt__", "greater than": "__op_gt__",
+        "<=": "__op_le__", "less than or equal": "__op_le__",
+        ">=": "__op_ge__", "greater than or equal": "__op_ge__",
+        "[]": "__op_index__", "at": "__op_index__",
+        "()": "__op_call__",
+        "++": "__op_inc__",
+        "--": "__op_dec__",
+    }
+
+    def _parse_operator_method(self, access_modifier, line_number):
+        """Parse an operator overload method definition inside a class body.
+
+        Syntax::
+
+            operator + with other as Vector returns Vector
+                ...body...
+            end
+
+            operator == with other as Integer returns Boolean
+                ...body...
+            end
+        """
+        self.advance()  # consume 'operator' keyword
+
+        # Parse the operator symbol — collect consecutive non-identifier tokens
+        # or a single word (like 'plus', 'equals', 'less than')
+        op_parts = []
+        while self.current_token and self.current_token.type not in (
+                TokenType.WITH, TokenType.RETURNS, TokenType.NEWLINE, TokenType.INDENT,
+                TokenType.EOF, TokenType.END):
+            op_parts.append(self.current_token.lexeme)
+            self.advance()
+            # Stop after symbolic operators (not word sequences)
+            if op_parts and op_parts[-1] in (
+                    "+", "-", "*", "/", "%", "**", "^",
+                    "==", "!=", "<", ">", "<=", ">=", "[]", "()", "++", "--"):
+                break
+        op_symbol = " ".join(op_parts).strip()
+
+        # Map to internal method name
+        internal_name = self._OPERATOR_METHOD_NAMES.get(
+            op_symbol,
+            f"__op_{op_symbol.replace(' ', '_').replace('+', 'add').replace('-', 'sub')}__"
+        )
+
+        # Parse parameters
+        parameters = []
+        variadic = False
+        if self.current_token and self.current_token.type == TokenType.WITH:
+            self.advance()  # consume 'with'
+            parameters, variadic = self.parameter_list()
+
+        # Parse return type
+        return_type = None
+        if self.current_token and self.current_token.type == TokenType.RETURNS:
+            self.advance()  # consume 'returns'
+            return_type = self.parse_type()
+
+        # Parse body
+        body = self._parse_function_body()
+
+        method = MethodDefinition(
+            internal_name, parameters, body, return_type,
+            is_static=False, access_modifier=access_modifier,
+            line_number=line_number,
+            is_operator=True, operator_symbol=op_symbol,
+        )
+        return method
+
     def _parse_abstract_class_method(self, access_modifier, line_number):
         """Parse an abstract method declaration inside a class body.
         Returns an AbstractMethodDefinition with access_modifier set."""
@@ -2040,6 +2120,9 @@ class Parser:
                     from ..parser.ast import MethodDefinition
                     func = self.function_definition_short()
                     method = MethodDefinition(func.name, func.parameters, func.body, func.return_type, is_static=False, access_modifier=access_modifier, line_number=func.line_number)
+                    methods.append(method)
+                elif self.current_token.type == TokenType.OPERATOR:
+                    method = self._parse_operator_method(access_modifier, line_number)
                     methods.append(method)
                 elif self.current_token.type == TokenType.IDENTIFIER:
                     # Check for special keywords
@@ -3384,74 +3467,92 @@ class Parser:
             self.advance()
         else:
             self.error("Expected an identifier for loop iterator")
-            
+
+        # Optional index variable: "with index i"
+        # Syntax: for each item with index i in collection
+        index_var = None
+        if (self.current_token and self.current_token.type == TokenType.WITH
+                and self.peek() and self.peek().lexeme.lower() == "index"):
+            self.advance()  # consume 'with'
+            self.advance()  # consume 'index'
+            if self.current_token and (
+                    self.current_token.type == TokenType.IDENTIFIER
+                    or self._can_be_identifier(self.current_token)):
+                index_var = self.current_token.lexeme
+                self.advance()
+            else:
+                self.error("Expected index variable name after 'with index'")
+
         # Eat 'in'
         self.eat(TokenType.IN)
-        
+
         # Parse iterable expression
         iterable = self.expression()
-        
+
         # Optional comma after iterable
         if self.current_token and self.current_token.type == TokenType.COMMA:
             self.advance()
-        
+
         # Consume INDENT if present (for block-based syntax)
         if self.current_token and self.current_token.type == TokenType.INDENT:
             self.advance()
-        
+
         # Parse body - stop at END token or DEDENT
         body = []
-        while (self.current_token and 
+        while (self.current_token and
                self.current_token.type != TokenType.EOF and
                self.current_token.type != TokenType.END and
                self.current_token.type != TokenType.DEDENT):
             statement = self.statement()
             if statement:
                 body.append(statement)
-        
+
         # Consume DEDENT if present
         if self.current_token and self.current_token.type == TokenType.DEDENT:
             self.advance()
-                
+
         # Eat 'end' token
         if self.current_token and self.current_token.type == TokenType.END:
             self.advance()
-            
+
             # Support for explicit "End loop" syntax
-            if (self.current_token and self.current_token.type == TokenType.IDENTIFIER and 
-                self.current_token.lexeme.lower() == 'loop'):
+            if (self.current_token and self.current_token.type == TokenType.IDENTIFIER and
+                    self.current_token.lexeme.lower() == 'loop'):
                 self.advance()
-                
+
             # Optional dot after end
-            if (self.current_token and self.current_token.type == TokenType.DOT):
+            if self.current_token and self.current_token.type == TokenType.DOT:
                 self.advance()
-        
+
         # Check for else block (executes if loop completes without break)
         else_body = None
         if self.current_token and self.current_token.type == TokenType.ELSE:
             self.advance()  # consume 'else'
-            
+
             # Skip NEWLINE/INDENT
-            while (self.current_token and 
+            while (self.current_token and
                    self.current_token.type in (TokenType.NEWLINE, TokenType.INDENT)):
                 self.advance()
-            
+
             # Parse else body
             else_body = []
-            while (self.current_token and 
+            while (self.current_token and
                    self.current_token.type != TokenType.EOF and
                    self.current_token.type != TokenType.DEDENT and
                    self.current_token.type != TokenType.END):
                 statement = self.statement()
                 if statement:
                     else_body.append(statement)
-            
+
             # Consume DEDENT/END after else
             if self.current_token and self.current_token.type in (TokenType.DEDENT, TokenType.END):
                 self.advance()
-            
-        return ForLoop(iterator=iterator, iterable=iterable, body=body, line_number=line_number, else_body=else_body, label=label)
-    
+
+        return ForLoop(iterator=iterator, iterable=iterable, body=body,
+                       line_number=line_number, else_body=else_body, label=label,
+                       index_var=index_var)
+
+
     def _parse_range_for_loop(self, line_number, label=None):
         """Parse range-based for loop: for i from start to end [by step]."""
         # Get loop variable
@@ -4512,28 +4613,35 @@ class Parser:
         """Parse an assignment expression."""
         return self.logical_or()
         
-    def logical_or(self):
-        """Parse a logical OR expression."""
-        expr = self.logical_and()
-        
-        while self.current_token and self.current_token.type == TokenType.OR:
-            operator = self.current_token
-            self.advance()
-            right = self.logical_and()
-            expr = BinaryOperation(expr, operator, right)
-            
-        return expr
-        
     def logical_and(self):
         """Parse a logical AND expression."""
         expr = self.logical_not()
-        
+
         while self.current_token and self.current_token.type == TokenType.AND:
             operator = self.current_token
             self.advance()
             right = self.logical_not()
             expr = BinaryOperation(expr, operator, right)
-            
+
+        return expr
+
+    def logical_or(self):
+        """Parse a logical OR expression, including null coalescing (otherwise)."""
+        expr = self.logical_and()
+
+        while self.current_token and self.current_token.type in (TokenType.OR, TokenType.OTHERWISE):
+            if self.current_token.type == TokenType.OTHERWISE:
+                # Null coalescing: value otherwise default
+                line_number = self.current_token.line
+                self.advance()  # consume 'otherwise'
+                default = self.logical_and()
+                expr = NullCoalesceExpression(expr, default, line_number)
+            else:
+                operator = self.current_token
+                self.advance()
+                right = self.logical_and()
+                expr = BinaryOperation(expr, operator, right)
+
         return expr
     
     def logical_not(self):

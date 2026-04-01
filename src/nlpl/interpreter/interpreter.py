@@ -1072,23 +1072,37 @@ class Interpreter:
         """Execute a for loop."""
         result = None
         iterable = self.execute(node.iterable)
-        
+
+        # Optional enumerate-style index variable from: for each item with index i in ...
+        index_var = getattr(node, 'index_var', None)
+
         # Don't create new scope - for loops should access outer scope variables like while loops
         try:
-            for item in iterable:
-                # Set the iterator variable in the current scope
-                self.set_variable(node.iterator, item)
-                
-                try:
-                    for statement in node.body:
-                        result = self.execute(statement)
-                except ContinueException:
-                    # Continue to next iteration
-                    continue
+            if index_var:
+                for i, item in enumerate(iterable):
+                    self.set_variable(node.iterator, item)
+                    self.set_variable(index_var, i)
+
+                    try:
+                        for statement in node.body:
+                            result = self.execute(statement)
+                    except ContinueException:
+                        continue
+            else:
+                for item in iterable:
+                    # Set the iterator variable in the current scope
+                    self.set_variable(node.iterator, item)
+
+                    try:
+                        for statement in node.body:
+                            result = self.execute(statement)
+                    except ContinueException:
+                        # Continue to next iteration
+                        continue
         except BreakException:
             # Break out of loop
             pass
-            
+
         return result
 
     def execute_parallel_for_loop(self, node):
@@ -3085,6 +3099,31 @@ class Interpreter:
         
         # Get the operator type from the token
         op_type = node.operator.type if hasattr(node.operator, 'type') else node.operator
+
+        # Operator overloading on NLPL objects (runtime.Object and legacy dict-backed objects).
+        _OP_METHOD_MAP = {
+            TokenType.PLUS: '__op_add__',
+            TokenType.MINUS: '__op_sub__',
+            TokenType.TIMES: '__op_mul__',
+            TokenType.DIVIDED_BY: '__op_div__',
+            TokenType.MODULO: '__op_mod__',
+            TokenType.POWER: '__op_pow__',
+            TokenType.EQUAL_TO: '__op_eq__',
+            TokenType.NOT_EQUAL_TO: '__op_ne__',
+            TokenType.LESS_THAN: '__op_lt__',
+            TokenType.GREATER_THAN: '__op_gt__',
+            TokenType.LESS_THAN_OR_EQUAL_TO: '__op_le__',
+            TokenType.GREATER_THAN_OR_EQUAL_TO: '__op_ge__',
+        }
+        overload_name = _OP_METHOD_MAP.get(op_type)
+        if overload_name:
+            from ..runtime.runtime import Object as RuntimeObject
+
+            if isinstance(left, RuntimeObject) and overload_name in left.methods:
+                return self._call_method_on_object(left, overload_name, [right])
+
+            if isinstance(left, dict) and f"__method_{overload_name}__" in left:
+                return self._call_method_on_object(left, overload_name, [right])
         
         if op_type == TokenType.PLUS:
             # Auto-coerce: if either operand is a string, convert the other to string.
@@ -3154,7 +3193,7 @@ class Interpreter:
         from ..parser.lexer import TokenType
         
         op_type = node.operator.type if hasattr(node.operator, 'type') else node.operator
-        
+
         if op_type == TokenType.PLUS:
             return +operand
         elif op_type == TokenType.MINUS:
@@ -4366,6 +4405,111 @@ class Interpreter:
         
     # Handle regular Python objects
 
+    def _call_method_on_object(self, obj, method_name: str, args: list):
+        """Call a method on either runtime.Object or legacy dict-backed objects."""
+        from ..runtime.runtime import Object as RuntimeObject
+
+        if isinstance(obj, RuntimeObject):
+            if method_name not in obj.methods:
+                raise NLPLNameError(
+                    message=f"Object of type '{obj.class_name}' has no method '{method_name}'",
+                    name=method_name,
+                    error_type_key="undefined_function",
+                    full_source=self.source,
+                )
+
+            method_def = obj.methods[method_name]
+
+            if callable(method_def) and not hasattr(method_def, 'node_type'):
+                return method_def(obj, *args)
+
+            self.enter_scope()
+            try:
+                self.set_variable("self", obj)
+
+                for key, value in obj.properties.items():
+                    self.set_variable(key, value)
+
+                if hasattr(method_def, 'parameters') and method_def.parameters:
+                    for i, param in enumerate(method_def.parameters):
+                        if i < len(args):
+                            self.set_variable(param.name, args[i])
+                        elif hasattr(param, 'default_value') and param.default_value:
+                            self.set_variable(param.name, self.execute(param.default_value))
+                        else:
+                            self.set_variable(param.name, None)
+
+                result = None
+                if hasattr(method_def, 'body'):
+                    try:
+                        for statement in method_def.body:
+                            result = self.execute(statement)
+                    except ReturnException as ret:
+                        result = ret.value
+
+                for key in obj.properties.keys():
+                    try:
+                        obj.set_property(key, self.get_variable(key))
+                    except Exception:
+                        pass
+
+                return result
+            finally:
+                self.exit_scope()
+
+        if isinstance(obj, dict):
+            method_key = f"__method_{method_name}__"
+            if method_key not in obj:
+                raise NLPLRuntimeError(
+                    f"Unknown method: {method_name}",
+                    error_type_key="undefined_function",
+                    full_source=self.source,
+                )
+
+            method_def = obj[method_key]
+
+            self.enter_scope()
+            try:
+                self.set_variable("self", obj)
+
+                for key, value in obj.items():
+                    if not key.startswith("__"):
+                        self.set_variable(key, value)
+
+                if hasattr(method_def, 'parameters') and method_def.parameters:
+                    for i, param in enumerate(method_def.parameters):
+                        if i < len(args):
+                            self.set_variable(param.name, args[i])
+                        elif hasattr(param, 'default_value') and param.default_value:
+                            self.set_variable(param.name, self.execute(param.default_value))
+                        else:
+                            self.set_variable(param.name, None)
+
+                result = None
+                if hasattr(method_def, 'body'):
+                    try:
+                        for statement in method_def.body:
+                            result = self.execute(statement)
+                    except ReturnException as ret:
+                        result = ret.value
+
+                for key in obj.keys():
+                    if not key.startswith("__"):
+                        try:
+                            obj[key] = self.get_variable(key)
+                        except Exception:
+                            pass
+
+                return result
+            finally:
+                self.exit_scope()
+
+        raise NLPLTypeError(
+            f"Cannot call method '{method_name}' on value of type {type(obj).__name__}",
+            error_type_key="invalid_operation",
+            full_source=self.source,
+        )
+
     def execute_member_assignment(self, node):
         """
         Execute member assignment: set object.field to value.
@@ -4863,6 +5007,13 @@ class Interpreter:
             return self.execute(node.true_expr)
         else:
             return self.execute(node.false_expr)
+
+    def execute_null_coalesce_expression(self, node):
+        """Execute: value otherwise default — returns value if not None, else default."""
+        value = self.execute(node.value)
+        if value is None:
+            return self.execute(node.default)
+        return value
 
     def execute_panic_statement(self, node):
         """Execute a panic statement — raise an unrecoverable error."""

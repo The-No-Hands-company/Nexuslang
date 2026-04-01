@@ -273,7 +273,7 @@ class ForLoop(ASTNode):
         - body: list of statements
         - iterable: None
     """
-    def __init__(self, iterator, iterable=None, body=None, start=None, end=None, step=None, line_number=None, else_body=None, label=None):
+    def __init__(self, iterator, iterable=None, body=None, start=None, end=None, step=None, line_number=None, else_body=None, label=None, index_var=None):
         super().__init__("for_loop", line_number)
         self.iterator = iterator
         self.iterable = iterable  # For for-each loops
@@ -283,6 +283,7 @@ class ForLoop(ASTNode):
         self.body = body or []
         self.else_body = else_body  # Optional else block (executed if loop completes without break)
         self.label = label  # Optional label for labeled break/continue
+        self.index_var = index_var  # Optional index variable for enumerate-style iteration
 
 class MatchExpression(ASTNode):
     """Represents a pattern matching expression.
@@ -549,7 +550,7 @@ class PropertyDeclaration(ASTNode):
 class MethodDefinition(ASTNode):
     """Represents a class method definition."""
     """Represents a class method definition."""
-    def __init__(self, name, parameters, body=None, return_type=None, is_static=False, access_modifier='public', line_number=None):
+    def __init__(self, name, parameters, body=None, return_type=None, is_static=False, access_modifier='public', line_number=None, is_operator=False, operator_symbol=None):
         super().__init__("method_definition", line_number)
         self.name = name
         self.parameters = parameters or []
@@ -557,6 +558,8 @@ class MethodDefinition(ASTNode):
         self.return_type = return_type  # Optional return type annotation
         self.is_static = is_static
         self.access_modifier = access_modifier  # 'public', 'private', or 'protected'
+        self.is_operator = is_operator          # True if this is an operator overload
+        self.operator_symbol = operator_symbol  # e.g. '+', '-', '==', etc.
 
 class ObjectInstantiation(ASTNode):
     """Represents object creation with 'new ClassName' or 'new ClassName<T>'."""
@@ -963,6 +966,18 @@ class TernaryExpression(Expression):
         self.condition = condition
         self.true_expr = true_expr
         self.false_expr = false_expr
+
+class NullCoalesceExpression(Expression):
+    """Represents a null coalescing expression: value otherwise default.
+
+    Evaluates to *value* if it is not None/null, otherwise evaluates and
+    returns *default*.  Unlike ``or``, this only triggers on null/None, not
+    on any falsy value (e.g. 0, False, or "").
+    """
+    def __init__(self, value, default, line_number=None):
+        super().__init__("null_coalesce_expression", line_number)
+        self.value = value
+        self.default = default
 
 class LambdaExpression(Expression):
     """Represents a lambda expression."""

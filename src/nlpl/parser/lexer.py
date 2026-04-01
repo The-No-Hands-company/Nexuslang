@@ -251,6 +251,8 @@ class TokenType(Enum):
     SPEC = auto()        # `spec` block (formal specification annotation)
     COMPTIME = auto()    # `comptime` compile-time evaluation keyword
     ATTRIBUTE = auto()   # `attribute` declaration keyword
+    OTHERWISE = auto()   # `otherwise` null-coalescing operator
+    OPERATOR = auto()    # `operator` method definition keyword
 
     # Literals
     IDENTIFIER = auto()
@@ -619,6 +621,8 @@ class Lexer:
             "spec": TokenType.SPEC,
             "comptime": TokenType.COMPTIME,
             "attribute": TokenType.ATTRIBUTE,
+            "otherwise": TokenType.OTHERWISE,
+            "operator": TokenType.OPERATOR,
         }
 
     def __init__(self, source: str):
