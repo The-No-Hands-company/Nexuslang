@@ -3089,6 +3089,11 @@ class LLVMIRGenerator(CodeGenerator):
                 if normalized != self.target_arch:
                     return  # This asm block targets a different architecture.
             self._generate_inline_assembly(stmt, indent)
+        elif stmt_type == 'SendStatement':
+            raise ValueError(
+                "Channel send/receive is not yet supported by the LLVM backend. "
+                "Use interpreter mode or avoid channel operations in compiled targets."
+            )
         # Add more statement types as needed
     
     def _generate_variable_declaration(self, node, indent=''):
@@ -7188,6 +7193,11 @@ class LLVMIRGenerator(CodeGenerator):
             return self._generate_generator_expression(expr, indent)
         elif expr_type == 'RcCreation':
             return self._generate_rc_creation(expr, indent)
+        elif expr_type in ('ChannelCreation', 'ReceiveExpression'):
+            raise ValueError(
+                "Channel send/receive is not yet supported by the LLVM backend. "
+                "Use interpreter mode or avoid channel operations in compiled targets."
+            )
         else:
             # Unknown expression - return zero
             return '0'

@@ -308,6 +308,12 @@ class TypeChecker:
     def _check_data_structure_statement(self, statement: Any, env: TypeEnvironment) -> Tuple[bool, Any]:
         """Handle struct/union/object/memory statement nodes. Returns (handled, type)."""
         cls = statement.__class__.__name__
+        if cls == 'SendStatement':
+            if hasattr(statement, 'value'):
+                self.check_expression(statement.value, env)
+            if hasattr(statement, 'channel'):
+                self.check_expression(statement.channel, env)
+            return True, ANY_TYPE
         if isinstance(statement, (StructDefinition, UnionDefinition, ObjectInstantiation, MemberAssignment)):
             return True, ANY_TYPE
         if cls == 'IndexAssignment':
@@ -345,6 +351,13 @@ class TypeChecker:
     def _check_collection_expression(self, statement: Any, env: TypeEnvironment) -> Tuple[bool, Any]:
         """Handle collection literal and comprehension nodes. Returns (handled, type)."""
         cls = statement.__class__.__name__
+        if cls == 'ChannelCreation':
+            # Channel payload type is currently dynamic; refine once generic channels are added.
+            return True, ANY_TYPE
+        if cls == 'ReceiveExpression':
+            if hasattr(statement, 'channel'):
+                self.check_expression(statement.channel, env)
+            return True, ANY_TYPE
         if cls == 'ListExpression':
             return True, self.check_list_expression(statement, env)
         if cls == 'DictExpression':
