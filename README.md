@@ -60,11 +60,11 @@ NLPL is pre-v1.0 and under active development. This is an honest assessment of w
 
 ### Known limitations
 
-- **Performance:** The interpreter is significantly slower than C for computation-heavy code. The LLVM compiled path produces fast native code, but the compiler does not yet cover every language construct.
+- **Performance:** The interpreter is significantly slower than C for computation-heavy code. The LLVM compiled path produces fast native code, and compiler coverage has improved, but not every language construct is fully covered with production-grade semantics yet.
 - **Concurrency:** The async runtime exists and is tested, but has not been validated under heavy real-world workloads.
 - **FFI safety:** The FFI layer allows raw pointer operations; safety is the caller's responsibility inside `unsafe` blocks — there is no automatic checking.
 - **Self-hosting:** NLPL is not self-hosted. The entire toolchain is written in Python.
-- **Parser size:** The recursive descent parser is approximately 9,800 lines. This works but is a maintenance concern as the language evolves.
+- **Parser size:** The recursive descent parser is approximately 9,900 lines (~9,913 currently). This works but is a maintenance concern as the language evolves.
 
 ---
 
