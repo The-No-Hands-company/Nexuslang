@@ -7506,6 +7506,8 @@ class LLVMIRGenerator(CodeGenerator):
             return self._generate_dict_comprehension_expression(expr, indent)
         elif expr_type == 'GeneratorExpression':
             return self._generate_generator_expression(expr, indent)
+        elif expr_type == 'YieldExpression':
+            return self._generate_yield_expression(expr, indent)
         elif expr_type == 'RcCreation':
             return self._generate_rc_creation(expr, indent)
         elif expr_type == 'ChannelCreation':
@@ -7521,6 +7523,12 @@ class LLVMIRGenerator(CodeGenerator):
         result_reg = self._new_temp()
         self.emit(f'{indent}{result_reg} = call i8* @nlpl_channel_create()')
         return result_reg
+
+    def _generate_yield_expression(self, expr, indent='') -> str:
+        """Generate baseline yield expression value for compiled backends."""
+        if hasattr(expr, 'value') and expr.value is not None:
+            return self._generate_expression(expr.value, indent)
+        return '0'
 
     def _generate_receive_expression(self, expr, indent='') -> str:
         """Generate receive from channel expression via runtime call."""
@@ -11837,6 +11845,10 @@ class LLVMIRGenerator(CodeGenerator):
         elif expr_type == 'ReceiveExpression':
             if hasattr(expr, 'channel'):
                 return self._infer_channel_payload_type(expr.channel)
+            return 'i64'
+        elif expr_type == 'YieldExpression':
+            if hasattr(expr, 'value') and expr.value is not None:
+                return self._infer_expression_type(expr.value)
             return 'i64'
         
         return 'i64'  # Default

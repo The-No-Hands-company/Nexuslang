@@ -43,8 +43,8 @@ Scope columns:
 
 ## Immediate Priority Queue
 
-1. Channels: complete compiler semantics (blocking behavior, richer payload handling) and tooling depth.
-2. Generators/yield: complete typechecker and compiled semantics.
+1. Channels: harden compiler semantics (thread-safe blocking/wakeup behavior, richer payload handling) and tooling depth.
+2. Generators/yield: move from baseline lowering to full generator/coroutine semantics in compiled backends.
 3. Parallel-for: deepen compiler semantics beyond sequential fallback.
 4. Contracts/assertions: extend matcher coverage and add richer diagnostics/tooling.
 5. Macro/comptime: define static and compilation semantics.

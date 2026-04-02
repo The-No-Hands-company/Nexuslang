@@ -820,6 +820,9 @@ class CCodeGenerator(CodeGenerator):
         if isinstance(expr, ReceiveExpression):
             return "intptr_t"
 
+        if isinstance(expr, YieldExpression):
+            return self._infer_type(expr.value) if getattr(expr, "value", None) is not None else "intptr_t"
+
         return "void*"
     
     def _generate_extern_function(self, node: ExternFunctionDeclaration) -> None:
@@ -1155,6 +1158,11 @@ class CCodeGenerator(CodeGenerator):
             self.needed_runtime_functions.add("nlpl_channel_receive")
             channel_expr = self._generate_expression(node.channel)
             return f"nlpl_channel_receive({channel_expr})"
+
+        elif isinstance(node, YieldExpression):
+            if node.value is None:
+                return "0"
+            return self._generate_expression(node.value)
         
         else:
             return f"/* Unhandled expression: {type(node).__name__} */"
@@ -2165,7 +2173,9 @@ void nlpl_channel_send(void* channel, intptr_t value) {
 intptr_t nlpl_channel_receive(void* channel) {
     if (!channel) return 0;
     NLPLChannel* ch = (NLPLChannel*)channel;
-    if (!ch->head) return 0;
+    while (!ch->head) {
+        /* Blocking receive semantics: wait for a sender to enqueue a value. */
+    }
     NLPLChannelNode* node = ch->head;
     intptr_t value = node->value;
     ch->head = node->next;

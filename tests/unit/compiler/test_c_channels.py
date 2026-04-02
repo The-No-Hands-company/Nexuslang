@@ -47,3 +47,4 @@ def test_c_codegen_uses_intptr_t_channel_payload_transport():
 
     assert "(intptr_t)(42)" in c_code
     assert "intptr_t nlpl_channel_receive(void* channel)" in c_code
+    assert "while (!ch->head)" in c_code
