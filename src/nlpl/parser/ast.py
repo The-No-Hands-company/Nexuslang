@@ -742,6 +742,13 @@ class PanicStatement(ASTNode):
         super().__init__("panic_statement", line_number)
         self.message = message
 
+class SendStatement(ASTNode):
+    """Represents sending a value to a channel: send value to channel."""
+    def __init__(self, value, channel, line_number=None):
+        super().__init__("send_statement", line_number)
+        self.value = value
+        self.channel = channel
+
 class ConcurrentBlock(ASTNode):
     """Represents a concurrent block of statements."""
     def __init__(self, statements=None, line_number=None):
@@ -1226,6 +1233,17 @@ class GenericTypeInstantiation(Expression):
     
     def __str__(self):
         return f"GenericType({self.generic_name}<{', '.join(self.type_args)}>)"
+
+class ChannelCreation(Expression):
+    """Represents channel creation: create channel."""
+    def __init__(self, line_number=None):
+        super().__init__("channel_creation", line_number)
+
+class ReceiveExpression(Expression):
+    """Represents receiving a value from a channel: receive from channel."""
+    def __init__(self, channel, line_number=None):
+        super().__init__("receive_expression", line_number)
+        self.channel = channel
 
 class InlineAssembly(ASTNode):
     """Represents inline assembly code.

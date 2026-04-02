@@ -15,6 +15,7 @@ from nlpl.parser.ast import (
     UnaryOperation, Literal, Identifier, FunctionCall, PrintStatement, RepeatNTimesLoop, RepeatWhileLoop,
     TypeCastExpression,
     ReturnStatement, BreakStatement, ContinueStatement, Block, ConcurrentBlock, TryCatchBlock, PanicStatement,
+    SendStatement,
     # Module-related AST nodes
     ImportStatement, SelectiveImport, ModuleAccess, PrivateDeclaration,
     InterfaceDefinition, AbstractClassDefinition, TraitDefinition,
@@ -52,6 +53,7 @@ from nlpl.parser.ast import (
     StringLiteral, FStringExpression,
     # Smart pointers and memory management
     RcType, WeakType, ArcType, RcCreation,
+    ChannelCreation, ReceiveExpression,
     # Native test framework
     TestBlock, DescribeBlock, ItBlock, ParameterizedTestBlock,
     BeforeEachBlock, AfterEachBlock,
@@ -307,6 +309,8 @@ class Parser:
             return self.for_loop()
         elif token.type in (TokenType.ADD, TokenType.APPEND):
             return self.add_statement()
+        elif token.type == TokenType.SEND:
+            return self.parse_send_statement()
         elif token.type == TokenType.CREATE:
             return self.create_statement()
         elif token.type == TokenType.FUNCTION:
@@ -709,6 +713,15 @@ class Parser:
             return MemberAssignment(target, value)
         else:
             return VariableDeclaration(str(target), value, None)
+
+    def parse_send_statement(self):
+        """Parse a send statement: send <value> to <channel>."""
+        line_number = self.current_token.line
+        self.eat(TokenType.SEND)
+        value = self.expression()
+        self.eat(TokenType.TO)
+        channel = self.expression()
+        return SendStatement(value, channel, line_number)
 
     # ------------------------------------------------------------------
     # Helper parsers for structured type constructs
@@ -5059,6 +5072,8 @@ class Parser:
             return self._primary_empty(token)
         if token.type == TokenType.CREATE:
             return self.parse_generic_type_instantiation()
+        if token.type == TokenType.RECEIVE:
+            return self.parse_receive_expression()
         if token.type in (TokenType.RC, TokenType.WEAK, TokenType.ARC):
             return self.parse_rc_creation()
         if token.type == TokenType.NEW:
@@ -6183,6 +6198,10 @@ class Parser:
         
         line_num = self.current_token.line if hasattr(self.current_token, 'line') else 0
         self.eat(TokenType.CREATE)  # consume 'create'
+
+        if self.current_token and self.current_token.type == TokenType.CHANNEL:
+            self.advance()
+            return ChannelCreation(line_num)
         
         # Expect type name (list, dict, set, tuple, queue, stack, etc.)
         # Note: Some collection names may be keywords (SET, STRUCT, etc.)
@@ -6234,6 +6253,15 @@ class Parser:
             initial_value = self.expression()  # Parse the initial value expression
         
         return GenericTypeInstantiation(generic_name, type_args, initial_value, line_num)
+
+    def parse_receive_expression(self):
+        """Parse a receive expression: receive from <channel>."""
+        line_num = self.current_token.line if hasattr(self.current_token, 'line') else 0
+        self.eat(TokenType.RECEIVE)
+        if self.current_token and self.current_token.type == TokenType.FROM:
+            self.advance()
+        channel = self.expression()
+        return ReceiveExpression(channel, line_num)
     
     def parse_rc_type(self):
         """Parse reference counted smart pointer type: Rc of Type"""
@@ -9831,6 +9859,7 @@ class Parser:
 # Populate Parser._STMT_DISPATCH after all methods are defined
 Parser._STMT_DISPATCH = {
     TokenType.SET: 'variable_declaration',
+    TokenType.SEND: 'parse_send_statement',
     TokenType.PANIC: 'panic_statement',
     TokenType.PRINT: 'print_statement',
     TokenType.IF: 'if_statement',

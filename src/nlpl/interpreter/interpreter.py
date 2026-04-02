@@ -4,6 +4,7 @@ Executes AST nodes and manages program state.
 """
 
 import os
+import queue
 import re
 import struct
 from typing import Any, Dict, List, Optional, Pattern, Tuple
@@ -92,6 +93,28 @@ class NLPLUserException(Exception):
         self.line = line
         self.column = column
         super().__init__(f"{exception_type}: {message}" if message else exception_type)
+
+
+class _Channel:
+    """Simple runtime channel used by send/receive expressions."""
+
+    def __init__(self):
+        self._queue = queue.Queue()
+
+    def send(self, value):
+        self._queue.put(value)
+
+    def receive(self):
+        try:
+            return self._queue.get_nowait()
+        except queue.Empty as exc:
+            raise NLPLRuntimeError(
+                message="Cannot receive from an empty channel",
+                error_type_key="invalid_operation",
+            ) from exc
+
+    def __repr__(self):
+        return "Channel()"
 
 
 def _camel_to_snake(name: str) -> str:
@@ -1032,6 +1055,38 @@ class Interpreter:
                 result = asyncio.run(result)
         
         return result
+
+    def execute_channel_creation(self, node):
+        """Execute channel creation: create channel."""
+        return _Channel()
+
+    def execute_send_statement(self, node):
+        """Execute sending a value to a channel."""
+        value = self.execute(node.value)
+        channel = self.execute(node.channel)
+
+        if not isinstance(channel, _Channel):
+            raise NLPLTypeError(
+                f"send target must be a channel, got {type(channel).__name__}",
+                error_type_key="type_mismatch",
+                full_source=self.source,
+            )
+
+        channel.send(value)
+        return None
+
+    def execute_receive_expression(self, node):
+        """Execute receiving a value from a channel."""
+        channel = self.execute(node.channel)
+
+        if not isinstance(channel, _Channel):
+            raise NLPLTypeError(
+                f"receive source must be a channel, got {type(channel).__name__}",
+                error_type_key="type_mismatch",
+                full_source=self.source,
+            )
+
+        return channel.receive()
         
     def execute_if_statement(self, node):
         """Execute an if statement."""

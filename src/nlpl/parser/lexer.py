@@ -195,6 +195,7 @@ class TokenType(Enum):
     
     # Network operations
     NETWORK = auto()
+    CHANNEL = auto()
     SEND = auto()
     RECEIVE = auto()
     REQUEST = auto()
@@ -557,6 +558,7 @@ class Lexer:
 
             # Network operations
             "network": TokenType.NETWORK,
+            "channel": TokenType.CHANNEL,
             "send": TokenType.SEND,
             "receive": TokenType.RECEIVE,
             "request": TokenType.REQUEST,

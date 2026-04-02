@@ -55,8 +55,13 @@ statement
     | forEachLoop
     | matchStatement
     | returnStatement
+    | breakStatement
+    | continueStatement
     | printStatement
     | appendStatement
+    | panicStatement
+    | fallthroughStatement
+    | sendStatement
     | tryCatch
     | raiseStatement
     | assertStatement
@@ -68,7 +73,9 @@ statement
     | memoryDeallocation
     | freeStatement
     | inlineAssembly
+    | unsafeBlock
     | foreignFunction
+    | externDeclaration
     | typeAlias
     | importStatement
     | exportStatement
@@ -235,6 +242,7 @@ classBody
 classMember
     : propertyDeclaration
     | methodDefinition
+    | operatorMethodDefinition
     | constructorDefinition
     ;
 
@@ -248,6 +256,35 @@ methodDefinition
     | ABSTRACT FUNCTION IDENTIFIER genericTypeParams?
         (WITH parameterList)?
         (RETURNS typeAnnotation)?
+    ;
+
+operatorMethodDefinition
+    : OPERATOR operatorSymbol
+        (WITH parameterList)?
+        (RETURNS typeAnnotation)?
+        functionBody
+        END
+    ;
+
+operatorSymbol
+    : '+'
+    | '-'
+    | '*'
+    | '/'
+    | '%'
+    | '**'
+    | '^'
+    | EQUALS
+    | NOT EQUALS
+    | '<'
+    | '>'
+    | '<='
+    | '>='
+    | 'plus'
+    | MINUS
+    | TIMES
+    | DIVIDED BY
+    | MODULO
     ;
 
 constructorDefinition
@@ -396,7 +433,7 @@ repeatWhileLoop
     ;
 
 forEachLoop
-    : FOR EACH IDENTIFIER IN expression
+        : FOR EACH IDENTIFIER (WITH INDEX IDENTIFIER)? IN expression
         statement*
       END
     ;
@@ -453,9 +490,29 @@ returnStatement
     | RETURN
     ;
 
+breakStatement
+    : BREAK
+    ;
+
+continueStatement
+    : CONTINUE
+    ;
+
+panicStatement
+    : PANIC (WITH expression)?
+    ;
+
+fallthroughStatement
+    : FALLTHROUGH
+    ;
+
 printStatement
     : PRINT TEXT expression
     | PRINT TEXT NEWLINE_KW
+    ;
+
+sendStatement
+    : SEND expression TO expression
     ;
 
 appendStatement
@@ -550,6 +607,16 @@ foreignFunction
         END?
     ;
 
+externDeclaration
+    : EXTERN FUNCTION IDENTIFIER
+        (WITH parameterList)?
+        (RETURNS typeAnnotation)?
+        (FROM LIBRARY STRING_LITERAL)?
+    | EXTERN IDENTIFIER IDENTIFIER AS typeAnnotation
+        (FROM LIBRARY STRING_LITERAL)?
+    | EXTERN TYPE IDENTIFIER AS typeAnnotation
+    ;
+
 // --------------------------------------------------------------------------
 // Type alias
 //
@@ -605,13 +672,21 @@ asyncStatement : ASYNC statement ;
 awaitStatement : AWAIT expression ;
 spawnStatement : SPAWN expression ;
 
+unsafeBlock
+    : UNSAFE DO? statement* END
+    ;
+
 
 // ==========================================================================
 // Expressions
 // ==========================================================================
 
 expression
-    : logicalOr
+    : coalesce
+    ;
+
+coalesce
+    : logicalOr (OTHERWISE logicalOr)*
     ;
 
 logicalOr
@@ -719,8 +794,18 @@ atom
     | dereferenceExpression
     | lengthExpression
     | genericTypeInstantiation
+    | receiveExpression
+    | yieldExpression
     | functionCall
     | AWAIT expression
+    ;
+
+receiveExpression
+    : RECEIVE FROM? expression
+    ;
+
+yieldExpression
+    : YIELD expression?
     ;
 
 functionCall
@@ -795,6 +880,7 @@ genericTypeInstantiation
     : CREATE IDENTIFIER OF typeAnnotation
     | CREATE IDENTIFIER WITH LENGTH expression
     | CREATE ARRAY OF typeAnnotation WITH LENGTH expression
+    | CREATE CHANNEL
     ;
 
 
@@ -858,11 +944,14 @@ BITWISE_OR : 'bitwise' WS 'or' ;
 BITWISE_XOR: 'bitwise' WS 'xor' ;
 BYTES      : 'bytes' ;
 BY         : 'by' ;
+BREAK      : 'break' ;
 CASE       : 'case' ;
 CATCH      : 'catch' ;
 CLASS      : 'class' ;
+CHANNEL    : 'channel' ;
 COMMA      : ',' ;
 CONSTRUCTOR: 'constructor' ;
+CONTINUE   : 'continue' ;
 CONVERT    : 'convert' ;
 CREATE     : 'create' ;
 DEALLOCATE : 'deallocate' ;
@@ -878,8 +967,10 @@ END_KW     : 'end' ;     // alias used in asmBody rule
 ENSURE     : 'ensure' ;
 ENUM       : 'enum' ;
 EQUALS     : 'equals' ;
+EXTERN     : 'extern' ;
 EXPORT     : 'export' ;
 EXTENDS    : 'extends' ;
+FALLTHROUGH: 'fallthrough' ;
 FINALLY    : 'finally' ;
 FOR        : 'for' ;
 FOREIGN    : 'foreign' ;
@@ -891,12 +982,14 @@ IF         : 'if' ;
 IMPLEMENTS : 'implements' ;
 IMPORT     : 'import' ;
 IN         : 'in' ;
+INDEX      : 'index' ;
 INTERFACE  : 'interface' ;
 INVARIANT  : 'invariant' ;
 IS         : 'is' ;
 LEFT       : 'left' ;
 LENGTH     : 'length' ;
 LESS       : 'less' ;
+LIBRARY    : 'library' ;
 GREATER    : 'greater' ;
 MATCH      : 'match' ;
 MINUS      : 'minus' ;
@@ -907,7 +1000,10 @@ NOT        : 'not' ;
 NULL       : 'null' ;
 OF         : 'of' ;
 ONLY       : 'only' ;
+OPERATOR   : 'operator' ;
 OR         : 'or' ;
+OTHERWISE  : 'otherwise' ;
+PANIC      : 'panic' ;
 PLUS       : 'plus' ;
 POWER      : 'power' ;
 PRINT      : 'print' ;
@@ -916,12 +1012,14 @@ PROPERTY   : 'property' ;
 PROTECTED  : 'protected' ;
 PUBLIC     : 'public' ;
 RAISE      : 'raise' ;
+RECEIVE    : 'receive' ;
 REPEAT     : 'repeat' ;
 REQUIRE    : 'require' ;
 REQUIRES   : 'requires' ;
 RETURN     : 'return' ;
 RETURNS    : 'returns' ;
 RIGHT      : 'right' ;
+SEND       : 'send' ;
 SET        : 'set' ;
 SHIFT      : 'shift' ;
 SIZEOF     : 'sizeof' ;
@@ -939,10 +1037,12 @@ TRAIT      : 'trait' ;
 TRY        : 'try' ;
 TYPE       : 'type' ;
 UNION      : 'union' ;
+UNSAFE     : 'unsafe' ;
 WHEN       : 'when' ;
 WHERE      : 'where' ;
 WHILE      : 'while' ;
 WITH       : 'with' ;
+YIELD      : 'yield' ;
 
 
 // ==========================================================================
