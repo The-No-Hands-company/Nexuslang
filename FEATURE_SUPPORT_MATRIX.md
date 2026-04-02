@@ -29,13 +29,13 @@ Scope columns:
 | Control flow basics (`if`, `while`, `for each`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
 | Extended control flow (`switch`, labels, fallthrough) | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
 | Error handling (`try/catch`, `raise`, `panic`) | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ✅ |
-| Contracts / assertions (`expect`, `require/ensure/...`) | ✅ | ✅ | ✅ | ❌ | ❌ | ⚠️ | ⚠️ | ✅ |
+| Contracts / assertions (`expect`, `require/ensure/...`) | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ✅ |
 | Ownership/borrowing/lifetimes | ✅ | ✅ | ✅ | ⚠️ (split passes) | ⚠️ | ⚠️ | ⚠️ | ✅ |
 | Macros / comptime | ✅ | ✅ | ✅ | ❌ | ❌ | ⚠️ | ⚠️ | ⚠️ |
 | Async / await / spawn | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
-| Generators / `yield` | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
-| Parallel for | ✅ | ✅ | ✅ | ❌ | ❌ | ⚠️ | ⚠️ | ⚠️ |
-| Channels (`create/send/receive`) | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ⚠️ | ✅ |
+| Generators / `yield` | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
+| Parallel for | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
+| Channels (`create/send/receive`) | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ | ⚠️ | ✅ |
 | FFI / extern / unsafe | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ✅ |
 | Inline assembly | ✅ | ✅ | ⚠️ (interp is NOP) | ⚠️ | ✅ | ⚠️ | ⚠️ | ✅ |
 | LSP diagnostics | ➖ | ➖ | ➖ | ⚠️ (depends on checker) | ➖ | ⚠️ | ➖ | ✅ |
@@ -43,10 +43,10 @@ Scope columns:
 
 ## Immediate Priority Queue
 
-1. Channels: add compiler-path support (LLVM/C) and tooling diagnostics.
+1. Channels: complete compiler semantics (blocking behavior, richer payload handling) and tooling depth.
 2. Generators/yield: complete typechecker and compiled semantics.
-3. Parallel-for: add compiler support.
-4. Contracts/assertions: add typechecker and compiled enforcement path.
+3. Parallel-for: deepen compiler semantics beyond sequential fallback.
+4. Contracts/assertions: extend matcher coverage and add richer diagnostics/tooling.
 5. Macro/comptime: define static and compilation semantics.
 
 ## Notes

@@ -17,6 +17,9 @@ from ..parser.ast import (
     PrintStatement,  # Add print statement
     TypeCastExpression,  # Add type cast
     RaiseStatement,  # Add raise statement
+    ParallelForLoop,
+    ExpectStatement, RequireStatement, EnsureStatement,
+    GuaranteeStatement, InvariantStatement,
     # Low-level constructs
     StructDefinition, UnionDefinition, ObjectInstantiation, MemberAssignment,
     SizeofExpression, AddressOfExpression, DereferenceExpression,
@@ -234,6 +237,18 @@ class TypeChecker:
             return self.check_while_loop(statement, env)
         elif isinstance(statement, ForLoop):
             return self.check_for_loop(statement, env)
+        elif isinstance(statement, ParallelForLoop):
+            return self.check_parallel_for_loop(statement, env)
+        elif isinstance(statement, ExpectStatement):
+            return self.check_expect_statement(statement, env)
+        elif isinstance(statement, RequireStatement):
+            return self.check_require_statement(statement, env)
+        elif isinstance(statement, EnsureStatement):
+            return self.check_ensure_statement(statement, env)
+        elif isinstance(statement, GuaranteeStatement):
+            return self.check_guarantee_statement(statement, env)
+        elif isinstance(statement, InvariantStatement):
+            return self.check_invariant_statement(statement, env)
         elif isinstance(statement, RepeatNTimesLoop):
             return self.check_repeat_n_times_loop(statement, env)
         elif isinstance(statement, RepeatWhileLoop):
@@ -369,6 +384,10 @@ class TypeChecker:
             return True, self.check_list_comprehension(statement, env)
         if cls == 'DictComprehension':
             return True, self.check_dict_comprehension(statement, env)
+        if cls == 'GeneratorExpression':
+            return True, self.check_generator_expression(statement, env)
+        if cls == 'YieldExpression':
+            return True, self.check_yield_expression(statement, env)
         if cls == 'MemberAccess':
             return True, self.check_member_access(statement, env)
         if cls == 'IndexExpression':
@@ -847,6 +866,135 @@ class TypeChecker:
             result_type = self.check_statement(stmt, loop_env)
         
         return result_type
+
+    def check_parallel_for_loop(self, loop: ParallelForLoop, env: TypeEnvironment) -> Type:
+        """Check a parallel for-each loop."""
+        iterable_type = self.check_statement(loop.iterable, env)
+
+        loop_env = TypeEnvironment(env)
+        if isinstance(iterable_type, ListType):
+            element_type = iterable_type.element_type
+        elif isinstance(iterable_type, AnyType):
+            element_type = ANY_TYPE
+        else:
+            element_type = ANY_TYPE
+            self.errors.append(
+                f"Type error: Parallel for iterable must be a list, got '{self._type_name(iterable_type)}'"
+            )
+
+        loop_env.define_variable(loop.var_name, element_type)
+
+        result_type = NULL_TYPE
+        for stmt in loop.body:
+            result_type = self.check_statement(stmt, loop_env)
+
+        return result_type
+
+    def _check_contract_condition(self, condition: Any, env: TypeEnvironment, kind: str) -> Type:
+        """Validate a contract/assertion condition expression type."""
+        condition_type = self.check_statement(condition, env)
+        if (not isinstance(condition_type, AnyType)
+                and not condition_type.is_compatible_with(BOOLEAN_TYPE)):
+            self.errors.append(
+                f"Type error: {kind} condition must be a boolean, got '{self._type_name(condition_type)}'"
+            )
+        return condition_type
+
+    def _check_contract_message(self, message_expr: Any, env: TypeEnvironment, kind: str) -> None:
+        """Validate optional contract message expression type."""
+        if message_expr is None:
+            return
+        msg_type = self.check_statement(message_expr, env)
+        if not msg_type.is_compatible_with(STRING_TYPE) and not isinstance(msg_type, AnyType):
+            self.errors.append(
+                f"Type error: {kind} message must be a string, got '{self._type_name(msg_type)}'"
+            )
+
+    def check_require_statement(self, node: RequireStatement, env: TypeEnvironment) -> Type:
+        self._check_contract_condition(node.condition, env, "Require")
+        self._check_contract_message(getattr(node, 'message_expr', None), env, "Require")
+        return BOOLEAN_TYPE
+
+    def check_ensure_statement(self, node: EnsureStatement, env: TypeEnvironment) -> Type:
+        self._check_contract_condition(node.condition, env, "Ensure")
+        self._check_contract_message(getattr(node, 'message_expr', None), env, "Ensure")
+        return BOOLEAN_TYPE
+
+    def check_guarantee_statement(self, node: GuaranteeStatement, env: TypeEnvironment) -> Type:
+        self._check_contract_condition(node.condition, env, "Guarantee")
+        self._check_contract_message(getattr(node, 'message_expr', None), env, "Guarantee")
+        return BOOLEAN_TYPE
+
+    def check_invariant_statement(self, node: InvariantStatement, env: TypeEnvironment) -> Type:
+        self._check_contract_condition(node.condition, env, "Invariant")
+        self._check_contract_message(getattr(node, 'message_expr', None), env, "Invariant")
+        return BOOLEAN_TYPE
+
+    def check_expect_statement(self, node: ExpectStatement, env: TypeEnvironment) -> Type:
+        """Type-check an expect assertion statement."""
+        actual_type = self.check_statement(node.actual_expr, env)
+        matcher = getattr(node, 'matcher', '')
+        expected_expr = getattr(node, 'expected_expr', None)
+
+        if matcher in (
+            'equal', 'greater_than', 'less_than',
+            'greater_than_or_equal_to', 'less_than_or_equal_to'
+        ):
+            if expected_expr is not None:
+                expected_type = self.check_statement(expected_expr, env)
+                if matcher == 'equal':
+                    if (not actual_type.is_compatible_with(expected_type)
+                            and not expected_type.is_compatible_with(actual_type)
+                            and not isinstance(actual_type, AnyType)
+                            and not isinstance(expected_type, AnyType)):
+                        self.errors.append(
+                            f"Type error: expect equal compares incompatible types "
+                            f"'{self._type_name(actual_type)}' and '{self._type_name(expected_type)}'"
+                        )
+                else:
+                    for t in (actual_type, expected_type):
+                        if (not isinstance(t, AnyType)
+                                and not t.is_compatible_with(INTEGER_TYPE)
+                                and not t.is_compatible_with(FLOAT_TYPE)):
+                            self.errors.append(
+                                f"Type error: expect comparison matcher requires numeric operands, got '{self._type_name(t)}'"
+                            )
+        elif matcher in ('be_true', 'be_false'):
+            if (not isinstance(actual_type, AnyType)
+                    and not actual_type.is_compatible_with(BOOLEAN_TYPE)):
+                self.errors.append(
+                    f"Type error: expect {matcher} requires boolean actual value, got '{self._type_name(actual_type)}'"
+                )
+        elif matcher == 'be_null':
+            # Any type can be compared against null semantics.
+            pass
+        elif matcher == 'approximately_equal':
+            if expected_expr is not None:
+                expected_type = self.check_statement(expected_expr, env)
+                for t in (actual_type, expected_type):
+                    if (not isinstance(t, AnyType)
+                            and not t.is_compatible_with(INTEGER_TYPE)
+                            and not t.is_compatible_with(FLOAT_TYPE)):
+                        self.errors.append(
+                            f"Type error: approximately_equal requires numeric operands, got '{self._type_name(t)}'"
+                        )
+            tolerance_expr = getattr(node, 'tolerance_expr', None)
+            if tolerance_expr is not None:
+                tol_type = self.check_statement(tolerance_expr, env)
+                if (not isinstance(tol_type, AnyType)
+                        and not tol_type.is_compatible_with(INTEGER_TYPE)
+                        and not tol_type.is_compatible_with(FLOAT_TYPE)):
+                    self.errors.append(
+                        f"Type error: expect approximately_equal tolerance must be numeric, got '{self._type_name(tol_type)}'"
+                    )
+        else:
+            if expected_expr is not None:
+                self.check_statement(expected_expr, env)
+            tolerance_expr = getattr(node, 'tolerance_expr', None)
+            if tolerance_expr is not None:
+                self.check_statement(tolerance_expr, env)
+
+        return BOOLEAN_TYPE
     
     def check_repeat_n_times_loop(self, loop: RepeatNTimesLoop, env: TypeEnvironment) -> Type:
         """Check a repeat-n-times loop."""
@@ -1335,6 +1483,55 @@ class TypeChecker:
         value_type = self.check_statement(comp_expr.value, comp_env)
         
         return DictionaryType(key_type, value_type)
+
+    def check_generator_expression(self, gen_expr, env: TypeEnvironment) -> Type:
+        """Check a generator expression: (x for x in iterable if condition)."""
+        comp_env = TypeEnvironment(env)
+
+        iterable_type = self.check_statement(gen_expr.iterable, env)
+        if isinstance(iterable_type, ListType):
+            element_type = iterable_type.element_type
+        elif isinstance(iterable_type, AnyType):
+            element_type = ANY_TYPE
+        else:
+            element_type = ANY_TYPE
+            self.errors.append(
+                f"Type error: Generator iterable must be a list, got '{self._type_name(iterable_type)}'"
+            )
+
+        if hasattr(gen_expr, 'target') and isinstance(gen_expr.target, Identifier):
+            comp_env.define_variable(gen_expr.target.name, element_type)
+
+        if getattr(gen_expr, 'condition', None):
+            cond_type = self.check_statement(gen_expr.condition, comp_env)
+            if (not isinstance(cond_type, AnyType)
+                    and not cond_type.is_compatible_with(BOOLEAN_TYPE)):
+                self.errors.append(
+                    f"Type error: Generator condition must be boolean, got '{self._type_name(cond_type)}'"
+                )
+
+        produced_type = self.check_statement(gen_expr.expr, comp_env)
+        # Generator expressions currently lower to list-like semantics in the type checker.
+        return ListType(produced_type)
+
+    def check_yield_expression(self, yield_expr, env: TypeEnvironment) -> Type:
+        """Check a yield expression with function-context compatibility checks."""
+        yielded_type = NULL_TYPE
+        if getattr(yield_expr, 'value', None) is not None:
+            yielded_type = self.check_statement(yield_expr.value, env)
+
+        expected_return_type = env.get_return_type()
+        if expected_return_type is None:
+            self.errors.append("Type error: 'yield' can only be used inside a function")
+            return yielded_type
+
+        if not yielded_type.is_compatible_with(expected_return_type):
+            self.errors.append(
+                f"Type error: Yield value of type '{self._type_name(yielded_type)}' is not compatible "
+                f"with expected return type '{self._type_name(expected_return_type)}'"
+            )
+
+        return yielded_type
 
     def check_class_definition(self, definition: ClassDefinition, env: TypeEnvironment) -> Type:
         """Check the type of a class definition."""

@@ -1,0 +1,49 @@
+"""C backend coverage for parallel-for and contract/assertion lowering."""
+
+import os
+import sys
+
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
+
+from nlpl.compiler.backends.c_generator import CCodeGenerator
+from nlpl.parser.ast import (
+    Program,
+    ParallelForLoop,
+    ListExpression,
+    Literal,
+    PrintStatement,
+    Identifier,
+    RequireStatement,
+    ExpectStatement,
+)
+
+
+def test_c_parallel_for_lowers_to_sequential_loop():
+    ast = Program([
+        ParallelForLoop(
+            "item",
+            ListExpression([Literal("integer", 1), Literal("integer", 2)]),
+            [PrintStatement(Identifier("item"))],
+        )
+    ])
+
+    generator = CCodeGenerator(target="c")
+    c_code = generator.generate(ast)
+
+    assert "parallel-for lowered to sequential loop" in c_code
+    assert "for (int _i = 0; _i < 2; _i++)" in c_code
+
+
+def test_c_contracts_and_expect_emit_abort_guards():
+    ast = Program([
+        RequireStatement(Literal("boolean", False), Literal("string", "require failed")),
+        ExpectStatement(Literal("integer", 1), "equal", Literal("integer", 2)),
+    ])
+
+    generator = CCodeGenerator(target="c")
+    c_code = generator.generate(ast)
+
+    assert "if (!(false))" in c_code
+    assert "fprintf(stderr, \"%s\\n\"" in c_code
+    assert "exit(1);" in c_code

@@ -158,6 +158,10 @@ class LLVMIRGenerator(CodeGenerator):
         self.rc_variables: Dict[str, Tuple[str, str]] = {}
         # Track scope exit cleanup for Rc variables per function
         self.rc_cleanup_stack: Dict[str, List[str]] = {}  # function_name -> list of var names to release
+
+        # Channel runtime support (create/send/receive)
+        self.has_channel_ops = False
+        self.channel_payload_types: Dict[str, str] = {}
         
         # Type mapping cache
         self.type_cache: Dict[str, str] = {}
@@ -792,6 +796,7 @@ class LLVMIRGenerator(CodeGenerator):
         self._generate_module_declarations()
         self._collect_first_pass(ast)
         self._detect_rc_usage(ast)
+        self._detect_channel_usage(ast)
         self._declare_external_functions()
         self._emit_type_declarations()
         
@@ -1029,6 +1034,47 @@ class LLVMIRGenerator(CodeGenerator):
             for stmt in ast.statements:
                 if scan_node(stmt):
                     break
+
+    def _detect_channel_usage(self, ast):
+        """Pre-scan AST to detect channel operation usage."""
+        def scan_node(node):
+            if node is None:
+                return False
+
+            node_type = type(node).__name__
+            if node_type in ('ChannelCreation', 'ReceiveExpression', 'SendStatement'):
+                self.has_channel_ops = True
+                return True
+
+            if hasattr(node, 'body') and isinstance(node.body, list):
+                for stmt in node.body:
+                    if scan_node(stmt):
+                        return True
+
+            if hasattr(node, 'statements') and isinstance(node.statements, list):
+                for stmt in node.statements:
+                    if scan_node(stmt):
+                        return True
+
+            if hasattr(node, 'value') and node.value:
+                if scan_node(node.value):
+                    return True
+
+            if hasattr(node, 'channel') and node.channel:
+                if scan_node(node.channel):
+                    return True
+
+            if hasattr(node, 'methods') and isinstance(node.methods, list):
+                for method in node.methods:
+                    if scan_node(method):
+                        return True
+
+            return False
+
+        if hasattr(ast, 'statements'):
+            for stmt in ast.statements:
+                if scan_node(stmt):
+                    break
     
     def _declare_external_functions(self):
         """Declare external C standard library functions (if not overridden by FFI)."""
@@ -1083,6 +1129,14 @@ class LLVMIRGenerator(CodeGenerator):
             self.emit('declare void @arc_weak_release(i8*) #2')
             self.emit('declare void @rc_debug(i8*, i8*) #0')
             self.emit('declare void @arc_debug(i8*, i8*) #0')
+            self.emit('')
+
+        # Channel runtime functions - only if needed
+        if self.has_channel_ops:
+            self.emit('; NLPL Channel Runtime')
+            self.emit('declare i8* @nlpl_channel_create() #0')
+            self.emit('declare void @nlpl_channel_send(i8*, i64) #0')
+            self.emit('declare i64 @nlpl_channel_receive(i8*) #0')
             self.emit('')
         
         # Only declare if not already declared via extern
@@ -3036,6 +3090,8 @@ class LLVMIRGenerator(CodeGenerator):
             self._generate_while_loop(stmt, indent)
         elif stmt_type == 'ForLoop':
             self._generate_for_loop(stmt, indent)
+        elif stmt_type == 'ParallelForLoop':
+            self._generate_parallel_for_loop(stmt, indent)
         elif stmt_type == 'RepeatNTimesLoop':
             self._generate_repeat_n_times_loop(stmt, indent)
         elif stmt_type == 'ReturnStatement':
@@ -3090,11 +3146,270 @@ class LLVMIRGenerator(CodeGenerator):
                     return  # This asm block targets a different architecture.
             self._generate_inline_assembly(stmt, indent)
         elif stmt_type == 'SendStatement':
-            raise ValueError(
-                "Channel send/receive is not yet supported by the LLVM backend. "
-                "Use interpreter mode or avoid channel operations in compiled targets."
-            )
+            self._generate_send_statement(stmt, indent)
+        elif stmt_type in ('RequireStatement', 'EnsureStatement', 'GuaranteeStatement', 'InvariantStatement'):
+            self._generate_contract_statement(stmt, indent)
+        elif stmt_type == 'ExpectStatement':
+            self._generate_expect_statement(stmt, indent)
         # Add more statement types as needed
+
+    def _coerce_to_i1(self, value_reg: str, value_type: str, indent='') -> str:
+        """Coerce a value to an LLVM i1 condition."""
+        if value_type == 'i1':
+            return value_reg
+        coerced = self._new_temp()
+        if value_type in ('i64', 'i32', 'i16', 'i8'):
+            self.emit(f'{indent}{coerced} = icmp ne {value_type} {value_reg}, 0')
+            return coerced
+        if value_type in ('double', 'float'):
+            self.emit(f'{indent}{coerced} = fcmp une {value_type} {value_reg}, 0.0')
+            return coerced
+        if value_type.endswith('*'):
+            self.emit(f'{indent}{coerced} = icmp ne {value_type} {value_reg}, null')
+            return coerced
+        return value_reg
+
+    def _emit_contract_assert(self, condition_reg: str, condition_type: str, message_reg: str, indent='') -> None:
+        """Emit runtime contract assertion that panics when condition is false."""
+        cond_i1 = self._coerce_to_i1(condition_reg, condition_type, indent)
+        ok_label = self._new_label('contract.ok')
+        fail_label = self._new_label('contract.fail')
+        self.emit(f'{indent}br i1 {cond_i1}, label %{ok_label}, label %{fail_label}')
+        self.emit(f'{fail_label}:')
+        self.emit(f'{indent}call void @nlpl_panic(i8* {message_reg})')
+        self.emit(f'{indent}unreachable')
+        self.emit(f'{ok_label}:')
+
+    def _contract_message_ptr(self, message_expr, default_msg: str, indent='') -> str:
+        """Get an i8* message pointer for contract/assertion failures."""
+        if message_expr is not None:
+            msg_reg = self._generate_expression(message_expr, indent)
+            msg_type = self._infer_expression_type(message_expr)
+            if msg_type == 'i8*':
+                return msg_reg
+            if msg_type in ('i64', 'i32', 'i16', 'i8', 'i1', 'double', 'float'):
+                return self._convert_number_to_string(msg_reg, msg_type, indent)
+
+        msg_name, msg_len = self._get_or_create_string_constant(default_msg)
+        msg_ptr = self._new_temp()
+        self.emit(f'{indent}{msg_ptr} = getelementptr inbounds [{msg_len} x i8], [{msg_len} x i8]* {msg_name}, i64 0, i64 0')
+        return msg_ptr
+
+    def _generate_contract_statement(self, stmt, indent='') -> None:
+        """Generate require/ensure/guarantee/invariant runtime checks."""
+        condition = getattr(stmt, 'condition', None)
+        if condition is None:
+            return
+        cond_reg = self._generate_expression(condition, indent)
+        cond_type = self._infer_expression_type(condition)
+        kind = type(stmt).__name__.replace('Statement', '').lower()
+        msg_reg = self._contract_message_ptr(
+            getattr(stmt, 'message_expr', None),
+            f"{kind} contract failed",
+            indent,
+        )
+        self._emit_contract_assert(cond_reg, cond_type, msg_reg, indent)
+
+    def _generate_expect_statement(self, stmt, indent='') -> None:
+        """Generate runtime checks for expect assertions (core matcher subset)."""
+        matcher = getattr(stmt, 'matcher', 'equal')
+        negated = bool(getattr(stmt, 'negated', False))
+
+        actual_expr = getattr(stmt, 'actual_expr', None)
+        expected_expr = getattr(stmt, 'expected_expr', None)
+        if actual_expr is None:
+            return
+
+        actual_reg = self._generate_expression(actual_expr, indent)
+        actual_type = self._infer_expression_type(actual_expr)
+
+        cond_reg = None
+        cond_type = 'i1'
+
+        if matcher in ('be_true', 'be_false'):
+            cond_reg = self._coerce_to_i1(actual_reg, actual_type, indent)
+            if matcher == 'be_false':
+                neg = self._new_temp()
+                self.emit(f'{indent}{neg} = xor i1 {cond_reg}, true')
+                cond_reg = neg
+        elif matcher == 'be_null':
+            if actual_type.endswith('*'):
+                cond_reg = self._new_temp()
+                self.emit(f'{indent}{cond_reg} = icmp eq {actual_type} {actual_reg}, null')
+            else:
+                as_i1 = self._coerce_to_i1(actual_reg, actual_type, indent)
+                cond_reg = self._new_temp()
+                self.emit(f'{indent}{cond_reg} = xor i1 {as_i1}, true')
+        else:
+            if expected_expr is None:
+                expected_reg = '0'
+                expected_type = actual_type
+            else:
+                expected_reg = self._generate_expression(expected_expr, indent)
+                expected_type = self._infer_expression_type(expected_expr)
+
+            if matcher == 'equal':
+                if actual_type in ('double', 'float') or expected_type in ('double', 'float'):
+                    if actual_type != 'double':
+                        actual_reg = self._convert_type(actual_reg, actual_type, 'double', indent)
+                    if expected_type != 'double':
+                        expected_reg = self._convert_type(expected_reg, expected_type, 'double', indent)
+                    cond_reg = self._new_temp()
+                    self.emit(f'{indent}{cond_reg} = fcmp oeq double {actual_reg}, {expected_reg}')
+                else:
+                    if expected_type != actual_type:
+                        expected_reg = self._convert_type(expected_reg, expected_type, actual_type, indent)
+                    cond_reg = self._new_temp()
+                    self.emit(f'{indent}{cond_reg} = icmp eq {actual_type} {actual_reg}, {expected_reg}')
+            elif matcher in ('greater_than', 'less_than', 'greater_than_or_equal_to', 'less_than_or_equal_to'):
+                pred_map = {
+                    'greater_than': ('sgt', 'ogt'),
+                    'less_than': ('slt', 'olt'),
+                    'greater_than_or_equal_to': ('sge', 'oge'),
+                    'less_than_or_equal_to': ('sle', 'ole'),
+                }
+                ipred, fpred = pred_map[matcher]
+                if actual_type in ('double', 'float') or expected_type in ('double', 'float'):
+                    if actual_type != 'double':
+                        actual_reg = self._convert_type(actual_reg, actual_type, 'double', indent)
+                    if expected_type != 'double':
+                        expected_reg = self._convert_type(expected_reg, expected_type, 'double', indent)
+                    cond_reg = self._new_temp()
+                    self.emit(f'{indent}{cond_reg} = fcmp {fpred} double {actual_reg}, {expected_reg}')
+                else:
+                    if actual_type != 'i64':
+                        actual_reg = self._convert_type(actual_reg, actual_type, 'i64', indent)
+                    if expected_type != 'i64':
+                        expected_reg = self._convert_type(expected_reg, expected_type, 'i64', indent)
+                    cond_reg = self._new_temp()
+                    self.emit(f'{indent}{cond_reg} = icmp {ipred} i64 {actual_reg}, {expected_reg}')
+            else:
+                msg_reg = self._contract_message_ptr(
+                    getattr(stmt, 'message_expr', None),
+                    f"unsupported expect matcher: {matcher}",
+                    indent,
+                )
+                self.emit(f'{indent}call void @nlpl_panic(i8* {msg_reg})')
+                self.emit(f'{indent}unreachable')
+                return
+
+        if negated:
+            neg_cond = self._new_temp()
+            self.emit(f'{indent}{neg_cond} = xor i1 {cond_reg}, true')
+            cond_reg = neg_cond
+
+        msg_reg = self._contract_message_ptr(
+            getattr(stmt, 'message_expr', None),
+            f"expect assertion failed ({matcher})",
+            indent,
+        )
+        self._emit_contract_assert(cond_reg, cond_type, msg_reg, indent)
+
+    def _generate_parallel_for_loop(self, node, indent=''):
+        """Lower parallel for to foreach loop in compiled backends (sequential fallback)."""
+        class _ForEachShim:
+            pass
+        shim = _ForEachShim()
+        shim.iterator = node.var_name
+        shim.iterable = node.iterable
+        shim.body = node.body
+        shim.label = None
+        shim.else_body = None
+        self._generate_foreach_loop(shim, indent)
+
+    def _generate_send_statement(self, stmt, indent='') -> None:
+        """Generate channel send statement via runtime call."""
+        channel_reg = self._generate_expression(stmt.channel, indent)
+        value_reg = self._generate_expression(stmt.value, indent)
+        value_type = self._infer_expression_type(stmt.value)
+
+        payload_type = value_type
+        if type(getattr(stmt, 'channel', None)).__name__ == 'Identifier':
+            channel_name = stmt.channel.name
+            if channel_name in self.channel_payload_types:
+                payload_type = self.channel_payload_types[channel_name]
+                if value_type != payload_type:
+                    value_reg = self._convert_type(value_reg, value_type, payload_type, indent)
+            else:
+                self.channel_payload_types[channel_name] = payload_type
+
+        i64_value = self._encode_channel_payload(value_reg, payload_type, indent)
+
+        self.emit(f'{indent}call void @nlpl_channel_send(i8* {channel_reg}, i64 {i64_value})')
+
+    def _encode_channel_payload(self, value_reg: str, value_type: str, indent='') -> str:
+        """Encode a typed value into i64 transport storage for channel runtime calls."""
+        if value_type == 'i64':
+            return value_reg
+        if value_type == 'double':
+            encoded = self._new_temp()
+            self.emit(f'{indent}{encoded} = bitcast double {value_reg} to i64')
+            return encoded
+        if value_type == 'float':
+            as_i32 = self._new_temp()
+            self.emit(f'{indent}{as_i32} = bitcast float {value_reg} to i32')
+            encoded = self._new_temp()
+            self.emit(f'{indent}{encoded} = zext i32 {as_i32} to i64')
+            return encoded
+        if value_type == 'i1':
+            encoded = self._new_temp()
+            self.emit(f'{indent}{encoded} = zext i1 {value_reg} to i64')
+            return encoded
+        if value_type.startswith('i'):
+            bits = int(value_type[1:])
+            if bits < 64:
+                encoded = self._new_temp()
+                self.emit(f'{indent}{encoded} = sext {value_type} {value_reg} to i64')
+                return encoded
+            if bits > 64:
+                encoded = self._new_temp()
+                self.emit(f'{indent}{encoded} = trunc {value_type} {value_reg} to i64')
+                return encoded
+        if value_type.endswith('*'):
+            encoded = self._new_temp()
+            self.emit(f'{indent}{encoded} = ptrtoint {value_type} {value_reg} to i64')
+            return encoded
+        return self._convert_type(value_reg, value_type, 'i64', indent)
+
+    def _decode_channel_payload(self, raw_reg: str, target_type: str, indent='') -> str:
+        """Decode an i64 channel payload transport value back into target_type."""
+        if target_type == 'i64':
+            return raw_reg
+        if target_type == 'double':
+            decoded = self._new_temp()
+            self.emit(f'{indent}{decoded} = bitcast i64 {raw_reg} to double')
+            return decoded
+        if target_type == 'float':
+            as_i32 = self._new_temp()
+            self.emit(f'{indent}{as_i32} = trunc i64 {raw_reg} to i32')
+            decoded = self._new_temp()
+            self.emit(f'{indent}{decoded} = bitcast i32 {as_i32} to float')
+            return decoded
+        if target_type == 'i1':
+            decoded = self._new_temp()
+            self.emit(f'{indent}{decoded} = trunc i64 {raw_reg} to i1')
+            return decoded
+        if target_type.startswith('i'):
+            bits = int(target_type[1:])
+            if bits < 64:
+                decoded = self._new_temp()
+                self.emit(f'{indent}{decoded} = trunc i64 {raw_reg} to {target_type}')
+                return decoded
+            if bits > 64:
+                decoded = self._new_temp()
+                self.emit(f'{indent}{decoded} = sext i64 {raw_reg} to {target_type}')
+                return decoded
+        if target_type.endswith('*'):
+            decoded = self._new_temp()
+            self.emit(f'{indent}{decoded} = inttoptr i64 {raw_reg} to {target_type}')
+            return decoded
+        return self._convert_type(raw_reg, 'i64', target_type, indent)
+
+    def _infer_channel_payload_type(self, channel_expr) -> str:
+        """Infer payload LLVM type for a channel expression when known."""
+        if type(channel_expr).__name__ == 'Identifier':
+            return self.channel_payload_types.get(channel_expr.name, 'i64')
+        return 'i64'
     
     def _generate_variable_declaration(self, node, indent=''):
         """Generate variable declaration with optional initialization."""
@@ -7193,14 +7508,27 @@ class LLVMIRGenerator(CodeGenerator):
             return self._generate_generator_expression(expr, indent)
         elif expr_type == 'RcCreation':
             return self._generate_rc_creation(expr, indent)
-        elif expr_type in ('ChannelCreation', 'ReceiveExpression'):
-            raise ValueError(
-                "Channel send/receive is not yet supported by the LLVM backend. "
-                "Use interpreter mode or avoid channel operations in compiled targets."
-            )
+        elif expr_type == 'ChannelCreation':
+            return self._generate_channel_creation_expression(indent)
+        elif expr_type == 'ReceiveExpression':
+            return self._generate_receive_expression(expr, indent)
         else:
             # Unknown expression - return zero
             return '0'
+
+    def _generate_channel_creation_expression(self, indent='') -> str:
+        """Generate create channel expression via runtime call."""
+        result_reg = self._new_temp()
+        self.emit(f'{indent}{result_reg} = call i8* @nlpl_channel_create()')
+        return result_reg
+
+    def _generate_receive_expression(self, expr, indent='') -> str:
+        """Generate receive from channel expression via runtime call."""
+        channel_reg = self._generate_expression(expr.channel, indent)
+        raw_reg = self._new_temp()
+        self.emit(f'{indent}{raw_reg} = call i64 @nlpl_channel_receive(i8* {channel_reg})')
+        payload_type = self._infer_channel_payload_type(expr.channel)
+        return self._decode_channel_payload(raw_reg, payload_type, indent)
     
     def _generate_rc_creation(self, expr, indent='') -> str:
         """
@@ -11504,6 +11832,12 @@ class LLVMIRGenerator(CodeGenerator):
         elif expr_type == 'UpgradeExpression':
             # upgrade returns i8* (strong reference pointer or NULL)
             return 'i8*'
+        elif expr_type == 'ChannelCreation':
+            return 'i8*'
+        elif expr_type == 'ReceiveExpression':
+            if hasattr(expr, 'channel'):
+                return self._infer_channel_payload_type(expr.channel)
+            return 'i64'
         
         return 'i64'  # Default
     

@@ -48,6 +48,7 @@ class CCodeGenerator(CodeGenerator):
         self.includes.add("<stdlib.h>")
         self.includes.add("<string.h>")
         self.includes.add("<stdbool.h>")
+        self.includes.add("<stdint.h>")
         
         # Generate program statements (this will add more includes as needed)
         # First pass: collect classes, globals and function definitions
@@ -376,8 +377,21 @@ class CCodeGenerator(CodeGenerator):
             self._generate_while_loop(node)
         elif isinstance(node, ForLoop):
             self._generate_for_loop(node)
+        elif isinstance(node, ParallelForLoop):
+            self._generate_parallel_for_loop(node)
         elif isinstance(node, TryCatch):
             self._generate_try_catch(node)
+        elif isinstance(node, SendStatement):
+            channel_expr = self._generate_expression(node.channel)
+            value_expr = self._generate_expression(node.value)
+            self.needed_runtime_functions.add("nlpl_channel_create")
+            self.needed_runtime_functions.add("nlpl_channel_send")
+            self.needed_runtime_functions.add("nlpl_channel_receive")
+            self.emit(f"nlpl_channel_send({channel_expr}, (intptr_t)({value_expr}));")
+        elif isinstance(node, (RequireStatement, EnsureStatement, GuaranteeStatement, InvariantStatement)):
+            self._generate_contract_statement(node)
+        elif isinstance(node, ExpectStatement):
+            self._generate_expect_statement(node)
         elif isinstance(node, MemberAssignment):
             # Member assignment: object.field = value
             target_expr = self._generate_expression(node.target)
@@ -800,6 +814,12 @@ class CCodeGenerator(CodeGenerator):
         if isinstance(expr, IndexExpression):
             return self._infer_index_expression_type(expr)
 
+        if isinstance(expr, ChannelCreation):
+            return "void*"
+
+        if isinstance(expr, ReceiveExpression):
+            return "intptr_t"
+
         return "void*"
     
     def _generate_extern_function(self, node: ExternFunctionDeclaration) -> None:
@@ -941,6 +961,111 @@ class CCodeGenerator(CodeGenerator):
         
         self.dedent()
         self.emit("}")
+
+    def _generate_parallel_for_loop(self, node: ParallelForLoop) -> None:
+        """Generate parallel-for loop (sequential fallback in C backend)."""
+        self.emit("/* parallel-for lowered to sequential loop */")
+
+        iterator = node.var_name
+        iterable = node.iterable
+
+        if isinstance(iterable, ListExpression):
+            array_size = len(iterable.elements)
+            element_type = self._infer_type(iterable.elements[0]) if iterable.elements else "int"
+            element_exprs = [self._generate_expression(elem) for elem in iterable.elements]
+            elements_str = ", ".join(element_exprs)
+            temp_array = f"_temp_arr_{id(node)}"
+            self.emit(f"{element_type} {temp_array}[] = {{{elements_str}}};")
+            self.emit(f"for (int _i = 0; _i < {array_size}; _i++) {{")
+            self.indent()
+            self.emit(f"{element_type} {iterator} = {temp_array}[_i];")
+        elif isinstance(iterable, Identifier):
+            collection_expr = iterable.name
+            var_type = self.symbol_table.get(collection_expr, "intptr_t[]")
+            element_type = var_type[:-2] if var_type.endswith("[]") else "intptr_t"
+            size = self.array_sizes.get(collection_expr, 0)
+            self.emit(f"for (int _i = 0; _i < {size}; _i++) {{")
+            self.indent()
+            self.emit(f"{element_type} {iterator} = {collection_expr}[_i];")
+        else:
+            collection_expr = self._generate_expression(iterable)
+            self.emit("for (int _i = 0; _i < 0; _i++) {")
+            self.indent()
+            self.emit(f"int {iterator} = {collection_expr}[_i];")
+
+        if node.body:
+            for stmt in node.body:
+                self._generate_statement(stmt)
+
+        self.dedent()
+        self.emit("}")
+
+    def _generate_contract_statement(self, node: Any) -> None:
+        """Generate runtime checks for contract statements."""
+        condition = self._generate_expression(node.condition)
+        kind = type(node).__name__.replace("Statement", "").lower()
+        self._emit_contract_guard(
+            condition,
+            getattr(node, "message_expr", None),
+            f"{kind} contract failed",
+        )
+
+    def _generate_expect_statement(self, node: ExpectStatement) -> None:
+        """Generate runtime checks for expect assertions."""
+        actual = self._generate_expression(node.actual_expr)
+        expected = self._generate_expression(node.expected_expr) if getattr(node, "expected_expr", None) else None
+        matcher = getattr(node, "matcher", "equal")
+
+        condition = "(0)"
+        if matcher == "equal" and expected is not None:
+            condition = f"(({actual}) == ({expected}))"
+        elif matcher == "greater_than" and expected is not None:
+            condition = f"(({actual}) > ({expected}))"
+        elif matcher == "less_than" and expected is not None:
+            condition = f"(({actual}) < ({expected}))"
+        elif matcher == "greater_than_or_equal_to" and expected is not None:
+            condition = f"(({actual}) >= ({expected}))"
+        elif matcher == "less_than_or_equal_to" and expected is not None:
+            condition = f"(({actual}) <= ({expected}))"
+        elif matcher == "be_true":
+            condition = f"({actual})"
+        elif matcher == "be_false":
+            condition = f"(!({actual}))"
+        elif matcher == "be_null":
+            condition = f"(({actual}) == NULL)"
+        elif matcher == "contain" and expected is not None:
+            condition = f"(strstr({actual}, {expected}) != NULL)"
+        elif matcher == "start_with" and expected is not None:
+            condition = f"(strncmp({actual}, {expected}, strlen({expected})) == 0)"
+        elif matcher == "end_with" and expected is not None:
+            condition = f"(strlen({actual}) >= strlen({expected}) && strcmp({actual} + strlen({actual}) - strlen({expected}), {expected}) == 0)"
+        elif matcher == "approximate_equal" and expected is not None:
+            self.includes.add("<math.h>")
+            tolerance = self._generate_expression(node.tolerance_expr) if getattr(node, "tolerance_expr", None) else "1e-6"
+            condition = f"(fabs(({actual}) - ({expected})) <= ({tolerance}))"
+
+        if getattr(node, "negated", False):
+            condition = f"(!({condition}))"
+
+        self._emit_contract_guard(
+            condition,
+            getattr(node, "message_expr", None),
+            f"expect assertion failed ({matcher})",
+        )
+
+    def _emit_contract_guard(self, condition_expr: str, message_expr: Any, default_message: str) -> None:
+        """Emit C runtime guard that aborts execution on failed contract/assertion."""
+        if message_expr is not None:
+            message = self._generate_expression(message_expr)
+        else:
+            message = f'"{default_message}"'
+
+        self.emit(f"if (!({condition_expr})) {{")
+        self.indent()
+        self.emit(f"fprintf(stderr, \"%s\\n\", (const char*)({message}));")
+        self.emit("exit(1);")
+        self.dedent()
+        self.emit("}")
     
     def _generate_try_catch(self, node: Any) -> None:
         """Generate C code for try-catch error handling using setjmp/longjmp."""
@@ -1017,6 +1142,19 @@ class CCodeGenerator(CodeGenerator):
         
         elif isinstance(node, FunctionCall):
             return self._generate_function_call(node)
+
+        elif isinstance(node, ChannelCreation):
+            self.needed_runtime_functions.add("nlpl_channel_create")
+            self.needed_runtime_functions.add("nlpl_channel_send")
+            self.needed_runtime_functions.add("nlpl_channel_receive")
+            return "nlpl_channel_create()"
+
+        elif isinstance(node, ReceiveExpression):
+            self.needed_runtime_functions.add("nlpl_channel_create")
+            self.needed_runtime_functions.add("nlpl_channel_send")
+            self.needed_runtime_functions.add("nlpl_channel_receive")
+            channel_expr = self._generate_expression(node.channel)
+            return f"nlpl_channel_receive({channel_expr})"
         
         else:
             return f"/* Unhandled expression: {type(node).__name__} */"
@@ -1378,6 +1516,9 @@ class CCodeGenerator(CodeGenerator):
     
     def _map_type(self, nlpl_type: str) -> str:
         """Map NLPL type to C type."""
+        if isinstance(nlpl_type, str) and nlpl_type.lower().startswith("channel"):
+            return "void*"
+
         type_map = {
             "Integer": "int",
             "Float": "double",
@@ -1976,5 +2117,59 @@ int nlpl_random_int(int min_val, int max_val) {
         self._collect_string_runtime(code_parts)
         self._collect_console_runtime(code_parts)
         self._collect_array_runtime(code_parts)
+        self._collect_channel_runtime(code_parts)
         self._collect_math_runtime(code_parts)
         return "\n".join(code_parts)
+
+    def _collect_channel_runtime(self, code_parts: list) -> None:
+        """Append channel runtime helpers to code_parts."""
+        required = {"nlpl_channel_create", "nlpl_channel_send", "nlpl_channel_receive"}
+        if not required.intersection(self.needed_runtime_functions):
+            return
+
+        code_parts.append('''
+typedef struct NLPLChannelNode {
+    intptr_t value;
+    struct NLPLChannelNode* next;
+} NLPLChannelNode;
+
+typedef struct NLPLChannel {
+    NLPLChannelNode* head;
+    NLPLChannelNode* tail;
+} NLPLChannel;
+
+void* nlpl_channel_create(void) {
+    NLPLChannel* ch = (NLPLChannel*)malloc(sizeof(NLPLChannel));
+    if (!ch) return NULL;
+    ch->head = NULL;
+    ch->tail = NULL;
+    return (void*)ch;
+}
+
+void nlpl_channel_send(void* channel, intptr_t value) {
+    if (!channel) return;
+    NLPLChannel* ch = (NLPLChannel*)channel;
+    NLPLChannelNode* node = (NLPLChannelNode*)malloc(sizeof(NLPLChannelNode));
+    if (!node) return;
+    node->value = value;
+    node->next = NULL;
+    if (!ch->tail) {
+        ch->head = node;
+        ch->tail = node;
+        return;
+    }
+    ch->tail->next = node;
+    ch->tail = node;
+}
+
+intptr_t nlpl_channel_receive(void* channel) {
+    if (!channel) return 0;
+    NLPLChannel* ch = (NLPLChannel*)channel;
+    if (!ch->head) return 0;
+    NLPLChannelNode* node = ch->head;
+    intptr_t value = node->value;
+    ch->head = node->next;
+    if (!ch->head) ch->tail = NULL;
+    free(node);
+    return value;
+}''')
