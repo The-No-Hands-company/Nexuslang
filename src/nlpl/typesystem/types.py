@@ -138,6 +138,30 @@ class DictionaryType(Type):
     def __hash__(self) -> int:
         return hash(("Dict", self.key_type, self.value_type))
 
+class ChannelType(Type):
+    """Represents a channel type with a payload type."""
+
+    def __init__(self, payload_type: Type):
+        self.payload_type = payload_type
+
+    def is_compatible_with(self, other: Type) -> bool:
+        if isinstance(other, ChannelType):
+            return self.payload_type.is_compatible_with(other.payload_type)
+        return isinstance(other, AnyType)
+
+    def get_common_supertype(self, other: Type) -> Optional[Type]:
+        if isinstance(other, ChannelType):
+            common_payload = self.payload_type.get_common_supertype(other.payload_type)
+            if common_payload:
+                return ChannelType(common_payload)
+        return ANY_TYPE
+
+    def _equals(self, other: Type) -> bool:
+        return self.payload_type == other.payload_type
+
+    def __hash__(self) -> int:
+        return hash(("Channel", self.payload_type))
+
 class SetType(Type):
     """Represents a set type with an element type."""
     
@@ -1055,6 +1079,13 @@ def get_type_by_name(name: str) -> 'Type':
             else:
                 return DictionaryType(ANY_TYPE, ANY_TYPE)
         
+        # Handle Channel<T>
+        elif base_type_name.lower() in ('channel', 'channeltype'):
+            if len(type_args) != 1:
+                return ChannelType(ANY_TYPE)
+            payload_type = get_type_by_name(type_args[0])
+            return ChannelType(payload_type)
+
         # For other generic types, return as ANY for now
         # (can be extended to handle custom generic classes)
         return ANY_TYPE
@@ -1083,6 +1114,10 @@ def get_type_by_name(name: str) -> 'Type':
             return DictionaryType(key_type, value_type)
         else:
             return DictionaryType(ANY_TYPE, ANY_TYPE)
+    elif 'channel of' in name_lower:
+        payload_type_name = name_lower.split('channel of')[-1].strip()
+        payload_type = get_type_by_name(payload_type_name)
+        return ChannelType(payload_type)
     
     # Default: return ANY_TYPE for unknown types
     return ANY_TYPE

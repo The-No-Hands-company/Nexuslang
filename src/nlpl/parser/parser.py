@@ -6527,6 +6527,7 @@ class Parser:
         elif self.current_token.type in (TokenType.INTEGER, TokenType.FLOAT, 
                                           TokenType.STRING, TokenType.BOOLEAN, 
                                           TokenType.NOTHING, TokenType.LIST, TokenType.DICTIONARY,
+                                          TokenType.CHANNEL,
                                           TokenType.ARRAY, TokenType.POINTER):
             type_name = self.current_token.type.name.capitalize()
             self.advance()
@@ -6581,6 +6582,14 @@ class Parser:
             # This logic handles KEYWORDS (TokenType.LIST etc) that fell through
             if type_name in ("List", "Dictionary"):
                 type_name = self._parse_list_dict_of_type(type_name)
+            elif type_name == "Channel":
+                if (self.current_token and
+                    (self.current_token.type == TokenType.OF or
+                     (self.current_token.type == TokenType.IDENTIFIER and
+                      self.current_token.lexeme.lower() == "of"))):
+                    self.advance()  # Eat "of"
+                    payload_type = self.parse_type()
+                    type_name = f"Channel<{payload_type}>"
             
             return self._try_parse_allocator_hint(type_name)
         else:

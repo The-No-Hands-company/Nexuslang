@@ -27,7 +27,7 @@ from ..typesystem.types import (
     Type, PrimitiveType, ListType, DictionaryType, ClassType, 
     FunctionType, UnionType, AnyType, 
     INTEGER_TYPE, FLOAT_TYPE, STRING_TYPE, BOOLEAN_TYPE, NULL_TYPE, ANY_TYPE,
-    get_type_by_name, infer_type, GenericType, GenericParameter
+    get_type_by_name, infer_type, GenericType, GenericParameter, ChannelType
 )
 from ..typesystem.type_inference import TypeInferenceEngine
 from ..typesystem.generic_types import GenericTypeRegistry, GenericTypeContext
@@ -84,6 +84,15 @@ class TypeEnvironment:
     def define_variable(self, name: str, type_: Type) -> None:
         """Define a variable with a type in the current scope."""
         self.variables[name] = type_
+
+    def assign_variable_type(self, name: str, type_: Type) -> bool:
+        """Assign an existing variable's type in the nearest enclosing scope."""
+        if name in self.variables:
+            self.variables[name] = type_
+            return True
+        if self.parent:
+            return self.parent.assign_variable_type(name, type_)
+        return False
     
     def define_function(self, name: str, type_: FunctionType) -> None:
         """Define a function with a type in the current scope."""
@@ -309,10 +318,7 @@ class TypeChecker:
         """Handle struct/union/object/memory statement nodes. Returns (handled, type)."""
         cls = statement.__class__.__name__
         if cls == 'SendStatement':
-            if hasattr(statement, 'value'):
-                self.check_expression(statement.value, env)
-            if hasattr(statement, 'channel'):
-                self.check_expression(statement.channel, env)
+            self._check_send_statement(statement, env)
             return True, ANY_TYPE
         if isinstance(statement, (StructDefinition, UnionDefinition, ObjectInstantiation, MemberAssignment)):
             return True, ANY_TYPE
@@ -352,12 +358,9 @@ class TypeChecker:
         """Handle collection literal and comprehension nodes. Returns (handled, type)."""
         cls = statement.__class__.__name__
         if cls == 'ChannelCreation':
-            # Channel payload type is currently dynamic; refine once generic channels are added.
-            return True, ANY_TYPE
+            return True, ChannelType(ANY_TYPE)
         if cls == 'ReceiveExpression':
-            if hasattr(statement, 'channel'):
-                self.check_expression(statement.channel, env)
-            return True, ANY_TYPE
+            return True, self._check_receive_expression(statement, env)
         if cls == 'ListExpression':
             return True, self.check_list_expression(statement, env)
         if cls == 'DictExpression':
@@ -373,6 +376,79 @@ class TypeChecker:
         if cls == 'GenericTypeInstantiation':
             return True, self.check_generic_type_instantiation(statement, env)
         return False, None
+
+    def _check_send_statement(self, statement: Any, env: TypeEnvironment) -> None:
+        """Type check sending a value to a channel."""
+        value_type = ANY_TYPE
+        channel_type: Type = ANY_TYPE
+
+        if hasattr(statement, 'value'):
+            value_type = self.check_expression(statement.value, env)
+        if hasattr(statement, 'channel'):
+            channel_type = self.check_expression(statement.channel, env)
+
+        if isinstance(channel_type, AnyType):
+            return
+
+        if not isinstance(channel_type, ChannelType):
+            self.errors.append(
+                f"Line {getattr(statement, 'line_number', '?')}: "
+                f"Send target must be a channel, got '{self._type_name(channel_type)}'"
+            )
+            return
+
+        payload_type = channel_type.payload_type
+
+        # First observed payload type on an untyped channel refines the channel.
+        if isinstance(payload_type, AnyType) and not isinstance(value_type, AnyType):
+            self._refine_channel_identifier_type(getattr(statement, 'channel', None), value_type, env)
+            return
+
+        if not value_type.is_compatible_with(payload_type):
+            self.errors.append(
+                f"Line {getattr(statement, 'line_number', '?')}: "
+                f"Cannot send value of type '{self._type_name(value_type)}' to channel of "
+                f"'{self._type_name(payload_type)}'"
+            )
+
+    def _check_receive_expression(self, statement: Any, env: TypeEnvironment) -> Type:
+        """Type check receiving a value from a channel."""
+        if not hasattr(statement, 'channel'):
+            return ANY_TYPE
+
+        channel_type = self.check_expression(statement.channel, env)
+
+        if isinstance(channel_type, AnyType):
+            return ANY_TYPE
+
+        if not isinstance(channel_type, ChannelType):
+            self.errors.append(
+                f"Line {getattr(statement, 'line_number', '?')}: "
+                f"Receive target must be a channel, got '{self._type_name(channel_type)}'"
+            )
+            return ANY_TYPE
+
+        return channel_type.payload_type
+
+    def _refine_channel_identifier_type(self, channel_expr: Any, payload_type: Type, env: TypeEnvironment) -> None:
+        """Refine an identifier channel from Channel[Any] to Channel[payload_type]."""
+        if not isinstance(channel_expr, Identifier):
+            return
+
+        try:
+            existing = env.get_variable_type(channel_expr.name)
+        except TypeCheckError:
+            return
+
+        if not isinstance(existing, ChannelType):
+            return
+
+        if not isinstance(existing.payload_type, AnyType):
+            return
+
+        refined = ChannelType(payload_type)
+        if not env.assign_variable_type(channel_expr.name, refined):
+            env.define_variable(channel_expr.name, refined)
 
     def _check_ffi_statement(self, statement: Any, env: TypeEnvironment) -> Tuple[bool, Any]:
         """Handle FFI extern declaration nodes. Returns (handled, type)."""

@@ -21,7 +21,7 @@ Scope columns:
 - Tests: dedicated or strong coverage
 
 | Feature Area | Lexer | Parser+AST | Interpreter | Typechecker | Compiler (LLVM/C) | Tooling (LSP/Fmt) | Grammar | Tests |
-|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Variables / assignment | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
 | Functions / calls | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
 | Classes / methods / inheritance | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ✅ |
@@ -35,7 +35,7 @@ Scope columns:
 | Async / await / spawn | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
 | Generators / `yield` | ✅ | ✅ | ✅ | ❌ | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
 | Parallel for | ✅ | ✅ | ✅ | ❌ | ❌ | ⚠️ | ⚠️ | ⚠️ |
-| Channels (`create/send/receive`) | ✅ | ✅ | ✅ | ⚠️ | ❌ | ❌ | ⚠️ | ✅ |
+| Channels (`create/send/receive`) | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ⚠️ | ✅ |
 | FFI / extern / unsafe | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ✅ |
 | Inline assembly | ✅ | ✅ | ⚠️ (interp is NOP) | ⚠️ | ✅ | ⚠️ | ⚠️ | ✅ |
 | LSP diagnostics | ➖ | ➖ | ➖ | ⚠️ (depends on checker) | ➖ | ⚠️ | ➖ | ✅ |
@@ -43,7 +43,7 @@ Scope columns:
 
 ## Immediate Priority Queue
 
-1. Channels: add typechecker + compiler-path support.
+1. Channels: add compiler-path support (LLVM/C) and tooling diagnostics.
 2. Generators/yield: complete typechecker and compiled semantics.
 3. Parallel-for: add compiler support.
 4. Contracts/assertions: add typechecker and compiled enforcement path.
