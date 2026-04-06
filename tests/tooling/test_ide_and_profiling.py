@@ -25,27 +25,27 @@ from pathlib import Path
 
 import pytest
 
-# ── bootstrap path so we can import the NLPL package directly ──────────────
+# ── bootstrap path so we can import the NexusLang package directly ──────────────
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from nlpl.tooling.coverage import (
+from nexuslang.tooling.coverage import (
     CoverageCollector,
     CoverageReport,
     FileCoverage,
     _find_executable_lines,
 )
-from nlpl.tooling.profiler import (
+from nexuslang.tooling.profiler import (
     CPUProfiler,
     MemoryProfiler,
     Profiler,
 )
-from nlpl.stdlib.benchmark import (
+from nexuslang.stdlib.benchmark import (
     BenchmarkRun,
     BenchmarkSuite,
     compare_to_baseline,
     save_baseline,
 )
-from nlpl.lsp.signature_help import SignatureHelpProvider
+from nexuslang.lsp.signature_help import SignatureHelpProvider
 
 
 # ===========================================================================
@@ -101,7 +101,7 @@ class TestFindExecutableLines:
 class TestFileCoverage:
     def _make(self, executable, hit) -> FileCoverage:
         return FileCoverage(
-            path="test.nlpl",
+            path="test.nxl",
             total_lines=max(executable | hit) if (executable | hit) else 0,
             executable_lines=executable,
             hit_lines=hit,
@@ -145,7 +145,7 @@ class TestFileCoverage:
 class TestCoverageCollector:
     def test_record_and_build_report(self, tmp_path):
         src = "set x to 1\nset y to 2\nset z to 3\n"
-        src_file = tmp_path / "prog.nlpl"
+        src_file = tmp_path / "prog.nxl"
         src_file.write_text(src)
 
         collector = CoverageCollector()
@@ -169,30 +169,30 @@ class TestCoverageCollector:
         collector = CoverageCollector()
         collector.start()
         collector.stop()
-        collector.record("doesnt_exist.nlpl", 1)  # should not raise
+        collector.record("doesnt_exist.nxl", 1)  # should not raise
 
     def test_empty_collector_produces_empty_report(self, tmp_path):
         collector = CoverageCollector()
         collector.start()
         collector.stop()
         src = ""
-        report = collector.build_report(source_text=src, single_path=str(tmp_path / "empty.nlpl"))
+        report = collector.build_report(source_text=src, single_path=str(tmp_path / "empty.nxl"))
         assert isinstance(report, CoverageReport)
 
     def test_multiple_files_tracked(self, tmp_path):
         collector = CoverageCollector()
         collector.start()
-        collector.record(str(tmp_path / "a.nlpl"), 1)
-        collector.record(str(tmp_path / "b.nlpl"), 5)
-        collector.record(str(tmp_path / "a.nlpl"), 2)
+        collector.record(str(tmp_path / "a.nxl"), 1)
+        collector.record(str(tmp_path / "b.nxl"), 5)
+        collector.record(str(tmp_path / "a.nxl"), 2)
         collector.stop()
 
         hits = collector._hits
-        assert str(tmp_path / "a.nlpl") in hits
-        assert str(tmp_path / "b.nlpl") in hits
-        assert 1 in hits[str(tmp_path / "a.nlpl")]
-        assert 2 in hits[str(tmp_path / "a.nlpl")]
-        assert 5 in hits[str(tmp_path / "b.nlpl")]
+        assert str(tmp_path / "a.nxl") in hits
+        assert str(tmp_path / "b.nxl") in hits
+        assert 1 in hits[str(tmp_path / "a.nxl")]
+        assert 2 in hits[str(tmp_path / "a.nxl")]
+        assert 5 in hits[str(tmp_path / "b.nxl")]
 
 
 # ===========================================================================
@@ -202,18 +202,18 @@ class TestCoverageCollector:
 class TestCoverageReport:
     def _make_report(self):
         fc = FileCoverage(
-            path="prog.nlpl",
+            path="prog.nxl",
             total_lines=5,
             executable_lines={1, 2, 3, 4, 5},
             hit_lines={1, 2, 3},
             source_lines=["set a to 1", "set b to 2", "set c to 3", "set d to 4", "set e to 5"],
         )
-        return CoverageReport(files={"prog.nlpl": fc})
+        return CoverageReport(files={"prog.nxl": fc})
 
     def test_summary_contains_filename(self):
         report = self._make_report()
         text = report.summary()
-        assert "prog.nlpl" in text
+        assert "prog.nxl" in text
 
     def test_summary_contains_percentage(self):
         report = self._make_report()
@@ -226,8 +226,8 @@ class TestCoverageReport:
         assert isinstance(json_str, str)
         data = json.loads(json_str)
         assert "files" in data
-        assert "prog.nlpl" in data["files"]
-        file_data = data["files"]["prog.nlpl"]
+        assert "prog.nxl" in data["files"]
+        file_data = data["files"]["prog.nxl"]
         assert "pct" in file_data
 
     def test_write_json(self, tmp_path):
@@ -246,12 +246,12 @@ class TestCoverageReport:
         index = tmp_path / "index.html"
         assert index.exists()
         content = index.read_text()
-        assert "prog.nlpl" in content
+        assert "prog.nxl" in content
 
     def test_total_pct_average(self):
-        fc1 = FileCoverage("a.nlpl", 3, {1, 2, 3}, {1, 2, 3})
-        fc2 = FileCoverage("b.nlpl", 3, {1, 2, 3}, {1})
-        report = CoverageReport(files={"a.nlpl": fc1, "b.nlpl": fc2})
+        fc1 = FileCoverage("a.nxl", 3, {1, 2, 3}, {1, 2, 3})
+        fc2 = FileCoverage("b.nxl", 3, {1, 2, 3}, {1})
+        report = CoverageReport(files={"a.nxl": fc1, "b.nxl": fc2})
         total = report.total_pct()
         assert 0.0 < total <= 100.0
 
@@ -382,7 +382,7 @@ class TestMemoryProfiler:
         mem.start()
         mem.record_allocation(512, "my_module.nlpl:42")
         report = mem.text_report()
-        assert "my_module.nlpl" in report
+        assert "my_module.nxl" in report
 
     def test_empty_report_no_crash(self):
         mem = MemoryProfiler()

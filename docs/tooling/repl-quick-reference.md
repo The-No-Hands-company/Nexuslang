@@ -1,11 +1,11 @@
-# NLPL REPL Quick Reference
+# NexusLang REPL Quick Reference
 
 ## Starting the REPL
 
 ```bash
-python -m nlpl.main # Start REPL
-python -m nlpl.main --debug # Start with debug mode
-python nlpl_repl.py # Alternative entry point
+python -m nexuslang.main # Start REPL
+python -m nexuslang.main --debug # Start with debug mode
+python nxl_repl.py # Alternative entry point
 ```
 
 ## Special Commands
@@ -50,7 +50,7 @@ Press Enter on empty line to execute.
 ### Variables
 ```nlpl
 >>> set x to 42
->>> set name to "NLPL"
+>>> set name to "NexusLang"
 ```
 
 ### Functions

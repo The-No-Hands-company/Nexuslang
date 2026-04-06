@@ -1,10 +1,10 @@
 #!/bin/bash
-# Package NLPL VSCode Extension for Distribution
+# Package NexusLang VSCode Extension for Distribution
 # Creates .vsix file that can be installed manually or published to marketplace
 
 set -e
 
-echo "📦 Packaging NLPL VSCode Extension..."
+echo "📦 Packaging NexusLang VSCode Extension..."
 
 # Change to extension directory
 cd "$(dirname "$0")/.vscode/extensions/nlpl"

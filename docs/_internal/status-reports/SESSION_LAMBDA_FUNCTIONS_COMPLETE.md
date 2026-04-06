@@ -9,7 +9,7 @@
 
 ## Achievement Summary
 
-Successfully implemented **complete Lambda Functions support** in the NLPL compiler, bringing the feature parity from **72.9% to 75.0%**. This was an intensive implementation session that went from "partially implemented" to "fully working with comprehensive tests" in a single session.
+Successfully implemented **complete Lambda Functions support** in the NexusLang compiler, bringing the feature parity from **72.9% to 75.0%**. This was an intensive implementation session that went from "partially implemented" to "fully working with comprehensive tests" in a single session.
 
 ### What Was Accomplished
 
@@ -108,7 +108,7 @@ This allows lambdas to return `i1` (boolean), `i64` (integer), `double` (float),
 
 ### 5. Async Main Function Fix
 
-**Problem:** Async functions weren't being renamed to `nlpl_main`, causing duplicate `@main` definitions.
+**Problem:** Async functions weren't being renamed to `nxl_main`, causing duplicate `@main` definitions.
 
 **Solution:** Added `elif func_name == 'main'` check in `_generate_async_function_definition()`:
 
@@ -116,8 +116,8 @@ This allows lambdas to return `i1` (boolean), `i64` (integer), `double` (float),
 if self.module_name:
  mangled_name = f'{self.module_name}_{func_name}'
 elif func_name == 'main':
- # Rename NLPL main to nlpl_main to avoid conflict with C main
- mangled_name = 'nlpl_main'
+ # Rename NexusLang main to nxl_main to avoid conflict with C main
+ mangled_name = 'nxl_main'
 else:
  mangled_name = func_name
 ```
@@ -126,7 +126,7 @@ Also updated `_generate_main_function()` to detect `AsyncFunctionDefinition` in 
 
 ```python
 if (stmt_type in ('FunctionDefinition', 'AsyncFunctionDefinition')) and stmt.name == 'main':
- has_nlpl_main = True
+ has_nxl_main = True
 ```
 
 ---
@@ -324,13 +324,13 @@ set result5 to subtract(100, 25) # Expected: 75
 
 ### Strategic Position
 
-With Lambda Functions complete, NLPL now supports **all major functional programming constructs**:
+With Lambda Functions complete, NexusLang now supports **all major functional programming constructs**:
 - First-class functions
 - Higher-order functions (via lambdas)
 - Function pointers
 - Anonymous functions
 
-This positions NLPL as a **multi-paradigm language** supporting:
+This positions NexusLang as a **multi-paradigm language** supporting:
 - Object-oriented programming (classes, inheritance, polymorphism)
 - Functional programming (lambdas, map/filter/reduce patterns)
 - Procedural programming (functions, control flow)
@@ -396,7 +396,7 @@ Based on gap analysis, highest priority features:
 2. **Context management matters** - Saving/restoring state prevents bugs
 3. **Buffered generation works** - Emit lambdas at module level, not inline
 4. **Register ordering matters** - LLVM SSA form requires definition before use
-5. **Async main needs special handling** - Must rename to `nlpl_main` for C wrapper
+5. **Async main needs special handling** - Must rename to `nxl_main` for C wrapper
 
 ### Development Process
 
@@ -409,11 +409,11 @@ Based on gap analysis, highest priority features:
 
 ## Conclusion
 
-**Lambda Functions are now 100% complete in the NLPL compiler!** 
+**Lambda Functions are now 100% complete in the NexusLang compiler!** 
 
 This was an intensive but highly productive session that took a partially implemented feature and made it fully functional with comprehensive test coverage. The implementation is clean, well-architected, and ready for production use.
 
-**Key Achievement:** NLPL can now express **functional programming patterns** natively, making it a true multi-paradigm language.
+**Key Achievement:** NexusLang can now express **functional programming patterns** natively, making it a true multi-paradigm language.
 
 **Impact:** 75% feature parity achieved. Only 12 features remain to reach full interpreter-compiler parity.
 

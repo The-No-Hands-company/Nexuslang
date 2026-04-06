@@ -1,4 +1,4 @@
-# NLPL Compiler Optimization Pipeline
+# NexusLang Compiler Optimization Pipeline
 
 **Status**: Phase 3 Week 1 - Foundation  
 **Version**: v1.3-dev  
@@ -27,7 +27,7 @@ NLPL's compilation pipeline includes both **AST-level** and **LLVM-level** optim
 ## Compilation Pipeline
 
 ```
-NLPL Source (.nlpl)
+NLPL Source (.nxl)
     ↓
 ┌─────────────────────────┐
 │   Lexer (Tokenization)  │
@@ -431,7 +431,7 @@ nlplc program.nlpl --no-opt            # Disable all optimization
 ### Programmatic API
 
 ```python
-from nlpl.compiler.llvm_optimizer import LLVMOptimizer, OptimizationLevel
+from nexuslang.compiler.llvm_optimizer import LLVMOptimizer, OptimizationLevel
 
 # Create optimizer
 optimizer = LLVMOptimizer(OptimizationLevel.O2)
@@ -483,7 +483,7 @@ time ./test_O3  # Should be 3-4x faster
 
 ### Phase 3 Week 2-3
 
-- Custom optimization passes for NLPL constructs
+- Custom optimization passes for NexusLang constructs
 - Profile-guided optimization (PGO)
 - Link-time optimization (LTO)
 - Interprocedural analysis

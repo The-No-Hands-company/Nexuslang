@@ -221,7 +221,7 @@ function bad  # Invalid - missing 'called' or 'with'
 
 1. **Enable debug mode:**
    ```bash
-   python -m nlpl.lsp --stdio --debug --log-file /tmp/nlpl-lsp.log
+   python -m nexuslang.lsp --stdio --debug --log-file /tmp/nlpl-lsp.log
    ```
 
 2. **Add logging to each provider:**

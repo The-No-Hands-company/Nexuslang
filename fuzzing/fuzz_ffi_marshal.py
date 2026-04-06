@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-fuzzing/fuzz_ffi_marshal.py  --  Atheris fuzz target for NLPL FFI marshalling.
+fuzzing/fuzz_ffi_marshal.py  --  Atheris fuzz target for NexusLang FFI marshalling.
 
-Tests the boundary between NLPL and C via the stdlib FFI module:
+Tests the boundary between NexusLang and C via the stdlib FFI module:
   - Type name mapping (map_type)
   - Callback registration with arbitrary arg type lists
   - C-string conversion utilities (to_c_string / from_c_string)
@@ -50,7 +50,7 @@ _TYPE_NAMES = [
 
 def _fuzz_map_type(data: bytes) -> None:
     """Fuzz FFIManager.map_type with arbitrary type name strings."""
-    from nlpl.stdlib.ffi import FFIManager  # type: ignore[import]
+    from nexuslang.stdlib.ffi import FFIManager  # type: ignore[import]
 
     mgr = FFIManager()
     try:
@@ -66,7 +66,7 @@ def _fuzz_map_type(data: bytes) -> None:
 def _fuzz_register_callback(data: bytes) -> None:
     """Fuzz FFIManager.register_callback with arbitrary type vectors."""
     import struct as _struct
-    from nlpl.stdlib.ffi import FFIManager  # type: ignore[import]
+    from nexuslang.stdlib.ffi import FFIManager  # type: ignore[import]
 
     if len(data) < 2:
         return
@@ -93,8 +93,8 @@ def _fuzz_register_callback(data: bytes) -> None:
 
 def _fuzz_string_conversion(data: bytes) -> None:
     """Fuzz to_c_string and from_c_string round-trip."""
-    from nlpl.runtime.runtime import Runtime  # type: ignore[import]
-    from nlpl.stdlib.ffi import register_ffi_functions  # type: ignore[import]
+    from nexuslang.runtime.runtime import Runtime  # type: ignore[import]
+    from nexuslang.stdlib.ffi import register_ffi_functions  # type: ignore[import]
 
     runtime = Runtime()
     register_ffi_functions(runtime)

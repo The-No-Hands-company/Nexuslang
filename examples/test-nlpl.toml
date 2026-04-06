@@ -1,5 +1,5 @@
-# Test NLPL Project Manifest
-# Simplified example for testing nlpl_build.py
+# Test NexusLang Project Manifest
+# Simplified example for testing nxl_build.py
 
 [package]
 name = "test-project"
@@ -10,7 +10,7 @@ description = "Test project for build tool validation"
 # Binary using an existing example file
 [[bin]]
 name = "hello"
-path = "01_basics/01_basic_concepts.nlpl"
+path = "01_basics/01_basic_concepts.nxl"
 
 # Feature flags (domain-neutral)
 [features]

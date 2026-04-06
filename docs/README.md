@@ -1,4 +1,4 @@
-# NLPL Documentation
+# NexusLang Documentation
 
 ## User Documentation
 

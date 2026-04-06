@@ -1081,7 +1081,7 @@ calls=1 0
 +2 2
 -1 7
 +2 4
-cob=(8) /run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NLPL/build/bench_fib_nocoro_o2
+cob=(8) /run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NexusLang/build/bench_fib_nocoro_o2
 cfi=(268) ???
 cfn=(1102) 0x0000000000400520
 calls=1 0 

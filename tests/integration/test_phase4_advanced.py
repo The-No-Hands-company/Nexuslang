@@ -2,7 +2,7 @@
 Test Phase 4b-d: Associated Types, Phantom Types, Existential Types
 """
 
-from nlpl.typesystem.types import (
+from nexuslang.typesystem.types import (
     TraitType, PhantomType, ExistentialType, FunctionType,
     INTEGER_TYPE, STRING_TYPE, ANY_TYPE,
     COMPARABLE_TRAIT, PRINTABLE_TRAIT

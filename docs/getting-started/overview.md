@@ -1,8 +1,8 @@
-# NLPL Overview
+# NexusLang Overview
 
 ## What is NLPL?
 
-NLPL (Natural Language Programming Language) is a general-purpose programming language that reads like English. You write code using words like `set`, `if`, `for each`, `function`, and `return` — the same words you use to explain logic to another person.
+NLPL (NexusLang) is a general-purpose programming language that reads like English. You write code using words like `set`, `if`, `for each`, `function`, and `return` — the same words you use to explain logic to another person.
 
 NLPL compiles to native code via LLVM. It has a comprehensive standard library, a full type system with generics, pattern matching, FFI, inline assembly, and a production-quality tooling ecosystem.
 
@@ -13,7 +13,7 @@ NLPL compiles to native code via LLVM. It has a comprehensive standard library, 
 - **Strong tooling** — LSP, debugger, build system, formatter, REPL all work today
 - **Type safety** — optional static typing with inference; dynamic mode available
 
-## What NLPL looks like
+## What NexusLang looks like
 
 ```nlpl
 # Variables

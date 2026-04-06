@@ -1,6 +1,6 @@
-# Contributing to NLPL
+# Contributing to NexusLang
 
-Thank you for your interest in contributing to NLPL (Natural Language Programming Language). This document covers the essentials for getting started. Detailed guides live in [docs/contributing/](docs/contributing/).
+Thank you for your interest in contributing to NexusLang (NexusLang). This document covers the essentials for getting started. Detailed guides live in [docs/contributing/](docs/contributing/).
 
 ---
 
@@ -29,7 +29,7 @@ Thank you for your interest in contributing to NLPL (Natural Language Programmin
 
 ```bash
 git clone https://github.com/The-No-hands-Company/NLPL.git
-cd NLPL
+cd NexusLang
 
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
@@ -157,9 +157,9 @@ Keep pull requests focused — one logical change per PR. Large features should 
 
 ## Reporting Issues
 
-Use [GitHub Issues](https://github.com/The-No-hands-Company/NLPL/issues). Include:
+Use [GitHub Issues](https://github.com/The-No-hands-Company/NexusLang/issues). Include:
 
-- NLPL version / git commit hash
+- NexusLang version / git commit hash
 - Python version
 - Minimal reproducing program (`.nlpl` source)
 - Expected behavior vs actual behavior

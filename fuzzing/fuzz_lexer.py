@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-fuzzing/fuzz_lexer.py  --  Atheris/libFuzzer fuzz target for the NLPL lexer.
+fuzzing/fuzz_lexer.py  --  Atheris/libFuzzer fuzz target for the NexusLang lexer.
 
 The lexer MUST:
   - Never raise an unhandled Python exception (no AttributeError, IndexError,
     RecursionError, or similar) for ANY byte sequence.
-  - Either return a list of tokens or raise a well-typed NLPLSyntaxError.
+  - Either return a list of tokens or raise a well-typed NxlSyntaxError.
 
 Running with Atheris (libFuzzer backend):
     python -m atheris fuzz_lexer.py corpus/lexer/  # basic run
@@ -26,16 +26,16 @@ _SRC = os.path.join(_ROOT, "src")
 if _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
-from nlpl.parser.lexer import Lexer  # noqa: E402
-from nlpl.errors import NLPLSyntaxError, NLPLError  # noqa: E402
+from nexuslang.parser.lexer import Lexer  # noqa: E402
+from nexuslang.errors import NxlSyntaxError, NxlError  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Accepted exceptions: these are expected when the lexer sees invalid input.
 # Any OTHER exception is a bug and will crash the fuzzer (triggering a report).
 # ---------------------------------------------------------------------------
 _EXPECTED = (
-    NLPLError,
-    NLPLSyntaxError,
+    NxlError,
+    NxlSyntaxError,
     ValueError,
     UnicodeDecodeError,
     OverflowError,

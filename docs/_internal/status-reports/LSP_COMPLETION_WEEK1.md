@@ -73,7 +73,7 @@
 2. ✅ Check LSP code exists and is substantial (5420 lines!)
 3. ⏳ Install/update VS Code extension
 4. ⏳ Test in VS Code manually:
-   - Open NLPL file
+   - Open NexusLang file
    - Check if errors appear
    - Try autocomplete (Ctrl+Space)
    - Try go-to-definition (F12)

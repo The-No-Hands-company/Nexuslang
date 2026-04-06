@@ -1,4 +1,4 @@
-# NLPL Documentation Organization Guide
+# NexusLang Documentation Organization Guide
 
 ## Folder Structure
 
@@ -14,7 +14,7 @@ docs/
  8_planning/ # Roadmaps, requirements, development plans
  9_status_reports/ # Progress reports, session results, milestones
  10_assessments/ # Analysis documents, comparisons, readiness assessments
- Creating a Truly Natural Language Programming Language/ # Historical/archive
+ Creating a Truly NexusLang/ # Historical/archive
 ```
 
 ## Document Categories
@@ -78,5 +78,5 @@ docs/
 - WHITEPAPER_READINESS_ASSESSMENT.md
 - error_handling_assessment.md
 - existing_approaches.md
-- nlpl_vs_engpp.md
+- nxl_vs_engpp.md
 - examples_and_comparisons.md

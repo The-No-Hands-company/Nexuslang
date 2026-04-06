@@ -1,17 +1,17 @@
 %YAML 1.2
 ---
-# NLPL Syntax Definition for Sublime Text
+# NexusLang Syntax Definition for Sublime Text
 # =========================================
 #
 # Installation:
 #   1. Open the Packages directory: Preferences > Browse Packages...
-#   2. Create a folder: NLPL/
-#   3. Copy nlpl.sublime-syntax and nlpl.sublime-settings into NLPL/
+#   2. Create a folder: NexusLang/
+#   3. Copy nlpl.sublime-syntax and nlpl.sublime-settings into NexusLang/
 #   4. Restart Sublime Text
 #
 # Or install via Package Control after submitting to the wbond.net repository.
 
-name: NLPL
+name: NexusLang
 file_extensions:
   - nlpl
 scope: source.nlpl

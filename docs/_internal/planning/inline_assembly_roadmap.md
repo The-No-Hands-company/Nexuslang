@@ -14,7 +14,7 @@
 
 ## Executive Summary
 
-Inline assembly is **partially implemented** in NLPL with full parser support but requires LLVM backend completion for compiled mode execution. This feature is critical for:
+Inline assembly is **partially implemented** in NexusLang with full parser support but requires LLVM backend completion for compiled mode execution. This feature is critical for:
 
 - Direct hardware control (complement to Port I/O, MMIO, DMA, CPU Control)
 - Performance-critical code sections
@@ -22,7 +22,7 @@ Inline assembly is **partially implemented** in NLPL with full parser support bu
 - Low-level system programming and bare-metal control
 - Device driver implementation
 
-**Key Achievement Target:** 100% completion of Part 2 (Low-Level Primitives), giving NLPL **complete parity** with C/C++/Rust/ASM for systems programming.
+**Key Achievement Target:** 100% completion of Part 2 (Low-Level Primitives), giving NexusLang **complete parity** with C/C++/Rust/ASM for systems programming.
 
 ---
 
@@ -157,7 +157,7 @@ Inline assembly is **partially implemented** in NLPL with full parser support bu
    
 5. ✅ Added type inference for operands
    - `_infer_asm_operand_type()` method
-   - Infers LLVM types from NLPL types (Integer→i64, Float→double)
+   - Infers LLVM types from NexusLang types (Integer→i64, Float→double)
    - Constraint-based inference (m→i8*, f→double, r→i64)
    - Input operands already had comprehensive type inference
    
@@ -679,7 +679,7 @@ end
 
 ---
 
-## Integration with NLPL Ecosystem
+## Integration with NexusLang Ecosystem
 
 ### With Hardware Access
 
@@ -852,13 +852,13 @@ end
 **After inline assembly completion:**
 
 - ✅ Part 2 (Low-Level Primitives) = **100% COMPLETE**
-- ✅ NLPL has **complete parity** with C/C++/Rust for systems programming
+- ✅ NexusLang has **complete parity** with C/C++/Rust for systems programming
 - ✅ Full hardware control capability
 - ✅ Performance optimization toolkit complete
 - ✅ Low-level system programming fully enabled
 - ✅ Device driver development fully supported
 
-**This positions NLPL as a truly universal systems programming language, ready for Phase 2 (Universal Infrastructure) implementation.**
+**This positions NexusLang as a truly universal systems programming language, ready for Phase 2 (Universal Infrastructure) implementation.**
 
 ---
 

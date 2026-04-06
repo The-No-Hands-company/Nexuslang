@@ -8,10 +8,10 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from nlpl.lsp.server import NLPLLanguageServer, Position
-from nlpl.lsp.completions import CompletionProvider
-from nlpl.lsp.hover import HoverProvider
-from nlpl.lsp.definitions import DefinitionProvider
+from nexuslang.lsp.server import NLPLLanguageServer, Position
+from nexuslang.lsp.completions import CompletionProvider
+from nexuslang.lsp.hover import HoverProvider
+from nexuslang.lsp.definitions import DefinitionProvider
 
 def test_server_initialization():
     """Test server can initialize"""
@@ -179,7 +179,7 @@ set result to calculate with 5
     print(f"  Cursor on 'calculate' at line 4")
     
     try:
-        uri = "file:///test.nlpl"
+        uri = "file:///test.nxl"
         server.documents[uri] = test_code
         
         location = server.definition_provider.get_definition(
@@ -241,7 +241,7 @@ print text x to_string""",
         print(f"  Code: {repr(test['code'][:50])}...")
         
         try:
-            uri = f"file:///test{i}.nlpl"
+            uri = f"file:///test{i}.nxl"
             diagnostics = server.diagnostics_provider.get_diagnostics(uri, test['code'])
             
             if test['expected'] is None:
@@ -281,7 +281,7 @@ set message to "unclosed string
     print(f"Code: {repr(test_code)}")
     
     try:
-        uri = "file:///test_actions.nlpl"
+        uri = "file:///test_actions.nxl"
         diagnostics = server.diagnostics_provider.get_diagnostics(uri, test_code)
         
         print(f"✓ Diagnostics found: {len(diagnostics)}")
@@ -366,7 +366,7 @@ print text result to_string"""
     print(f"  Position: On 'calculate' function name")
     
     try:
-        uri = "file:///test_rename.nlpl"
+        uri = "file:///test_rename.nxl"
         server.documents[uri] = test_code
         
         prepare_result = server.rename_provider.prepare_rename(
@@ -441,7 +441,7 @@ print text total to_string"""
     print(f"  Rename 'counter' to 'index'")
     
     try:
-        uri2 = "file:///test_rename_var.nlpl"
+        uri2 = "file:///test_rename_var.nxl"
         server.documents[uri2] = var_code
         
         workspace_edit = server.rename_provider.rename(
@@ -487,7 +487,7 @@ print text "Result: ", result
 set another to calculate with 3, 7
 """
     
-    uri = "file:///test_refs_function.nlpl"
+    uri = "file:///test_refs_function.nxl"
     server.documents[uri] = source
     
     # Position on function name in definition (line 1, char 9)
@@ -525,7 +525,7 @@ end
 print text "Final: ", counter
 """
     
-    uri2 = "file:///test_refs_variable.nlpl"
+    uri2 = "file:///test_refs_variable.nxl"
     server.documents[uri2] = source2
     
     # Position on 'counter' in first assignment (line 1, char 4)
@@ -572,7 +572,7 @@ set person2 to new Person()
 set person2.name to "Bob"
 """
     
-    uri3 = "file:///test_refs_class.nlpl"
+    uri3 = "file:///test_refs_class.nxl"
     server.documents[uri3] = source3
     
     # Position on 'Person' in class definition (line 1, char 6)
@@ -615,8 +615,8 @@ set x to add with 5, 10
 set y to add with 20, 30
 """
     
-    uri_file1 = "file:///module_math.nlpl"
-    uri_file2 = "file:///main.nlpl"
+    uri_file1 = "file:///module_math.nxl"
+    uri_file2 = "file:///main.nxl"
     server.documents[uri_file1] = file1
     server.documents[uri_file2] = file2
     
@@ -651,7 +651,7 @@ set y to add with 20, 30
 def run_all_tests():
     """Run all LSP tests"""
     print("\n" + "=" * 70)
-    print(" NLPL LSP Server - Comprehensive Test Suite")
+    print(" NexusLang LSP Server - Comprehensive Test Suite")
     print("=" * 70 + "\n")
     
     # Initialize server

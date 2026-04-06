@@ -61,7 +61,7 @@ isalpha('A') = 1024.0
 - Integer/Float type marshalling bidirectional (NLPL ↔ C)
 - Multiple parameter functions work correctly
 - Character values passed as integers (ASCII codes)
-- Return values correctly converted to NLPL types
+- Return values correctly converted to NexusLang types
 
 ---
 
@@ -78,8 +78,8 @@ isalpha('A') = 1024.0
 **Results**: Clean execution, no errors
 
 **Key Findings**:
-- NLPL String → C char* conversion automatic
-- C char* → NLPL String return values handled
+- NexusLang String → C char* conversion automatic
+- C char* → NexusLang String return values handled
 - Null-terminated string handling correct
 
 ---
@@ -90,7 +90,7 @@ isalpha('A') = 1024.0
 
 **Blocker**: Test files use incorrect struct creation syntax.
 
-**Issue**: Test uses `create Point with x: 10 and y: 20` syntax, but correct NLPL syntax is:
+**Issue**: Test uses `create Point with x: 10 and y: 20` syntax, but correct NexusLang syntax is:
 ```nlpl
 set p to new Point
 set p.x to 10
@@ -178,7 +178,7 @@ if hasattr(node, 'named_arguments') and node.named_arguments:
 
 ### Bug #3: Test File Syntax Errors
 
-**Issue**: Test files written with incorrect NLPL syntax
+**Issue**: Test files written with incorrect NexusLang syntax
 
 **Problems Found**:
 1. **Extern parameter separator**: Used `and` instead of `,` (comma)
@@ -202,7 +202,7 @@ if hasattr(node, 'named_arguments') and node.named_arguments:
 
 ### 1. Interpreter Mode Only
 
-**Current Testing**: All tests run with `python -m nlpl.main --no-type-check`
+**Current Testing**: All tests run with `python -m nexuslang.main --no-type-check`
 
 **Limitations**:
 - Type checking disabled (causes issues with extern function types)
@@ -227,7 +227,7 @@ extern function func with param1 as Type1, param2 as Type2 returns RetType from 
 extern function func with param1 as Type1 and param2 as Type2
 ```
 
-**Note**: Regular NLPL function calls support both `and` and commas, but extern declarations only support commas
+**Note**: Regular NexusLang function calls support both `and` and commas, but extern declarations only support commas
 
 ---
 
@@ -239,7 +239,7 @@ extern function func with param1 as Type1 and param2 as Type2
 
 **Example**:
 ```bash
-python -m nlpl.main --no-type-check test_ffi_basic_types.nlpl
+python -m nexuslang.main --no-type-check test_ffi_basic_types.nlpl
 ```
 
 **Future Work**: Enhance type checker to handle FFI types correctly
@@ -274,7 +274,7 @@ set p to create Point with x: 10 and y: 20
    - Library name conventions (platform differences)
 
 2. **Type Mapping Reference**:
-   - Need table showing NLPL types ↔ C types
+   - Need table showing NexusLang types ↔ C types
    - Current implementation in `header_parser.py` but not documented for users
 
 3. **Error Messages**:
@@ -300,7 +300,7 @@ set p to create Point with x: 10 and y: 20
 **Observations**:
 - Overhead minimal for simple C function calls
 - Python ctypes backend reasonably fast
-- Most time spent in NLPL interpreter startup/parsing
+- Most time spent in NexusLang interpreter startup/parsing
 
 ### Expected Compiled Mode Performance:
 
@@ -389,22 +389,22 @@ set p to create Point with x: 10 and y: 20
 
 ```bash
 # Basic types test
-python -m nlpl.main --no-type-check test_programs/integration/ffi/test_ffi_basic_types.nlpl
+python -m nexuslang.main --no-type-check test_programs/integration/ffi/test_ffi_basic_types.nlpl
 
 # String conversion test  
-python -m nlpl.main --no-type-check test_programs/integration/ffi/test_ffi_strings.nlpl
+python -m nexuslang.main --no-type-check test_programs/integration/ffi/test_ffi_strings.nlpl
 
 # Simple strlen test
-python -m nlpl.main --no-type-check test_programs/integration/ffi_simple.nlpl
+python -m nexuslang.main --no-type-check test_programs/integration/ffi_simple.nlpl
 
 # SQLite3 example (requires libsqlite3)
-python -m nlpl.main --no-type-check examples/ffi_sqlite3.nlpl
+python -m nexuslang.main --no-type-check examples/ffi_sqlite3.nlpl
 ```
 
 ### Running With Type Checking (will fail due to known issues):
 
 ```bash
-python -m nlpl.main test_ffi_basic_types.nlpl  # Type errors expected
+python -m nexuslang.main test_ffi_basic_types.nlpl  # Type errors expected
 ```
 
 ### Compiled Mode (not tested yet):

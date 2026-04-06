@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-fuzzing/fuzz_interpreter.py  --  Atheris fuzz target for the full NLPL pipeline.
+fuzzing/fuzz_interpreter.py  --  Atheris fuzz target for the full NexusLang pipeline.
 
 Tests: lexer → parser → borrow checker → lifetime checker → interpreter.
 
 The interpreter MUST:
   - Never raise an unhandled Python exception for any program text that passes
     the parsing stage.
-  - Expected outcomes: successful execution, NLPLRuntimeError, NLPLTypeError,
-    NLPLNameError, NLPLSyntaxError, or any other NLPLError subclass.
+  - Expected outcomes: successful execution, NxlRuntimeError, NxlTypeError,
+    NxlNameError, NxlSyntaxError, or any other NxlError subclass.
 
 Running with Atheris:
     python -m atheris fuzz_interpreter.py corpus/interpreter/ -max_total_time=60
@@ -28,26 +28,26 @@ _SRC = os.path.join(_ROOT, "src")
 if _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
-from nlpl.parser.lexer import Lexer  # noqa: E402
-from nlpl.parser.parser import Parser  # noqa: E402
-from nlpl.interpreter.interpreter import Interpreter  # noqa: E402
-from nlpl.runtime.runtime import Runtime  # noqa: E402
-from nlpl.stdlib import register_stdlib  # noqa: E402
-from nlpl.errors import NLPLError  # noqa: E402
+from nexuslang.parser.lexer import Lexer  # noqa: E402
+from nexuslang.parser.parser import Parser  # noqa: E402
+from nexuslang.interpreter.interpreter import Interpreter  # noqa: E402
+from nexuslang.runtime.runtime import Runtime  # noqa: E402
+from nexuslang.stdlib import register_stdlib  # noqa: E402
+from nexuslang.errors import NxlError  # noqa: E402
 
 # Hard ceiling on interpreter wall-clock time (seconds).
 # Prevents infinite-loop programs from hanging the fuzzer.
 _TIMEOUT_SECONDS = 5
 
 _EXPECTED = (
-    NLPLError,
+    NxlError,
     ValueError,
     TypeError,
     OverflowError,
     ZeroDivisionError,
     IndexError,
     KeyError,
-    RecursionError,  # Treat recursion in NLPL programs as acceptable (not a Python bug).
+    RecursionError,  # Treat recursion in NexusLang programs as acceptable (not a Python bug).
     UnicodeDecodeError,
     StopIteration,
     OSError,
@@ -71,7 +71,7 @@ def _make_runtime() -> Runtime:
 
 def TestOneInput(data: bytes) -> None:
     """
-    Fuzz entry point for the complete NLPL execution pipeline.
+    Fuzz entry point for the complete NexusLang execution pipeline.
     """
     try:
         source = data.decode("utf-8", errors="replace")
@@ -81,21 +81,21 @@ def TestOneInput(data: bytes) -> None:
     # --- Lexer ---
     try:
         tokens = Lexer(source).tokenize()
-    except NLPLError:
+    except NxlError:
         return
 
     # --- Parser ---
     try:
         ast = Parser(tokens, source=source).parse()
-    except NLPLError:
+    except NxlError:
         return
 
     # --- Optional static passes (borrow/lifetime) ---
     # These should never crash Python; if they do, it's a bug.  We still wrap
     # them so a panic in the checker doesn't mask a deeper interpreter bug.
     try:
-        from nlpl.typesystem.borrow_checker import BorrowChecker
-        from nlpl.typesystem.lifetime_checker import LifetimeChecker
+        from nexuslang.typesystem.borrow_checker import BorrowChecker
+        from nexuslang.typesystem.lifetime_checker import LifetimeChecker
 
         borrow_errors = BorrowChecker().check(ast)
         if borrow_errors:
@@ -104,7 +104,7 @@ def TestOneInput(data: bytes) -> None:
         lifetime_errors = [e for e in LifetimeChecker().check(ast) if not e.is_warning]
         if lifetime_errors:
             return
-    except NLPLError:
+    except NxlError:
         return
     except Exception:
         # Don't hide checker bugs — but don't crash the fuzzer campaign either.
@@ -161,7 +161,7 @@ _SANITY_INPUTS: list[bytes] = [
     b'set items to ["alpha", "beta", "gamma"]\n'
     b"for each item in items\n"
     b'  print text item\n',
-    # Error cases that should raise NLPLError, not crash Python
+    # Error cases that should raise NxlError, not crash Python
     b"set x to undefined_variable",
     b"function f\n  return 1 divided by 0\n\ncall f\n",
     b"set x to 1\nset x to x plus true",

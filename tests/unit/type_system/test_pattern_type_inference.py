@@ -6,12 +6,12 @@ including proper type inference for pattern bindings.
 """
 
 import pytest
-from nlpl.typesystem.types import (
+from nexuslang.typesystem.types import (
     ListType, DictionaryType, FunctionType, GenericType,
     INTEGER_TYPE, STRING_TYPE, FLOAT_TYPE, BOOLEAN_TYPE, ANY_TYPE
 )
-from nlpl.typesystem.type_inference import TypeInferenceEngine
-from nlpl.parser.ast import (
+from nexuslang.typesystem.type_inference import TypeInferenceEngine
+from nexuslang.parser.ast import (
     Literal, IdentifierPattern, WildcardPattern, ListPattern,
     OptionPattern, ResultPattern, VariantPattern
 )

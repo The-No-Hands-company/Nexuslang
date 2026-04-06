@@ -2,7 +2,7 @@
 check_error_messages.py
 ========================
 
-Monthly copy-pass audit tool for NLPL error codes.
+Monthly copy-pass audit tool for NexusLang error codes.
 
 Checks every entry in src/nlpl/error_codes.py for:
   - Descriptions that are too short (< 20 characters)
@@ -35,7 +35,7 @@ from typing import List, Tuple
 PROJ_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJ_ROOT / "src"))
 
-from nlpl.error_codes import ERROR_CODES, ErrorInfo, get_error_code_for_type  # noqa: E402
+from nexuslang.error_codes import ERROR_CODES, ErrorInfo, get_error_code_for_type  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -126,7 +126,7 @@ def audit_mapping_coverage() -> List[Issue]:
 
 def show_telemetry(top_n: int = 15) -> None:
     try:
-        from nlpl.lsp.telemetry import get_counts, get_metadata
+        from nexuslang.lsp.telemetry import get_counts, get_metadata
     except ImportError:
         print("  [telemetry] Cannot import telemetry module.")
         return
@@ -139,7 +139,7 @@ def show_telemetry(top_n: int = 15) -> None:
     print(f"  First seen: {meta['first_seen']}   Last updated: {meta['last_updated']}")
 
     if not counts:
-        print("\n  No telemetry data yet. Run the LSP server and open some NLPL files to collect data.")
+        print("\n  No telemetry data yet. Run the LSP server and open some NexusLang files to collect data.")
         return
 
     total = sum(counts.values())
@@ -159,7 +159,7 @@ def show_telemetry(top_n: int = 15) -> None:
 
 def reset_telemetry() -> None:
     try:
-        from nlpl.lsp.telemetry import reset_counts
+        from nexuslang.lsp.telemetry import reset_counts
         reset_counts()
         print("Telemetry counters reset.")
     except ImportError:
@@ -238,7 +238,7 @@ def print_report(issues: List[Issue], show_tele: bool = False) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Monthly copy-pass audit for NLPL error codes",
+        description="Monthly copy-pass audit for NexusLang error codes",
     )
     parser.add_argument("--show-telemetry", action="store_true",
                         help="Show local telemetry (most-emitted codes)")

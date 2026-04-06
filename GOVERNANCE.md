@@ -1,4 +1,4 @@
-# NLPL Governance
+# NexusLang Governance
 
 ## Overview
 
@@ -10,7 +10,7 @@ over time.
 
 ### Users
 
-Anyone who downloads, runs, or reads about NLPL. No formal requirements. All are
+Anyone who downloads, runs, or reads about NexusLang. No formal requirements. All are
 welcome to open issues and participate in discussions.
 
 ### Contributors

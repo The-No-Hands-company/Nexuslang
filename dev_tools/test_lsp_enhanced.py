@@ -16,7 +16,7 @@ import os
 # Add src directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from nlpl.lsp.server import NLPLLanguageServer, Position
+from nexuslang.lsp.server import NLPLLanguageServer, Position
 
 
 def test_enhanced_positioning():
@@ -32,7 +32,7 @@ function greet that takes name as String returns Integer
     return "hello"  # Type error: returns String instead of Integer
 '''
     
-    uri = "file:///test_positioning.nlpl"
+    uri = "file:///test_positioning.nxl"
     diagnostics = server.diagnostics_provider.get_diagnostics(uri, code, check_imports=False)
     
     print(f"\nDiagnostics found: {len(diagnostics)}\n")
@@ -57,7 +57,7 @@ set message to "unclosed string
 set x to 10
 print text x'''
     
-    uri = "file:///test_actions.nlpl"
+    uri = "file:///test_actions.nxl"
     diagnostics = server.diagnostics_provider.get_diagnostics(uri, code, check_imports=False)
     
     print(f"\nDiagnostics: {len(diagnostics)}")
@@ -135,13 +135,13 @@ def test_multi_file_diagnostics():
     
     code = '''import math
 import nonexistent_module
-import utils from "missing_file.nlpl"
+import utils from "missing_file.nxl"
 import collections
 
 set x to sqrt with 16
 '''
     
-    uri = "file:///test_imports.nlpl"
+    uri = "file:///test_imports.nxl"
     diagnostics = server.diagnostics_provider.get_diagnostics(uri, code, check_imports=True)
     
     print(f"\nDiagnostics found: {len(diagnostics)}\n")
@@ -176,7 +176,7 @@ set result to add with 5, 10
 print text result
 '''
     
-    uri = "file:///test_integration.nlpl"
+    uri = "file:///test_integration.nxl"
     
     # Get diagnostics
     diagnostics = server.diagnostics_provider.get_diagnostics(uri, code, check_imports=False)

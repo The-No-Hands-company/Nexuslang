@@ -1,6 +1,6 @@
-# NLPL IntelliJ Plugin
+# NexusLang IntelliJ Plugin
 
-Provides native NLPL language support in all IntelliJ-based IDEs including IntelliJ IDEA,
+Provides native NexusLang language support in all IntelliJ-based IDEs including IntelliJ IDEA,
 PyCharm, CLion, WebStorm, and Rider.
 
 ## Features
@@ -10,12 +10,12 @@ PyCharm, CLion, WebStorm, and Rider.
 - Inline diagnostics (errors, warnings)
 - Signature help for function calls
 - Custom file type icon
-- Colors & Fonts customization under Settings > Editor > Color Scheme > NLPL
+- Colors & Fonts customization under Settings > Editor > Color Scheme > NexusLang
 
 ## Requirements
 
 - IntelliJ-based IDE 2024.1 or newer
-- NLPL installed: `pip install nlpl` or built from source
+- NexusLang installed: `pip install nlpl` or built from source
 
 The LSP server (`nlpl lsp`) starts automatically when you open a `.nlpl` file.
 
@@ -43,7 +43,7 @@ The distributable `.zip` will be in `build/distributions/`.
 
 ### From JetBrains Marketplace (when published)
 1. Go to **Settings | Plugins | Marketplace**
-2. Search for "NLPL"
+2. Search for "NexusLang"
 3. Click Install
 
 ### From local build
@@ -54,11 +54,11 @@ The distributable `.zip` will be in `build/distributions/`.
 
 ## Configuration
 
-By default the plugin detects the NLPL LSP server automatically:
+By default the plugin detects the NexusLang LSP server automatically:
 
 1. Checks the `NLPL_LSP_COMMAND` environment variable
 2. Looks for `nlpl lsp` on `PATH`
-3. Falls back to `python3 -m nlpl.lsp`
+3. Falls back to `python3 -m nexuslang.lsp`
 
 To override, set the environment variable before launching IntelliJ:
 
@@ -74,7 +74,7 @@ editors/intellij/
     settings.gradle.kts                      Gradle settings
     src/main/kotlin/com/nlpl/intellij/
         NlplLanguage.kt                      Language descriptor
-        NlplFileType.kt                      File type (.nlpl)
+        NlplFileType.kt                      File type (.nxl)
         NlplIcons.kt                         File icon
         NlplTokenTypes.kt                    Lexer token types
         NlplHighlightingLexer.kt             Regex-based highlighting lexer

@@ -1,12 +1,12 @@
-# NLPL Module System Implementation Summary
+# NexusLang Module System Implementation Summary
 
 ## Overview
-We have successfully implemented a module system for the NLPL language. This system provides a way to organize code into reusable components that can be imported and used across different files, enhancing code organization, encapsulation, and reuse.
+We have successfully implemented a module system for the NexusLang language. This system provides a way to organize code into reusable components that can be imported and used across different files, enhancing code organization, encapsulation, and reuse.
 
 ## Components Implemented
 
 ### 1. Module Definition
-- **File-Based Modules**: Each NLPL file automatically becomes a module that can be imported by other files.
+- **File-Based Modules**: Each NexusLang file automatically becomes a module that can be imported by other files.
 - **Module Naming**: Module names are derived from file names (without the `.nlpl` extension).
 - **Privacy Control**: Support for private declarations that are only accessible within the module.
 
@@ -90,4 +90,4 @@ Print("Result 2: " + result2).
 5. **Package Support**: Add support for packages (directories containing multiple modules).
 
 ## Conclusion
-The module system implementation significantly enhances the NLPL language by providing a way to organize code into reusable components. This makes it easier to develop larger programs by breaking them down into smaller, more manageable pieces. The design is flexible enough to support future extensions while maintaining compatibility with the existing language features. 
+The module system implementation significantly enhances the NexusLang language by providing a way to organize code into reusable components. This makes it easier to develop larger programs by breaking them down into smaller, more manageable pieces. The design is flexible enough to support future extensions while maintaining compatibility with the existing language features. 

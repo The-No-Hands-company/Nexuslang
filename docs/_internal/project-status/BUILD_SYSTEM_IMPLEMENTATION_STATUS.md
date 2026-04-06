@@ -1,4 +1,4 @@
-# NLPL Build System - Implementation Status
+# NexusLang Build System - Implementation Status
 
 **Status:** **COMPLETE** 
 **Date:** November 25, 2024 
@@ -8,7 +8,7 @@
 
 ## Overview
 
-The NLPL Build System is a modern package management and build tool similar to Cargo (Rust) or npm (Node.js). It provides project scaffolding, dependency management, incremental compilation, build caching, and multi-target builds.
+The NexusLang Build System is a modern package management and build tool similar to Cargo (Rust) or npm (Node.js). It provides project scaffolding, dependency management, incremental compilation, build caching, and multi-target builds.
 
 ---
 
@@ -168,7 +168,7 @@ nlplbuild clean
 name = "my_app"
 version = "0.1.0"
 authors = ["Your Name <you@example.com>"]
-description = "A cool NLPL application"
+description = "A cool NexusLang application"
 license = "MIT"
 
 [build]
@@ -185,14 +185,14 @@ local_lib = { version = "*", source = "path", path = "../local_lib" }
 test_framework = "0.5.0"
 
 [target.main]
-source = "src/main.nlpl"
+source = "src/main.nxl"
 type = "executable"
 dependencies = []
 optimization = 0
 debug = false
 
 [target.lib]
-source = "src/lib.nlpl"
+source = "src/lib.nxl"
 type = "library"
 dependencies = []
 optimization = 2
@@ -235,7 +235,7 @@ debug = false
 ### Build Pipeline
 
 ```
-Source File (.nlpl)
+Source File (.nxl)
  
 Lexer Tokens
  
@@ -264,7 +264,7 @@ Linker Executable
 
 ### Dependency Resolution
 
-1. **Parse Dependencies:** Load from nlpl.toml
+1. **Parse Dependencies:** Load from nexuslang.toml
 2. **Resolve Versions:** Apply version constraints
 3. **Build Graph:** Construct dependency graph
 4. **Detect Cycles:** Check for circular dependencies
@@ -341,7 +341,7 @@ nlplbuild build # Rebuilds only changed files
 ## Success Criteria
 
 - Can initialize new projects
-- Can build NLPL programs to executables
+- Can build NexusLang programs to executables
 - Incremental compilation works
 - Build caching reduces rebuild time
 - Can run compiled programs
@@ -366,7 +366,7 @@ nlplbuild build # Rebuilds only changed files
 
 ## Achievements
 
-1. **Modern Build Tool:** NLPL now has a Cargo/npm-like build system
+1. **Modern Build Tool:** NexusLang now has a Cargo/npm-like build system
 2. **Fast Rebuilds:** Incremental compilation with caching
 3. **Professional UX:** Clean CLI with helpful output
 4. **Extensible Design:** Ready for package registry integration

@@ -1,10 +1,10 @@
-# Natural Language Programming Language (NLPL) Specification
+# NexusLang (NexusLang) Specification
 
 ## 1. Introduction
 
-The Natural Language Programming Language (NLPL) is a general-purpose programming language designed to bridge the gap between human language and computer code. It features an English-like syntax while maintaining the power and expressiveness of traditional programming languages like C++.
+The NexusLang (NexusLang) is a general-purpose programming language designed to bridge the gap between human language and computer code. It features an English-like syntax while maintaining the power and expressiveness of traditional programming languages like C++.
 
-This document provides a formal specification of the NLPL syntax and semantics, serving as a reference for language implementers and users.
+This document provides a formal specification of the NexusLang syntax and semantics, serving as a reference for language implementers and users.
 
 ## 2. Language Design Goals
 
@@ -28,11 +28,11 @@ Allocate, Free, Memory, Run, These, Tasks, At, Same, Time, Try, To, But, Fails,
 And, Or, Not, With, Called, That, Takes, Returns, Has, Property, Method, End
 ```
 
-Keywords are case-insensitive in NLPL.
+Keywords are case-insensitive in NexusLang.
 
 ### 3.2 Identifiers
 
-Identifiers in NLPL follow standard programming language conventions:
+Identifiers in NexusLang follow standard programming language conventions:
 
 - Must start with a letter
 - Can contain letters, digits, and underscores
@@ -79,7 +79,7 @@ false
 
 ### 4.1 Program Structure
 
-An NLPL program consists of a sequence of statements. Each statement typically ends with a period, though some compound statements (like function definitions) have an explicit `End` marker.
+An NexusLang program consists of a sequence of statements. Each statement typically ends with a period, though some compound statements (like function definitions) have an explicit `End` marker.
 
 ### 4.2 Variable Declaration and Assignment
 
@@ -262,7 +262,7 @@ try {
 
 ## 5. Formal Grammar
 
-The complete BNF grammar for NLPL can be found in the `src/parser/bnf_grammar.txt` file. Here's a simplified overview:
+The complete BNF grammar for NexusLang can be found in the `src/parser/bnf_grammar.txt` file. Here's a simplified overview:
 
 ```
 <program> ::= <statement-list>
@@ -276,7 +276,7 @@ The complete BNF grammar for NLPL can be found in the `src/parser/bnf_grammar.tx
 ### 6.1 Simple Calculator
 
 ```
-# Simple Calculator Program in NLPL
+# Simple Calculator Program in NexusLang
 
 # Define the main calculator class
 Define a class called Calculator
@@ -335,7 +335,7 @@ Print calc.result
 ### 6.2 Concurrent Processing
 
 ```
-# Concurrent Processing Example in NLPL
+# Concurrent Processing Example in NexusLang
 
 Define a class called DataProcessor
     It has a list property called data
@@ -370,7 +370,7 @@ End
 
 ## 7. Implementation Notes
 
-The NLPL implementation consists of several components:
+The NexusLang implementation consists of several components:
 
 1. **Lexer**: Tokenizes the natural language input
 2. **Parser**: Converts tokens into an Abstract Syntax Tree (AST)
@@ -381,7 +381,7 @@ The implementation is designed to be modular and extensible, allowing for future
 
 ## 8. Future Directions
 
-Potential future enhancements to NLPL include:
+Potential future enhancements to NexusLang include:
 
 1. **Type Inference**: Reducing the need for explicit type declarations
 2. **Module System**: Supporting code organization and reuse
@@ -391,4 +391,4 @@ Potential future enhancements to NLPL include:
 
 ## 9. Conclusion
 
-NLPL demonstrates that it's possible to create a programming language with natural English syntax while maintaining the power and expressiveness of traditional languages. By bridging the gap between human language and computer code, NLPL aims to make programming more accessible to a wider audience. 
+NLPL demonstrates that it's possible to create a programming language with natural English syntax while maintaining the power and expressiveness of traditional languages. By bridging the gap between human language and computer code, NexusLang aims to make programming more accessible to a wider audience. 

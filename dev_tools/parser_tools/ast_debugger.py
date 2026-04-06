@@ -168,7 +168,7 @@ class ParseErrorAnalyzer:
 
 
 class SyntaxValidator:
-    """Validate NLPL syntax and suggest corrections."""
+    """Validate NexusLang syntax and suggest corrections."""
     
     @staticmethod
     def validate(source_code: str) -> List[dict]:
@@ -284,7 +284,7 @@ def main():
         
         # Save JSON
         if args.json:
-            output_file = args.output or args.file.replace('.nlpl', '_ast.json')
+            output_file = args.output or args.file.replace('.nxl', '_ast.json')
             ASTVisualizer.save_json(ast_tree, output_file)
         
     except Exception as e:

@@ -7,11 +7,11 @@
 
 ## Part 1 — Overview
 
-The NLPL standard library is implemented in Python.  Each module is a
+The NexusLang standard library is implemented in Python.  Each module is a
 subdirectory of `src/nlpl/stdlib/` containing an `__init__.py` that
 registers Python callables with the runtime.
 
-When you import a module in NLPL, the interpreter loads the corresponding
+When you import a module in NexusLang, the interpreter loads the corresponding
 Python module and calls its `register_*_functions` function.
 
 ---
@@ -33,7 +33,7 @@ src/nlpl/stdlib/
 
 ```python
 """
-my_module: a demonstration stdlib module for NLPL.
+my_module: a demonstration stdlib module for NexusLang.
 """
 
 from ...runtime.runtime import Runtime
@@ -77,7 +77,7 @@ def register_stdlib(runtime: Runtime) -> None:
 
 ---
 
-## Part 5 — Using the Module from NLPL
+## Part 5 — Using the Module from NexusLang
 
 ```nlpl
 import my_module
@@ -95,7 +95,7 @@ print text (my_module.my_greet with "Alice")    # Hello, Alice!
 Return a list (NLPL will destructure it):
 
 ```python
-def divmod_nlpl(a, b):
+def divmod_nxl(a, b):
     if b == 0:
         raise ZeroDivisionError("division by zero")
     quotient, remainder = divmod(a, b)
@@ -103,7 +103,7 @@ def divmod_nlpl(a, b):
 ```
 
 ```nlpl
-set parts to my_module.divmod_nlpl with 17 and 5
+set parts to my_module.divmod_nxl with 17 and 5
 set q to parts[0]    # 3
 set r to parts[1]    # 2
 ```
@@ -160,17 +160,17 @@ if needed_size is greater than my_module.MY_MAX_SIZE
 
 ## Part 9 — Error Handling in Python Implementations
 
-Raise Python built-in exceptions or NLPL error types — the runtime
-translates them into NLPL runtime errors:
+Raise Python built-in exceptions or NexusLang error types — the runtime
+translates them into NexusLang runtime errors:
 
 ```python
-from ....errors import NLPLRuntimeError, NLPLTypeError
+from ....errors import NxlRuntimeError, NxlTypeError
 
 def read_fixed_width_field(data: str, start: int, width: int) -> str:
     if not isinstance(data, str):
-        raise NLPLTypeError(f"Expected string, got {type(data).__name__}")
+        raise NxlTypeError(f"Expected string, got {type(data).__name__}")
     if start < 0 or start + width > len(data):
-        raise NLPLRuntimeError(
+        raise NxlRuntimeError(
             f"Field out of bounds: start={start}, width={width}, len={len(data)}"
         )
     return data[start : start + width]
@@ -184,8 +184,8 @@ def read_fixed_width_field(data: str, start: int, width: int) -> str:
 
 ```python
 import pytest
-from nlpl.runtime.runtime import Runtime
-from nlpl.stdlib.my_module import register_my_module_functions
+from nexuslang.runtime.runtime import Runtime
+from nexuslang.stdlib.my_module import register_my_module_functions
 
 
 @pytest.fixture

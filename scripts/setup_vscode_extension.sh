@@ -1,5 +1,5 @@
 #!/bin/bash
-# Quick setup script for NLPL VSCode extension
+# Quick setup script for NexusLang VSCode extension
 
 echo "=========================================="
 echo "NLPL VSCode Extension Setup"
@@ -7,8 +7,8 @@ echo "=========================================="
 echo ""
 
 # Check if we're in the right directory
-if [ ! -f "src/nlpl_lsp.py" ]; then
-    echo "❌ Error: Please run this from the NLPL project root"
+if [ ! -f "src/nxl_lsp.py" ]; then
+    echo "❌ Error: Please run this from the NexusLang project root"
     exit 1
 fi
 
@@ -28,12 +28,12 @@ echo "This allows you to use the extension in THIS workspace without packaging."
 echo ""
 echo "Steps:"
 echo "1. Open Command Palette (Ctrl+Shift+P)"
-echo "2. Type: 'NLPL' and the extension should auto-activate for .nlpl files"
+echo "2. Type: 'NexusLang' and the extension should auto-activate for .nlpl files"
 echo "3. Open any .nlpl file in examples/ or test_programs/"
 echo ""
 echo "The extension will automatically:"
 echo "  ✓ Activate syntax highlighting"
-echo "  ✓ Start the LSP server at: $PROJECT_ROOT/src/nlpl_lsp.py"
+echo "  ✓ Start the LSP server at: $PROJECT_ROOT/src/nxl_lsp.py"
 echo "  ✓ Provide diagnostics, completions, signature help, etc."
 echo ""
 echo "Extension is configured in: .vscode/settings.json"
@@ -82,7 +82,7 @@ echo "Quick Test"
 echo "=========================================="
 echo ""
 echo "To test the LSP server directly:"
-echo "  python src/nlpl_lsp.py"
+echo "  python src/nxl_lsp.py"
 echo ""
 echo "To test diagnostics:"
 echo "  python dev_tools/test_lsp_diagnostics.py"

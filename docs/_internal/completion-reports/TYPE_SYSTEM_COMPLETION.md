@@ -1,4 +1,4 @@
-# NLPL Type System Completion
+# NexusLang Type System Completion
 
 ## Summary
 
@@ -84,7 +84,7 @@ Created 4 test programs covering all type system features:
 ## Usage
 
 ```python
-from nlpl.typesystem import get_type_system
+from nexuslang.typesystem import get_type_system
 
 type_system = get_type_system(enable_type_checking=True)
 

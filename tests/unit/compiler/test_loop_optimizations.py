@@ -14,7 +14,7 @@ _SRC = str(Path(__file__).resolve().parent.parent.parent.parent / "src")
 if _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
-from nlpl.optimizer.loop_optimizations import (
+from nexuslang.optimizer.loop_optimizations import (
     LoopOptimizationStats,
     LoopInfo,
     LoopAnalysisPass,
@@ -36,7 +36,7 @@ from nlpl.optimizer.loop_optimizations import (
     _reduce_strength_in_expr,
     _SyntheticLiteral,
 )
-from nlpl.parser.ast import (
+from nexuslang.parser.ast import (
     ForLoop, WhileLoop, RepeatNTimesLoop, RepeatWhileLoop,
     VariableDeclaration, BinaryOperation, Identifier, Literal,
     IfStatement,
@@ -963,21 +963,21 @@ class TestLoopOptimize:
 
 class TestLazyImportViaPackage:
     def test_loop_optimize_importable_via_optimizer(self):
-        from nlpl.optimizer import loop_optimize as lo
+        from nexuslang.optimizer import loop_optimize as lo
         assert callable(lo)
 
     def test_loop_analysis_pass_importable_via_optimizer(self):
-        from nlpl.optimizer import LoopAnalysisPass as LAP
+        from nexuslang.optimizer import LoopAnalysisPass as LAP
         assert LAP is LoopAnalysisPass
 
     def test_loop_pipeline_importable_via_optimizer(self):
-        from nlpl.optimizer import LoopOptimizationPipeline as LOP
+        from nexuslang.optimizer import LoopOptimizationPipeline as LOP
         assert LOP is LoopOptimizationPipeline
 
     def test_loop_fusion_pass_importable(self):
-        from nlpl.optimizer import LoopFusionPass as LFP
+        from nexuslang.optimizer import LoopFusionPass as LFP
         assert LFP is LoopFusionPass
 
     def test_licm_pass_importable(self):
-        from nlpl.optimizer import LoopInvariantCodeMotionPass as LICM
+        from nexuslang.optimizer import LoopInvariantCodeMotionPass as LICM
         assert LICM is LoopInvariantCodeMotionPass

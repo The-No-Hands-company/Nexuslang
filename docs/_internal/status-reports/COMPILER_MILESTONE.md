@@ -1,9 +1,9 @@
-# NLPL Compiler Milestone: First Native Executable
+# NexusLang Compiler Milestone: First Native Executable
 
 ## What We Built Today
 
 ### Core Achievement
-**Successfully compiled NLPL to native executable via C backend!**
+**Successfully compiled NexusLang to native executable via C backend!**
 
 ```nlpl
 set greeting to "Hello from NLPL!"
@@ -60,14 +60,14 @@ python dev_tools/import_checker.py --verbose
 
 **What we found and fixed:**
 - `src/main.py` was using `from parser.lexer` 
-- `nlpl_compile.py` was using `from src.parser.lexer`
+- `nxl_compile.py` was using `from src.parser.lexer`
 - This created TWO DIFFERENT `TokenType` enums!
 - Fixed by standardizing all imports to `from src.parser.lexer`
 
 ---
 
 #### 3. **Compilation Strategy Explainer** (`dev_tools/explain_compilation.py`)
-**Problem it solves:** Confusion about why NLPL compiles to C instead of directly to executable
+**Problem it solves:** Confusion about why NexusLang compiles to C instead of directly to executable
 
 **What it does:**
 - Visual explanation of compilation strategies
@@ -77,7 +77,7 @@ python dev_tools/import_checker.py --verbose
 - Real-world analogy (transportation)
 
 **Key insight:**
-- NLPL will have MULTIPLE backends, not just one
+- NexusLang will have MULTIPLE backends, not just one
 - C backend is strategic choice for rapid development
 - Different backends for different use cases (web, OS kernel, production)
 
@@ -117,7 +117,7 @@ This prevents the infinite loop that occurred when parser encountered `PRINT`.
 
 #### 3. **Import Path Standardization**
 **Fixed files:**
-- `nlpl_compile.py` - Changed path manipulation and imports
+- `nxl_compile.py` - Changed path manipulation and imports
 - `src/main.py` - Fixed imports to use `src.` prefix
 
 **Result:** All TokenType comparisons now work correctly
@@ -130,7 +130,7 @@ This prevents the infinite loop that occurred when parser encountered `PRINT`.
 - `src/compiler/__init__.py` - Base classes and orchestration
 - `src/compiler/backends/c_generator.py` - C code generation (330 lines)
 - `src/compiler/backends/cpp_generator.py` - C++ code generation (260 lines)
-- `nlpl_compile.py` - Command-line compiler interface (171 lines)
+- `nxl_compile.py` - Command-line compiler interface (171 lines)
 
 #### **Compilation Targets Defined:**
 ```python
@@ -145,7 +145,7 @@ class CompilationTarget(Enum):
 
 #### **Working Pipeline:**
 ```bash
-python nlpl_compile.py test.nlpl -o test.c --target c
+python nxl_compile.py test.nlpl -o test.c --target c
 gcc test.c -o test
 ./test # RUNS!
 ```
@@ -267,7 +267,7 @@ You were **100% RIGHT**. Here's what we learned:
 
 **NLPL now has a working compiler!**
 
-We can write natural language code and compile it to **native executables** that run **without Python**. The C backend is not a compromise - it's the **first of many backends** we'll build to make NLPL truly universal.
+We can write natural language code and compile it to **native executables** that run **without Python**. The C backend is not a compromise - it's the **first of many backends** we'll build to make NexusLang truly universal.
 
 **From this:**
 ```nlpl

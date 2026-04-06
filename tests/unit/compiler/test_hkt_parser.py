@@ -15,9 +15,9 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../src"))
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.parser.ast import (
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.parser.ast import (
     FunctionDefinition,
     ClassDefinition,
     StarKindAnnotation,
@@ -41,14 +41,14 @@ class TestDoubleColonToken:
     """Verify :: is tokenized as DOUBLE_COLON."""
 
     def test_double_colon_token(self):
-        from nlpl.parser.lexer import TokenType
+        from nexuslang.parser.lexer import TokenType
         lexer = Lexer("F :: *")
         tokens = lexer.tokenize()
         types = [t.type for t in tokens]
         assert TokenType.DOUBLE_COLON in types
 
     def test_single_colon_unchanged(self):
-        from nlpl.parser.lexer import TokenType
+        from nexuslang.parser.lexer import TokenType
         lexer = Lexer("a : b")
         tokens = lexer.tokenize()
         types = [t.type for t in tokens]
@@ -220,14 +220,14 @@ class TestASTToHKTConversion:
     """Verify _ast_kind_to_hkt correctly maps AST nodes to HKT Kind objects."""
 
     def test_star_converts(self):
-        from nlpl.interpreter.interpreter import Interpreter
-        from nlpl.typesystem.hkt import STAR
+        from nexuslang.interpreter.interpreter import Interpreter
+        from nexuslang.typesystem.hkt import STAR
         result = Interpreter._ast_kind_to_hkt(StarKindAnnotation())
         assert result is STAR
 
     def test_arrow_converts(self):
-        from nlpl.interpreter.interpreter import Interpreter
-        from nlpl.typesystem.hkt import STAR, ArrowKind
+        from nexuslang.interpreter.interpreter import Interpreter
+        from nexuslang.typesystem.hkt import STAR, ArrowKind
         ast_kind = ArrowKindAnnotation(StarKindAnnotation(), StarKindAnnotation())
         result = Interpreter._ast_kind_to_hkt(ast_kind)
         assert isinstance(result, ArrowKind)
@@ -235,8 +235,8 @@ class TestASTToHKTConversion:
         assert result.result_kind is STAR
 
     def test_nested_converts(self):
-        from nlpl.interpreter.interpreter import Interpreter
-        from nlpl.typesystem.hkt import STAR, ArrowKind
+        from nexuslang.interpreter.interpreter import Interpreter
+        from nexuslang.typesystem.hkt import STAR, ArrowKind
         inner = ArrowKindAnnotation(StarKindAnnotation(), StarKindAnnotation())
         ast_kind = ArrowKindAnnotation(inner, StarKindAnnotation())
         result = Interpreter._ast_kind_to_hkt(ast_kind)

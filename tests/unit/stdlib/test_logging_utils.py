@@ -1,5 +1,5 @@
 """
-Tests for the NLPL logging_utils stdlib module.
+Tests for the NexusLang logging_utils stdlib module.
 
 Coverage
 --------
@@ -25,7 +25,7 @@ from io import StringIO
 import pytest
 
 # Import the module directly so we can manipulate the registry in tests
-from nlpl.stdlib.logging_utils import (
+from nexuslang.stdlib.logging_utils import (
     LOG_DEBUG, LOG_INFO, LOG_WARNING, LOG_ERROR, LOG_CRITICAL,
     _LOGGERS, _LOG_LOCK, _get_or_create, _NLPLLogger, _resolve_level,
     log_debug, log_info, log_warning, log_error, log_critical,
@@ -287,7 +287,7 @@ class TestLogSetFormat:
         assert self._buf[-1] == ">> stripped"
 
     def test_format_reset_to_default(self):
-        from nlpl.stdlib.logging_utils import _DEFAULT_FORMAT
+        from nexuslang.stdlib.logging_utils import _DEFAULT_FORMAT
         log_set_format("test_fmt_logger", _DEFAULT_FORMAT)
         self._logger.log(LOG_INFO, "reset")
         assert "test_fmt_logger" in self._buf[-1]

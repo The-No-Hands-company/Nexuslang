@@ -1,5 +1,5 @@
 """
-Tests for the NLPL stdlib serialization module.
+Tests for the NexusLang stdlib serialization module.
 
 Covers: pickle, msgpack (if installed), yaml (if installed),
         toml (if installed), and Protocol Buffers (if installed).
@@ -16,7 +16,7 @@ _PROJECT_ROOT = os.path.abspath(
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from nlpl.stdlib.serialization import (
+from nexuslang.stdlib.serialization import (
     HAS_MSGPACK,
     HAS_YAML,
     HAS_TOML,
@@ -96,7 +96,7 @@ class TestPickleFile:
 @pytest.mark.skipif(not HAS_MSGPACK, reason="msgpack not installed")
 class TestMsgpackDumpsLoads:
     def setup_method(self):
-        from nlpl.stdlib.serialization import msgpack_dumps, msgpack_loads
+        from nexuslang.stdlib.serialization import msgpack_dumps, msgpack_loads
         self.dumps = msgpack_dumps
         self.loads = msgpack_loads
 
@@ -125,7 +125,7 @@ class TestMsgpackDumpsLoads:
 @pytest.mark.skipif(not HAS_MSGPACK, reason="msgpack not installed")
 class TestMsgpackFile:
     def setup_method(self):
-        from nlpl.stdlib.serialization import msgpack_dump_file, msgpack_load_file
+        from nexuslang.stdlib.serialization import msgpack_dump_file, msgpack_load_file
         self.dump_file = msgpack_dump_file
         self.load_file = msgpack_load_file
 
@@ -143,12 +143,12 @@ class TestMsgpackFile:
 @pytest.mark.skipif(HAS_MSGPACK, reason="msgpack IS installed, skip missing-dep test")
 class TestMsgpackMissing:
     def test_dumps_raises_import_error(self):
-        from nlpl.stdlib.serialization import msgpack_dumps
+        from nexuslang.stdlib.serialization import msgpack_dumps
         with pytest.raises(ImportError, match="msgpack"):
             msgpack_dumps({"a": 1})
 
     def test_loads_raises_import_error(self):
-        from nlpl.stdlib.serialization import msgpack_loads
+        from nexuslang.stdlib.serialization import msgpack_loads
         with pytest.raises(ImportError, match="msgpack"):
             msgpack_loads(b"")
 
@@ -161,7 +161,7 @@ class TestMsgpackMissing:
 @pytest.mark.skipif(not HAS_YAML, reason="PyYAML not installed")
 class TestYamlDumpsLoads:
     def setup_method(self):
-        from nlpl.stdlib.serialization import yaml_dumps, yaml_loads
+        from nexuslang.stdlib.serialization import yaml_dumps, yaml_loads
         self.dumps = yaml_dumps
         self.loads = yaml_loads
 
@@ -185,7 +185,7 @@ class TestYamlDumpsLoads:
 @pytest.mark.skipif(not HAS_YAML, reason="PyYAML not installed")
 class TestYamlFile:
     def setup_method(self):
-        from nlpl.stdlib.serialization import yaml_dump_file, yaml_load_file
+        from nexuslang.stdlib.serialization import yaml_dump_file, yaml_load_file
         self.dump_file = yaml_dump_file
         self.load_file = yaml_load_file
 
@@ -208,7 +208,7 @@ class TestYamlFile:
 @pytest.mark.skipif(not HAS_TOML, reason="toml not installed")
 class TestTomlDumpsLoads:
     def setup_method(self):
-        from nlpl.stdlib.serialization import toml_dumps, toml_loads
+        from nexuslang.stdlib.serialization import toml_dumps, toml_loads
         self.dumps = toml_dumps
         self.loads = toml_loads
 
@@ -228,7 +228,7 @@ class TestTomlDumpsLoads:
 @pytest.mark.skipif(not HAS_TOML, reason="toml not installed")
 class TestTomlFile:
     def setup_method(self):
-        from nlpl.stdlib.serialization import toml_dump_file, toml_load_file
+        from nexuslang.stdlib.serialization import toml_dump_file, toml_load_file
         self.dump_file = toml_dump_file
         self.load_file = toml_load_file
 
@@ -247,7 +247,7 @@ class TestTomlFile:
 @pytest.mark.skipif(not HAS_PROTOBUF, reason="protobuf not installed")
 class TestProtobufDumpsLoads:
     def setup_method(self):
-        from nlpl.stdlib.serialization import protobuf_dumps, protobuf_loads
+        from nexuslang.stdlib.serialization import protobuf_dumps, protobuf_loads
         self.dumps = protobuf_dumps
         self.loads = protobuf_loads
 
@@ -307,7 +307,7 @@ class TestProtobufDumpsLoads:
 @pytest.mark.skipif(not HAS_PROTOBUF, reason="protobuf not installed")
 class TestProtobufFile:
     def setup_method(self):
-        from nlpl.stdlib.serialization import protobuf_dump_file, protobuf_load_file
+        from nexuslang.stdlib.serialization import protobuf_dump_file, protobuf_load_file
         self.dump_file = protobuf_dump_file
         self.load_file = protobuf_load_file
 
@@ -345,22 +345,22 @@ class TestProtobufFile:
 @pytest.mark.skipif(HAS_PROTOBUF, reason="protobuf IS installed, skip missing-dep test")
 class TestProtobufMissing:
     def test_dumps_raises_import_error(self):
-        from nlpl.stdlib.serialization import protobuf_dumps
+        from nexuslang.stdlib.serialization import protobuf_dumps
         with pytest.raises(ImportError, match="protobuf"):
             protobuf_dumps({"k": "v"})
 
     def test_loads_raises_import_error(self):
-        from nlpl.stdlib.serialization import protobuf_loads
+        from nexuslang.stdlib.serialization import protobuf_loads
         with pytest.raises(ImportError, match="protobuf"):
             protobuf_loads(b"")
 
     def test_dump_file_raises_import_error(self, tmp_path):
-        from nlpl.stdlib.serialization import protobuf_dump_file
+        from nexuslang.stdlib.serialization import protobuf_dump_file
         with pytest.raises(ImportError, match="protobuf"):
             protobuf_dump_file({"k": "v"}, str(tmp_path / "out.pb"))
 
     def test_load_file_raises_import_error(self, tmp_path):
-        from nlpl.stdlib.serialization import protobuf_load_file
+        from nexuslang.stdlib.serialization import protobuf_load_file
         with pytest.raises(ImportError, match="protobuf"):
             protobuf_load_file(str(tmp_path / "in.pb"))
 
@@ -382,7 +382,7 @@ class TestRegisterSerializationFunctions:
         return MockRuntime()
 
     def test_pickle_functions_always_registered(self):
-        from nlpl.stdlib.serialization import register_serialization_functions
+        from nexuslang.stdlib.serialization import register_serialization_functions
         rt = self._make_mock_runtime()
         register_serialization_functions(rt)
         for name in ("pickle_dumps", "pickle_loads", "pickle_dump_file", "pickle_load_file"):
@@ -390,7 +390,7 @@ class TestRegisterSerializationFunctions:
 
     @pytest.mark.skipif(not HAS_PROTOBUF, reason="protobuf not installed")
     def test_protobuf_functions_registered_when_available(self):
-        from nlpl.stdlib.serialization import register_serialization_functions
+        from nexuslang.stdlib.serialization import register_serialization_functions
         rt = self._make_mock_runtime()
         register_serialization_functions(rt)
         for name in ("protobuf_dumps", "protobuf_loads", "protobuf_dump_file", "protobuf_load_file"):
@@ -398,7 +398,7 @@ class TestRegisterSerializationFunctions:
 
     @pytest.mark.skipif(not HAS_MSGPACK, reason="msgpack not installed")
     def test_msgpack_functions_registered_when_available(self):
-        from nlpl.stdlib.serialization import register_serialization_functions
+        from nexuslang.stdlib.serialization import register_serialization_functions
         rt = self._make_mock_runtime()
         register_serialization_functions(rt)
         for name in ("msgpack_dumps", "msgpack_loads", "msgpack_dump_file", "msgpack_load_file"):
@@ -406,7 +406,7 @@ class TestRegisterSerializationFunctions:
 
     @pytest.mark.skipif(not HAS_YAML, reason="PyYAML not installed")
     def test_yaml_functions_registered_when_available(self):
-        from nlpl.stdlib.serialization import register_serialization_functions
+        from nexuslang.stdlib.serialization import register_serialization_functions
         rt = self._make_mock_runtime()
         register_serialization_functions(rt)
         for name in ("yaml_dumps", "yaml_loads", "yaml_dump_file", "yaml_load_file"):
@@ -414,7 +414,7 @@ class TestRegisterSerializationFunctions:
 
     @pytest.mark.skipif(not HAS_TOML, reason="toml not installed")
     def test_toml_functions_registered_when_available(self):
-        from nlpl.stdlib.serialization import register_serialization_functions
+        from nexuslang.stdlib.serialization import register_serialization_functions
         rt = self._make_mock_runtime()
         register_serialization_functions(rt)
         for name in ("toml_dumps", "toml_loads", "toml_dump_file", "toml_load_file"):

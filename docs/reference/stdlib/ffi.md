@@ -1,4 +1,4 @@
-# NLPL FFI Quick Reference Guide
+# NexusLang FFI Quick Reference Guide
 
 ## Basic FFI Usage
 
@@ -159,9 +159,9 @@ set sine to sin(angle) # ~1.0
 
 ## Type Mappings
 
-### NLPL C Type Correspondence
+### NexusLang C Type Correspondence
 
-| NLPL Type | C Type | LLVM Type | Notes |
+| NexusLang Type | C Type | LLVM Type | Notes |
 |--------------|------------------|-----------|--------------------------|
 | `Integer` | `long` (64-bit) | `i64` | Default integer type |
 | `Int8` | `char` | `i8` | 8-bit signed |
@@ -413,7 +413,7 @@ end
 
 ### Callbacks (Planned)
 ```nlpl
-# Pass NLPL function to C library
+# Pass NexusLang function to C library
 function my_comparator with a as Integer with b as Integer returns Integer
  if a is less than b
  return -1

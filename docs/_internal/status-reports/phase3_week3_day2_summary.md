@@ -113,22 +113,22 @@ self.rc_cleanup_stack = [] # Scope exit cleanup tracking
 
 **Type Detection**:
 ```python
-def _map_nlpl_type_to_llvm(self, nlpl_type: str):
+def _map_nxl_type_to_llvm(self, nxl_type: str):
     # Detect Rc/Weak/Arc types
-    if nlpl_type.startswith('Rc of '):
+    if nxl_type.startswith('Rc of '):
         self.has_rc_types = True
         return 'i8*'  # Opaque pointer to metadata+data
-    elif nlpl_type.startswith('Weak of '):
+    elif nxl_type.startswith('Weak of '):
         self.has_rc_types = True
         return 'i8*'
-    elif nlpl_type.startswith('Arc of '):
+    elif nxl_type.startswith('Arc of '):
         self.has_rc_types = True
         return 'i8*'
 ```
 
 **Runtime Function Declarations** (conditionally generated):
 ```llvm
-; NLPL Reference Counting Runtime
+; NexusLang Reference Counting Runtime
 declare i8* @rc_new(i64) #12
 declare i8* @rc_retain(i8*) #2
 declare void @rc_release(i8*) #2
@@ -210,7 +210,7 @@ SUCCESS: Rc types recognized and runtime functions declared
 **Reasoning**:
 - All Rc types map to `i8*` regardless of inner type
 - Runtime stores actual data after metadata
-- Type safety enforced by NLPL type checker
+- Type safety enforced by NexusLang type checker
 - LLVM sees uniform pointer type for all smart pointers
 
 ### Memory Management Strategy
@@ -238,9 +238,9 @@ SUCCESS: Rc types recognized and runtime functions declared
 
 ### Conditional Code Generation
 
-**Detection Phase** (in `_map_nlpl_type_to_llvm`):
+**Detection Phase** (in `_map_nxl_type_to_llvm`):
 ```python
-if nlpl_type.startswith('Rc of '):
+if nxl_type.startswith('Rc of '):
     self.has_rc_types = True  # Set flag
     return 'i8*'
 ```
@@ -248,7 +248,7 @@ if nlpl_type.startswith('Rc of '):
 **Declaration Phase** (in `_declare_external_functions`):
 ```python
 if self.has_rc_types:
-    self.emit('; NLPL Reference Counting Runtime')
+    self.emit('; NexusLang Reference Counting Runtime')
     self.emit('declare i8* @rc_new(i64) #12')
     # ... all Rc runtime functions
 ```
@@ -449,7 +449,7 @@ if self.has_rc_types:
 **Benefits**:
 - Clean IR for simple programs
 - No linking errors for unused features
-- Follows NLPL philosophy of zero overhead
+- Follows NexusLang philosophy of zero overhead
 
 ### 4. Static vs Dynamic Linking
 

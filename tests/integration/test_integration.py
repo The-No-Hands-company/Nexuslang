@@ -1,5 +1,5 @@
 """
-Integration test cases for the NLPL compiler pipeline.
+Integration test cases for the NexusLang compiler pipeline.
 Tests the entire process from source code to execution.
 """
 
@@ -10,13 +10,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 import unittest
 import tempfile
 import shutil
-from nlpl.interpreter.interpreter import Interpreter
-from nlpl.runtime.runtime import Runtime
-from nlpl.stdlib import register_stdlib
+from nexuslang.interpreter.interpreter import Interpreter
+from nexuslang.runtime.runtime import Runtime
+from nexuslang.stdlib import register_stdlib
 
 
 class TestIntegration(unittest.TestCase):
-    """Integration test cases for the NLPL compiler pipeline."""
+    """Integration test cases for the NexusLang compiler pipeline."""
 
     def setUp(self):
         """Set up test fixtures before each test method."""
@@ -37,7 +37,7 @@ class TestIntegration(unittest.TestCase):
         self.interpreter.interpret(source)
 
     def test_calculator(self):
-        """Test a simple calculator using NLPL functions."""
+        """Test a simple calculator using NexusLang functions."""
         source = """
 function add with a as Integer and b as Integer returns Integer
     return a plus b

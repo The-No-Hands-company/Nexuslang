@@ -1,5 +1,5 @@
 """
-Comprehensive test suite for NLPL control flow structures.
+Comprehensive test suite for NexusLang control flow structures.
 Tests if/else, for-each loops, try-catch, and other control structures.
 """
 

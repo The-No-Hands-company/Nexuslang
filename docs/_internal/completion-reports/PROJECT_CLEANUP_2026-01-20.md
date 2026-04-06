@@ -1,7 +1,7 @@
 # Project Cleanup - January 20, 2026
 
 ## Overview
-Comprehensive cleanup of the NLPL project structure and enforcement of the no-emoji policy.
+Comprehensive cleanup of the NexusLang project structure and enforcement of the no-emoji policy.
 
 ## Changes Made
 
@@ -34,7 +34,7 @@ Comprehensive cleanup of the NLPL project structure and enforcement of the no-em
 
 - **Scripts** (15+ files) → `scripts/`
   - All `.sh` scripts (install_extension_globally.sh, package_extension.sh, setup_vscode_extension.sh)
-  - Debug scripts (nlpl_debug.py, test_debugger.py, test_repl.py)
+  - Debug scripts (nxl_debug.py, test_debugger.py, test_repl.py)
   - Compiler wrappers (nlplc, nlpllint)
   - Utility directory moved to scripts/utility/
 
@@ -104,13 +104,13 @@ def remove_emojis_safe(text: str) -> str:
 
 ### Root Directory (Clean)
 ```
-NLPL/
+NexusLang/
 ├── README.md                 # Project overview
 ├── ROADMAP.md               # Development roadmap
 ├── pyproject.toml           # Python project config
 ├── requirements.txt         # Dependencies
 ├── Makefile                # Build automation
-├── NLPL.code-workspace     # VS Code workspace
+├── NexusLang.code-workspace     # VS Code workspace
 ├── src/                    # Source code
 ├── tests/                  # Test suite
 ├── docs/                   # Documentation
@@ -145,8 +145,8 @@ scripts/
 ├── *.sh                   # Shell scripts
 ├── nlplc                  # Compiler wrapper
 ├── nlpllint              # Linter wrapper
-├── nlpl_debug.py         # Debugger
-├── nlpl_repl.py          # REPL
+├── nxl_debug.py         # Debugger
+├── nxl_repl.py          # REPL
 ├── test_*.py             # Test runners
 ├── cleanup_project.py    # Original emoji cleanup (deprecated)
 ├── remove_emojis_safe.py # Safe emoji removal
@@ -163,7 +163,7 @@ python -c "import ast; ast.parse(open('src/nlpl/interpreter/interpreter.py').rea
 python -c "import ast; ast.parse(open('src/nlpl/parser/parser.py').read())"  # OK
 
 # Module imports successful
-python -c "from nlpl.interpreter.interpreter import Interpreter; from nlpl.parser.parser import Parser; from nlpl.parser.lexer import Lexer"  # OK
+python -c "from nexuslang.interpreter.interpreter import Interpreter; from nexuslang.parser.parser import Parser; from nexuslang.parser.lexer import Lexer"  # OK
 ```
 
 ### Emoji Verification
@@ -192,7 +192,7 @@ Note: Test failures are due to test file content issues, not Python source code 
 
 ## Next Steps
 
-1. Fix failing NLPL test programs (dict_comprehensions, decorators, macros)
+1. Fix failing NexusLang test programs (dict_comprehensions, decorators, macros)
 2. Update CI/CD pipelines to reference new file locations
 3. Update documentation references to moved files
 4. Consider adding pre-commit hooks to prevent emoji introduction

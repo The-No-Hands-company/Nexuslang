@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build script for NLPL Rc runtime library
+# Build script for NexusLang Rc runtime library
 
 set -e  # Exit on error
 
@@ -11,7 +11,7 @@ BUILD_DIR="$PROJECT_ROOT/build/runtime"
 # Create build directory
 mkdir -p "$BUILD_DIR"
 
-echo "Building NLPL Rc runtime library..."
+echo "Building NexusLang Rc runtime library..."
 echo "Source: $RUNTIME_DIR/rc_runtime.c"
 echo "Output: $BUILD_DIR/librc_runtime.a"
 
@@ -40,5 +40,5 @@ echo "✓ Build successful!"
 echo "  Static library:  $BUILD_DIR/librc_runtime.a"
 echo "  Shared library:  $BUILD_DIR/librc_runtime.so"
 echo ""
-echo "To use in NLPL programs:"
+echo "To use in NexusLang programs:"
 echo "  Link with: -L$BUILD_DIR -lrc_runtime"

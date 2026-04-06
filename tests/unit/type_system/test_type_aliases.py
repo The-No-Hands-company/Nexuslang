@@ -2,7 +2,7 @@
 Test type aliases with constraints.
 """
 
-from nlpl.typesystem.types import (
+from nexuslang.typesystem.types import (
     TypeAliasType, ListType, DictionaryType, GenericParameter,
     INTEGER_TYPE, STRING_TYPE, FLOAT_TYPE,
     COMPARABLE_TRAIT, EQUATABLE_TRAIT

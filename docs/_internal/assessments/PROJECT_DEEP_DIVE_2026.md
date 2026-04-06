@@ -1,4 +1,4 @@
-# NLPL Project Deep Dive Analysis - January 2026
+# NexusLang Project Deep Dive Analysis - January 2026
 
 **Analysis Date:** January 26, 2026  
 **Project Age:** ~18 months  
@@ -163,7 +163,7 @@ Comments:                12,216
 - ✅ Variadic functions (limited)
 
 #### Planned
-- ⏳ Automatic header parsing (.h → NLPL bindings)
+- ⏳ Automatic header parsing (.h → NexusLang bindings)
 - ⏳ C++ interop (name mangling)
 
 ### 8. Module System (100% ✅)
@@ -257,7 +257,7 @@ Comments:                12,216
 ### 12. Testing Infrastructure (90% ✅)
 
 - ✅ 45 Python test files (pytest)
-- ✅ 40 NLPL example programs
+- ✅ 40 NexusLang example programs
 - ✅ 312+ test programs in test_programs/
 - ✅ Unit tests for all major components
 - ✅ Integration tests for compiler
@@ -306,7 +306,7 @@ Comments:                12,216
 ### 2. Remaining FFI Features (10% missing)
 
 **Missing:**
-- ⏳ **Automatic header parsing** (parse .h files → NLPL bindings)
+- ⏳ **Automatic header parsing** (parse .h files → NexusLang bindings)
 - ⏳ **C++ interop** (name demangling, templates)
 
 **Priority:** MEDIUM - Manual FFI works well currently
@@ -374,7 +374,7 @@ Comments:                12,216
 
 ### 7. Self-Hosting (0% - aspirational)
 
-**Goal:** Rewrite NLPL compiler in NLPL itself
+**Goal:** Rewrite NexusLang compiler in NexusLang itself
 
 **Current:** Python-based compiler (36,857 lines)
 
@@ -382,9 +382,9 @@ Comments:                12,216
 
 ---
 
-## NLPL RAD (Rapid Application Development) - New Project
+## NexusLang RAD (Rapid Application Development) - New Project
 
-### Vision: Delphi/Visual Basic for NLPL
+### Vision: Delphi/Visual Basic for NexusLang
 
 You want to create a **visual application development environment** similar to:
 - **Delphi** (Borland/Embarcadero) - Form designer + Object Pascal
@@ -398,11 +398,11 @@ A complete IDE that combines:
 1. **Visual Form Designer** - Drag-drop UI components
 2. **Property Inspector** - Edit widget properties visually
 3. **Event Handler Wiring** - Double-click to create event handlers
-4. **Code Editor** - Write NLPL code with IntelliSense
+4. **Code Editor** - Write NexusLang code with IntelliSense
 5. **Integrated Debugger** - Debug visual applications
 6. **Component Palette** - Library of reusable UI widgets
 
-### Prerequisites for NLPL RAD
+### Prerequisites for NexusLang RAD
 
 #### 1. GUI Framework Bindings (CRITICAL - MISSING)
 
@@ -544,11 +544,11 @@ set form_data to {
 json_save("myform.json", form_data)
 ```
 
-### NLPL RAD Architecture
+### NexusLang RAD Architecture
 
 ```
 ┌─────────────────────────────────────────┐
-│        NLPL RAD IDE (Desktop App)       │
+│        NexusLang RAD IDE (Desktop App)       │
 │  ┌───────────┐  ┌──────────────────┐   │
 │  │  Visual   │  │  Property        │   │
 │  │  Designer │  │  Inspector       │   │
@@ -560,7 +560,7 @@ json_save("myform.json", form_data)
 │  │           │  │  OnClick: [...]  │   │
 │  └───────────┘  └──────────────────┘   │
 │  ┌───────────────────────────────────┐ │
-│  │     Code Editor (NLPL)            │ │
+│  │     Code Editor (NexusLang)            │ │
 │  │                                   │ │
 │  │  function on_button_click         │ │
 │  │      print text "Hello"           │ │
@@ -569,7 +569,7 @@ json_save("myform.json", form_data)
 └─────────────────────────────────────────┘
            ↓ Generate
 ┌─────────────────────────────────────────┐
-│         Generated NLPL Code             │
+│         Generated NexusLang Code             │
 │                                         │
 │  # main.nlpl (auto-generated)           │
 │  import gui                             │
@@ -599,17 +599,17 @@ json_save("myform.json", form_data)
 
 1. ✅ Choose GUI framework (GTK or ImGui)
 2. ⏳ Implement FFI bindings for GUI library
-3. ⏳ Create NLPL wrapper module (gui.nlpl)
+3. ⏳ Create NexusLang wrapper module (gui.nxl)
 4. ⏳ Test basic window creation and event handling
 5. ⏳ Write 5-10 example programs
 
-**Deliverable:** Working GUI apps in NLPL
+**Deliverable:** Working GUI apps in NexusLang
 
 #### Phase 2: RAD IDE Core (Desktop App)
 **Time:** 3-4 weeks
 
 Technology stack for RAD IDE itself:
-- **Option A:** Build in NLPL (dogfooding - ambitious!)
+- **Option A:** Build in NexusLang (dogfooding - ambitious!)
 - **Option B:** Build in Python/Qt (faster, easier)
 - **Option C:** Build in Electron (web tech, cross-platform)
 
@@ -626,16 +626,16 @@ Technology stack for RAD IDE itself:
 **Time:** 2 weeks
 
 1. Design serialization format (.nlplform file)
-2. Implement code generator (form → NLPL code)
+2. Implement code generator (form → NexusLang code)
 3. Separate generated code from user code
 4. Handle partial code regeneration
 
-**Deliverable:** Generate compilable NLPL code from visual design
+**Deliverable:** Generate compilable NexusLang code from visual design
 
 #### Phase 4: Integration
 **Time:** 2 weeks
 
-1. Integrate NLPL LSP for IntelliSense
+1. Integrate NexusLang LSP for IntelliSense
 2. Integrate nlplc for compilation
 3. Add debugger support
 4. Add project management
@@ -724,7 +724,7 @@ Month 4: Polish & Release
 2. RAD IDE itself - **2-3 months**
 3. Component library - **ongoing**
 
-**Timeline:** With focused effort, NLPL RAD could be usable in **4-5 months**.
+**Timeline:** With focused effort, NexusLang RAD could be usable in **4-5 months**.
 
 **Recommendation:** Start with GUI bindings immediately. Choose ImGui for fastest results, or GTK for a more traditional desktop feel. Build 5-10 example GUI programs first, then start RAD IDE development.
 

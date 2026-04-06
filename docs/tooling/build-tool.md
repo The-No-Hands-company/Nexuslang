@@ -1,4 +1,4 @@
-# NLPL Build Tool (nlpl_build.py)
+# NexusLang Build Tool (nxl_build.py)
 
 **Status**: ✅ Complete - Build Tool CLI + Incremental Compilation
 
@@ -6,7 +6,7 @@
 
 ## Overview
 
-`nlpl_build.py` is a Cargo-inspired build tool for NLPL projects. It provides project-aware compilation, build orchestration, feature flag management, and profile support through `nlpl.toml` manifests.
+`nxl_build.py` is a Cargo-inspired build tool for NexusLang projects. It provides project-aware compilation, build orchestration, feature flag management, and profile support through `nlpl.toml` manifests.
 
 **Key Features**:
 - **Manifest-driven builds**: Reads `nlpl.toml` for project configuration
@@ -14,31 +14,31 @@
 - **Build profiles**: Support for dev, release, and custom profiles
 - **Feature flags**: Enable/disable capabilities at compile time
 - **Multiple targets**: Build libraries and multiple binaries
-- **Integrated testing**: Run test suites with `nlpl_build.py test`
-- **Clean builds**: Remove artifacts with `nlpl_build.py clean`
+- **Integrated testing**: Run test suites with `nxl_build.py test`
+- **Clean builds**: Remove artifacts with `nxl_build.py clean`
 - **Syntax checking**: Fast error checking without compilation
 
 ---
 
 ## Installation
 
-The build tool is located at `dev_tools/nlpl_build.py` and requires:
+The build tool is located at `dev_tools/nxl_build.py` and requires:
 - Python 3.8+
-- NLPL compiler (`nlplc`)
+- NexusLang compiler (`nlplc`)
 - Access to `src/nlpl/` modules
 
 **Make executable**:
 ```bash
-chmod +x dev_tools/nlpl_build.py
+chmod +x dev_tools/nxl_build.py
 ```
 
 **Optional: Add to PATH**:
 ```bash
 # Add to ~/.bashrc or ~/.zshrc
-export PATH="$PATH:/path/to/NLPL/dev_tools"
+export PATH="$PATH:/path/to/NexusLang/dev_tools"
 
 # Create alias
-alias nlpl-build="python3 /path/to/NLPL/dev_tools/nlpl_build.py"
+alias nlpl-build="python3 /path/to/NexusLang/dev_tools/nxl_build.py"
 ```
 
 ---
@@ -51,11 +51,11 @@ Build all targets defined in `nlpl.toml`.
 
 **Usage**:
 ```bash
-nlpl_build.py build                    # Build with dev profile
-nlpl_build.py build --release          # Build with release profile
-nlpl_build.py build --profile custom   # Build with custom profile
-nlpl_build.py build --features f1,f2   # Enable specific features
-nlpl_build.py build --bin processor    # Build specific binary
+nxl_build.py build                    # Build with dev profile
+nxl_build.py build --release          # Build with release profile
+nxl_build.py build --profile custom   # Build with custom profile
+nxl_build.py build --features f1,f2   # Enable specific features
+nxl_build.py build --bin processor    # Build specific binary
 ```
 
 **Options**:
@@ -69,41 +69,41 @@ nlpl_build.py build --bin processor    # Build specific binary
 **Examples**:
 ```bash
 # Development build
-nlpl_build.py build
+nxl_build.py build
 
 # Production-optimized build
-nlpl_build.py build --release
+nxl_build.py build --release
 
 # Build with specific features
-nlpl_build.py build --features data-analytics,storage-backend
+nxl_build.py build --features data-analytics,storage-backend
 
 # Build specific binary
-nlpl_build.py build --bin analyzer
+nxl_build.py build --bin analyzer
 ```
 
 **Incremental Compilation**:
 
-By default, `nlpl_build.py build` uses incremental compilation to skip recompiling unchanged files. This dramatically improves build times for large projects.
+By default, `nxl_build.py build` uses incremental compilation to skip recompiling unchanged files. This dramatically improves build times for large projects.
 
 ```bash
 # First build - compiles everything
-nlpl_build.py build --verbose
+nxl_build.py build --verbose
 # Output: "Finished build [profile: dev] (5 compiled, 0 up-to-date)"
 
 # Second build - skips unchanged files
-nlpl_build.py build --verbose
+nxl_build.py build --verbose
 # Output: "Finished build [profile: dev] (0 compiled, 5 up-to-date)"
 
 # After modifying a file
 echo '# Modified' >> src/utils.nlpl
-nlpl_build.py build --verbose
+nxl_build.py build --verbose
 # Output: "Rebuild reason: Dependency utils.nlpl changed"
 #         "Finished build [profile: dev] (2 compiled, 3 up-to-date)"
 ```
 
 **Disable incremental builds** (force full rebuild):
 ```bash
-nlpl_build.py build --no-incremental
+nxl_build.py build --no-incremental
 ```
 
 See [INCREMENTAL_COMPILATION.md](INCREMENTAL_COMPILATION.md) for detailed documentation on the incremental compilation system.
@@ -132,7 +132,7 @@ Remove all build outputs and intermediate files.
 
 **Usage**:
 ```bash
-nlpl_build.py clean
+nxl_build.py clean
 ```
 
 **Removes**:
@@ -149,8 +149,8 @@ Fast syntax checking without compilation. Useful for rapid feedback during devel
 
 **Usage**:
 ```bash
-nlpl_build.py check                    # Check all sources
-nlpl_build.py check --features f1,f2   # Check with features enabled
+nxl_build.py check                    # Check all sources
+nxl_build.py check --features f1,f2   # Check with features enabled
 ```
 
 **Checks**:
@@ -169,10 +169,10 @@ Build and immediately run a binary target.
 
 **Usage**:
 ```bash
-nlpl_build.py run                      # Run default binary
-nlpl_build.py run --bin analyzer       # Run specific binary
-nlpl_build.py run --release            # Run release build
-nlpl_build.py run -- arg1 arg2         # Pass arguments to binary
+nxl_build.py run                      # Run default binary
+nxl_build.py run --bin analyzer       # Run specific binary
+nxl_build.py run --release            # Run release build
+nxl_build.py run -- arg1 arg2         # Pass arguments to binary
 ```
 
 **Options**:
@@ -185,16 +185,16 @@ nlpl_build.py run -- arg1 arg2         # Pass arguments to binary
 **Examples**:
 ```bash
 # Run default binary (dev profile)
-nlpl_build.py run
+nxl_build.py run
 
 # Run optimized binary
-nlpl_build.py run --release
+nxl_build.py run --release
 
 # Run with features and arguments
-nlpl_build.py run --features data-analytics -- input.csv
+nxl_build.py run --features data-analytics -- input.csv
 
 # Run specific binary
-nlpl_build.py run --bin analyzer -- --verbose
+nxl_build.py run --bin analyzer -- --verbose
 ```
 
 ---
@@ -205,9 +205,9 @@ Run all tests in the project.
 
 **Usage**:
 ```bash
-nlpl_build.py test                     # Run tests (dev profile)
-nlpl_build.py test --release           # Run tests (release profile)
-nlpl_build.py test --features f1,f2    # Run tests with features
+nxl_build.py test                     # Run tests (dev profile)
+nxl_build.py test --release           # Run tests (release profile)
+nxl_build.py test --features f1,f2    # Run tests with features
 ```
 
 **Test Discovery**:
@@ -258,16 +258,16 @@ keywords = ["keyword1", "keyword2"]
 # Single binary
 [[bin]]
 name = "my-app"
-path = "src/main.nlpl"
+path = "src/main.nxl"
 
 # Multiple binaries
 [[bin]]
 name = "processor"
-path = "src/bin/processor.nlpl"
+path = "src/bin/processor.nxl"
 
 [[bin]]
 name = "analyzer"
-path = "src/bin/analyzer.nlpl"
+path = "src/bin/analyzer.nxl"
 required-features = ["data-analytics"]  # Only built if feature enabled
 ```
 
@@ -276,7 +276,7 @@ required-features = ["data-analytics"]  # Only built if feature enabled
 ```toml
 [lib]
 name = "my_lib"
-path = "src/lib.nlpl"
+path = "src/lib.nxl"
 crate-type = ["lib"]  # or ["staticlib", "dylib", "cdylib"]
 ```
 
@@ -335,10 +335,10 @@ scripting = []                          # Embedded scripting
 **Using Features**:
 ```bash
 # Enable single feature
-nlpl_build.py build --features data-analytics
+nxl_build.py build --features data-analytics
 
 # Enable multiple features
-nlpl_build.py build --features data-analytics,storage-backend
+nxl_build.py build --features data-analytics,storage-backend
 
 # Features are transitive (dependencies enabled automatically)
 ```
@@ -371,7 +371,7 @@ my-project/
 
 ## Integration with Compiler
 
-`nlpl_build.py` integrates with the existing `nlplc` compiler:
+`nxl_build.py` integrates with the existing `nlplc` compiler:
 
 1. **Parsing**: Uses `nlpl.parser.lexer.Lexer` and `nlpl.parser.parser.Parser`
 2. **Compilation**: Shells out to `dev_tools/nlplc` for code generation
@@ -402,7 +402,7 @@ version = "0.1.0"
 
 [[bin]]
 name = "hello"
-path = "main.nlpl"
+path = "main.nxl"
 
 [profile.dev]
 opt-level = 0
@@ -419,12 +419,12 @@ print text "Hello from NLPL!"
 
 **Build and Run**:
 ```bash
-$ nlpl_build.py build
+$ nxl_build.py build
 Building hello [profile: dev, features: none]
   Compiling binary hello...
 Finished build [profile: dev]
 
-$ nlpl_build.py run
+$ nxl_build.py run
 Running hello...
 Hello from NLPL!
 ```
@@ -441,11 +441,11 @@ version = "1.0.0"
 
 [[bin]]
 name = "processor"
-path = "src/main.nlpl"
+path = "src/main.nxl"
 
 [[bin]]
 name = "analyzer"
-path = "src/bin/analyzer.nlpl"
+path = "src/bin/analyzer.nxl"
 required-features = ["data-analytics"]
 
 [dependencies]
@@ -466,16 +466,16 @@ lto = true
 **Build Commands**:
 ```bash
 # Build default binary (text-processing enabled)
-nlpl_build.py build
+nxl_build.py build
 
 # Build with analytics (includes analyzer binary)
-nlpl_build.py build --features data-analytics
+nxl_build.py build --features data-analytics
 
 # Production build
-nlpl_build.py build --release --features data-analytics,storage-backend
+nxl_build.py build --release --features data-analytics,storage-backend
 
 # Run specific binary
-nlpl_build.py run --bin analyzer --features data-analytics -- input.csv
+nxl_build.py run --bin analyzer --features data-analytics -- input.csv
 ```
 
 ---
@@ -490,15 +490,15 @@ version = "0.2.0"
 
 [lib]
 name = "my_lib"
-path = "src/lib.nlpl"
+path = "src/lib.nxl"
 
 [[bin]]
 name = "cli-tool"
-path = "src/bin/cli.nlpl"
+path = "src/bin/cli.nxl"
 
 [[bin]]
 name = "benchmark"
-path = "src/bin/bench.nlpl"
+path = "src/bin/bench.nxl"
 
 [features]
 default = []
@@ -515,16 +515,16 @@ opt-level = 3
 **Build Commands**:
 ```bash
 # Build library + all binaries
-nlpl_build.py build
+nxl_build.py build
 
 # Build only specific binary
-nlpl_build.py build --bin cli-tool
+nxl_build.py build --bin cli-tool
 
 # Check library without building
-nlpl_build.py check
+nxl_build.py check
 
 # Clean everything
-nlpl_build.py clean
+nxl_build.py clean
 ```
 
 ---
@@ -577,18 +577,18 @@ nlpl_build.py clean
 
 1. **Use `check` for rapid feedback**: 10-100x faster than full build
    ```bash
-   nlpl_build.py check  # Fast syntax checking
+   nxl_build.py check  # Fast syntax checking
    ```
 
 2. **Incremental builds**: Only recompile changed files (future)
    ```bash
-   nlpl_build.py build  # Smart rebuild
+   nxl_build.py build  # Smart rebuild
    ```
 
 3. **Profile-specific builds**: Keep dev and release separate
    ```bash
-   nlpl_build.py build               # Fast dev build
-   nlpl_build.py build --release     # Optimized release
+   nxl_build.py build               # Fast dev build
+   nxl_build.py build --release     # Optimized release
    ```
 
 4. **Feature flags**: Disable unused features
@@ -683,7 +683,7 @@ resolved = ["data-analytics", "nlpl-math/statistics"]  # Includes deps
 
 ## Comparison with Cargo
 
-| Feature | nlpl_build.py | Cargo |
+| Feature | nxl_build.py | Cargo |
 |---------|---------------|-------|
 | Manifest format | `nlpl.toml` | `Cargo.toml` |
 | Build profiles | ✅ dev, release, custom | ✅ dev, release, custom |

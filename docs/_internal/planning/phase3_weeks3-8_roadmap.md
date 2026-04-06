@@ -501,5 +501,5 @@ set thread2 to spawn_thread with consumer and channel.receiver
 
 **Phase 3 Status**: Week 2 COMPLETE, Week 3 READY TO START  
 **Strategic Direction**: Core language features over optimization  
-**Goal**: Make NLPL capable of building real applications  
+**Goal**: Make NexusLang capable of building real applications  
 **Timeline**: 6 more weeks of focused development ahead

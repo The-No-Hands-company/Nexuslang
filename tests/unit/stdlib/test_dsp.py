@@ -1,5 +1,5 @@
 """
-Tests for the NLPL Digital Signal Processing (DSP) stdlib module
+Tests for the NexusLang Digital Signal Processing (DSP) stdlib module
 (src/nlpl/stdlib/dsp).
 
 Coverage
@@ -21,7 +21,7 @@ import math
 import cmath
 import pytest
 
-from nlpl.stdlib.dsp import (
+from nexuslang.stdlib.dsp import (
     # FFT/Spectral
     fft,
     ifft,

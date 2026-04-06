@@ -1,4 +1,4 @@
-" NLPL ftplugin for Neovim/Vim
+" NexusLang ftplugin for Neovim/Vim
 " Loaded automatically when a .nlpl file is opened
 
 if exists("b:did_ftplugin")

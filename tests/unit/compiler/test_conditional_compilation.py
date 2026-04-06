@@ -5,10 +5,10 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from nlpl.parser.lexer import Lexer, TokenType
-from nlpl.parser.parser import Parser
-from nlpl.parser.ast import ConditionalCompilationBlock
-from nlpl.compiler.preprocessor import (
+from nexuslang.parser.lexer import Lexer, TokenType
+from nexuslang.parser.parser import Parser
+from nexuslang.parser.ast import ConditionalCompilationBlock
+from nexuslang.compiler.preprocessor import (
     CompileTarget,
     detect_host,
     host_target,
@@ -16,9 +16,9 @@ from nlpl.compiler.preprocessor import (
     preprocess_ast,
     target_summary,
 )
-from nlpl.interpreter.interpreter import Interpreter
-from nlpl.runtime.runtime import Runtime
-from nlpl.stdlib import register_stdlib
+from nexuslang.interpreter.interpreter import Interpreter
+from nexuslang.runtime.runtime import Runtime
+from nexuslang.stdlib import register_stdlib
 
 
 # ---------------------------------------------------------------------------
@@ -32,7 +32,7 @@ def _parse(source: str):
 
 
 def _run(source: str):
-    """Execute NLPL source and return the interpreter (inspect variables after)."""
+    """Execute NexusLang source and return the interpreter (inspect variables after)."""
     runtime = Runtime()
     register_stdlib(runtime)
     interp = Interpreter(runtime)

@@ -1,4 +1,4 @@
-# NLPL Multi-Level Implementation Roadmap
+# NexusLang Multi-Level Implementation Roadmap
 
 **Version:** 2.0 
 **Date:** January 2, 2026 
@@ -8,7 +8,7 @@
 
 ## Vision Statement
 
-Implement **all five abstraction levels** in NLPL, creating the world's first language that truly spans from assembly to natural English, all with native performance.
+Implement **all five abstraction levels** in NexusLang, creating the world's first language that truly spans from assembly to natural English, all with native performance.
 
 ---
 
@@ -297,7 +297,7 @@ Phase 5: Level 5 (Natural Language)
 2. **Competitive Advantage**
  - Go's success proves concurrency is essential
  - Rust async ecosystem is huge
- - NLPL needs this to compete
+ - NexusLang needs this to compete
 
 3. **User Demand**
  - Most requested feature
@@ -474,7 +474,7 @@ end
 ### Phase 3 (Assembly)
 - Successfully compile and run bootloader
 - Inline assembly works on x86-64 and ARM64
-- Can write minimal OS kernel in NLPL
+- Can write minimal OS kernel in NexusLang
 - Hardware I/O operations work on real hardware
 
 ### Phase 4 (Structured Concurrency)
@@ -494,7 +494,7 @@ end
 | **M4: Inline Assembly** | August 2026 | Assembly blocks working |
 | **M5: Level 1 Complete** | September 2026 | Low-level system programming enabled |
 | **M6: Structured Concurrency** | November 2026 | All concurrency models ready |
-| **M7: NLPL 2.0 Release** | December 2026 | All 5 levels complete |
+| **M7: NexusLang 2.0 Release** | December 2026 | All 5 levels complete |
 
 ---
 
@@ -561,7 +561,7 @@ NLPL will be the **only language** where you can:
 
 ### Competitive Position
 
-| Feature | NLPL | C/C++ | Rust | Go | Zig |
+| Feature | NexusLang | C/C++ | Rust | Go | Zig |
 |---------|------|-------|------|----|----|
 | **Assembly to High-Level** | | | | | |
 | **Readable Syntax** | | | | | |

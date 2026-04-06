@@ -1,9 +1,9 @@
-# NLPL Optimization Passes - Implementation Summary
+# NexusLang Optimization Passes - Implementation Summary
 
 ## Date: January 9, 2026
 
 ## Overview
-Successfully integrated LLVM optimization passes into the NLPL compiler (`nlplc`). The compiler now supports 5 optimization levels with automatic fallback if LLVM `opt` tool is unavailable.
+Successfully integrated LLVM optimization passes into the NexusLang compiler (`nlplc`). The compiler now supports 5 optimization levels with automatic fallback if LLVM `opt` tool is unavailable.
 
 ## Implementation Details
 
@@ -36,7 +36,7 @@ def optimize_ir(ir_file: str, opt_level: str, verbose: bool = False) -> bool:
 ### Pipeline Integration
 
 **Compilation Steps** (updated):
-1. Parse NLPL source AST
+1. Parse NexusLang source AST
 2. Generate LLVM IR
 3. **Optimize IR** (new - if level > O0)
 4. **Optimize imported modules** (new)
@@ -178,7 +178,7 @@ Os: 14KB (-26%)
 
 ## Conclusion
 
-LLVM optimization passes successfully integrated into NLPL compiler. All 5 optimization levels functional with:
+LLVM optimization passes successfully integrated into NexusLang compiler. All 5 optimization levels functional with:
 - Significant performance improvements (4x)
 - Reduced binary sizes (26%)
 - Production-ready implementation

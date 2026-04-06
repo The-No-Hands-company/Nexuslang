@@ -1,5 +1,5 @@
 """
-Test formatter on real NLPL file
+Test formatter on real NexusLang file
 """
 
 import sys
@@ -7,20 +7,20 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
-from nlpl.lsp.formatter import NLPLFormatter
+from nexuslang.lsp.formatter import NLPLFormatter
 
 
 def main():
     formatter = NLPLFormatter()
     
     # Read an example file
-    example_file = Path(__file__).parent.parent / 'examples' / '01_basic_concepts.nlpl'
+    example_file = Path(__file__).parent.parent / 'examples' / '01_basic_concepts.nxl'
     
     with open(example_file, 'r') as f:
         original = f.read()
     
     print("=" * 80)
-    print("Formatting: examples/01_basic_concepts.nlpl")
+    print("Formatting: examples/01_basic_concepts.nxl")
     print("=" * 80)
     print("\nOriginal file (first 500 chars):")
     print(original[:500])

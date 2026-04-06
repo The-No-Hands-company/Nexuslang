@@ -1,4 +1,4 @@
-# NLPL Performance Optimization Guide
+# NexusLang Performance Optimization Guide
 
 ## Overview
 
@@ -9,7 +9,7 @@ NLPL provides multiple layers of performance optimization:
 3. **Optimizer Passes** - Static code transformations for efficiency
 4. **Compiled Mode** - Full ahead-of-time compilation with LLVM
 
-This guide covers how to use these tools to maximize NLPL performance.
+This guide covers how to use these tools to maximize NexusLang performance.
 
 ---
 
@@ -17,10 +17,10 @@ This guide covers how to use these tools to maximize NLPL performance.
 
 ### Basic Usage
 
-Profile any NLPL program with the `--profile` flag:
+Profile any NexusLang program with the `--profile` flag:
 
 ```bash
-python -m nlpl.main --profile my_program.nlpl
+python -m nexuslang.main --profile my_program.nlpl
 ```
 
 This will display a comprehensive report at the end:
@@ -53,12 +53,12 @@ Memory:
 
 **JSON Export** (for analysis tools):
 ```bash
-python -m nlpl.main --profile --profile-output results.json my_program.nlpl
+python -m nexuslang.main --profile --profile-output results.json my_program.nlpl
 ```
 
 **Flamegraph Export** (for visualization):
 ```bash
-python -m nlpl.main --profile --profile-flamegraph profile.folded my_program.nlpl
+python -m nexuslang.main --profile --profile-flamegraph profile.folded my_program.nlpl
 
 # Visualize with flamegraph.pl (requires FlameGraph tools)
 git clone https://github.com/brendangregg/FlameGraph
@@ -92,7 +92,7 @@ git clone https://github.com/brendangregg/FlameGraph
 NLPL's JIT compiler automatically identifies and compiles hot functions:
 
 ```python
-from nlpl.jit import enable_jit
+from nexuslang.jit import enable_jit
 
 # In interpreter setup (or integrated in main.py)
 jit = enable_jit(interpreter, hot_threshold=100)
@@ -199,7 +199,7 @@ NLPL includes multiple optimization passes:
 
 **O0** - No optimization (default for interpreter)
 ```python
-from nlpl.optimizer import OptimizationLevel, create_optimization_pipeline
+from nexuslang.optimizer import OptimizationLevel, create_optimization_pipeline
 
 pipeline = create_optimization_pipeline(OptimizationLevel.O0)
 ```
@@ -231,12 +231,12 @@ optimized_ast = pipeline.run(ast)
 ### Example: Manual Optimization
 
 ```python
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.optimizer import OptimizationLevel, create_optimization_pipeline
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.optimizer import OptimizationLevel, create_optimization_pipeline
 
 # Parse source
-source = open('my_program.nlpl').read()
+source = open('my_program.nxl').read()
 lexer = Lexer(source)
 tokens = lexer.tokenize()
 parser = Parser(tokens)
@@ -347,7 +347,7 @@ See `COMPILER_GUIDE.md` for full compiler documentation.
 Always profile before optimizing:
 
 ```bash
-python -m nlpl.main --profile my_program.nlpl
+python -m nexuslang.main --profile my_program.nlpl
 ```
 
 Focus on the top 3-5 hot functions/lines.
@@ -421,7 +421,7 @@ Compare optimized vs unoptimized output:
 
 ```bash
 # Unoptimized
-python -m nlpl.main my_program.nlpl > output1.txt
+python -m nexuslang.main my_program.nlpl > output1.txt
 
 # Optimized (via compiled mode)
 ./nlplc -O3 -o test my_program.nlpl
@@ -436,9 +436,9 @@ diff output1.txt output2.txt
 For debugging, create custom pipeline:
 
 ```python
-from nlpl.optimizer import OptimizationPipeline, OptimizationLevel
-from nlpl.optimizer.constant_folding import ConstantFoldingPass
-from nlpl.optimizer.dead_code_elimination import DeadCodeEliminationPass
+from nexuslang.optimizer import OptimizationPipeline, OptimizationLevel
+from nexuslang.optimizer.constant_folding import ConstantFoldingPass
+from nexuslang.optimizer.dead_code_elimination import DeadCodeEliminationPass
 
 # Only constant folding and DCE
 pipeline = OptimizationPipeline(OptimizationLevel.O2)
@@ -466,7 +466,7 @@ Create `.git/hooks/pre-commit`:
 #!/bin/bash
 # Profile performance-critical code
 if [[ "$1" =~ performance ]]; then
-    python -m nlpl.main --profile $1
+    python -m nexuslang.main --profile $1
 fi
 ```
 

@@ -1,4 +1,4 @@
-# nlpllint - NLPL Static Analyzer 
+# nlpllint - NexusLang Static Analyzer 
 
 **Status:** **WORKING** - v0.1.0 Alpha 
 **Date:** January 2, 2026
@@ -248,7 +248,7 @@ ERROR: M006 at program.nlpl:14:5
 {
  "files": [
  {
- "path": "program.nlpl",
+ "path": "program.nxl",
  "lines_analyzed": 45,
  "total_lines": 50,
  "analysis_time_ms": 12.3,
@@ -259,7 +259,7 @@ ERROR: M006 at program.nlpl:14:5
  "category": "memory",
  "message": "Use-after-free: dereferencing freed pointer 'buffer'",
  "location": {
- "file": "program.nlpl",
+ "file": "program.nxl",
  "line": 14,
  "column": 5
  },
@@ -427,9 +427,9 @@ nlplbuild program.nlpl
 
 ```json
 {
- "nlpl.linting.enabled": true,
- "nlpl.linting.onType": true,
- "nlpl.linting.showQuickFixes": true
+ "nexuslang.linting.enabled": true,
+ "nexuslang.linting.onType": true,
+ "nexuslang.linting.showQuickFixes": true
 }
 ```
 
@@ -566,7 +566,7 @@ test_programs/static_analysis/
 
 ## License
 
-Part of the NLPL project.
+Part of the NexusLang project.
 
 ---
 

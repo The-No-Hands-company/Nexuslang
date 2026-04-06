@@ -29,8 +29,8 @@ if _SRC not in sys.path:
 # ---------------------------------------------------------------------------
 
 def _parse(src: str):
-    from nlpl.parser.parser import Parser
-    from nlpl.parser.lexer import Lexer
+    from nexuslang.parser.parser import Parser
+    from nexuslang.parser.lexer import Lexer
     return Parser(Lexer(src).tokenize()).parse()
 
 
@@ -58,7 +58,7 @@ class TestDeadCodeChecker:
 
     @pytest.fixture(autouse=True)
     def _import(self):
-        from nlpl.tooling.analyzer.checks.dead_code import DeadCodeChecker
+        from nexuslang.tooling.analyzer.checks.dead_code import DeadCodeChecker
         self.cls = DeadCodeChecker
 
     def _run(self, src):
@@ -72,7 +72,7 @@ class TestDeadCodeChecker:
 
     # Infrastructure
     def test_import(self):
-        from nlpl.tooling.analyzer.checks.dead_code import DeadCodeChecker
+        from nexuslang.tooling.analyzer.checks.dead_code import DeadCodeChecker
         assert callable(DeadCodeChecker)
 
     def test_instantiate(self):
@@ -89,7 +89,7 @@ class TestDeadCodeChecker:
         assert self._codes("set x to 1") == []
 
     def test_checker_name(self):
-        from nlpl.tooling.analyzer.checks.dead_code import DeadCodeChecker
+        from nexuslang.tooling.analyzer.checks.dead_code import DeadCodeChecker
         assert DeadCodeChecker.CHECKER_NAME == "dead_code"
 
     # D001 — unreachable code after return
@@ -157,7 +157,7 @@ class TestDeadCodeChecker:
         assert isinstance(result, list)
 
     def test_d005_has_dead_code_category(self):
-        from nlpl.tooling.analyzer.report import Category
+        from nexuslang.tooling.analyzer.report import Category
         issues = self._run(
             "function foo returns Integer\n"
             "    return 1\n"
@@ -209,7 +209,7 @@ class TestDataFlowChecker:
 
     @pytest.fixture(autouse=True)
     def _import(self):
-        from nlpl.tooling.analyzer.checks.data_flow import DataFlowChecker
+        from nexuslang.tooling.analyzer.checks.data_flow import DataFlowChecker
         self.cls = DataFlowChecker
 
     def _run(self, src):
@@ -220,7 +220,7 @@ class TestDataFlowChecker:
 
     # Infrastructure
     def test_import(self):
-        from nlpl.tooling.analyzer.checks.data_flow import DataFlowChecker
+        from nexuslang.tooling.analyzer.checks.data_flow import DataFlowChecker
         assert callable(DataFlowChecker)
 
     def test_instantiate(self):
@@ -234,7 +234,7 @@ class TestDataFlowChecker:
         assert self._run(src) == []
 
     def test_checker_name(self):
-        from nlpl.tooling.analyzer.checks.data_flow import DataFlowChecker
+        from nexuslang.tooling.analyzer.checks.data_flow import DataFlowChecker
         assert DataFlowChecker.CHECKER_NAME == "data_flow"
 
     # DF006 — self-assignment (set x to x)
@@ -301,7 +301,7 @@ class TestDataFlowChecker:
             assert i.severity is not None
 
     def test_issues_have_category(self):
-        from nlpl.tooling.analyzer.report import Category
+        from nexuslang.tooling.analyzer.report import Category
         for i in self._run("set x to 1\nset x to x\n"):
             assert i.category is not None
 
@@ -315,7 +315,7 @@ class TestSecurityChecker:
 
     @pytest.fixture(autouse=True)
     def _import(self):
-        from nlpl.tooling.analyzer.checks.security import SecurityChecker
+        from nexuslang.tooling.analyzer.checks.security import SecurityChecker
         self.cls = SecurityChecker
 
     def _run(self, src):
@@ -329,7 +329,7 @@ class TestSecurityChecker:
 
     # Infrastructure
     def test_import(self):
-        from nlpl.tooling.analyzer.checks.security import SecurityChecker
+        from nexuslang.tooling.analyzer.checks.security import SecurityChecker
         assert callable(SecurityChecker)
 
     def test_instantiate(self):
@@ -339,7 +339,7 @@ class TestSecurityChecker:
         assert isinstance(self._run("set x to 1"), list)
 
     def test_checker_name(self):
-        from nlpl.tooling.analyzer.checks.security import SecurityChecker
+        from nexuslang.tooling.analyzer.checks.security import SecurityChecker
         assert SecurityChecker.CHECKER_NAME == "security"
 
     def test_clean_program_no_issues(self):
@@ -410,7 +410,7 @@ class TestSecurityChecker:
             assert i.suggestion != ""
 
     def test_issues_have_security_category(self):
-        from nlpl.tooling.analyzer.report import Category
+        from nexuslang.tooling.analyzer.report import Category
         src = "set password to \"mysecret\"\n"
         for i in self._run(src):
             assert i.category is not None
@@ -442,7 +442,7 @@ class TestPerformanceChecker:
 
     @pytest.fixture(autouse=True)
     def _import(self):
-        from nlpl.tooling.analyzer.checks.performance import PerformanceChecker
+        from nexuslang.tooling.analyzer.checks.performance import PerformanceChecker
         self.cls = PerformanceChecker
 
     def _run(self, src):
@@ -453,7 +453,7 @@ class TestPerformanceChecker:
 
     # Infrastructure
     def test_import(self):
-        from nlpl.tooling.analyzer.checks.performance import PerformanceChecker
+        from nexuslang.tooling.analyzer.checks.performance import PerformanceChecker
         assert callable(PerformanceChecker)
 
     def test_instantiate(self):
@@ -463,7 +463,7 @@ class TestPerformanceChecker:
         assert isinstance(self._run("set x to 1"), list)
 
     def test_checker_name(self):
-        from nlpl.tooling.analyzer.checks.performance import PerformanceChecker
+        from nexuslang.tooling.analyzer.checks.performance import PerformanceChecker
         assert PerformanceChecker.CHECKER_NAME == "performance"
 
     def test_clean_program_no_issues(self):
@@ -553,36 +553,36 @@ class TestPerformanceChecker:
 class TestStyleChecker:
 
     def test_import(self):
-        from nlpl.tooling.analyzer.checks.style import StyleChecker
+        from nexuslang.tooling.analyzer.checks.style import StyleChecker
         assert callable(StyleChecker)
 
     def test_instantiate(self):
-        from nlpl.tooling.analyzer.checks.style import StyleChecker
+        from nexuslang.tooling.analyzer.checks.style import StyleChecker
         assert hasattr(StyleChecker(), "check")
 
     def test_check_returns_list(self):
-        from nlpl.tooling.analyzer.checks.style import StyleChecker
+        from nexuslang.tooling.analyzer.checks.style import StyleChecker
         result = _run(StyleChecker, "set x to 1")
         assert isinstance(result, list)
 
     def test_checker_name(self):
-        from nlpl.tooling.analyzer.checks.style import StyleChecker
+        from nexuslang.tooling.analyzer.checks.style import StyleChecker
         assert hasattr(StyleChecker, "CHECKER_NAME")
 
     def test_clean_program_no_crash(self):
-        from nlpl.tooling.analyzer.checks.style import StyleChecker
+        from nexuslang.tooling.analyzer.checks.style import StyleChecker
         _run(StyleChecker, "set counter to 0\nprint text counter\n")
 
     def test_issues_have_code(self):
-        from nlpl.tooling.analyzer.checks.style import StyleChecker
+        from nexuslang.tooling.analyzer.checks.style import StyleChecker
         for i in _run(StyleChecker, "set ALLCAPS to 1\n"):
             assert i.code
 
     def test_registered_in_checks_init(self):
-        from nlpl.tooling.analyzer.checks import StyleChecker  # noqa: F401
+        from nexuslang.tooling.analyzer.checks import StyleChecker  # noqa: F401
 
     def test_issues_have_severity(self):
-        from nlpl.tooling.analyzer.checks.style import StyleChecker
+        from nexuslang.tooling.analyzer.checks.style import StyleChecker
         for i in _run(StyleChecker, "set x to 1\n"):
             assert i.severity is not None
 
@@ -595,37 +595,37 @@ class TestStyleChecker:
 class TestNullSafetyChecker:
 
     def test_import(self):
-        from nlpl.tooling.analyzer.checks.null_safety import NullSafetyAnalyzer
+        from nexuslang.tooling.analyzer.checks.null_safety import NullSafetyAnalyzer
         assert callable(NullSafetyAnalyzer)
 
     def test_instantiate(self):
-        from nlpl.tooling.analyzer.checks.null_safety import NullSafetyAnalyzer
+        from nexuslang.tooling.analyzer.checks.null_safety import NullSafetyAnalyzer
         assert hasattr(NullSafetyAnalyzer(), "check")
 
     def test_check_returns_list(self):
-        from nlpl.tooling.analyzer.checks.null_safety import NullSafetyAnalyzer
+        from nexuslang.tooling.analyzer.checks.null_safety import NullSafetyAnalyzer
         assert isinstance(_run(NullSafetyAnalyzer, "set x to 1"), list)
 
     def test_checker_name(self):
-        from nlpl.tooling.analyzer.checks.null_safety import NullSafetyAnalyzer
+        from nexuslang.tooling.analyzer.checks.null_safety import NullSafetyAnalyzer
         assert hasattr(NullSafetyAnalyzer, "CHECKER_NAME")
 
     def test_clean_program_no_crash(self):
-        from nlpl.tooling.analyzer.checks.null_safety import NullSafetyAnalyzer
+        from nexuslang.tooling.analyzer.checks.null_safety import NullSafetyAnalyzer
         _run(NullSafetyAnalyzer, "set x to 1\nprint text x\n")
 
     def test_empty_program_no_issues(self):
-        from nlpl.tooling.analyzer.checks.null_safety import NullSafetyAnalyzer
+        from nexuslang.tooling.analyzer.checks.null_safety import NullSafetyAnalyzer
         assert _run(NullSafetyAnalyzer, "") == []
 
     def test_issues_from_dereference_have_code(self):
-        from nlpl.tooling.analyzer.checks.null_safety import NullSafetyAnalyzer
+        from nexuslang.tooling.analyzer.checks.null_safety import NullSafetyAnalyzer
         src = "set ptr to none\nset val to dereference ptr\n"
         for i in _run(NullSafetyAnalyzer, src):
             assert i.code
 
     def test_registered_in_checks_init(self):
-        from nlpl.tooling.analyzer.checks import NullSafetyAnalyzer  # noqa: F401
+        from nexuslang.tooling.analyzer.checks import NullSafetyAnalyzer  # noqa: F401
 
 
 # ===========================================================================
@@ -636,36 +636,36 @@ class TestNullSafetyChecker:
 class TestMemorySafetyChecker:
 
     def test_import(self):
-        from nlpl.tooling.analyzer.checks.memory_safety import MemorySafetyChecker
+        from nexuslang.tooling.analyzer.checks.memory_safety import MemorySafetyChecker
         assert callable(MemorySafetyChecker)
 
     def test_instantiate(self):
-        from nlpl.tooling.analyzer.checks.memory_safety import MemorySafetyChecker
+        from nexuslang.tooling.analyzer.checks.memory_safety import MemorySafetyChecker
         assert hasattr(MemorySafetyChecker(), "check")
 
     def test_check_returns_list(self):
-        from nlpl.tooling.analyzer.checks.memory_safety import MemorySafetyChecker
+        from nexuslang.tooling.analyzer.checks.memory_safety import MemorySafetyChecker
         assert isinstance(_run(MemorySafetyChecker, "set x to 1"), list)
 
     def test_checker_name(self):
-        from nlpl.tooling.analyzer.checks.memory_safety import MemorySafetyChecker
+        from nexuslang.tooling.analyzer.checks.memory_safety import MemorySafetyChecker
         assert hasattr(MemorySafetyChecker, "CHECKER_NAME")
 
     def test_clean_program_no_crash(self):
-        from nlpl.tooling.analyzer.checks.memory_safety import MemorySafetyChecker
+        from nexuslang.tooling.analyzer.checks.memory_safety import MemorySafetyChecker
         _run(MemorySafetyChecker, "set x to 42\nprint text x\n")
 
     def test_empty_program_no_issues(self):
-        from nlpl.tooling.analyzer.checks.memory_safety import MemorySafetyChecker
+        from nexuslang.tooling.analyzer.checks.memory_safety import MemorySafetyChecker
         assert _run(MemorySafetyChecker, "") == []
 
     def test_issues_have_code_when_present(self):
-        from nlpl.tooling.analyzer.checks.memory_safety import MemorySafetyChecker
+        from nexuslang.tooling.analyzer.checks.memory_safety import MemorySafetyChecker
         for i in _run(MemorySafetyChecker, "set x to 1\n"):
             assert i.code
 
     def test_registered_in_checks_init(self):
-        from nlpl.tooling.analyzer.checks import MemorySafetyChecker  # noqa: F401
+        from nexuslang.tooling.analyzer.checks import MemorySafetyChecker  # noqa: F401
 
 
 # ===========================================================================
@@ -676,32 +676,32 @@ class TestMemorySafetyChecker:
 class TestTypeSafetyChecker:
 
     def test_import(self):
-        from nlpl.tooling.analyzer.checks.type_safety import TypeSafetyChecker
+        from nexuslang.tooling.analyzer.checks.type_safety import TypeSafetyChecker
         assert callable(TypeSafetyChecker)
 
     def test_instantiate(self):
-        from nlpl.tooling.analyzer.checks.type_safety import TypeSafetyChecker
+        from nexuslang.tooling.analyzer.checks.type_safety import TypeSafetyChecker
         assert hasattr(TypeSafetyChecker(), "check")
 
     def test_check_returns_list(self):
-        from nlpl.tooling.analyzer.checks.type_safety import TypeSafetyChecker
+        from nexuslang.tooling.analyzer.checks.type_safety import TypeSafetyChecker
         assert isinstance(_run(TypeSafetyChecker, "set x to 1"), list)
 
     def test_checker_name(self):
-        from nlpl.tooling.analyzer.checks.type_safety import TypeSafetyChecker
+        from nexuslang.tooling.analyzer.checks.type_safety import TypeSafetyChecker
         assert hasattr(TypeSafetyChecker, "CHECKER_NAME")
 
     def test_clean_program_no_crash(self):
-        from nlpl.tooling.analyzer.checks.type_safety import TypeSafetyChecker
+        from nexuslang.tooling.analyzer.checks.type_safety import TypeSafetyChecker
         _run(TypeSafetyChecker, "set x to 1\nset y to x plus 1\n")
 
     def test_issues_have_code_when_present(self):
-        from nlpl.tooling.analyzer.checks.type_safety import TypeSafetyChecker
+        from nexuslang.tooling.analyzer.checks.type_safety import TypeSafetyChecker
         for i in _run(TypeSafetyChecker, "set x to 1\n"):
             assert i.code
 
     def test_registered_in_checks_init(self):
-        from nlpl.tooling.analyzer.checks import TypeSafetyChecker  # noqa: F401
+        from nexuslang.tooling.analyzer.checks import TypeSafetyChecker  # noqa: F401
 
 
 # ===========================================================================
@@ -712,36 +712,36 @@ class TestTypeSafetyChecker:
 class TestResourceLeakChecker:
 
     def test_import(self):
-        from nlpl.tooling.analyzer.checks.resource_leak import ResourceLeakChecker
+        from nexuslang.tooling.analyzer.checks.resource_leak import ResourceLeakChecker
         assert callable(ResourceLeakChecker)
 
     def test_instantiate(self):
-        from nlpl.tooling.analyzer.checks.resource_leak import ResourceLeakChecker
+        from nexuslang.tooling.analyzer.checks.resource_leak import ResourceLeakChecker
         assert hasattr(ResourceLeakChecker(), "check")
 
     def test_check_returns_list(self):
-        from nlpl.tooling.analyzer.checks.resource_leak import ResourceLeakChecker
+        from nexuslang.tooling.analyzer.checks.resource_leak import ResourceLeakChecker
         assert isinstance(_run(ResourceLeakChecker, "set x to 1"), list)
 
     def test_checker_name(self):
-        from nlpl.tooling.analyzer.checks.resource_leak import ResourceLeakChecker
+        from nexuslang.tooling.analyzer.checks.resource_leak import ResourceLeakChecker
         assert hasattr(ResourceLeakChecker, "CHECKER_NAME")
 
     def test_clean_program_no_crash(self):
-        from nlpl.tooling.analyzer.checks.resource_leak import ResourceLeakChecker
+        from nexuslang.tooling.analyzer.checks.resource_leak import ResourceLeakChecker
         _run(ResourceLeakChecker, "set x to 42\n")
 
     def test_empty_program_no_issues(self):
-        from nlpl.tooling.analyzer.checks.resource_leak import ResourceLeakChecker
+        from nexuslang.tooling.analyzer.checks.resource_leak import ResourceLeakChecker
         assert _run(ResourceLeakChecker, "") == []
 
     def test_issues_have_code_when_present(self):
-        from nlpl.tooling.analyzer.checks.resource_leak import ResourceLeakChecker
+        from nexuslang.tooling.analyzer.checks.resource_leak import ResourceLeakChecker
         for i in _run(ResourceLeakChecker, "set x to 1\n"):
             assert i.code
 
     def test_registered_in_checks_init(self):
-        from nlpl.tooling.analyzer.checks import ResourceLeakChecker  # noqa: F401
+        from nexuslang.tooling.analyzer.checks import ResourceLeakChecker  # noqa: F401
 
 
 # ===========================================================================
@@ -752,36 +752,36 @@ class TestResourceLeakChecker:
 class TestInitializationChecker:
 
     def test_import(self):
-        from nlpl.tooling.analyzer.checks.initialization import InitializationChecker
+        from nexuslang.tooling.analyzer.checks.initialization import InitializationChecker
         assert callable(InitializationChecker)
 
     def test_instantiate(self):
-        from nlpl.tooling.analyzer.checks.initialization import InitializationChecker
+        from nexuslang.tooling.analyzer.checks.initialization import InitializationChecker
         assert hasattr(InitializationChecker(), "check")
 
     def test_check_returns_list(self):
-        from nlpl.tooling.analyzer.checks.initialization import InitializationChecker
+        from nexuslang.tooling.analyzer.checks.initialization import InitializationChecker
         assert isinstance(_run(InitializationChecker, "set x to 1"), list)
 
     def test_checker_name(self):
-        from nlpl.tooling.analyzer.checks.initialization import InitializationChecker
+        from nexuslang.tooling.analyzer.checks.initialization import InitializationChecker
         assert hasattr(InitializationChecker, "CHECKER_NAME")
 
     def test_clean_program_no_crash(self):
-        from nlpl.tooling.analyzer.checks.initialization import InitializationChecker
+        from nexuslang.tooling.analyzer.checks.initialization import InitializationChecker
         _run(InitializationChecker, "set x to 5\nprint text x\n")
 
     def test_empty_program_no_issues(self):
-        from nlpl.tooling.analyzer.checks.initialization import InitializationChecker
+        from nexuslang.tooling.analyzer.checks.initialization import InitializationChecker
         assert _run(InitializationChecker, "") == []
 
     def test_issues_have_code_when_present(self):
-        from nlpl.tooling.analyzer.checks.initialization import InitializationChecker
+        from nexuslang.tooling.analyzer.checks.initialization import InitializationChecker
         for i in _run(InitializationChecker, "set x to 1\n"):
             assert i.code
 
     def test_registered_in_checks_init(self):
-        from nlpl.tooling.analyzer.checks import InitializationChecker  # noqa: F401
+        from nexuslang.tooling.analyzer.checks import InitializationChecker  # noqa: F401
 
 
 # ===========================================================================
@@ -792,16 +792,16 @@ class TestInitializationChecker:
 class TestStaticAnalyzerIntegration:
 
     def test_static_analyzer_instantiates(self):
-        from nlpl.tooling.analyzer.analyzer import StaticAnalyzer
+        from nexuslang.tooling.analyzer.analyzer import StaticAnalyzer
         assert StaticAnalyzer() is not None
 
     def test_static_analyzer_enable_all(self):
-        from nlpl.tooling.analyzer.analyzer import StaticAnalyzer
+        from nexuslang.tooling.analyzer.analyzer import StaticAnalyzer
         a = StaticAnalyzer(enable_all=True)
         assert len(a.checkers) > 0
 
     def test_all_expected_checkers_registered(self):
-        from nlpl.tooling.analyzer.analyzer import StaticAnalyzer
+        from nexuslang.tooling.analyzer.analyzer import StaticAnalyzer
         a = StaticAnalyzer(enable_all=True)
         names = {type(c).__name__ for c in a.checkers}
         for expected in (
@@ -814,8 +814,8 @@ class TestStaticAnalyzerIntegration:
             assert expected in names, f"{expected} not registered in StaticAnalyzer"
 
     def test_analyze_file_returns_report(self, tmp_path):
-        from nlpl.tooling.analyzer.analyzer import StaticAnalyzer
-        f = tmp_path / "prog.nlpl"
+        from nexuslang.tooling.analyzer.analyzer import StaticAnalyzer
+        f = tmp_path / "prog.nxl"
         f.write_text("set x to 1\nprint text x\n")
         analyzer = StaticAnalyzer()
         report = analyzer.analyze_file(str(f))
@@ -823,8 +823,8 @@ class TestStaticAnalyzerIntegration:
         assert hasattr(report, "issues")
 
     def test_sec001_via_static_analyzer(self, tmp_path):
-        from nlpl.tooling.analyzer.analyzer import StaticAnalyzer
-        f = tmp_path / "secrets.nlpl"
+        from nexuslang.tooling.analyzer.analyzer import StaticAnalyzer
+        f = tmp_path / "secrets.nxl"
         f.write_text("set password to \"superSecret99\"\n")
         analyzer = StaticAnalyzer(enable_all=True)
         report = analyzer.analyze_file(str(f))
@@ -832,8 +832,8 @@ class TestStaticAnalyzerIntegration:
         assert "SEC001" in codes
 
     def test_d001_via_static_analyzer(self, tmp_path):
-        from nlpl.tooling.analyzer.analyzer import StaticAnalyzer
-        f = tmp_path / "dead.nlpl"
+        from nexuslang.tooling.analyzer.analyzer import StaticAnalyzer
+        f = tmp_path / "dead.nxl"
         f.write_text(
             "function bar returns Integer\n"
             "    return 0\n"

@@ -1,4 +1,4 @@
-# NLPL Development Progress - Visual Summary
+# NexusLang Development Progress - Visual Summary
 
 **Generated:** December 2024 
 **Overall Status:** ~95% Complete - Production Ready
@@ -203,9 +203,9 @@ Integration Tests Comprehensive
 
 ## Capability Comparison
 
-### NLPL vs Other Languages
+### NexusLang vs Other Languages
 
-| Feature | NLPL | Python | C++ | Rust | Go |
+| Feature | NexusLang | Python | C++ | Rust | Go |
 |---------|------|--------|-----|------|----|
 | Natural Syntax | | | | | |
 | Native Performance | | | | | |
@@ -328,7 +328,7 @@ Documentation Good (85%)
 
 ## Success Stories
 
-### What Has Been Built With NLPL
+### What Has Been Built With NexusLang
 
 #### Working Examples
 1. **Generic Data Structures** - Box<T>, Container<T>, List<T>, Dictionary<K,V>
@@ -375,4 +375,4 @@ NLPL at **95% completion** is a fully functional, production-ready compiler with
 
 ---
 
-**The NLPL compiler is ready for real-world use today.** 
+**The NexusLang compiler is ready for real-world use today.** 

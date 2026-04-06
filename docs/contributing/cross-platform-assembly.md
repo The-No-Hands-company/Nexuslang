@@ -250,11 +250,11 @@ end
 
 ### Raspberry Pi (AArch64)
 
-1. **Install NLPL on Raspberry Pi**:
+1. **Install NexusLang on Raspberry Pi**:
 ```bash
 # Raspberry Pi OS (64-bit required)
 git clone https://github.com/yourusername/NLPL.git
-cd NLPL
+cd NexusLang
 pip3 install -r requirements.txt
 ```
 
@@ -294,7 +294,7 @@ Result: 35 (expected: 35)
 # macOS with Homebrew
 brew install python3
 git clone https://github.com/yourusername/NLPL.git
-cd NLPL
+cd NexusLang
 pip3 install -r requirements.txt
 ```
 
@@ -387,7 +387,7 @@ objdump -d test_asm_arm_basic
 sudo apt install qemu-user-static
 
 # Compile for ARM on x86_64 (cross-compilation)
-# Note: NLPL doesn't support cross-compilation yet
+# Note: NexusLang doesn't support cross-compilation yet
 # This requires adding --target flag in future
 
 # Run ARM binary on x86_64

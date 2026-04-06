@@ -6,7 +6,7 @@
 
 ## Summary
 
-Successfully implemented inline assembly support for NLPL, allowing direct embedding of assembly code in NLPL programs. This is a **compile-only feature** - programs using inline assembly must be compiled with `nlplc` (LLVM backend).
+Successfully implemented inline assembly support for NexusLang, allowing direct embedding of assembly code in NexusLang programs. This is a **compile-only feature** - programs using inline assembly must be compiled with `nlplc` (LLVM backend).
 
 ## Implementation Details
 
@@ -53,7 +53,7 @@ Handles:
 ```python
 def execute_inline_assembly_statement(self, node):
  """Inline assembly is compile-only - reject in interpreter."""
- raise NLPLRuntimeError(
+ raise NxlRuntimeError(
  message="Inline assembly is only supported in compiled mode. Use 'nlplc' to compile your program.",
  line=node.line_number
  )
@@ -147,7 +147,7 @@ end
 
 ### Interpreter Rejection Test
 ```bash
-$ python -m nlpl.main test_programs/integration/inline_asm_comprehensive.nlpl
+$ python -m nexuslang.main test_programs/integration/inline_asm_comprehensive.nlpl
 Runtime Error: Inline assembly is only supported in compiled mode. Use 'nlplc' to compile your program.
 ```
 **Result**: Correctly rejects with helpful error message
@@ -184,7 +184,7 @@ Chose structured block syntax over inline string literals for:
 ### Why String Literals for Instructions?
 - Assembly syntax varies by platform and dialect
 - Treating as opaque strings lets LLVM handle parsing
-- Avoids need for NLPL to parse assembly grammar
+- Avoids need for NexusLang to parse assembly grammar
 - User has full control over exact assembly code
 
 ## Integration with Existing Features
@@ -216,11 +216,11 @@ Potential improvements for later:
 ## Conclusion
 
 Inline assembly is now fully functional in NLPL's compiled mode. Users can:
-- Write low-level assembly code inline with NLPL
+- Write low-level assembly code inline with NexusLang
 - Use inputs/outputs/clobbers for proper register allocation
 - Compile to native code with LLVM backend
 - Get clear error messages if attempting to use in interpreter
 
-This brings NLPL closer to systems programming capabilities while maintaining safety through compile-time checking and clear documentation of platform dependencies.
+This brings NexusLang closer to systems programming capabilities while maintaining safety through compile-time checking and clear documentation of platform dependencies.
 
 **Status**: Feature complete, tested, and ready for use! 

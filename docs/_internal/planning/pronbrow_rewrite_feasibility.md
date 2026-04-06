@@ -1,19 +1,19 @@
-# PronBrow Browser Rewrite in NLPL - Feasibility Analysis
+# PronBrow Browser Rewrite in NexusLang - Feasibility Analysis
 
 **Date**: February 5, 2026  
-**Analyst**: NLPL Development Team  
+**Analyst**: NexusLang Development Team  
 **Status**: 🟡 **PARTIALLY FEASIBLE** - Major Gaps Exist
 
 ---
 
 ## Executive Summary
 
-**Question**: Can PronBrow (a full-featured web browser with custom rendering engine) be completely rewritten in NLPL right now?
+**Question**: Can PronBrow (a full-featured web browser with custom rendering engine) be completely rewritten in NexusLang right now?
 
-**Answer**: **NO - Not without major NLPL language extensions**, but a **simplified prototype is possible**.
+**Answer**: **NO - Not without major NexusLang language extensions**, but a **simplified prototype is possible**.
 
 **Current Status of PronBrow Project:**
-- ✅ Prototype NLPL implementation exists (~7,500 lines across 18 modules)
+- ✅ Prototype NexusLang implementation exists (~7,500 lines across 18 modules)
 - ✅ Successfully compiles with NLVM backend and links with SDL2
 - ✅ Demonstrates basic browser architecture concepts
 - ❌ Missing 80%+ of real browser functionality
@@ -31,18 +31,18 @@
 - **Modules**: HTML5 parser, CSS3 engine, JavaScript runtime, networking, security
 - **Complexity**: Production-grade web browser competing with Chrome/Firefox architecture
 
-**Current NLPL Prototype:**
+**Current NexusLang Prototype:**
 - **Status**: Proof-of-concept demonstrating architecture
 - **Working**: SDL2 window creation, basic navigation simulation
-- **Lines of Code**: ~7,500 lines of NLPL (18 modules)
+- **Lines of Code**: ~7,500 lines of NexusLang (18 modules)
 - **Functionality**: Shows colored backgrounds representing different pages
 - **Missing**: Actual HTML/CSS rendering, JavaScript execution, networking
 
 ---
 
-## NLPL Capability Assessment
+## NexusLang Capability Assessment
 
-### ✅ What NLPL Can Do RIGHT NOW
+### ✅ What NexusLang Can Do RIGHT NOW
 
 1. **Basic Systems Programming**
    - Native code compilation via LLVM
@@ -69,7 +69,7 @@
    - Async functions and await expressions
    - Promise-like patterns possible
 
-### ❌ What NLPL CANNOT Do Yet (Critical Gaps)
+### ❌ What NexusLang CANNOT Do Yet (Critical Gaps)
 
 #### 1. **Advanced Memory Management** ❌ CRITICAL
 **Needed for Browser:**
@@ -252,7 +252,7 @@ Arc<Mutex<RenderTree>>
 
 ### Core Browser Features
 
-| Feature | Required | NLPL Ready | Gap Size | Workaround |
+| Feature | Required | NexusLang Ready | Gap Size | Workaround |
 |---------|----------|------------|----------|------------|
 | **Window Management** | ✅ Required | ✅ Yes (SDL2) | None | SDL2 FFI works |
 | **HTML5 Parser** | ✅ Required | ⚠️ Partial | Large | Need regex, better string handling |
@@ -283,7 +283,7 @@ Arc<Mutex<RenderTree>>
 
 ## What Could Be Built TODAY
 
-### Realistic NLPL Browser Prototype (1-2 Weeks)
+### Realistic NexusLang Browser Prototype (1-2 Weeks)
 
 **Scope**: Educational/demonstration browser with severe limitations
 
@@ -425,7 +425,7 @@ end
 
 ## Recommendations
 
-### For NLPL Development Team
+### For NexusLang Development Team
 
 **Priority 1: Core Language Features (Next 3 Months)**
 Focus on features that enable ANY large-scale project, not just browsers:
@@ -449,25 +449,25 @@ Focus on features that enable ANY large-scale project, not just browsers:
 
 **Short-Term (Now):**
 - **DON'T attempt full rewrite yet** - Too many missing features
-- **DO continue prototype** - Validates NLPL design decisions
+- **DO continue prototype** - Validates NexusLang design decisions
 - **DO identify missing features** - Create detailed requirements list
 - **DO build simplified demo** - Shows potential, educates users
 
 **Medium-Term (6 months):**
-- **Reassess feasibility** after NLPL Phase 1 features land
+- **Reassess feasibility** after NexusLang Phase 1 features land
 - **Start with components** - Rewrite individual modules (HTML parser, CSS parser)
-- **Build test suite** - Validate NLPL implementations against spec
+- **Build test suite** - Validate NexusLang implementations against spec
 
 **Long-Term (1-2 years):**
-- **Full rewrite becomes feasible** after NLPL matures
-- **Hybrid approach possible** - NLPL for UI, Rust/C++ for engine initially
+- **Full rewrite becomes feasible** after NexusLang matures
+- **Hybrid approach possible** - NexusLang for UI, Rust/C++ for engine initially
 - **Gradual migration** - Replace components one by one
 
 ---
 
 ## Conclusion
 
-### Can PronBrow be rewritten in NLPL right now?
+### Can PronBrow be rewritten in NexusLang right now?
 
 **✅ For a prototype/demo**: YES
 - Proof-of-concept browser showing architecture
@@ -477,7 +477,7 @@ Focus on features that enable ANY large-scale project, not just browsers:
 **❌ For a production browser**: NO
 - Missing 4 critical blockers (JS engine, networking, threading, Unicode)
 - Missing 11 major features
-- Would take 15-21 months of NLPL development first
+- Would take 15-21 months of NexusLang development first
 
 ### What's the verdict?
 
@@ -489,17 +489,17 @@ Focus on features that enable ANY large-scale project, not just browsers:
 
 **Realistic Timeline:**
 - **Simplified browser prototype**: Ready NOW (1-2 weeks)
-- **Feature-complete browser**: 15-21 months of NLPL development needed
+- **Feature-complete browser**: 15-21 months of NexusLang development needed
 - **Production-grade browser**: 2-3 years total (language + browser development)
 
 **Best Approach:**
-1. Continue NLPL language development with browser use-case in mind
-2. Build browser components as NLPL features become available
+1. Continue NexusLang language development with browser use-case in mind
+2. Build browser components as NexusLang features become available
 3. Use hybrid approach (NLPL UI + C/C++/Rust engine) initially
-4. Migrate to pure NLPL gradually as language matures
+4. Migrate to pure NexusLang gradually as language matures
 
 ---
 
 **Assessment Date**: February 5, 2026  
 **Next Review**: After Phase 3 Week 2 completion (NLPL optimization work)  
-**Recommendation**: **WAIT for critical language features**, but continue prototype work to guide NLPL development priorities.
+**Recommendation**: **WAIT for critical language features**, but continue prototype work to guide NexusLang development priorities.

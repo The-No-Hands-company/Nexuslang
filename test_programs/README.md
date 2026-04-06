@@ -1,10 +1,10 @@
 # Test Programs Directory
 
-This directory contains **NLPL test programs** used for testing the NLPL language implementation. These are distinct from the Python unit tests in `tests/` and the tutorial examples in `examples/`.
+This directory contains **NLPL test programs** used for testing the NexusLang language implementation. These are distinct from the Python unit tests in `tests/` and the tutorial examples in `examples/`.
 
 ## Purpose
 
-**test_programs/** contains NLPL source files (`.nlpl`) that validate language behavior through execution. These are used for:
+**test_programs/** contains NexusLang source files (`.nlpl`) that validate language behavior through execution. These are used for:
 - Integration testing (multi-feature validation)
 - Regression testing (bug reproduction and fixes)
 - Unit testing individual language features
@@ -70,8 +70,8 @@ python src/main.py test_programs/unit/control_flow/test_if_else.nlpl --debug
 
 ### Run All Tests in a Category
 ```bash
-find test_programs/unit/basic/ -name "*.nlpl" -exec python src/main.py {} \;
-find test_programs/integration/features/ -name "*.nlpl" -exec python src/main.py {} \;
+find test_programs/unit/basic/ -name "*.nxl" -exec python src/main.py {} \;
+find test_programs/integration/features/ -name "*.nxl" -exec python src/main.py {} \;
 ```
 
 ## Difference from Other Directories
@@ -81,12 +81,12 @@ find test_programs/integration/features/ -name "*.nlpl" -exec python src/main.py
 - **examples/**: Tutorial documentation - clean, numbered, educational programs
 
 ### test_programs/ vs tests/
-- **test_programs/**: NLPL source files executed by the interpreter (tests the **language**)
+- **test_programs/**: NexusLang source files executed by the interpreter (tests the **language**)
 - **tests/**: Python unit tests using pytest (tests the **implementation**)
 
 ## File Statistics
 
-- **Total NLPL files**: 339
+- **Total NexusLang files**: 339
 - **Unit tests**: ~120 files (single feature validation)
 - **Integration tests**: ~210 files (multi-feature validation)
 - **Regression tests**: ~9 files (bug fixes)

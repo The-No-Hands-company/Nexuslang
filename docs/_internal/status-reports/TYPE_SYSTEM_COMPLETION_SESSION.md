@@ -142,7 +142,7 @@ All type system components exported:
 ### Basic Usage
 
 ```python
-from nlpl.typesystem import get_type_system
+from nexuslang.typesystem import get_type_system
 
 # Get global type system instance
 type_system = get_type_system(enable_type_checking=True)
@@ -163,7 +163,7 @@ is_subtype = type_system.is_subtype("Dog", "Animal")
 list_int = type_system.instantiate_generic_type("List", [INTEGER_TYPE])
 ```
 
-### NLPL Examples
+### NexusLang Examples
 
 ```nlpl
 # Type inference
@@ -259,7 +259,7 @@ end
 
 **Overall Completeness**: **95%**
 
-## Impact on NLPL Development
+## Impact on NexusLang Development
 
 ### Immediate Benefits
 
@@ -315,7 +315,7 @@ With the type system complete, the project can now focus on:
 
 ## Conclusion
 
-The NLPL type system is **complete and production-ready**. With:
+The NexusLang type system is **complete and production-ready**. With:
 - 2,246 lines of core implementation
 - 47 comprehensive test cases
 - 787 lines of documentation

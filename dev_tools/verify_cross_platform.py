@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Cross-Platform Verification Script for NLPL
-Demonstrates that NLPL is fully cross-platform
+Cross-Platform Verification Script for NexusLang
+Demonstrates that NexusLang is fully cross-platform
 """
 
 import platform
@@ -68,9 +68,9 @@ def main():
         print("Expected Library Format: .so (likely)")
         print("Standard C Library: libc.so or similar")
     
-    # NLPL Interpreter Info
+    # NexusLang Interpreter Info
     print_section("NLPL Interpreter Status")
-    print(" NLPL is FULLY cross-platform!")
+    print(" NexusLang is FULLY cross-platform!")
     print(" Interpreter: Python-based (runs on any Python 3.8+ platform)")
     print(" Platform Detection: Built-in via stdlib/system module")
     print(" FFI: ctypes library (cross-platform by design)")

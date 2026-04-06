@@ -66,7 +66,7 @@ call retain(ptr)  # Manual management (defeats purpose)
 
 ---
 
-## NLPL Syntax Design
+## NexusLang Syntax Design
 
 ### Type Declaration
 

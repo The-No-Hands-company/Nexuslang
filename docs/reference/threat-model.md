@@ -1,6 +1,6 @@
-# NLPL Threat Model
+# NexusLang Threat Model
 
-This document describes the security threats that the NLPL runtime is designed to
+This document describes the security threats that the NexusLang runtime is designed to
 resist, the trust boundaries that bound the system, and the mapping from threats to
 mitigations.
 
@@ -24,7 +24,7 @@ For the vulnerability reporting process see [cve-process.md](cve-process.md).
 
 ## 1. System Description
 
-The NLPL runtime is a tree-walking interpreter implemented in CPython.  It
+The NexusLang runtime is a tree-walking interpreter implemented in CPython.  It
 executes `.nlpl` source programs on behalf of a user who invoked it on the
 command line or embedded it in a host application.
 
@@ -34,11 +34,11 @@ Key components for this analysis:
   the source file.
 - **Interpreter** — walks the AST and executes program semantics.
 - **Runtime** — manages memory allocation, object creation, and global state.
-- **Standard Library** — pure-Python NLPL library functions (math, io, net,
+- **Standard Library** — pure-Python NexusLang library functions (math, io, net,
   collections, system, etc.).
 - **Permission System** — deny-by-default capability gate enforced before any
   dangerous operation.
-- **FFI Bridge** — ctypes-based interface that lets NLPL programs call C
+- **FFI Bridge** — ctypes-based interface that lets NexusLang programs call C
   libraries.
 - **Security Module** — taint analysis, CFI, sandbox, runtime protections.
 
@@ -48,14 +48,14 @@ Key components for this analysis:
 
 ```
 +-------------------------------------------------------------+
-|  (Untrusted) NLPL Source Program                            |
+|  (Untrusted) NexusLang Source Program                            |
 |    - provided by developer, end user, or network download   |
 +-------------------------------------------------------------+
       |
       | Parse + permission check
       v
 +-------------------------------------------------------------+
-|  (Trusted) NLPL Interpreter Process                         |
+|  (Trusted) NexusLang Interpreter Process                         |
 |    - runs as the OS user who invoked `nlpl`                  |
 |    - grants only explicitly requested capabilities           |
 +-------------------------------------------------------------+
@@ -99,7 +99,7 @@ can narrow the allowed syscall surface when running untrusted programs.
 
 | Surface | Access Needed | Notes |
 |---------|--------------|-------|
-| NLPL source file (argv) | Write to disk | Code execution with interpreter's privileges |
+| NexusLang source file (argv) | Write to disk | Code execution with interpreter's privileges |
 | Stdin / interactive prompts | Remote if networked | Data source — tainted by default |
 | Environment variables | Process environment | May leak secrets; denied by default |
 | File system (via `--allow-read/write`) | Interpreter process | Scoped to granted paths |
@@ -107,14 +107,14 @@ can narrow the allowed syscall surface when running untrusted programs.
 | FFI-loaded C libraries | Interpreter process + `--allow-ffi` | Full native code execution |
 | Inline assembly (via `--allow-asm`) | Interpreter process | Arbitrary machine code |
 | Dynamic imports (via `--allow-import`) | Interpreter process | Arbitrary code execution through module loading |
-| CPython internals | Interpreted language (no restriction) | Python objects accessible to NLPL programs via FFI bridge |
+| CPython internals | Interpreted language (no restriction) | Python objects accessible to NexusLang programs via FFI bridge |
 | Subprocess output | Subprocess writes to pipe | Tainted input to parent program |
 
 ---
 
 ## 4. Threat Actors
 
-### T-A1: Malicious NLPL Script
+### T-A1: Malicious NexusLang Script
 
 A `.nlpl` file constructed to:
 - Exfiltrate files or credentials
@@ -127,7 +127,7 @@ plugin systems, server-side eval of user-supplied scripts.
 
 ### T-A2: Compromised Dependency
 
-A legitimate NLPL module or a C library loaded via FFI that has been supply-chain
+A legitimate NexusLang module or a C library loaded via FFI that has been supply-chain
 attacked.  The code initially appears safe but performs malicious actions at runtime
 (e.g., exfiltrates data before raising an exception).
 
@@ -143,7 +143,7 @@ This actor does not control the source program itself.
 
 ### T-A4: Local Privilege Escalation
 
-An attacker with local shell access who exploits the NLPL interpreter process
+An attacker with local shell access who exploits the NexusLang interpreter process
 (e.g., through a bug in the interpreter or an FFI library) to gain elevated
 OS privileges.
 
@@ -153,7 +153,7 @@ OS privileges.
 
 ### T1 — Unauthorized File System Access
 
-An NLPL program reads or writes files outside its intended scope.
+An NexusLang program reads or writes files outside its intended scope.
 
 **Vectors:** Using `READ`/`WRITE` permissions without path restrictions; path
 traversal via `../` sequences in user-controlled file paths.
@@ -166,7 +166,7 @@ traversal via `../` sequences in user-controlled file paths.
 
 ### T2 — Unauthorized Network Access
 
-An NLPL program opens outbound connections to arbitrary hosts, exfiltrating
+An NexusLang program opens outbound connections to arbitrary hosts, exfiltrating
 data or contacting command-and-control infrastructure.
 
 **Vectors:** `--allow-net` without host restrictions; SSRF through URL
@@ -208,7 +208,7 @@ in the FFI bridge.
 
 ### T5 — Resource Exhaustion (DoS)
 
-An NLPL program or an input triggers unbounded CPU, memory, or file descriptor
+An NexusLang program or an input triggers unbounded CPU, memory, or file descriptor
 consumption, causing the host process or system to become unresponsive.
 
 **Vectors:** Infinite loops, exponential regex matching, large allocations,
@@ -311,7 +311,7 @@ logging left enabled in production.
 
 ### 7.1 Interpreter Interpreted in CPython
 
-The NLPL interpreter runs inside CPython, which means:
+The NexusLang interpreter runs inside CPython, which means:
 - CPython memory management bugs can undermine memory safety guarantees.
 - CPython's GIL does not protect against C extension race conditions.
 - Python's dynamic import system can be abused if `IMPORT` permission is
@@ -355,7 +355,7 @@ mitigation requires:
 
 ## 8. Threat Model Assumptions
 
-1. **The NLPL interpreter binary is trusted.** Attackers cannot modify the
+1. **The NexusLang interpreter binary is trusted.** Attackers cannot modify the
    interpreter executable or the Python installation.
 
 2. **The host OS is not compromised.** Kernel vulnerabilities are out of scope.

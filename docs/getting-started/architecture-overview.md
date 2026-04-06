@@ -1,4 +1,4 @@
-# NLPL Multi-Level Architecture
+# NexusLang Multi-Level Architecture
 
 **The Revolutionary Programming Language That Spans From Assembly to Natural English**
 
@@ -8,7 +8,7 @@
 
 NLPL is the **first and only language** that allows you to write code at **any abstraction level** - from direct hardware control to natural English - **all in the same program**.
 
-### What Makes NLPL Unique
+### What Makes NexusLang Unique
 
 Unlike other languages that force you into a single abstraction level:
 
@@ -473,7 +473,7 @@ fetch the user list
 for each user in the list
  if user is active
  get their recent posts
- find posts mentioning "NLPL"
+ find posts mentioning "NexusLang"
  save to database
  end
 end
@@ -484,7 +484,7 @@ show how many posts we found
 
 ## Mixing Levels in One Program
 
-The **real power** of NLPL is using different levels in the same program:
+The **real power** of NexusLang is using different levels in the same program:
 
 ### Example: Game Engine
 
@@ -737,7 +737,7 @@ free buffer
 
 **Result:** Multi-language projects, FFI overhead, context switching
 
-### NLPL Solution
+### NexusLang Solution
 
 **One Language:** Write everything from bootloader to web UI 
 **One Codebase:** No FFI between components 

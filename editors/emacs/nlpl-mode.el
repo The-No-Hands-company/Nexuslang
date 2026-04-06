@@ -1,4 +1,4 @@
-;;; nlpl-mode.el --- Major mode for the NLPL programming language  -*- lexical-binding: t; -*-
+;;; nlpl-mode.el --- Major mode for the NexusLang programming language  -*- lexical-binding: t; -*-
 
 ;; Author: The No-Hands Company
 ;; Version: 0.1.0
@@ -10,13 +10,13 @@
 
 ;; Usage:
 ;;
-;;   (add-to-list 'load-path "/path/to/NLPL/editors/emacs")
+;;   (add-to-list 'load-path "/path/to/NexusLang/editors/emacs")
 ;;   (require 'nlpl-mode)
 ;;
 ;; With use-package:
 ;;   (use-package nlpl-mode
-;;     :load-path "/path/to/NLPL/editors/emacs"
-;;     :mode "\\.nlpl\\'")
+;;     :load-path "/path/to/NexusLang/editors/emacs"
+;;     :mode "\\.nxl\\'")
 ;;
 ;; With lsp-mode:
 ;;   (add-hook 'nlpl-mode-hook #'lsp-deferred)
@@ -116,7 +116,7 @@
 ;; ---------------------------------------------------------------------------
 
 (defcustom nlpl-indent-offset 4
-  "Number of spaces for one indentation level in NLPL."
+  "Number of spaces for one indentation level in NexusLang."
   :type 'integer
   :group 'nlpl)
 
@@ -133,7 +133,7 @@
   "Regex for lines that should be dedented relative to the previous block.")
 
 (defun nlpl-indent-line ()
-  "Indent current line as NLPL code."
+  "Indent current line as NexusLang code."
   (interactive)
   (let* ((pos (- (point-max) (point)))
          (indent (nlpl--calculate-indent)))
@@ -173,7 +173,7 @@
 ;; ---------------------------------------------------------------------------
 
 (defun nlpl--find-lsp-server ()
-  "Return the path to the NLPL LSP server, or nil if not found."
+  "Return the path to the NexusLang LSP server, or nil if not found."
   (let* ((python (or (executable-find "python3") (executable-find "python")))
          (cmd (when python
                 (string-trim
@@ -185,13 +185,13 @@
 
 ;;;###autoload
 (defun nlpl-setup-lsp ()
-  "Register the NLPL LSP server with lsp-mode."
+  "Register the NexusLang LSP server with lsp-mode."
   (when (featurep 'lsp-mode)
     (let* ((python (or (executable-find "python3") (executable-find "python") "python3"))
            (server-path (nlpl--find-lsp-server))
            (cmd (if server-path
                     (list python server-path)
-                  (list python "-m" "nlpl.lsp"))))
+                  (list python "-m" "nexuslang.lsp"))))
       (lsp-register-client
        (make-lsp-client
         :new-connection (lsp-stdio-connection cmd)
@@ -205,11 +205,11 @@
 ;; ---------------------------------------------------------------------------
 
 (defun nlpl-setup-eglot ()
-  "Register NLPL with eglot."
+  "Register NexusLang with eglot."
   (when (featurep 'eglot)
     (let* ((python (or (executable-find "python3") (executable-find "python") "python3")))
       (add-to-list 'eglot-server-programs
-                   `(nlpl-mode . (,python "-m" "nlpl.lsp"))))))
+                   `(nlpl-mode . (,python "-m" "nexuslang.lsp"))))))
 
 ;; ---------------------------------------------------------------------------
 ;; Compilation support (M-x compile)
@@ -226,27 +226,27 @@
   :group 'nlpl)
 
 (defun nlpl-build ()
-  "Build the NLPL project."
+  "Build the NexusLang project."
   (interactive)
   (compile nlpl-build-command))
 
 (defun nlpl-test ()
-  "Run NLPL tests."
+  "Run NexusLang tests."
   (interactive)
   (compile nlpl-test-command))
 
 (defun nlpl-coverage ()
-  "Run coverage on the current NLPL file."
+  "Run coverage on the current NexusLang file."
   (interactive)
   (compile (format "nlpl coverage %s" (shell-quote-argument (buffer-file-name)))))
 
 (defun nlpl-profile ()
-  "Profile the current NLPL file."
+  "Profile the current NexusLang file."
   (interactive)
   (compile (format "nlpl profile %s" (shell-quote-argument (buffer-file-name)))))
 
 (defun nlpl-run ()
-  "Build and run the NLPL project."
+  "Build and run the NexusLang project."
   (interactive)
   (compile "nlpl run"))
 
@@ -269,8 +269,8 @@
 ;; ---------------------------------------------------------------------------
 
 ;;;###autoload
-(define-derived-mode nlpl-mode prog-mode "NLPL"
-  "Major mode for editing NLPL source code.
+(define-derived-mode nlpl-mode prog-mode "NexusLang"
+  "Major mode for editing NexusLang source code.
 
 Key bindings:
 \\{nlpl-mode-map}"
@@ -291,7 +291,7 @@ Key bindings:
   (nlpl-setup-eglot))
 
 ;;;###autoload
-(add-to-list 'auto-mode-alist '("\\.nlpl\\'" . nlpl-mode))
+(add-to-list 'auto-mode-alist '("\\.nxl\\'" . nlpl-mode))
 
 (provide 'nlpl-mode)
 

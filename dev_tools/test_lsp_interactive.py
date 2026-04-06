@@ -3,7 +3,7 @@
 Interactive LSP Server Test
 ============================
 
-This script helps you manually test the NLPL LSP server by:
+This script helps you manually test the NexusLang LSP server by:
 1. Starting the server
 2. Sending sample LSP requests
 3. Showing responses in readable format

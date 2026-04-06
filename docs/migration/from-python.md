@@ -1,12 +1,12 @@
 # Migrating from Python
 
-This guide maps Python patterns to their NLPL equivalents.
+This guide maps Python patterns to their NexusLang equivalents.
 
 ---
 
 ## Syntax Quick-Reference
 
-| Concept | Python | NLPL |
+| Concept | Python | NexusLang |
 |---------|--------|------|
 | Assign variable | `x = 5` | `set x to 5` |
 | Typed variable | `x: int = 5` | `set x as Integer to 5` |
@@ -39,7 +39,7 @@ This guide maps Python patterns to their NLPL equivalents.
 
 ## Variables and Types
 
-Python uses dynamic typing; NLPL supports optional static types.
+Python uses dynamic typing; NexusLang supports optional static types.
 
 ### Dynamic style (works fine)
 
@@ -59,7 +59,7 @@ set ratio as Float   to 3.14
 
 NLPL core types:
 
-| Python | NLPL |
+| Python | NexusLang |
 |--------|------|
 | `int` | `Integer` |
 | `float` | `Float` |
@@ -80,7 +80,7 @@ def greet(name: str, greeting: str = "Hello") -> str:
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 function greet with name as String and greeting as String default to "Hello" returns String
     return greeting plus ", " plus name plus "!"
 end
@@ -102,7 +102,7 @@ def log(*messages):
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 function log with *messages as String
     for each m in messages
         print text m
@@ -128,7 +128,7 @@ class Dog(Animal):
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 class Animal
     public set name to String
 
@@ -163,7 +163,7 @@ finally:
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 try
     set result to risky_op()
 catch error with message
@@ -187,7 +187,7 @@ raise error with "invalid input"
 
 ## Standard Library Equivalents
 
-| Python module | NLPL module | Notes |
+| Python module | NexusLang module | Notes |
 |---------------|-------------|-------|
 | `os`, `os.path` | `io` | File I/O and path helpers |
 | `pathlib` | `io` | `io.join_path`, `io.exists`, `io.is_directory` |
@@ -214,7 +214,7 @@ evens = [x for x in nums if x % 2 == 0]
 ```
 
 ```nlpl
-# NLPL  — manual loops (comprehensions not yet available)
+# NexusLang  — manual loops (comprehensions not yet available)
 set nums to [1, 2, 3, 4, 5]
 
 set doubled to []
@@ -238,7 +238,7 @@ def greet(name):
 ```
 
 ```nlpl
-# NLPL (my_module.nlpl)
+# NexusLang (my_module.nxl)
 function greet with name as String returns String
     return "Hello, " plus name
 end
@@ -255,7 +255,7 @@ set msg to my_module.greet with "Alice"
 
 ## Performance Notes for Python Developers
 
-1. **Type annotations speed things up.** Unlike Python, NLPL can use type hints for optimised code paths.
+1. **Type annotations speed things up.** Unlike Python, NexusLang can use type hints for optimised code paths.
 2. **Use `async/await` for I/O-bound work.** Same pattern as Python `asyncio`.
 3. **Use threads for CPU-bound work.** `system.spawn_thread` / `system.join_thread`.
 4. **Avoid building large strings in a loop.** Collect parts in a list, then `io.join`.

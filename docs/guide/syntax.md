@@ -1,11 +1,11 @@
-# NLPL Syntax Reference
+# NexusLang Syntax Reference
 
 
 ---
 
 ## Overview
 
-NLPL (Natural Language Programming Language) uses English-like syntax that reads like prose while maintaining programming precision. This guide covers all major syntax features.
+NLPL (NexusLang) uses English-like syntax that reads like prose while maintaining programming precision. This guide covers all major syntax features.
 
 **Design Principles:**
 - Natural language keywords (`set`, `to`, `with`, `called`, `function`)

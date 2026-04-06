@@ -7,7 +7,7 @@
 
 ## Summary
 
-The FFI system has been successfully integrated into the NLPL compiler pipeline. External C functions can now be declared and called from NLPL programs with full type safety and proper code generation.
+The FFI system has been successfully integrated into the NexusLang compiler pipeline. External C functions can now be declared and called from NexusLang programs with full type safety and proper code generation.
 
 ## Completed Work
 
@@ -20,7 +20,7 @@ The FFI system has been successfully integrated into the NLPL compiler pipeline.
 
 **Function Name Flexibility**:
 - Allowed C keywords (malloc, free, printf, sin, cos, etc.) as extern function names
-- Parser recognizes common C function names even when they conflict with NLPL keywords
+- Parser recognizes common C function names even when they conflict with NexusLang keywords
 
 **"call" Keyword Support**:
 - Implemented `call <function> with <args>` syntax for function calls
@@ -36,7 +36,7 @@ The FFI system has been successfully integrated into the NLPL compiler pipeline.
 
 **Type Conversion**:
 - Automatic type conversion for function arguments
-- Matches NLPL types to C types (Float double, Integer i64, Pointer i8*)
+- Matches NexusLang types to C types (Float double, Integer i64, Pointer i8*)
 
 ### 3. Code Generation 
 
@@ -52,15 +52,15 @@ The FFI system has been successfully integrated into the NLPL compiler pipeline.
 
 ## Test Programs
 
-### 1. Basic Printf (test_ffi_basic.nlpl)
+### 1. Basic Printf (test_ffi_basic.nxl)
 ```nlpl
 extern function printf with format as Pointer returns Integer from library "c"
-set greeting to "Hello from NLPL calling C printf!\n"
+set greeting to "Hello from NexusLang calling C printf!\n"
 call printf with greeting
 ```
-**Output**: `Hello from NLPL calling C printf!`
+**Output**: `Hello from NexusLang calling C printf!`
 
-### 2. Math Functions (test_ffi_math.nlpl)
+### 2. Math Functions (test_ffi_math.nxl)
 ```nlpl
 extern function sqrt with x as Float returns Float from library "m"
 extern function pow with x as Float, y as Float returns Float from library "m"
@@ -72,7 +72,7 @@ set sine to call sin with 1.5708 # 1.0
 ```
 **Output**: All calculations correct
 
-### 3. String Manipulation (test_ffi_string.nlpl)
+### 3. String Manipulation (test_ffi_string.nxl)
 ```nlpl
 extern function strlen with str as Pointer returns Integer from library "c"
 extern function strcmp with s1 as Pointer, s2 as Pointer returns Integer from library "c"
@@ -85,7 +85,7 @@ set cmp to call strcmp with "Test", "Test" # 0
 ```
 **Output**: All string operations work correctly
 
-### 4. Memory Allocation (test_ffi_malloc.nlpl)
+### 4. Memory Allocation (test_ffi_malloc.nxl)
 ```nlpl
 extern function malloc with size as Integer returns Pointer from library "c"
 
@@ -153,25 +153,25 @@ Linker (clang/gcc) Executable with C library dependencies
 
 ### Current Limitations
 
-1. **No Callback Support**: Cannot pass NLPL functions to C functions yet
-2. **No Struct Marshalling**: Cannot pass NLPL structs/classes to C functions
-3. **No Variadic NLPL Functions**: NLPL functions can't be variadic
+1. **No Callback Support**: Cannot pass NexusLang functions to C functions yet
+2. **No Struct Marshalling**: Cannot pass NexusLang structs/classes to C functions
+3. **No Variadic NexusLang Functions**: NexusLang functions can't be variadic
 4. **Limited Type Conversion**: Only basic types supported (no arrays, complex structs)
 
 ### Phase 3 - Remaining Work (6-12 hours)
 
 1. **Struct Marshalling** (4-6 hours)
- - Pass NLPL structs to C functions
- - Convert between NLPL and C struct layouts
+ - Pass NexusLang structs to C functions
+ - Convert between NexusLang and C struct layouts
  - Handle nested structs and arrays
 
 2. **Callback Functions** (6-8 hours)
- - Generate function pointers for NLPL functions
+ - Generate function pointers for NexusLang functions
  - Trampoline code for calling conventions
  - Support for C functions taking callbacks (qsort, signal, etc.)
 
 3. **Variadic Functions** (4-5 hours)
- - Allow NLPL functions to accept variable arguments
+ - Allow NexusLang functions to accept variable arguments
  - Implement va_list, va_start, va_arg, va_end equivalents
 
 4. **Advanced Types** (3-4 hours)

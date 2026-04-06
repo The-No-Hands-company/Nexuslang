@@ -6,7 +6,7 @@ import tempfile
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from nlpl.compiler.freestanding import (
+from nexuslang.compiler.freestanding import (
     FreestandingConfig,
     FreestandingViolation,
     FREESTANDING_FORBIDDEN_MODULES,
@@ -18,7 +18,7 @@ from nlpl.compiler.freestanding import (
     parse_freestanding_args,
     apply_freestanding_config,
 )
-from nlpl.compiler.linker import (
+from nexuslang.compiler.linker import (
     LinkerScriptConfig,
     LinkerScriptValidator,
     MemoryRegion,
@@ -45,7 +45,7 @@ class TestEntryStubb:
     def test_x86_64_stub(self):
         stub = generate_entry_stub('x86_64')
         assert '_start' in stub
-        assert 'nlpl_main' in stub
+        assert 'nxl_main' in stub
 
     def test_arm_cortex_m_stub(self):
         stub = generate_entry_stub('cortex-m')
@@ -57,11 +57,11 @@ class TestEntryStubb:
         assert '_start' in stub
         assert 'la' in stub or 'lw' in stub or 'sw' in stub
 
-    def test_all_stubs_reference_nlpl_main(self):
+    def test_all_stubs_reference_nxl_main(self):
         for arch in ARCH_STUBS:
             stub = generate_entry_stub(arch)
-            assert 'nlpl_main' in stub or 'nlpl' in stub.lower(), \
-                f"Entry stub for '{arch}' does not reference nlpl_main"
+            assert 'nxl_main' in stub or 'nlpl' in stub.lower(), \
+                f"Entry stub for '{arch}' does not reference nxl_main"
 
     def test_unsupported_arch_raises(self):
         with pytest.raises(ValueError, match="unsupported architecture"):
@@ -112,7 +112,7 @@ class TestFreestandingConfig:
     def _make_config(self, **kwargs) -> FreestandingConfig:
         defaults = dict(
             arch='x86_64',
-            entry_symbol='nlpl_main',
+            entry_symbol='nxl_main',
             stack_size=65536,
             heap_size=131072,
         )
@@ -155,7 +155,7 @@ class TestFreestandingConfig:
             assert stub_path in written
             with open(stub_path) as f:
                 content = f.read()
-            assert 'nlpl_main' in content
+            assert 'nxl_main' in content
         finally:
             os.unlink(stub_path)
 
@@ -285,7 +285,7 @@ class TestParseFreestandingArgs:
         ns.freestanding = False
         ns.arch = 'x86_64'
         ns.linker_script = None
-        ns.entry_symbol = 'nlpl_main'
+        ns.entry_symbol = 'nxl_main'
         ns.stack_size = 65536
         ns.heap_size = 131072
         ns.emit_entry_stub = None

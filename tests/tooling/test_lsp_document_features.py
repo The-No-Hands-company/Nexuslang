@@ -6,8 +6,8 @@ import os
 import tempfile
 import pytest
 
-from nlpl.lsp.workspace_index import WorkspaceIndex
-from nlpl.lsp.server import NLPLLanguageServer
+from nexuslang.lsp.workspace_index import WorkspaceIndex
+from nexuslang.lsp.server import NLPLLanguageServer
 
 
 class TestDocumentSymbols:
@@ -16,7 +16,7 @@ class TestDocumentSymbols:
     def test_document_symbol_hierarchy(self):
         """Test hierarchical symbol outline for a file."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            test_file = os.path.join(tmpdir, "test.nlpl")
+            test_file = os.path.join(tmpdir, "test.nxl")
             with open(test_file, 'w') as f:
                 f.write("""
 function top_level_func returns Integer
@@ -80,7 +80,7 @@ set global_var to 100
     def test_flat_document_symbols(self):
         """Test document symbols without hierarchy."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            test_file = os.path.join(tmpdir, "simple.nlpl")
+            test_file = os.path.join(tmpdir, "simple.nxl")
             with open(test_file, 'w') as f:
                 f.write("""
 function func1 returns Integer
@@ -115,7 +115,7 @@ class TestCallHierarchy:
     def test_prepare_call_hierarchy(self):
         """Test preparing call hierarchy for a function."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            test_file = os.path.join(tmpdir, "test.nlpl")
+            test_file = os.path.join(tmpdir, "test.nxl")
             with open(test_file, 'w') as f:
                 f.write("""
 function calculate with x as Integer and y as Integer returns Integer
@@ -155,7 +155,7 @@ end
     def test_incoming_calls(self):
         """Test finding incoming calls (callers)."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            test_file = os.path.join(tmpdir, "test.nlpl")
+            test_file = os.path.join(tmpdir, "test.nxl")
             with open(test_file, 'w') as f:
                 f.write("""
 function helper returns Integer
@@ -203,7 +203,7 @@ end
     def test_outgoing_calls(self):
         """Test finding outgoing calls (callees)."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            test_file = os.path.join(tmpdir, "test.nlpl")
+            test_file = os.path.join(tmpdir, "test.nxl")
             with open(test_file, 'w') as f:
                 f.write("""
 function helper1 returns Integer
@@ -255,7 +255,7 @@ class TestCodeActionsIntegration:
         """Diagnostics with data.fixes should yield non-empty code actions."""
         server = NLPLLanguageServer()
 
-        uri = "file:///tmp/test_structured_fixes.nlpl"
+        uri = "file:///tmp/test_structured_fixes.nxl"
         text = 'print text "hello\n'
         server.documents[uri] = text
 
@@ -298,7 +298,7 @@ class TestCodeActionsIntegration:
         """Without data.fixes, message-based heuristics should still return actions."""
         server = NLPLLanguageServer()
 
-        uri = "file:///tmp/test_fallback_fixes.nlpl"
+        uri = "file:///tmp/test_fallback_fixes.nxl"
         text = 'print text "hello\n'
         server.documents[uri] = text
 

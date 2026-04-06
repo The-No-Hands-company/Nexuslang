@@ -1,4 +1,4 @@
-# NLPL GUI Quick Start Implementation Guide
+# NexusLang GUI Quick Start Implementation Guide
 
 **Goal:** Get first GUI feature working THIS WEEK 
 **Date:** January 5, 2026 
@@ -215,7 +215,7 @@ def _register_string_builtins(self):
  return ctypes.cast(buffer, ctypes.c_void_p).value
  
  def string_from(ptr, max_length=1024):
- """C char* pointer NLPL string."""
+ """C char* pointer NexusLang string."""
  if ptr == 0 or ptr is None:
  return ""
  
@@ -288,7 +288,7 @@ Create `test_string_linux.nlpl`:
 extern function puts with str as Pointer returns Integer from library "c"
 extern function strlen with str as Pointer returns Integer from library "c"
 
-set message to "Hello from NLPL on Linux!"
+set message to "Hello from NexusLang on Linux!"
 set c_str to c_string from message
 
 # Get string length
@@ -371,7 +371,7 @@ chmod +x test_gui_features.sh
 
 **Solution:** Import in interpreter.py:
 ```python
-from nlpl.runtime.structures import StructureInstance
+from nexuslang.runtime.structures import StructureInstance
 ```
 
 ### Issue 2: "Field access not working"
@@ -674,7 +674,7 @@ Label: Button at (100,50)
 
 ---
 
-**Let's make NLPL GUI-capable THIS WEEK!** 
+**Let's make NexusLang GUI-capable THIS WEEK!** 
 
 **Questions? Start with:** `src/nlpl/interpreter/interpreter.py` line 558 
 **Stuck?** Check NLPLDev examples for working patterns 

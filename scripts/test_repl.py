@@ -35,7 +35,7 @@ def test_repl_basic():
  
  # Run REPL with test input
  process = subprocess.Popen(
- ["python", "-m", "nlpl.main", "--repl"],
+ ["python", "-m", "nexuslang.main", "--repl"],
  stdin=subprocess.PIPE,
  stdout=subprocess.PIPE,
  stderr=subprocess.PIPE,

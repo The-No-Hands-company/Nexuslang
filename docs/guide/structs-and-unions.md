@@ -1,4 +1,4 @@
-# Structs and Unions in NLPL
+# Structs and Unions in NexusLang
 
 **Status:** ✅ Fully implemented (verified February 3, 2026)  
 **Complexity:** Intermediate
@@ -324,7 +324,7 @@ function get_int with v as Variant returns Integer
 end
 ```
 
-**Note:** NLPL also has built-in Option and Result types for safer variant handling!
+**Note:** NexusLang also has built-in Option and Result types for safer variant handling!
 
 ---
 
@@ -435,9 +435,9 @@ struct CCompatible {
 ```
 
 **Important:** Ensure field types match C types exactly!
-- NLPL `Integer` = C `int` (32-bit) or `long` (64-bit) - check platform!
-- NLPL `Float` = C `float` (32-bit) or `double` (64-bit)
-- NLPL `Boolean` = C `bool` or `int`
+- NexusLang `Integer` = C `int` (32-bit) or `long` (64-bit) - check platform!
+- NexusLang `Float` = C `float` (32-bit) or `double` (64-bit)
+- NexusLang `Boolean` = C `bool` or `int`
 - Use `packed` if C struct uses `__attribute__((packed))`
 
 ---
@@ -930,7 +930,7 @@ print text d.float_value  # Garbage! float_value was never set
 
 **Problem:**
 ```nlpl
-# NLPL struct (unpacked, has padding)
+# NexusLang struct (unpacked, has padding)
 struct Data
   a as Boolean  # 1 byte + 7 bytes padding
   b as Integer  # 8 bytes
@@ -967,7 +967,7 @@ end
 
 ## Summary
 
-Structs and unions in NLPL provide:
+Structs and unions in NexusLang provide:
 
 ✅ **C-compatible layout** - FFI and system programming  
 ✅ **Memory control** - Packed, aligned, predictable  

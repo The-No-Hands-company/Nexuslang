@@ -11,12 +11,12 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.interpreter.interpreter import Interpreter
-from nlpl.interpreter.scope_optimizer import enable_scope_optimization, disable_scope_optimization
-from nlpl.runtime.runtime import Runtime
-from nlpl.stdlib import register_stdlib
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.interpreter.interpreter import Interpreter
+from nexuslang.interpreter.scope_optimizer import enable_scope_optimization, disable_scope_optimization
+from nexuslang.runtime.runtime import Runtime
+from nexuslang.stdlib import register_stdlib
 
 def test_scope_optimizer_correctness():
  """Test that scope optimizer produces correct results."""

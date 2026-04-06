@@ -10,7 +10,7 @@
 
 Successfully implemented **architecture detection and multi-platform support** for NLPL's inline assembly system. The compiler now automatically detects the target CPU architecture (x86_64, x86, ARM, AArch64) and generates appropriate LLVM IR with architecture-specific validation.
 
-**Key Achievement:** NLPL inline assembly is now **portable across architectures** with intelligent register validation and dynamic LLVM target configuration.
+**Key Achievement:** NexusLang inline assembly is now **portable across architectures** with intelligent register validation and dynamic LLVM target configuration.
 
 ---
 
@@ -269,8 +269,8 @@ After Week 7 implementation, 3 test issues were identified and fixed:
 
 **Generated LLVM IR (x86_64 Linux):**
 ```llvm
-; ModuleID = "nlpl_module"
-source_filename = "nlpl_module.nlpl"
+; ModuleID = "nxl_module"
+source_filename = "nxl_module.nxl"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-linux-gnu"
 ```
@@ -418,7 +418,7 @@ target triple = "x86_64-pc-linux-gnu"
 
 ## Conclusion
 
-Week 7 successfully implemented **architecture detection and multi-platform support** for NLPL inline assembly. The system now:
+Week 7 successfully implemented **architecture detection and multi-platform support** for NexusLang inline assembly. The system now:
 
 1. ✅ Automatically detects CPU architecture
 2. ✅ Generates correct LLVM target configuration

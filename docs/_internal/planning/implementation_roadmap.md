@@ -1,8 +1,8 @@
-# Natural Language Programming Language (NLPL) Implementation Roadmap
+# NexusLang (NexusLang) Implementation Roadmap
 
 ## Overview
 
-This roadmap outlines the strategic approach for implementing the Natural Language Programming Language (NLPL), a programming language that combines the natural feel of English with the power and capabilities of C++. The implementation is structured into phases with clear milestones, deliverables, and timelines to ensure a systematic development process.
+This roadmap outlines the strategic approach for implementing the NexusLang (NexusLang), a programming language that combines the natural feel of English with the power and capabilities of C++. The implementation is structured into phases with clear milestones, deliverables, and timelines to ensure a systematic development process.
 
 ## Phase 1: Foundation (Months 1-6)
 
@@ -289,6 +289,6 @@ This roadmap outlines the strategic approach for implementing the Natural Langua
 
 ## Conclusion
 
-This implementation roadmap provides a structured approach to developing the Natural Language Programming Language over a 24-month period. By following this phased approach with clear deliverables and milestones, the project can systematically build a programming language that combines the natural feel of English with the power of C++.
+This implementation roadmap provides a structured approach to developing the NexusLang over a 24-month period. By following this phased approach with clear deliverables and milestones, the project can systematically build a programming language that combines the natural feel of English with the power of C++.
 
 The roadmap is designed to be flexible, allowing for adjustments based on technical discoveries, resource availability, and user feedback throughout the development process. Regular reviews of progress against milestones will help ensure the project remains on track and can adapt to changing requirements or challenges.

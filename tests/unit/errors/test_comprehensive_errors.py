@@ -1,11 +1,11 @@
 """
-Comprehensive test file for error reporting in the NLPL parser and lexer.
+Comprehensive test file for error reporting in the NexusLang parser and lexer.
 """
 
 import sys
 import traceback
-from nlpl.parser.lexer import Lexer, TokenType
-from nlpl.parser.parser import Parser
+from nexuslang.parser.lexer import Lexer, TokenType
+from nexuslang.parser.parser import Parser
 
 def test_lexer_invalid_character():
     """Test lexer error reporting for invalid characters."""

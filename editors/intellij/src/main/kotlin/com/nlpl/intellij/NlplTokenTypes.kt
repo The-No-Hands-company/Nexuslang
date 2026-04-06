@@ -3,7 +3,7 @@ package com.nlpl.intellij
 import com.intellij.psi.tree.IElementType
 
 /**
- * Token type singletons used by the NLPL highlighting lexer.
+ * Token type singletons used by the NexusLang highlighting lexer.
  */
 object NlplTokenTypes {
     @JvmField val KEYWORD      = IElementType("NLPL_KEYWORD",      NlplLanguage)

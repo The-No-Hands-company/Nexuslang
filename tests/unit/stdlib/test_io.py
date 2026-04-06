@@ -15,30 +15,30 @@ if _SRC not in sys.path:
 
 class TestBufferedIO:
     def test_buffered_reader_import(self):
-        from nlpl.stdlib.io import BufferedReader
+        from nexuslang.stdlib.io import BufferedReader
         assert BufferedReader is not None
 
     def test_buffered_writer_import(self):
-        from nlpl.stdlib.io import BufferedWriter
+        from nexuslang.stdlib.io import BufferedWriter
         assert BufferedWriter is not None
 
     def test_pipe_import(self):
-        from nlpl.stdlib.io import Pipe
+        from nexuslang.stdlib.io import Pipe
         assert Pipe is not None
 
     def test_memory_mapped_file_import(self):
-        from nlpl.stdlib.io import MemoryMappedFile
+        from nexuslang.stdlib.io import MemoryMappedFile
         assert MemoryMappedFile is not None
 
     def test_pipe_write_read(self):
-        from nlpl.stdlib.io import Pipe
+        from nexuslang.stdlib.io import Pipe
         p = Pipe()
         p.write(b"hello")
         data = p.read(5)
         assert data == b"hello"
 
     def test_buffered_writer_and_reader(self):
-        from nlpl.stdlib.io import BufferedWriter, BufferedReader
+        from nexuslang.stdlib.io import BufferedWriter, BufferedReader
         with tempfile.NamedTemporaryFile(delete=False) as f:
             path = f.name
         try:

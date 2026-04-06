@@ -1,11 +1,11 @@
-# NLPL v1.1 Release Notes
+# NexusLang v1.1 Release Notes
 
 **Release Date:** February 4, 2026  
 **Focus:** Production Polish - Parser Fixes, CI Enhancements, LSP Packaging
 
 ## Overview
 
-Version 1.1 completes Phase 1 of the NLPL roadmap, delivering critical parser bug fixes, CI infrastructure improvements, and standalone LSP server packaging. This release ensures the foundation is solid before expanding IDE features in Phase 2.
+Version 1.1 completes Phase 1 of the NexusLang roadmap, delivering critical parser bug fixes, CI infrastructure improvements, and standalone LSP server packaging. This release ensures the foundation is solid before expanding IDE features in Phase 2.
 
 ## 🐛 Critical Bug Fixes
 
@@ -59,9 +59,9 @@ Continued testing across Python versions:
 ## 📦 LSP Server Packaging (9811a69)
 
 ### Standalone Entry Points
-Created two ways to run the NLPL Language Server:
+Created two ways to run the NexusLang Language Server:
 
-1. **Python Module:** `python -m nlpl.lsp`
+1. **Python Module:** `python -m nexuslang.lsp`
    - Added `src/nlpl/lsp/__main__.py`
    - Supports `--stdio`, `--debug`, `--log-file` options
    
@@ -151,4 +151,4 @@ This release represents systematic, no-shortcuts development of a production lan
 
 ---
 
-**Full Changelog:** https://github.com/Zajfan/NLPL/compare/01b3608...9811a69
+**Full Changelog:** https://github.com/Zajfan/NexusLang/compare/01b3608...9811a69

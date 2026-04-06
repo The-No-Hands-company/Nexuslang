@@ -1,3 +1,3 @@
 """
-Test package for the Natural Language Programming Language (NLPL).
+Test package for the NexusLang (NexusLang).
 """ 

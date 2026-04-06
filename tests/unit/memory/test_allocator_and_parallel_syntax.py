@@ -5,9 +5,9 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from nlpl.parser.lexer import Lexer, TokenType
-from nlpl.parser.parser import Parser
-from nlpl.parser.ast import AllocatorHint, ParallelForLoop
+from nexuslang.parser.lexer import Lexer, TokenType
+from nexuslang.parser.parser import Parser
+from nexuslang.parser.ast import AllocatorHint, ParallelForLoop
 
 
 # ---------------------------------------------------------------------------
@@ -113,9 +113,9 @@ end'''
 
     def test_parallel_for_body_executes(self):
         """Full integration: parse and execute a parallel for loop."""
-        from nlpl.interpreter.interpreter import Interpreter
-        from nlpl.runtime.runtime import Runtime
-        from nlpl.stdlib import register_stdlib
+        from nexuslang.interpreter.interpreter import Interpreter
+        from nexuslang.runtime.runtime import Runtime
+        from nexuslang.stdlib import register_stdlib
 
         code = '''\
 set results to []
@@ -134,9 +134,9 @@ end'''
 
     def test_parallel_for_empty_list(self):
         """Parallel for over empty list should not raise."""
-        from nlpl.interpreter.interpreter import Interpreter
-        from nlpl.runtime.runtime import Runtime
-        from nlpl.stdlib import register_stdlib
+        from nexuslang.interpreter.interpreter import Interpreter
+        from nexuslang.runtime.runtime import Runtime
+        from nexuslang.stdlib import register_stdlib
 
         code = '''\
 set items to []

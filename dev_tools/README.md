@@ -1,10 +1,10 @@
-# NLPL Development Tools
+# NexusLang Development Tools
 
-A comprehensive suite of debugging and development utilities for the Natural Language Programming Language (NLPL).
+A comprehensive suite of debugging and development utilities for the NexusLang (NexusLang).
 
 ## Overview
 
-The dev_tools suite provides powerful debugging capabilities across all phases of NLPL compilation and execution:
+The dev_tools suite provides powerful debugging capabilities across all phases of NexusLang compilation and execution:
 
 - **Lexer Tools**: Token visualization, statistics, and keyword analysis
 - **Parser Tools**: AST visualization, syntax validation, error analysis
@@ -19,7 +19,7 @@ Install the required dependencies:
 pip install colorama  # For colored output (optional but recommended)
 ```
 
-All other dependencies are already in the main NLPL requirements.txt.
+All other dependencies are already in the main NexusLang requirements.txt.
 
 ## Quick Start
 
@@ -29,19 +29,19 @@ The `nlpl-dev` command provides access to all tools:
 
 ```bash
 # Check your environment
-python dev_tools/nlpl_dev.py doctor
+python dev_tools/nxl_dev.py doctor
 
 # Visualize tokens
-python dev_tools/nlpl_dev.py lex examples/01_basic_concepts.nlpl --visualize
+python dev_tools/nxl_dev.py lex examples/01_basic_concepts.nlpl --visualize
 
 # View AST tree
-python dev_tools/nlpl_dev.py parse examples/01_basic_concepts.nlpl --tree
+python dev_tools/nxl_dev.py parse examples/01_basic_concepts.nlpl --tree
 
 # Interactive debugging
-python dev_tools/nlpl_dev.py debug test_hello.nlpl --interactive
+python dev_tools/nxl_dev.py debug test_hello.nlpl --interactive
 
 # Run with full debugging
-python dev_tools/nlpl_dev.py run test_hello.nlpl --debug
+python dev_tools/nxl_dev.py run test_hello.nlpl --debug
 ```
 
 ## Tool Categories
@@ -138,13 +138,13 @@ When you suspect tokenization problems:
 
 ```bash
 # First, visualize the tokens
-python dev_tools/nlpl_dev.py lex myfile.nlpl --visualize
+python dev_tools/nxl_dev.py lex myfile.nlpl --visualize
 
 # Get detailed statistics
-python dev_tools/nlpl_dev.py lex myfile.nlpl --stats
+python dev_tools/nxl_dev.py lex myfile.nlpl --stats
 
 # Check keyword coverage
-python dev_tools/nlpl_dev.py lex myfile.nlpl --keywords
+python dev_tools/nxl_dev.py lex myfile.nlpl --keywords
 ```
 
 ### Debugging Parser Issues
@@ -153,13 +153,13 @@ When you get parse errors:
 
 ```bash
 # Validate syntax first
-python dev_tools/nlpl_dev.py parse myfile.nlpl --validate
+python dev_tools/nxl_dev.py parse myfile.nlpl --validate
 
 # Show AST to see where parsing stops
-python dev_tools/nlpl_dev.py parse myfile.nlpl --tree --show-tokens
+python dev_tools/nxl_dev.py parse myfile.nlpl --tree --show-tokens
 
 # Export for detailed analysis
-python dev_tools/nlpl_dev.py parse myfile.nlpl --json --output debug.json
+python dev_tools/nxl_dev.py parse myfile.nlpl --json --output debug.json
 ```
 
 ### Debugging Runtime Issues
@@ -168,10 +168,10 @@ When your program doesn't execute correctly:
 
 ```bash
 # Use interactive debugger
-python dev_tools/nlpl_dev.py debug myfile.nlpl --interactive
+python dev_tools/nxl_dev.py debug myfile.nlpl --interactive
 
 # Or trace execution
-python dev_tools/nlpl_dev.py run myfile.nlpl --trace --scope
+python dev_tools/nxl_dev.py run myfile.nlpl --trace --scope
 ```
 
 ### Full Pipeline Debugging
@@ -180,7 +180,7 @@ When you need to see everything:
 
 ```bash
 # Run with all debug options
-python dev_tools/nlpl_dev.py run myfile.nlpl --debug
+python dev_tools/nxl_dev.py run myfile.nlpl --debug
 ```
 
 This shows:
@@ -196,42 +196,42 @@ This shows:
 
 ```bash
 # Check environment
-python dev_tools/nlpl_dev.py doctor
+python dev_tools/nxl_dev.py doctor
 
 # Create test file
 echo "set x to 42" > test_feature.nlpl
 
 # Test lexer first
-python dev_tools/nlpl_dev.py lex test_feature.nlpl --visualize
+python dev_tools/nxl_dev.py lex test_feature.nlpl --visualize
 
 # Test parser
-python dev_tools/nlpl_dev.py parse test_feature.nlpl --tree
+python dev_tools/nxl_dev.py parse test_feature.nlpl --tree
 
 # Test execution
-python dev_tools/nlpl_dev.py run test_feature.nlpl --debug
+python dev_tools/nxl_dev.py run test_feature.nlpl --debug
 ```
 
 ### 2. Debugging a Failing Example
 
 ```bash
 # Full debug of example file
-python dev_tools/nlpl_dev.py run examples/01_basic_concepts.nlpl --debug
+python dev_tools/nxl_dev.py run examples/01_basic_concepts.nlpl --debug
 
 # If it fails at lexing
-python dev_tools/nlpl_dev.py lex examples/01_basic_concepts.nlpl --dump --output lex_debug.txt
+python dev_tools/nxl_dev.py lex examples/01_basic_concepts.nlpl --dump --output lex_debug.txt
 
 # If it fails at parsing
-python dev_tools/nlpl_dev.py parse examples/01_basic_concepts.nlpl --tree --show-tokens
+python dev_tools/nxl_dev.py parse examples/01_basic_concepts.nlpl --tree --show-tokens
 
 # If it fails at runtime
-python dev_tools/nlpl_dev.py debug examples/01_basic_concepts.nlpl --interactive
+python dev_tools/nxl_dev.py debug examples/01_basic_concepts.nlpl --interactive
 ```
 
 ### 3. Verifying a Fix
 
 ```bash
 # Test with full tracing
-python dev_tools/nlpl_dev.py run myfile.nlpl --trace --scope --stats
+python dev_tools/nxl_dev.py run myfile.nlpl --trace --scope --stats
 ```
 
 ## Advanced Features
@@ -265,27 +265,27 @@ def test_my_feature():
 
 1. **Use `doctor` regularly** - Catch environment issues early
    ```bash
-   python dev_tools/nlpl_dev.py doctor
+   python dev_tools/nxl_dev.py doctor
    ```
 
 2. **Start with the simplest tool** - Debug from lexer → parser → interpreter
 
 3. **Export to files** - Save debug output for comparison
    ```bash
-   python dev_tools/nlpl_dev.py lex myfile.nlpl --dump --output before.txt
+   python dev_tools/nxl_dev.py lex myfile.nlpl --dump --output before.txt
    # Make changes
-   python dev_tools/nlpl_dev.py lex myfile.nlpl --dump --output after.txt
+   python dev_tools/nxl_dev.py lex myfile.nlpl --dump --output after.txt
    diff before.txt after.txt
    ```
 
 4. **Use interactive mode for complex issues** - Step through execution
    ```bash
-   python dev_tools/nlpl_dev.py debug myfile.nlpl --interactive
+   python dev_tools/nxl_dev.py debug myfile.nlpl --interactive
    ```
 
 5. **Combine multiple flags** - Get exactly the information you need
    ```bash
-   python dev_tools/nlpl_dev.py run myfile.nlpl --trace --scope
+   python dev_tools/nxl_dev.py run myfile.nlpl --trace --scope
    ```
 
 ## Future Enhancements
@@ -303,7 +303,7 @@ def test_my_feature():
 When adding new debug tools:
 
 1. Create tool in appropriate category directory
-2. Add CLI integration in `nlpl_dev.py`
+2. Add CLI integration in `nxl_dev.py`
 3. Update this README
 4. Add examples of usage
 
@@ -311,7 +311,7 @@ When adding new debug tools:
 
 **Tool won't run:**
 - Check Python version: `python --version` (need 3.8+)
-- Run `python dev_tools/nlpl_dev.py doctor`
+- Run `python dev_tools/nxl_dev.py doctor`
 - Install dependencies: `pip install -r requirements.txt`
 
 **Import errors:**
@@ -324,4 +324,4 @@ When adding new debug tools:
 
 ## License
 
-Same as main NLPL project.
+Same as main NexusLang project.

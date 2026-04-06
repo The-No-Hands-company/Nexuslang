@@ -1,5 +1,5 @@
 """
-Tests for dynamic invocation in the NLPL stdlib reflection module.
+Tests for dynamic invocation in the NexusLang stdlib reflection module.
 
 Groups:
     TestReflectInvoke       -- reflect_invoke: call a named method on an Object
@@ -24,15 +24,15 @@ import pytest
 # ---------------------------------------------------------------------------
 
 def _make_runtime():
-    from nlpl.runtime.runtime import Runtime
-    from nlpl.stdlib import register_stdlib
+    from nexuslang.runtime.runtime import Runtime
+    from nexuslang.stdlib import register_stdlib
     rt = Runtime()
     register_stdlib(rt)
     return rt
 
 
 def _make_object(class_name, properties=None, methods=None):
-    from nlpl.runtime.runtime import Object
+    from nexuslang.runtime.runtime import Object
     obj = Object(class_name, properties or {})
     if methods:
         for name, func in methods.items():
@@ -76,7 +76,7 @@ def _returns_list(self, n):
 
 class TestReflectInvoke:
     def setup_method(self):
-        from nlpl.stdlib.reflection import reflect_invoke
+        from nexuslang.stdlib.reflection import reflect_invoke
         self.rt = _make_runtime()
         self.reflect_invoke = lambda obj, name, args=None: reflect_invoke(
             self.rt, obj, name, args
@@ -102,7 +102,7 @@ class TestReflectInvoke:
         assert result == "Hello, World!"
 
     def test_invoke_with_one_arg(self):
-        result = self.reflect_invoke(self.obj, "greet", ["NLPL"])
+        result = self.reflect_invoke(self.obj, "greet", ["NexusLang"])
         assert result == "Hello, NLPL!"
 
     def test_invoke_with_two_args(self):
@@ -184,7 +184,7 @@ class TestReflectInvoke:
 
 class TestReflectInvokeSafe:
     def setup_method(self):
-        from nlpl.stdlib.reflection import reflect_invoke_safe
+        from nexuslang.stdlib.reflection import reflect_invoke_safe
         self.rt = _make_runtime()
         self.reflect_invoke_safe = lambda obj, name, args=None, default=None: reflect_invoke_safe(
             self.rt, obj, name, args, default
@@ -236,7 +236,7 @@ class TestReflectInvokeSafe:
 
 class TestReflectCall:
     def setup_method(self):
-        from nlpl.stdlib.reflection import reflect_call
+        from nexuslang.stdlib.reflection import reflect_call
         self.rt = _make_runtime()
         self.reflect_call = lambda name, args=None: reflect_call(
             self.rt, name, args

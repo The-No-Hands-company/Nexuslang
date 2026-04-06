@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-fuzzing/fuzz_parser.py  --  Atheris/libFuzzer fuzz target for the NLPL parser.
+fuzzing/fuzz_parser.py  --  Atheris/libFuzzer fuzz target for the NexusLang parser.
 
 Tests the full lexer → parser pipeline.  The parser MUST:
   - Never raise an unhandled Python exception for ANY byte sequence that gets
     past the lexer stage.
-  - Either return a Program AST node or raise NLPLSyntaxError.
+  - Either return a Program AST node or raise NxlSyntaxError.
 
 Running with Atheris:
     python -m atheris fuzz_parser.py corpus/parser/
@@ -25,14 +25,14 @@ _SRC = os.path.join(_ROOT, "src")
 if _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
-from nlpl.parser.lexer import Lexer  # noqa: E402
-from nlpl.parser.parser import Parser  # noqa: E402
-from nlpl.parser.ast import Program  # noqa: E402
-from nlpl.errors import NLPLSyntaxError, NLPLError  # noqa: E402
+from nexuslang.parser.lexer import Lexer  # noqa: E402
+from nexuslang.parser.parser import Parser  # noqa: E402
+from nexuslang.parser.ast import Program  # noqa: E402
+from nexuslang.errors import NxlSyntaxError, NxlError  # noqa: E402
 
 _EXPECTED = (
-    NLPLError,
-    NLPLSyntaxError,
+    NxlError,
+    NxlSyntaxError,
     ValueError,
     IndexError,  # Intentional: parser index into token list — bugs become crash
     UnicodeDecodeError,

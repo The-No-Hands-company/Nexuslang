@@ -1,6 +1,6 @@
-# NLPL Common Syntax Errors and Solutions
+# NexusLang Common Syntax Errors and Solutions
 
-This document lists common syntax errors encountered when writing NLPL code and how to fix them.
+This document lists common syntax errors encountered when writing NexusLang code and how to fix them.
 
 ## Table of Contents
 1. [String Concatenation with Parentheses](#string-concatenation-with-parentheses)
@@ -48,7 +48,7 @@ print text "Result: " plus result_str
 ## Reserved Keywords as Identifiers
 
 ### Problem
-Certain words are reserved tokens in NLPL and cannot be used as variable names, parameter names, or function names.
+Certain words are reserved tokens in NexusLang and cannot be used as variable names, parameter names, or function names.
 
 ### Known Reserved Keywords
 - `callback` (TokenType.CALLBACK)
@@ -210,7 +210,7 @@ end
 ## Pattern Matching Syntax
 
 ### Current Status
-Pattern matching is partially implemented in NLPL. The `match` statement has parser support but may have limitations.
+Pattern matching is partially implemented in NexusLang. The `match` statement has parser support but may have limitations.
 
 ### Basic Match (Parser Support)
 ```nlpl
@@ -252,13 +252,13 @@ end
 ### 1. Use `--debug` Flag
 Run with `--debug` to see detailed tokenization and AST information:
 ```bash
-python -m nlpl.main myfile.nlpl --debug
+python -m nexuslang.main myfile.nlpl --debug
 ```
 
 ### 2. Use `--no-type-check` Flag
 If type checking is causing issues, disable it:
 ```bash
-python -m nlpl.main myfile.nlpl --no-type-check
+python -m nexuslang.main myfile.nlpl --no-type-check
 ```
 
 ### 3. Check Error Messages Carefully
@@ -304,6 +304,6 @@ Follow consistent naming conventions to avoid confusion with reserved keywords:
 
 ## Version Information
 
-This document is current as of NLPL v1.0 pre-release (February 2026).
+This document is current as of NexusLang v1.0 pre-release (February 2026).
 
 Some features may be added or changed in future versions. Check the RELEASE_NOTES for updates.

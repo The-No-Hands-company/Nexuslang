@@ -1,5 +1,5 @@
 """
-Comprehensive test suite for NLPL dictionaries.
+Comprehensive test suite for NexusLang dictionaries.
 Tests dictionary creation, access, modification, and operations.
 """
 
@@ -215,7 +215,7 @@ class TestDictionaryEdgeCases(NLPLTestBase):
     def test_dictionary_with_None_values(self):
         """Test dictionary with null/none values."""
         code = 'set d to {"key": null}'
-        # Adjust based on how NLPL represents null
+        # Adjust based on how NexusLang represents null
         self.parse_and_execute(code)
         result = self.interpreter.get_variable("d")
         assert result["key"] is None or result["key"] == "null"

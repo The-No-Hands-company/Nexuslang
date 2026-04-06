@@ -19,54 +19,54 @@ if _SRC not in sys.path:
 
 def _imports():
     """Lazy import of commonly used AST nodes and JIT classes."""
-    from nlpl.parser.ast import (
+    from nexuslang.parser.ast import (
         FunctionDefinition, Parameter, VariableDeclaration, ReturnStatement,
         BinaryOperation, Identifier, Literal, IfStatement, WhileLoop, ForLoop,
         RepeatNTimesLoop, RepeatWhileLoop, BreakStatement, ContinueStatement,
         PrintStatement, UnaryOperation, IndexExpression, ListExpression,
         DictExpression, MemberAccess, FunctionCall,
     )
-    from nlpl.jit.code_gen import NLPLCodeGenerator, JITGuardFailed, CodeGenError
+    from nexuslang.jit.code_gen import NLPLCodeGenerator, JITGuardFailed, CodeGenError
     return locals()
 
 
 def _param(name):
-    from nlpl.parser.ast import Parameter
+    from nexuslang.parser.ast import Parameter
     return Parameter(name)
 
 
 def _lit(value, typ="integer"):
-    from nlpl.parser.ast import Literal
+    from nexuslang.parser.ast import Literal
     return Literal(typ, value)
 
 
 def _ident(name):
-    from nlpl.parser.ast import Identifier
+    from nexuslang.parser.ast import Identifier
     return Identifier(name)
 
 
 def _binop(left, op, right):
-    from nlpl.parser.ast import BinaryOperation
+    from nexuslang.parser.ast import BinaryOperation
     return BinaryOperation(left, op, right)
 
 
 def _ret(value=None):
-    from nlpl.parser.ast import ReturnStatement
+    from nexuslang.parser.ast import ReturnStatement
     return ReturnStatement(value)
 
 
 def _vardecl(name, value):
-    from nlpl.parser.ast import VariableDeclaration
+    from nexuslang.parser.ast import VariableDeclaration
     return VariableDeclaration(name, value)
 
 
 def _funcdef(name, params, body):
-    from nlpl.parser.ast import FunctionDefinition
+    from nexuslang.parser.ast import FunctionDefinition
     return FunctionDefinition(name, params, body)
 
 
 def _funcall(name, args=None):
-    from nlpl.parser.ast import FunctionCall
+    from nexuslang.parser.ast import FunctionCall
     return FunctionCall(name, args or [])
 
 
@@ -95,22 +95,22 @@ class _MockInterpreter:
 
 class TestJIT:
     def test_tiered_compiler_import(self):
-        from nlpl.jit.tiered_compiler import TieredCompiler
+        from nexuslang.jit.tiered_compiler import TieredCompiler
         assert TieredCompiler is not None
 
     def test_tiered_compiler_create(self):
-        from nlpl.jit.tiered_compiler import TieredCompiler
+        from nexuslang.jit.tiered_compiler import TieredCompiler
         tc = TieredCompiler()
         assert tc is not None
 
     def test_tiered_compiler_tier_of_unknown(self):
-        from nlpl.jit.tiered_compiler import TieredCompiler, ExecutionTier
+        from nexuslang.jit.tiered_compiler import TieredCompiler, ExecutionTier
         tc = TieredCompiler()
         tier = tc.tier_of("unknown_function")
         assert tier == ExecutionTier.INTERPRETER
 
     def test_tiered_compiler_inject_tier(self):
-        from nlpl.jit.tiered_compiler import TieredCompiler, ExecutionTier, FunctionTierState
+        from nexuslang.jit.tiered_compiler import TieredCompiler, ExecutionTier, FunctionTierState
         tc = TieredCompiler()
         tc._function_states["hot_fn"] = FunctionTierState(
             name="hot_fn", tier=ExecutionTier.OPTIMIZING_JIT
@@ -118,12 +118,12 @@ class TestJIT:
         assert tc.tier_of("hot_fn") == ExecutionTier.OPTIMIZING_JIT
 
     def test_function_tier_state_import(self):
-        from nlpl.jit.tiered_compiler import FunctionTierState, ExecutionTier
+        from nexuslang.jit.tiered_compiler import FunctionTierState, ExecutionTier
         state = FunctionTierState(name="fn", tier=ExecutionTier.INTERPRETER)
         assert state.name == "fn"
 
     def test_execution_tier_values(self):
-        from nlpl.jit.tiered_compiler import ExecutionTier
+        from nexuslang.jit.tiered_compiler import ExecutionTier
         assert hasattr(ExecutionTier, "INTERPRETER")
         assert hasattr(ExecutionTier, "OPTIMIZING_JIT")
 
@@ -134,42 +134,42 @@ class TestJIT:
 
 class TestTypeFeedback:
     def test_function_feedback_import(self):
-        from nlpl.jit.type_feedback import FunctionFeedback
+        from nexuslang.jit.type_feedback import FunctionFeedback
         assert FunctionFeedback is not None
 
     def test_function_feedback_record_call(self):
-        from nlpl.jit.type_feedback import FunctionFeedback
+        from nexuslang.jit.type_feedback import FunctionFeedback
         fb = FunctionFeedback("add")
         fb.record_call(["Integer", "Integer"])
 
     def test_function_feedback_monomorphic(self):
-        from nlpl.jit.type_feedback import FunctionFeedback, Polymorphism
+        from nexuslang.jit.type_feedback import FunctionFeedback, Polymorphism
         fb = FunctionFeedback("add")
         fb.record_call(["Integer", "Integer"])
         fb.record_call(["Integer", "Integer"])
         assert fb.polymorphism == Polymorphism.MONOMORPHIC
 
     def test_function_feedback_polymorphic(self):
-        from nlpl.jit.type_feedback import FunctionFeedback, Polymorphism
+        from nexuslang.jit.type_feedback import FunctionFeedback, Polymorphism
         fb = FunctionFeedback("add")
         fb.record_call(["Integer", "Integer"])
         fb.record_call(["Float", "Float"])
         assert fb.polymorphism in (Polymorphism.POLYMORPHIC, Polymorphism.MEGAMORPHIC)
 
     def test_type_feedback_collector_import(self):
-        from nlpl.jit.type_feedback import TypeFeedbackCollector
+        from nexuslang.jit.type_feedback import TypeFeedbackCollector
         tfc = TypeFeedbackCollector()
         assert tfc is not None
 
     def test_type_feedback_collector_get_record(self):
-        from nlpl.jit.type_feedback import TypeFeedbackCollector
+        from nexuslang.jit.type_feedback import TypeFeedbackCollector
         tfc = TypeFeedbackCollector()
         # get_record returns None for unknown functions - that is the correct behaviour
         rec = tfc.get_record("my_func")
         assert rec is None  # not yet recorded
 
     def test_type_feedback_collector_get_hints(self):
-        from nlpl.jit.type_feedback import TypeFeedbackCollector
+        from nexuslang.jit.type_feedback import TypeFeedbackCollector
         tfc = TypeFeedbackCollector()
         hints = tfc.get_hints("my_func")
         assert isinstance(hints, (list, dict, type(None)))
@@ -187,19 +187,19 @@ class TestTypeFeedback:
 
 class TestCodeGenImports:
     def test_jit_guard_failed_importable(self):
-        from nlpl.jit.code_gen import JITGuardFailed
+        from nexuslang.jit.code_gen import JITGuardFailed
         assert JITGuardFailed is not None
 
     def test_code_gen_error_importable(self):
-        from nlpl.jit.code_gen import CodeGenError
+        from nexuslang.jit.code_gen import CodeGenError
         assert CodeGenError is not None
 
-    def test_nlpl_code_generator_importable(self):
-        from nlpl.jit.code_gen import NLPLCodeGenerator
+    def test_nxl_code_generator_importable(self):
+        from nexuslang.jit.code_gen import NLPLCodeGenerator
         assert NLPLCodeGenerator is not None
 
     def test_all_three_exported_from_jit_init(self):
-        from nlpl.jit import NLPLCodeGenerator, JITGuardFailed, CodeGenError
+        from nexuslang.jit import NLPLCodeGenerator, JITGuardFailed, CodeGenError
         assert NLPLCodeGenerator is not None
         assert JITGuardFailed is not None
         assert CodeGenError is not None
@@ -207,43 +207,43 @@ class TestCodeGenImports:
 
 class TestJITGuardFailed:
     def test_is_exception_subclass(self):
-        from nlpl.jit.code_gen import JITGuardFailed
+        from nexuslang.jit.code_gen import JITGuardFailed
         assert issubclass(JITGuardFailed, Exception)
 
     def test_holds_message(self):
-        from nlpl.jit.code_gen import JITGuardFailed
+        from nexuslang.jit.code_gen import JITGuardFailed
         e = JITGuardFailed("guard: x expected Integer")
         assert "Integer" in str(e)
 
     def test_raise_and_catch(self):
-        from nlpl.jit.code_gen import JITGuardFailed
+        from nexuslang.jit.code_gen import JITGuardFailed
         with pytest.raises(JITGuardFailed):
             raise JITGuardFailed("test")
 
     def test_distinct_from_code_gen_error(self):
-        from nlpl.jit.code_gen import JITGuardFailed, CodeGenError
+        from nexuslang.jit.code_gen import JITGuardFailed, CodeGenError
         assert JITGuardFailed is not CodeGenError
 
 
 class TestCodeGenError:
     def test_is_exception_subclass(self):
-        from nlpl.jit.code_gen import CodeGenError
+        from nexuslang.jit.code_gen import CodeGenError
         assert issubclass(CodeGenError, Exception)
 
     def test_holds_message(self):
-        from nlpl.jit.code_gen import CodeGenError
+        from nexuslang.jit.code_gen import CodeGenError
         e = CodeGenError("failed to compile foo")
         assert "foo" in str(e)
 
     def test_raise_and_catch(self):
-        from nlpl.jit.code_gen import CodeGenError
+        from nexuslang.jit.code_gen import CodeGenError
         with pytest.raises(CodeGenError):
             raise CodeGenError("boom")
 
 
 class TestOperatorMap:
     def _gen_expr_binop(self, op):
-        from nlpl.jit.code_gen import NLPLCodeGenerator
+        from nexuslang.jit.code_gen import NLPLCodeGenerator
         gen = NLPLCodeGenerator()
         left = _ident("a")
         right = _ident("b")
@@ -283,33 +283,33 @@ class TestOperatorMap:
 
 class TestTypeGuardMap:
     def test_integer_maps_to_int(self):
-        from nlpl.jit.code_gen import _TYPE_GUARD_MAP
+        from nexuslang.jit.code_gen import _TYPE_GUARD_MAP
         assert _TYPE_GUARD_MAP["Integer"] == "int"
 
     def test_float_maps_to_float(self):
-        from nlpl.jit.code_gen import _TYPE_GUARD_MAP
+        from nexuslang.jit.code_gen import _TYPE_GUARD_MAP
         assert _TYPE_GUARD_MAP["Float"] == "float"
 
     def test_string_maps_to_str(self):
-        from nlpl.jit.code_gen import _TYPE_GUARD_MAP
+        from nexuslang.jit.code_gen import _TYPE_GUARD_MAP
         assert _TYPE_GUARD_MAP["String"] == "str"
 
     def test_boolean_maps_to_bool(self):
-        from nlpl.jit.code_gen import _TYPE_GUARD_MAP
+        from nexuslang.jit.code_gen import _TYPE_GUARD_MAP
         assert _TYPE_GUARD_MAP["Boolean"] == "bool"
 
     def test_list_maps_to_list(self):
-        from nlpl.jit.code_gen import _TYPE_GUARD_MAP
+        from nexuslang.jit.code_gen import _TYPE_GUARD_MAP
         assert _TYPE_GUARD_MAP["List"] == "list"
 
     def test_dictionary_maps_to_dict(self):
-        from nlpl.jit.code_gen import _TYPE_GUARD_MAP
+        from nexuslang.jit.code_gen import _TYPE_GUARD_MAP
         assert _TYPE_GUARD_MAP["Dictionary"] == "dict"
 
 
 class TestGenerateFunctionSource:
     def _gen(self, name, params, body, type_hints=None, opt_level=1):
-        from nlpl.jit.code_gen import NLPLCodeGenerator
+        from nexuslang.jit.code_gen import NLPLCodeGenerator
         gen = NLPLCodeGenerator()
         fd = _funcdef(name, params, body)
         return gen.generate_function(fd, type_hints=type_hints, opt_level=opt_level)
@@ -342,7 +342,7 @@ class TestGenerateFunctionSource:
         assert "x = " in src and "10" in src
 
     def test_if_statement_emitted(self):
-        from nlpl.parser.ast import IfStatement
+        from nexuslang.parser.ast import IfStatement
         cond = _binop(_ident("x"), "is greater than", _lit(0))
         then_b = [_ret(_lit(1))]
         body = [IfStatement(cond, then_b)]
@@ -350,26 +350,26 @@ class TestGenerateFunctionSource:
         assert "if " in src
 
     def test_while_loop_emitted(self):
-        from nlpl.parser.ast import WhileLoop
+        from nexuslang.parser.ast import WhileLoop
         cond = _binop(_ident("i"), "is less than", _lit(5))
         loop = WhileLoop(cond, [_vardecl("i", _binop(_ident("i"), "plus", _lit(1)))])
         src = self._gen("f", [_param("i")], [loop])
         assert "while " in src
 
     def test_for_range_loop_emitted(self):
-        from nlpl.parser.ast import ForLoop
+        from nexuslang.parser.ast import ForLoop
         loop = ForLoop("i", body=[_ret(_ident("i"))], start=_lit(0), end=_lit(10))
         src = self._gen("f", [], [loop])
         assert "range(" in src
 
     def test_for_each_loop_emitted(self):
-        from nlpl.parser.ast import ForLoop
+        from nexuslang.parser.ast import ForLoop
         loop = ForLoop("item", iterable=_ident("items"), body=[_ret(_ident("item"))])
         src = self._gen("f", [_param("items")], [loop])
         assert "for item in items" in src
 
     def test_repeat_n_loop_emitted(self):
-        from nlpl.parser.ast import RepeatNTimesLoop
+        from nexuslang.parser.ast import RepeatNTimesLoop
         loop = RepeatNTimesLoop(_lit(3), body=[_vardecl("x", _lit(1))])
         src = self._gen("f", [], [loop])
         assert "range(3)" in src
@@ -400,7 +400,7 @@ class TestGenerateFunctionSource:
 
 class TestCompileFunction:
     def _compile(self, name, params, body, type_hints=None, opt_level=1):
-        from nlpl.jit.code_gen import NLPLCodeGenerator
+        from nexuslang.jit.code_gen import NLPLCodeGenerator
         interp = _MockInterpreter()
         gen = NLPLCodeGenerator()
         fd = _funcdef(name, params, body)
@@ -449,7 +449,7 @@ class TestCompileFunction:
         assert fn(99) == 99
 
     def test_type_guard_fires_on_wrong_type(self):
-        from nlpl.jit.code_gen import JITGuardFailed
+        from nexuslang.jit.code_gen import JITGuardFailed
         fn = self._compile("guarded", [_param("n")],
                            [_ret(_ident("n"))],
                            type_hints={"param_0": "Integer"},
@@ -458,7 +458,7 @@ class TestCompileFunction:
             fn("not an int")
 
     def test_code_gen_error_on_bad_source(self):
-        from nlpl.jit.code_gen import NLPLCodeGenerator, CodeGenError
+        from nexuslang.jit.code_gen import NLPLCodeGenerator, CodeGenError
         # Produce a bogus func_def that will cause something weird but
         # by patching generate_function to return invalid Python
         gen = NLPLCodeGenerator()
@@ -486,7 +486,7 @@ class TestCompileFunction:
         assert fn(2, 3, 4) == 10
 
     def test_unary_negation(self):
-        from nlpl.parser.ast import UnaryOperation
+        from nexuslang.parser.ast import UnaryOperation
         node = UnaryOperation("-", _ident("x"))
         fn = self._compile("neg", [_param("x")], [_ret(node)])
         assert fn(5) == -5
@@ -500,7 +500,7 @@ class TestCompileFunction:
 
 class TestGenStmt:
     def _gen_stmt(self, node):
-        from nlpl.jit.code_gen import NLPLCodeGenerator
+        from nexuslang.jit.code_gen import NLPLCodeGenerator
         return NLPLCodeGenerator()._gen_stmt(node, depth=0)
 
     def test_vardecl(self):
@@ -516,58 +516,58 @@ class TestGenStmt:
         assert any("return None" in ln for ln in lines)
 
     def test_break_statement(self):
-        from nlpl.parser.ast import BreakStatement
+        from nexuslang.parser.ast import BreakStatement
         lines = self._gen_stmt(BreakStatement())
         assert lines == ["break"]
 
     def test_continue_statement(self):
-        from nlpl.parser.ast import ContinueStatement
+        from nexuslang.parser.ast import ContinueStatement
         lines = self._gen_stmt(ContinueStatement())
         assert lines == ["continue"]
 
     def test_print_statement(self):
-        from nlpl.parser.ast import PrintStatement
+        from nexuslang.parser.ast import PrintStatement
         lines = self._gen_stmt(PrintStatement(_lit(42)))
         assert any("_print(" in ln for ln in lines)
 
     def test_if_statement_has_if_keyword(self):
-        from nlpl.parser.ast import IfStatement
+        from nexuslang.parser.ast import IfStatement
         cond = _binop(_ident("x"), "is greater than", _lit(0))
         lines = self._gen_stmt(IfStatement(cond, [_ret(_lit(1))]))
         assert any(ln.startswith("if ") for ln in lines)
 
     def test_if_else_has_else_keyword(self):
-        from nlpl.parser.ast import IfStatement
+        from nexuslang.parser.ast import IfStatement
         cond = _binop(_ident("x"), "is greater than", _lit(0))
         lines = self._gen_stmt(IfStatement(cond, [_ret(_lit(1))], [_ret(_lit(0))]))
         assert any("else:" in ln for ln in lines)
 
     def test_while_loop(self):
-        from nlpl.parser.ast import WhileLoop
+        from nexuslang.parser.ast import WhileLoop
         cond = _binop(_ident("i"), "is less than", _lit(10))
         lines = self._gen_stmt(WhileLoop(cond, [_vardecl("i", _lit(0))]))
         assert any(ln.startswith("while ") for ln in lines)
 
     def test_for_range_loop(self):
-        from nlpl.parser.ast import ForLoop
+        from nexuslang.parser.ast import ForLoop
         loop = ForLoop("i", body=[], start=_lit(0), end=_lit(5))
         lines = self._gen_stmt(loop)
         assert any("range(" in ln for ln in lines)
 
     def test_for_each_loop(self):
-        from nlpl.parser.ast import ForLoop
+        from nexuslang.parser.ast import ForLoop
         loop = ForLoop("item", iterable=_ident("items"), body=[])
         lines = self._gen_stmt(loop)
         assert any("for item in" in ln for ln in lines)
 
     def test_repeat_n_times(self):
-        from nlpl.parser.ast import RepeatNTimesLoop
+        from nexuslang.parser.ast import RepeatNTimesLoop
         loop = RepeatNTimesLoop(_lit(5), body=[])
         lines = self._gen_stmt(loop)
         assert any("range(5)" in ln for ln in lines)
 
     def test_repeat_while_loop(self):
-        from nlpl.parser.ast import RepeatWhileLoop
+        from nexuslang.parser.ast import RepeatWhileLoop
         cond = _ident("running")
         loop = RepeatWhileLoop(cond, body=[])
         lines = self._gen_stmt(loop)
@@ -581,7 +581,7 @@ class TestGenStmt:
 
 class TestGenExpr:
     def _gen_expr(self, node):
-        from nlpl.jit.code_gen import NLPLCodeGenerator
+        from nexuslang.jit.code_gen import NLPLCodeGenerator
         return NLPLCodeGenerator()._gen_expr(node)
 
     def test_integer_literal(self):
@@ -616,26 +616,26 @@ class TestGenExpr:
         assert "(x + y)" == result
 
     def test_index_expression(self):
-        from nlpl.parser.ast import IndexExpression
+        from nexuslang.parser.ast import IndexExpression
         node = IndexExpression(_ident("arr"), _lit(0))
         result = self._gen_expr(node)
         assert "arr" in result and "0" in result and "[" in result
 
     def test_list_expression(self):
-        from nlpl.parser.ast import ListExpression
+        from nexuslang.parser.ast import ListExpression
         node = ListExpression([_lit(1), _lit(2), _lit(3)])
         result = self._gen_expr(node)
         assert result == "[1, 2, 3]"
 
     def test_dict_expression_tuple_entries(self):
-        from nlpl.parser.ast import DictExpression
+        from nexuslang.parser.ast import DictExpression
         entries = [(_lit("a", "string"), _lit(1)), (_lit("b", "string"), _lit(2))]
         node = DictExpression(entries)
         result = self._gen_expr(node)
         assert "'a'" in result and "1" in result
 
     def test_member_access(self):
-        from nlpl.parser.ast import MemberAccess
+        from nexuslang.parser.ast import MemberAccess
         node = MemberAccess(_ident("obj"), "length")
         result = self._gen_expr(node)
         assert result == "obj.length"
@@ -647,17 +647,17 @@ class TestGenExpr:
         assert self._gen_expr("hi") == repr("hi")
 
     def test_unhandled_expr_returns_none_comment(self):
-        from nlpl.jit.code_gen import NLPLCodeGenerator
+        from nexuslang.jit.code_gen import NLPLCodeGenerator
         bogus = type("WeirdExpr", (), {})()
         result = NLPLCodeGenerator()._gen_expr(bogus)
         assert "None" in result
 
 
 class TestRoundTrip:
-    """Build complete NLPL function ASTs, compile, and call them."""
+    """Build complete NexusLang function ASTs, compile, and call them."""
 
     def _compile(self, name, params, body, interp=None):
-        from nlpl.jit.code_gen import NLPLCodeGenerator
+        from nexuslang.jit.code_gen import NLPLCodeGenerator
         if interp is None:
             interp = _MockInterpreter()
         gen = NLPLCodeGenerator()
@@ -679,7 +679,7 @@ class TestRoundTrip:
         assert fn(6, 7) == 42
 
     def test_if_conditional(self):
-        from nlpl.parser.ast import IfStatement
+        from nexuslang.parser.ast import IfStatement
         cond = _binop(_ident("x"), "is greater than", _lit(0))
         then_b = [_ret(_lit(1))]
         else_b = [_ret(_lit(-1))]
@@ -689,7 +689,7 @@ class TestRoundTrip:
         assert fn(-3) == -1
 
     def test_while_loop_accumulates(self):
-        from nlpl.parser.ast import WhileLoop
+        from nexuslang.parser.ast import WhileLoop
         # while i < 5: i = i + 1  (then return i)
         cond = _binop(_ident("i"), "is less than", _lit(5))
         inc = _vardecl("i", _binop(_ident("i"), "plus", _lit(1)))
@@ -699,7 +699,7 @@ class TestRoundTrip:
         assert fn(0) == 5
 
     def test_for_range_sum(self):
-        from nlpl.parser.ast import ForLoop
+        from nexuslang.parser.ast import ForLoop
         # sum = 0; for i in range(0, 5): sum = sum + i; return sum
         init = _vardecl("total", _lit(0))
         loop = ForLoop(
@@ -712,7 +712,7 @@ class TestRoundTrip:
         assert fn() == 10  # 0+1+2+3+4
 
     def test_repeat_n_times(self):
-        from nlpl.parser.ast import RepeatNTimesLoop
+        from nexuslang.parser.ast import RepeatNTimesLoop
         init = _vardecl("count", _lit(0))
         loop = RepeatNTimesLoop(
             _lit(7),
@@ -743,12 +743,12 @@ class TestRoundTrip:
 
 class TestJITCompilerCompileFunction:
     def test_compile_function_method_exists(self):
-        from nlpl.jit.jit_compiler import JITCompiler
+        from nexuslang.jit.jit_compiler import JITCompiler
         assert hasattr(JITCompiler, "compile_function")
 
     def test_compile_function_returns_callable(self):
-        from nlpl.jit.jit_compiler import JITCompiler
-        from nlpl.jit.code_gen import NLPLCodeGenerator
+        from nexuslang.jit.jit_compiler import JITCompiler
+        from nexuslang.jit.code_gen import NLPLCodeGenerator
         interp = _MockInterpreter()
         jit = JITCompiler(interp)
         fd = _funcdef("add", [_param("a"), _param("b")],
@@ -757,7 +757,7 @@ class TestJITCompilerCompileFunction:
         assert callable(result)
 
     def test_compiled_function_executes_correctly(self):
-        from nlpl.jit.jit_compiler import JITCompiler
+        from nexuslang.jit.jit_compiler import JITCompiler
         interp = _MockInterpreter()
         jit = JITCompiler(interp)
         fd = _funcdef("add", [_param("a"), _param("b")],
@@ -766,7 +766,7 @@ class TestJITCompilerCompileFunction:
         assert fn(7, 8) == 15
 
     def test_compile_function_none_def_is_graceful(self):
-        from nlpl.jit.jit_compiler import JITCompiler
+        from nexuslang.jit.jit_compiler import JITCompiler
         interp = _MockInterpreter()
         jit = JITCompiler(interp)
         # None func_def: generate_function handles it gracefully (empty body)
@@ -775,7 +775,7 @@ class TestJITCompilerCompileFunction:
         assert result is None or callable(result)
 
     def test_opt_level_2_with_type_hints(self):
-        from nlpl.jit.jit_compiler import JITCompiler
+        from nexuslang.jit.jit_compiler import JITCompiler
         interp = _MockInterpreter()
         jit = JITCompiler(interp)
         fd = _funcdef("add", [_param("a"), _param("b")],
@@ -785,8 +785,8 @@ class TestJITCompilerCompileFunction:
         assert fn is None or fn(4, 5) == 9
 
     def test_compile_function_opt_level_3_uses_codegen(self):
-        from nlpl.jit.jit_compiler import JITCompiler
-        from nlpl.jit.code_gen import JITGuardFailed
+        from nexuslang.jit.jit_compiler import JITCompiler
+        from nexuslang.jit.code_gen import JITGuardFailed
         interp = _MockInterpreter()
         jit = JITCompiler(interp)
         fd = _funcdef("mul", [_param("x"), _param("y")],
@@ -797,7 +797,7 @@ class TestJITCompilerCompileFunction:
             assert fn(3, 4) == 12
 
     def test_compile_function_with_no_type_hints(self):
-        from nlpl.jit.jit_compiler import JITCompiler
+        from nexuslang.jit.jit_compiler import JITCompiler
         interp = _MockInterpreter()
         jit = JITCompiler(interp)
         fd = _funcdef("inc", [_param("n")],
@@ -809,18 +809,18 @@ class TestJITCompilerCompileFunction:
 
 class TestTieredIntegration:
     def test_tiered_compiler_with_real_code_gen(self):
-        from nlpl.jit.tiered_compiler import TieredCompiler, ExecutionTier
+        from nexuslang.jit.tiered_compiler import TieredCompiler, ExecutionTier
         tc = TieredCompiler()
         assert tc.tier_of("any_fn") == ExecutionTier.INTERPRETER
 
     def test_jit_init_exports_code_gen_names(self):
-        import nlpl.jit as jit_pkg
+        import nexuslang.jit as jit_pkg
         assert hasattr(jit_pkg, "NLPLCodeGenerator")
         assert hasattr(jit_pkg, "JITGuardFailed")
         assert hasattr(jit_pkg, "CodeGenError")
 
     def test_guard_fail_does_not_corrupt_generator_state(self):
-        from nlpl.jit.code_gen import NLPLCodeGenerator, JITGuardFailed
+        from nexuslang.jit.code_gen import NLPLCodeGenerator, JITGuardFailed
         gen = NLPLCodeGenerator()
         fd = _funcdef("guarded", [_param("n")],
                       [_ret(_ident("n"))],)
@@ -833,7 +833,7 @@ class TestTieredIntegration:
         assert fn2(7) == 7
 
     def test_baseline_and_optimizing_produce_same_result(self):
-        from nlpl.jit.code_gen import NLPLCodeGenerator
+        from nexuslang.jit.code_gen import NLPLCodeGenerator
         gen = NLPLCodeGenerator()
         fd = _funcdef("add", [_param("a"), _param("b")],
                       [_ret(_binop(_ident("a"), "plus", _ident("b")))])
@@ -846,7 +846,7 @@ class TestTieredIntegration:
         assert fn_opt(5, 6) == 11
 
     def test_make_call_helper_is_callable(self):
-        from nlpl.jit.code_gen import _make_call_helper
+        from nexuslang.jit.code_gen import _make_call_helper
         interp = _MockInterpreter()
         interp.register("square", lambda x: x * x)
         call_fn = _make_call_helper(interp)
@@ -854,7 +854,7 @@ class TestTieredIntegration:
         assert call_fn("square", [9]) == 81
 
     def test_make_print_helper_is_callable(self):
-        from nlpl.jit.code_gen import _make_print_helper
+        from nexuslang.jit.code_gen import _make_print_helper
         interp = _MockInterpreter()
         print_fn = _make_print_helper(interp)
         assert callable(print_fn)

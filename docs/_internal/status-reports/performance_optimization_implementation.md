@@ -5,7 +5,7 @@
 
 ## Overview
 
-Implemented intelligent AST caching system to improve NLPL parser performance, especially for Language Server Protocol (LSP) operations where files are parsed repeatedly.
+Implemented intelligent AST caching system to improve NexusLang parser performance, especially for Language Server Protocol (LSP) operations where files are parsed repeatedly.
 
 ## Implementation Summary
 
@@ -47,7 +47,7 @@ Implemented intelligent AST caching system to improve NLPL parser performance, e
 
 **Usage Pattern**:
 ```python
-from nlpl.parser.cached_parser import parse_with_cache
+from nexuslang.parser.cached_parser import parse_with_cache
 
 # First parse - cache miss
 ast = parse_with_cache(file_path, source_code)
@@ -77,7 +77,7 @@ ast = parse_with_cache(file_path, source_code)
 
 **Tests**:
 1. **AST Cache Basic Operations**: Cache miss, hit, invalidation, LRU eviction
-2. **Cached Parser with Real Parsing**: Real NLPL files, content changes, identity checks
+2. **Cached Parser with Real Parsing**: Real NexusLang files, content changes, identity checks
 3. **Performance Benefit Measurement**: Quantify speedup with real example file
 4. **Memory Limits and Eviction**: Test memory-based eviction, large files
 
@@ -241,7 +241,7 @@ ast = parser.parse()
 
 **After**:
 ```python
-from nlpl.parser.cached_parser import parse_with_cache
+from nexuslang.parser.cached_parser import parse_with_cache
 ast = parse_with_cache(uri, text, debug=False)
 ```
 

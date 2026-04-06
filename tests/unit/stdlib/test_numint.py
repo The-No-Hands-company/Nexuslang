@@ -1,5 +1,5 @@
 """
-Tests for the NLPL numerical integration / differentiation stdlib module
+Tests for the NexusLang numerical integration / differentiation stdlib module
 (src/nlpl/stdlib/numint).
 
 Coverage
@@ -17,7 +17,7 @@ Registration
 import math
 import pytest
 
-from nlpl.stdlib.numint import (
+from nexuslang.stdlib.numint import (
     integrate_midpoint, integrate_trapezoid, integrate_simpson,
     integrate_simpson38, integrate_romberg, integrate_gauss,
     integrate_adaptive, integrate_data,

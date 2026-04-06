@@ -1,7 +1,7 @@
 """
 Compiled benchmark integration tests.
 
-Compiles the canonical NLPL benchmark programs through the full LLVM pipeline
+Compiles the canonical NexusLang benchmark programs through the full LLVM pipeline
 (NLPL source -> LLVM IR -> opt -> llc -> clang -> native binary), runs each
 binary, and asserts:
 
@@ -34,9 +34,9 @@ import pytest
 # Ensure the src/ tree is importable regardless of how pytest is invoked.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.compiler.backends.llvm_ir_generator import LLVMIRGenerator
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.compiler.backends.llvm_ir_generator import LLVMIRGenerator
 
 
 # ---------------------------------------------------------------------------
@@ -61,7 +61,7 @@ _BENCHMARKS_DIR = os.path.join(_REPO_ROOT, "benchmarks")
 
 
 def _compile_benchmark(source_path: str, opt_level: int, tmpdir: str) -> str:
-    """Compile an NLPL benchmark source file to a native executable.
+    """Compile an NexusLang benchmark source file to a native executable.
 
     Parameters
     ----------
@@ -125,7 +125,7 @@ def _run_binary(exe_path: str) -> tuple[int, str, float]:
 class TestFibonacciBenchmark:
     """Fibonacci(1000) iterative benchmark compiled to native."""
 
-    SOURCE = os.path.join(_BENCHMARKS_DIR, "bench_fibonacci.nlpl")
+    SOURCE = os.path.join(_BENCHMARKS_DIR, "bench_fibonacci.nxl")
     EXPECTED_VALUE = "817770325994397771"
     # Generous ceiling: even under CI load a trivial binary should finish fast.
     MAX_WALL_SECONDS = 10.0
@@ -179,7 +179,7 @@ class TestFibonacciBenchmark:
 class TestMatrixSumBenchmark:
     """Matrix sum (200x200) benchmark compiled to native."""
 
-    SOURCE = os.path.join(_BENCHMARKS_DIR, "bench_matrix.nlpl")
+    SOURCE = os.path.join(_BENCHMARKS_DIR, "bench_matrix.nxl")
     EXPECTED_VALUE = "799980000"
     MAX_WALL_SECONDS = 15.0
 
@@ -210,7 +210,7 @@ class TestMatrixSumBenchmark:
 class TestSieveBenchmark:
     """Sieve of Eratosthenes (primes up to 1000) benchmark compiled to native."""
 
-    SOURCE = os.path.join(_BENCHMARKS_DIR, "bench_sieve.nlpl")
+    SOURCE = os.path.join(_BENCHMARKS_DIR, "bench_sieve.nxl")
     EXPECTED_VALUE = "168"
     MAX_WALL_SECONDS = 15.0
 

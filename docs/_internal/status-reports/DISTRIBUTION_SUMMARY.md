@@ -1,6 +1,6 @@
-# NLPL Distribution Summary
+# NexusLang Distribution Summary
 
-Complete overview of how NLPL can be used and distributed.
+Complete overview of how NexusLang can be used and distributed.
 
 ## Current Status (January 5, 2026)
 
@@ -21,7 +21,7 @@ Complete overview of how NLPL can be used and distributed.
 
 ---
 
-## Using NLPL Extension
+## Using NexusLang Extension
 
 ### In Your Current Project (This Repo)
 
@@ -49,7 +49,7 @@ code examples/01_basic_concepts.nlpl
 **Option 1: Global Installation (Recommended)**
 
 ```bash
-# Run from NLPL repository
+# Run from NexusLang repository
 ./install_extension_globally.sh
 
 # Extension now works in ALL projects!
@@ -58,8 +58,8 @@ code examples/01_basic_concepts.nlpl
 **Configuration for new projects** (`.vscode/settings.json`):
 ```json
 {
- "nlpl.languageServer.enabled": true,
- "nlpl.languageServer.path": "/path/to/NLPL/src/nlpl_lsp.py"
+ "nexuslang.languageServer.enabled": true,
+ "nexuslang.languageServer.path": "/path/to/NexusLang/src/nxl_lsp.py"
 }
 ```
 
@@ -68,16 +68,16 @@ code examples/01_basic_concepts.nlpl
 ```bash
 # In your new project
 mkdir -p .vscode/extensions
-cp -r /path/to/NLPL/.vscode/extensions/nlpl .vscode/extensions/
+cp -r /path/to/NexusLang/.vscode/extensions/nlpl .vscode/extensions/
 
 # Copy settings
-cp /path/to/NLPL/.vscode/settings.json .vscode/
+cp /path/to/NexusLang/.vscode/settings.json .vscode/
 ```
 
 **Option 3: Package and Install**
 
 ```bash
-# From NLPL repository
+# From NexusLang repository
 ./package_extension.sh
 
 # Installs: nlpl-language-support-0.1.0.vsix
@@ -86,7 +86,7 @@ code --install-extension nlpl-language-support-0.1.0.vsix
 
 ---
 
-## Deploying NLPL for Production
+## Deploying NexusLang for Production
 
 ### Step 1: Publish to VSCode Marketplace
 
@@ -111,7 +111,7 @@ vsce publish # Publishes to marketplace
 **Users install with:**
 ```bash
 code --install-extension nlpl-lang.nlpl-language-support
-# Or search "NLPL" in VSCode Extensions
+# Or search "NexusLang" in VSCode Extensions
 ```
 
 ### Step 2: Publish to PyPI
@@ -121,13 +121,13 @@ code --install-extension nlpl-lang.nlpl-language-support
 [project]
 name = "nlpl"
 version = "1.0.0"
-description = "Natural Language Programming Language"
+description = "NexusLang"
 authors = [{name = "NLPL Team"}]
 dependencies = [...]
 
 [project.scripts]
-nlpl = "nlpl.main:main"
-nlpl-lsp = "nlpl.lsp.server:main"
+nlpl = "nexuslang.main:main"
+nlpl-lsp = "nexuslang.lsp.server:main"
 ```
 
 **Publish:**
@@ -149,7 +149,7 @@ nlpl run hello.nlpl
 -- ~/.config/nvim/lua/nlpl.lua
 local lspconfig = require('lspconfig')
 lspconfig.nlpl.setup{
- cmd = {'python3', '/path/to/nlpl_lsp.py'},
+ cmd = {'python3', '/path/to/nxl_lsp.py'},
  filetypes = {'nlpl'}
 }
 ```
@@ -159,8 +159,8 @@ lspconfig.nlpl.setup{
 {
  "clients": {
  "nlpl": {
- "command": ["python3", "/path/to/nlpl_lsp.py"],
- "selector": "source.nlpl"
+ "command": ["python3", "/path/to/nxl_lsp.py"],
+ "selector": "source.nxl"
  }
  }
 }
@@ -171,7 +171,7 @@ lspconfig.nlpl.setup{
 (lsp-register-client
  (make-lsp-client
  :new-connection (lsp-stdio-connection
- '("python3" "/path/to/nlpl_lsp.py"))
+ '("python3" "/path/to/nxl_lsp.py"))
  :major-modes '(nlpl-mode)
  :server-id 'nlpl-lsp))
 ```
@@ -181,9 +181,9 @@ lspconfig.nlpl.setup{
 **Homebrew Formula:**
 ```ruby
 class Nlpl < Formula
- desc "Natural Language Programming Language"
+ desc "NexusLang"
  homepage "https://github.com/Zajfan/NLPL"
- url "https://github.com/Zajfan/NLPL/archive/v1.0.0.tar.gz"
+ url "https://github.com/Zajfan/NexusLang/archive/v1.0.0.tar.gz"
  
  depends_on "python@3.11"
  
@@ -208,35 +208,35 @@ brew install nlpl
 **Basic:**
 ```json
 {
- "nlpl.languageServer.enabled": true,
- "nlpl.languageServer.path": "${workspaceFolder}/src/nlpl_lsp.py"
+ "nexuslang.languageServer.enabled": true,
+ "nexuslang.languageServer.path": "${workspaceFolder}/src/nxl_lsp.py"
 }
 ```
 
 **With Debugging:**
 ```json
 {
- "nlpl.languageServer.enabled": true,
- "nlpl.languageServer.path": "${workspaceFolder}/src/nlpl_lsp.py",
- "nlpl.trace.server": "verbose"
+ "nexuslang.languageServer.enabled": true,
+ "nexuslang.languageServer.path": "${workspaceFolder}/src/nxl_lsp.py",
+ "nexuslang.trace.server": "verbose"
 }
 ```
 
 **Custom Installation:**
 ```json
 {
- "nlpl.languageServer.enabled": true,
- "nlpl.languageServer.path": "/usr/local/bin/nlpl-lsp",
- "nlpl.trace.server": "off",
+ "nexuslang.languageServer.enabled": true,
+ "nexuslang.languageServer.path": "/usr/local/bin/nlpl-lsp",
+ "nexuslang.trace.server": "off",
  "files.associations": {
- "*.nlpl": "nlpl"
+ "*.nxl": "nlpl"
  }
 }
 ```
 
 ---
 
-## Example: Setting Up a New NLPL Project
+## Example: Setting Up a New NexusLang Project
 
 ### From Scratch
 
@@ -245,24 +245,24 @@ brew install nlpl
 mkdir my-nlpl-app
 cd my-nlpl-app
 
-# 2. Install NLPL globally (one-time)
-/path/to/NLPL/install_extension_globally.sh
+# 2. Install NexusLang globally (one-time)
+/path/to/NexusLang/install_extension_globally.sh
 
 # 3. Configure workspace
 mkdir -p .vscode
 cat > .vscode/settings.json << 'EOF'
 {
- "nlpl.languageServer.enabled": true,
- "nlpl.languageServer.path": "/path/to/NLPL/src/nlpl_lsp.py"
+ "nexuslang.languageServer.enabled": true,
+ "nexuslang.languageServer.path": "/path/to/NexusLang/src/nxl_lsp.py"
 }
 EOF
 
 # 4. Create your first file
 cat > main.nlpl << 'EOF'
-# main.nlpl - My first NLPL app
+# main.nlpl - My first NexusLang app
 
 function main
- print text "Hello from my NLPL app!"
+ print text "Hello from my NexusLang app!"
 
 call main
 EOF
@@ -271,13 +271,13 @@ EOF
 code .
 
 # 6. Run your program
-python3 /path/to/NLPL/src/main.py main.nlpl
+python3 /path/to/NexusLang/src/main.py main.nlpl
 ```
 
 ### From Template (Future)
 
 ```bash
-# Once NLPL is on PyPI
+# Once NexusLang is on PyPI
 pip install nlpl
 
 # Create new project
@@ -298,12 +298,12 @@ nlpl run main.nlpl
 
 ## Development Workflow
 
-### For NLPL Contributors
+### For NexusLang Contributors
 
 ```bash
 # 1. Clone repository
 git clone https://github.com/Zajfan/NLPL.git
-cd NLPL
+cd NexusLang
 
 # 2. Install development dependencies
 pip install -e ".[dev]"
@@ -321,16 +321,16 @@ pytest tests/
 # Ctrl+Shift+P "Developer: Reload Window"
 ```
 
-### For NLPL Users
+### For NexusLang Users
 
 ```bash
-# 1. Install NLPL
+# 1. Install NexusLang
 pip install nlpl # (Future - once on PyPI)
 
 # 2. Install VSCode extension
 code --install-extension nlpl-lang.nlpl-language-support
 
-# 3. Create NLPL files
+# 3. Create NexusLang files
 echo 'print text "Hello!"' > hello.nlpl
 
 # 4. Run
@@ -408,8 +408,8 @@ Type code and press: Ctrl+Space
 
 **Solution 2: Check Language Mode**
 ```bash
-# Bottom-right corner should show: "NLPL"
-# If not, click and select "NLPL"
+# Bottom-right corner should show: "NexusLang"
+# If not, click and select "NexusLang"
 ```
 
 **Solution 3: Check for Errors**
@@ -437,8 +437,8 @@ Ctrl+Shift+M
 - **Setup Extension:** `setup_vscode_extension.sh`
 
 ### Support
-- **Issues:** https://github.com/Zajfan/NLPL/issues
-- **Discussions:** https://github.com/Zajfan/NLPL/discussions
+- **Issues:** https://github.com/Zajfan/NexusLang/issues
+- **Discussions:** https://github.com/Zajfan/NexusLang/discussions
 - **Repository:** https://github.com/Zajfan/NLPL
 
 ---

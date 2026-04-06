@@ -32,7 +32,7 @@ import pytest
 def plot():
     _here = os.path.dirname(os.path.abspath(__file__))
     _init = os.path.join(_here, "..", "..", "..", "src", "nlpl", "stdlib", "plot", "__init__.py")
-    spec = importlib.util.spec_from_file_location("nlpl.stdlib.plot", _init)
+    spec = importlib.util.spec_from_file_location("nexuslang.stdlib.plot", _init)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod

@@ -1439,7 +1439,7 @@ All functions documented with:
 
 ### Summary of All Hardware Features
 
-With CPU Control complete, NLPL now provides comprehensive low-level hardware access:
+With CPU Control complete, NexusLang now provides comprehensive low-level hardware access:
 
 **1. Port I/O** (February 2026)
 - 6 functions: read/write byte/word/dword + string operations
@@ -1482,7 +1482,7 @@ With CPU Control complete, NLPL now provides comprehensive low-level hardware ac
 
 ## Conclusion
 
-CPU Control implementation completes NLPL's low-level hardware access foundation. With control register access, MSR operations, and CPUID feature detection, NLPL now provides all essential primitives for:
+CPU Control implementation completes NLPL's low-level hardware access foundation. With control register access, MSR operations, and CPUID feature detection, NexusLang now provides all essential primitives for:
 
 - **Operating system development** (kernel initialization, memory management, process control)
 - **System programming** (hardware abstraction, device drivers, low-level optimization)

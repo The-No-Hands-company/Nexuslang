@@ -5,7 +5,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from nlpl.parser.ast import (
+from nexuslang.parser.ast import (
     FunctionDefinition,
     GeneratorExpression,
     Identifier,
@@ -15,8 +15,8 @@ from nlpl.parser.ast import (
     VariableDeclaration,
     YieldExpression,
 )
-from nlpl.typesystem.typechecker import TypeChecker
-from nlpl.typesystem.types import INTEGER_TYPE, ListType
+from nexuslang.typesystem.typechecker import TypeChecker
+from nexuslang.typesystem.types import INTEGER_TYPE, ListType
 
 
 def test_typechecker_infers_generator_expression_as_list_type():

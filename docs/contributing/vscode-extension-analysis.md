@@ -21,7 +21,7 @@ NLPL currently has **4 separate VS Code extension-related directories**, which c
 
 ### 1. `/vscode-extension/` (PRIMARY - MOST COMPLETE)
 
-**Location**: `/run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NLPL/vscode-extension/`
+**Location**: `/run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NexusLang/vscode-extension/`
 
 **Purpose**: **Main development directory** for VS Code extension
 
@@ -45,7 +45,7 @@ vscode-extension/
 ```
 
 **Key Features**:
-- **LSP client**: Connects to NLPL language server (autocomplete, diagnostics, go-to-definition)
+- **LSP client**: Connects to NexusLang language server (autocomplete, diagnostics, go-to-definition)
 - **Debug adapter**: Full DAP implementation (breakpoints, stepping, variable inspection)
 - **Syntax highlighting**: TextMate grammar for `.nlpl` files
 - **Configuration**: Settings for language server path, Python path, debug options
@@ -70,7 +70,7 @@ vscode-extension/
 
 ### 2. `/.vscode/nlpl-extension/` (OLDER VERSION)
 
-**Location**: `/run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NLPL/.vscode/nlpl-extension/`
+**Location**: `/run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NexusLang/.vscode/nlpl-extension/`
 
 **Purpose**: **Older/experimental version** of extension (workspace-local)
 
@@ -104,7 +104,7 @@ vscode-extension/
 
 ### 3. `/.vscode/extensions/nlpl/` (INSTALLED VERSION)
 
-**Location**: `/run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NLPL/.vscode/extensions/nlpl/`
+**Location**: `/run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NexusLang/.vscode/extensions/nlpl/`
 
 **Purpose**: **Installed extension** for this specific workspace
 
@@ -132,7 +132,7 @@ vscode-extension/
 
 **Status**: 🟢 **INSTALLED** - Currently active in VS Code for this workspace
 
-**When Used**: This is what VS Code actually loads when editing NLPL files in this workspace
+**When Used**: This is what VS Code actually loads when editing NexusLang files in this workspace
 
 **Version Mismatch**: This appears to be an **older installed version**, not the latest from `/vscode-extension/`
 
@@ -142,7 +142,7 @@ vscode-extension/
 
 ### 4. `/.vscode/` (WORKSPACE CONFIGURATION)
 
-**Location**: `/run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NLPL/.vscode/`
+**Location**: `/run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NexusLang/.vscode/`
 
 **Purpose**: **Workspace-specific VS Code settings** (not an extension)
 
@@ -307,7 +307,7 @@ vscode-extension/
 
 5. **Uninstall** old extension from workspace:
    - Remove `/.vscode/extensions/nlpl/` directory
-   - Or use VS Code: Extensions → NLPL → Uninstall (Workspace)
+   - Or use VS Code: Extensions → NexusLang → Uninstall (Workspace)
 
 6. **Clean `.vscode/`**:
    - Keep only `settings.json` and `extensions.json`
@@ -331,7 +331,7 @@ vscode-extension/
 9. **Test Everything**:
    - Open `.nlpl` file, verify syntax highlighting
    - Verify LSP features (autocomplete, diagnostics, go-to-definition)
-   - Test debugger (set breakpoint, run debug_test.nlpl)
+   - Test debugger (set breakpoint, run debug_test.nxl)
    - Check settings (language server path, debug configuration)
 
 #### Phase 4: Documentation (1 hour)
@@ -492,7 +492,7 @@ git push origin main
 ## Future Directory Structure (After Consolidation)
 
 ```
-NLPL/
+NexusLang/
 ├── vscode-extension/              # SINGLE EXTENSION SOURCE
 │   ├── src/
 │   │   ├── extension.ts           # Main extension (LSP client)

@@ -1,4 +1,4 @@
-# NLPL Fixes Summary
+# NexusLang Fixes Summary
 
 ## Session Results: 100% Success on Target Tests
 
@@ -82,7 +82,7 @@ Fixed all 3 remaining test failures in while loop tests, achieving 100% pass rat
 
 **Solution:**
 
-- Added `from nlpl.stdlib import register_stdlib` to test_utils.py
+- Added `from nexuslang.stdlib import register_stdlib` to test_utils.py
 - Updated `NLPLTestBase.setup_method()` to call `register_stdlib(self.runtime)`
 
 **Result:** All stdlib functions (including `list_append`) available in tests

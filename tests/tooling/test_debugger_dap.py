@@ -4,7 +4,7 @@ Debugger DAP Protocol Tests
 
 Unit tests for the NLPLDebug Adapter Protocol server.  Tests exercise the
 request dispatch logic, response formatting, and event emission — all without
-requiring a live subprocess or a real NLPL program.
+requiring a live subprocess or a real NexusLang program.
 """
 
 import json
@@ -18,8 +18,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-from nlpl.debugger.dap_server import DAPServer, DAPCapabilities
-from nlpl.debugger.debugger import Debugger, DebuggerState, Breakpoint, CallFrame
+from nexuslang.debugger.dap_server import DAPServer, DAPCapabilities
+from nexuslang.debugger.debugger import Debugger, DebuggerState, Breakpoint, CallFrame
 
 
 # ---------------------------------------------------------------------------
@@ -162,7 +162,7 @@ class TestHandleSetBreakpoints:
         server.debugger.add_breakpoint.return_value = bp_mock
 
         result = server._handle_setBreakpoints(1, {
-            "source": {"path": "/tmp/test.nlpl"},
+            "source": {"path": "/tmp/test.nxl"},
             "breakpoints": [{"line": 5}, {"line": 10}]
         })
 
@@ -174,7 +174,7 @@ class TestHandleSetBreakpoints:
         server.debugger.add_breakpoint.return_value = MagicMock()
 
         result = server._handle_setBreakpoints(1, {
-            "source": {"path": "/tmp/t.nlpl"},
+            "source": {"path": "/tmp/t.nxl"},
             "breakpoints": [{"line": 1}]
         })
 
@@ -185,16 +185,16 @@ class TestHandleSetBreakpoints:
         server.debugger.add_breakpoint.return_value = MagicMock()
 
         server._handle_setBreakpoints(1, {
-            "source": {"path": "/file.nlpl"},
+            "source": {"path": "/file.nxl"},
             "breakpoints": [{"line": 3}]
         })
 
-        server.debugger.clear_breakpoints.assert_called_once_with("/file.nlpl")
+        server.debugger.clear_breakpoints.assert_called_once_with("/file.nxl")
 
     def test_empty_breakpoints_list(self):
         server = _make_server()
         result = server._handle_setBreakpoints(1, {
-            "source": {"path": "/t.nlpl"},
+            "source": {"path": "/t.nxl"},
             "breakpoints": []
         })
         assert result["breakpoints"] == []
@@ -212,12 +212,12 @@ class TestHandleSetBreakpoints:
         server.debugger.add_breakpoint.return_value = MagicMock()
 
         server._handle_setBreakpoints(1, {
-            "source": {"path": "/t.nlpl"},
+            "source": {"path": "/t.nxl"},
             "breakpoints": [{"line": 7, "condition": "x > 5"}]
         })
 
         server.debugger.add_breakpoint.assert_called_once_with(
-            "/t.nlpl", 7, condition="x > 5"
+            "/t.nxl", 7, condition="x > 5"
         )
 
 
@@ -237,8 +237,8 @@ class TestHandleStackTrace:
     def test_stack_frames_formatted(self):
         server = _make_server()
         server.debugger.call_stack = [
-            CallFrame("main", "app.nlpl", 1),
-            CallFrame("helper", "app.nlpl", 10),
+            CallFrame("main", "app.nxl", 1),
+            CallFrame("helper", "app.nxl", 10),
         ]
 
         result = server._handle_stackTrace(1, {})
@@ -250,7 +250,7 @@ class TestHandleStackTrace:
 
     def test_frame_has_required_fields(self):
         server = _make_server()
-        server.debugger.call_stack = [CallFrame("f", "x.nlpl", 3)]
+        server.debugger.call_stack = [CallFrame("f", "x.nxl", 3)]
         result = server._handle_stackTrace(1, {})
         frame = result["stackFrames"][0]
         assert "id" in frame
@@ -415,7 +415,7 @@ class TestDAPCallbacks:
         events = []
         server.send_event = lambda e, b=None: events.append((e, b))
 
-        bp = Breakpoint(file="t.nlpl", line=5)
+        bp = Breakpoint(file="t.nxl", line=5)
         server._on_breakpoint(bp, None)
 
         event_names = [e for e, _ in events]
@@ -430,7 +430,7 @@ class TestDAPCallbacks:
         events = []
         server.send_event = lambda e, b=None: events.append((e, b))
 
-        server._on_step("t.nlpl", 3)
+        server._on_step("t.nxl", 3)
 
         assert any(e == "stopped" for e, _ in events)
 

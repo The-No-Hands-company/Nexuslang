@@ -5,10 +5,10 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 import pytest
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.typesystem.simple_inference import SimpleTypeInference
-from nlpl.typesystem.types import (
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.typesystem.simple_inference import SimpleTypeInference
+from nexuslang.typesystem.types import (
     INTEGER_TYPE, FLOAT_TYPE, STRING_TYPE, BOOLEAN_TYPE, NULL_TYPE, ANY_TYPE,
     ListType, DictionaryType
 )
@@ -22,7 +22,7 @@ class TestTypeInference:
         self.inference = SimpleTypeInference()
     
     def parse_code(self, code):
-        """Helper to parse NLPL code."""
+        """Helper to parse NexusLang code."""
         if not code.endswith('\n'):
             code += '\n'
         lexer = Lexer(code)
@@ -214,7 +214,7 @@ class TestTypeInferenceEdgeCases:
         self.inference = SimpleTypeInference()
     
     def parse_code(self, code):
-        """Helper to parse NLPL code."""
+        """Helper to parse NexusLang code."""
         if not code.endswith('\n'):
             code += '\n'
         lexer = Lexer(code)
@@ -250,7 +250,7 @@ function maybe_string that takes flag as Boolean
         func_def = program.statements[0]
         
         # Manually create a function with mixed return types for testing
-        from nlpl.parser.ast import ReturnStatement, Literal
+        from nexuslang.parser.ast import ReturnStatement, Literal
         func_def.body = [
             ReturnStatement(Literal('string', "yes"), 1),
             ReturnStatement(Literal('integer', 42), 2)

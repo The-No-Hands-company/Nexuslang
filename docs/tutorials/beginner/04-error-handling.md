@@ -8,7 +8,7 @@
 ## Part 1 — Why Errors Happen
 
 Programs fail for many reasons: a file might not exist, a user might type
-unexpected input, a network might be unavailable.  NLPL provides structured
+unexpected input, a network might be unavailable.  NexusLang provides structured
 mechanisms to detect these situations and handle them gracefully.
 
 ---

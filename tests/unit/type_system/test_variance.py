@@ -2,7 +2,7 @@
 Test variance annotations for generic types.
 """
 
-from nlpl.typesystem.types import (
+from nexuslang.typesystem.types import (
     GenericType, ClassType, FunctionType, Variance,
     INTEGER_TYPE, STRING_TYPE, ANY_TYPE
 )

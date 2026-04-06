@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Debug generic class parsing."""
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
 
 code = '''
 define a class called Container with T as a type parameter

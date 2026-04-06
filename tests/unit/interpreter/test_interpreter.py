@@ -1,6 +1,6 @@
 """
-Test cases for the NLPL interpreter.
-Tests program execution and runtime behavior using valid NLPL syntax.
+Test cases for the NexusLang interpreter.
+Tests program execution and runtime behavior using valid NexusLang syntax.
 """
 
 import sys
@@ -8,13 +8,13 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 import unittest
-from nlpl.interpreter.interpreter import Interpreter
-from nlpl.runtime.runtime import Runtime
-from nlpl.stdlib import register_stdlib
+from nexuslang.interpreter.interpreter import Interpreter
+from nexuslang.runtime.runtime import Runtime
+from nexuslang.stdlib import register_stdlib
 
 
 class TestInterpreter(unittest.TestCase):
-    """Test cases for the NLPL interpreter."""
+    """Test cases for the NexusLang interpreter."""
 
     def setUp(self):
         """Set up test fixtures before each test method."""

@@ -2,7 +2,7 @@
 Debugger Integration Tests
 ============================
 
-End-to-end tests that run actual short NLPL programs through the interpreter
+End-to-end tests that run actual short NexusLang programs through the interpreter
 with the debugger attached, verifying that trace hooks fire correctly, breakpoints
 pause execution, and step commands advance to the right lines.
 """
@@ -18,12 +18,12 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-from nlpl.debugger.debugger import Debugger, DebuggerState
-from nlpl.interpreter.interpreter import Interpreter
-from nlpl.runtime.runtime import Runtime
-from nlpl.stdlib import register_stdlib
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
+from nexuslang.debugger.debugger import Debugger, DebuggerState
+from nexuslang.interpreter.interpreter import Interpreter
+from nexuslang.runtime.runtime import Runtime
+from nexuslang.stdlib import register_stdlib
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
 
 
 # ---------------------------------------------------------------------------
@@ -32,7 +32,7 @@ from nlpl.parser.parser import Parser
 
 
 def _parse(source: str):
-    """Parse NLPL source and return AST."""
+    """Parse NexusLang source and return AST."""
     lexer = Lexer(source)
     tokens = lexer.tokenize()
     parser = Parser(tokens)
@@ -57,9 +57,9 @@ def _run_with_debugger(source: str, *, interactive: bool = False) -> Debugger:
     return dbg
 
 
-def _write_temp_nlpl(source: str) -> str:
+def _write_temp_nxl(source: str) -> str:
     """Write source to a temp .nlpl file and return its path."""
-    fd, path = tempfile.mkstemp(suffix=".nlpl")
+    fd, path = tempfile.mkstemp(suffix=".nxl")
     with os.fdopen(fd, "w") as f:
         f.write(source)
     return path
@@ -76,7 +76,7 @@ class TestBasicTracing:
         interpreter, _ = _make_runtime()
         dbg = Debugger(interpreter, interactive=False)
         interpreter.debugger = dbg
-        path = "/tmp/test.nlpl"
+        path = "/tmp/test.nxl"
         dbg.trace_line(path, 1)
         dbg.trace_line(path, 2)
         dbg.trace_line(path, 3)
@@ -87,7 +87,7 @@ class TestBasicTracing:
         interpreter, _ = _make_runtime()
         dbg = Debugger(interpreter, interactive=False)
         interpreter.debugger = dbg
-        path = "/tmp/test.nlpl"
+        path = "/tmp/test.nxl"
         lines_visited = []
         dbg.on_step = lambda f, l: lines_visited.append(l)
         dbg.trace_line(path, 1)
@@ -132,7 +132,7 @@ class TestCallStackTracking:
 
         dbg.trace_call = spy_trace_call
         # Call the hook directly, as the interpreter would when entering a function
-        dbg.trace_call("greet", "/tmp/t.nlpl", 1, {})
+        dbg.trace_call("greet", "/tmp/t.nxl", 1, {})
 
         assert any("greet" in c for c in calls_seen)
 
@@ -156,7 +156,7 @@ class TestBreakpointTriggering:
     def test_breakpoint_hit_count_after_simple_run(self):
         """Breakpoint placed on a known line — hit count must be 1."""
         source = 'set a to 1\nset b to 2\nset c to 3\n'
-        path = _write_temp_nlpl(source)
+        path = _write_temp_nxl(source)
 
         try:
             interpreter, _ = _make_runtime()
@@ -187,7 +187,7 @@ class TestBreakpointTriggering:
 
     def test_on_breakpoint_callback_called(self):
         source = 'set x to 1\n'
-        path = _write_temp_nlpl(source)
+        path = _write_temp_nxl(source)
         try:
             interpreter, _ = _make_runtime()
             dbg = Debugger(interpreter, interactive=False)
@@ -322,7 +322,7 @@ class TestSignatureHelpProvider:
     """Smoke-test the LSP SignatureHelpProvider in isolation."""
 
     def _make_provider(self):
-        from nlpl.lsp.signature_help import SignatureHelpProvider
+        from nexuslang.lsp.signature_help import SignatureHelpProvider
         server = MagicMock()
         return SignatureHelpProvider(server)
 

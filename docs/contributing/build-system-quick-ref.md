@@ -1,8 +1,8 @@
-# NLPL Build System - Quick Reference
+# NexusLang Build System - Quick Reference
 
 ## Installation
 
-The build system is included with NLPL. Make sure you have the dependencies installed:
+The build system is included with NexusLang. Make sure you have the dependencies installed:
 
 ```bash
 pip install toml
@@ -79,7 +79,7 @@ my_project/
 name = "my_app"
 version = "0.1.0"
 authors = ["Your Name <you@example.com>"]
-description = "My awesome NLPL application"
+description = "My awesome NexusLang application"
 license = "MIT"
 
 [build]
@@ -106,14 +106,14 @@ my_lib = { version = "*", source = "path", path = "../my_lib" }
 
 ```toml
 [target.main]
-source = "src/main.nlpl"
+source = "src/main.nxl"
 type = "executable"
 dependencies = []
 optimization = 0
 debug = false
 
 [target.lib]
-source = "src/lib.nlpl"
+source = "src/lib.nxl"
 type = "library"
 dependencies = []
 optimization = 2
@@ -136,7 +136,7 @@ debug = false
 
 ### nlplbuild init
 
-Initialize a new NLPL project.
+Initialize a new NexusLang project.
 
 ```bash
 nlplbuild init [NAME]
@@ -264,21 +264,21 @@ nlplbuild build --no-incremental
 ### Executable
 ```toml
 [target.my_app]
-source = "src/main.nlpl"
+source = "src/main.nxl"
 type = "executable"
 ```
 
 ### Library 
 ```toml
 [target.my_lib]
-source = "src/lib.nlpl"
+source = "src/lib.nxl"
 type = "library"
 ```
 
 ### Module (LLVM IR only)
 ```toml
 [target.my_module]
-source = "src/module.nlpl"
+source = "src/module.nxl"
 type = "module"
 ```
 
@@ -340,15 +340,15 @@ cd my_app
 
 ```nlpl.toml
 [target.server]
-source = "src/server.nlpl"
+source = "src/server.nxl"
 type = "executable"
 
 [target.client]
-source = "src/client.nlpl"
+source = "src/client.nxl"
 type = "executable"
 
 [target.common]
-source = "src/common.nlpl"
+source = "src/common.nxl"
 type = "library"
 dependencies = []
 ```
@@ -400,7 +400,7 @@ rm -rf build/.cache
 
 ## Next Steps
 
-- Learn NLPL syntax in `docs/`
+- Learn NexusLang syntax in `docs/`
 - Check `examples/` for sample programs
 - Read `BUILD_SYSTEM_IMPLEMENTATION_STATUS.md` for technical details
 - Explore dependency management features

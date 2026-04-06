@@ -125,7 +125,7 @@ class ScopeInspector:
 
 
 class InteractiveDebugger:
-    """Interactive step-through debugger for NLPL code."""
+    """Interactive step-through debugger for NexusLang code."""
     
     def __init__(self, source_code: str):
         self.source_code = source_code

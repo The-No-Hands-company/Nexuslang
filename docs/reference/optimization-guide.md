@@ -1,4 +1,4 @@
-# NLPL Compiler Optimization Guide
+# NexusLang Compiler Optimization Guide
 
 **Last Updated**: February 5, 2026  
 **NLPL Version**: v1.2+  
@@ -493,7 +493,7 @@ perf report
 **Likely Causes:**
 1. Undefined behavior in source code
 2. Memory safety violation
-3. Bug in NLPL compiler (rare)
+3. Bug in NexusLang compiler (rare)
 
 **Solution:**
 ```bash
@@ -540,7 +540,7 @@ python dev_tools/nlplc_llvm.py app.nlpl -O2 --profile-use=profile.data -o app_op
 
 ```python
 # Planned API:
-from nlpl.compiler.llvm_optimizer import LLVMOptimizer
+from nexuslang.compiler.llvm_optimizer import LLVMOptimizer
 
 optimizer = LLVMOptimizer()
 optimizer.add_custom_pass("my-optimization-pass")

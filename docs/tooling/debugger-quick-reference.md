@@ -1,4 +1,4 @@
-# NLPL Debugger Integration - Quick Reference
+# NexusLang Debugger Integration - Quick Reference
 
 ## Compilation with Debug Info
 
@@ -89,7 +89,7 @@ lldb ./program
 
 ## Debug Information Generated
 
-The NLPL compiler generates:
+The NexusLang compiler generates:
 - Source file locations (file, line, column)
 - Function debug info (name, parameters, return type)
 - Variable debug info (name, type, scope)

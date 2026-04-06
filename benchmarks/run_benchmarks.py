@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Comprehensive Benchmark Runner
-Measures NLPL compilation and execution performance vs C
+Measures NexusLang compilation and execution performance vs C
 """
 
 import subprocess
@@ -51,18 +51,18 @@ def main():
     benchmarks = [
         {
             'name': 'Fibonacci(1000) - Iterative',
-            'nlpl_o0': './build/bench_fibonacci_o0',
-            'nlpl_o2': './build/bench_fibonacci_o2',
-            'nlpl_o3': './build/bench_fibonacci_o3',
+            'nxl_o0': './build/bench_fibonacci_o0',
+            'nxl_o2': './build/bench_fibonacci_o2',
+            'nxl_o3': './build/bench_fibonacci_o3',
             'c_o0': './benchmarks/bench_fib_c_o0',
             'c_o2': './benchmarks/bench_fib_c_o2',
             'c_o3': './benchmarks/bench_fib_c_o3',
         },
         {
             'name': 'Matrix Sum (200x200)',
-            'nlpl_o0': './build/bench_matrix_o0',
-            'nlpl_o2': './build/bench_matrix_o2',
-            'nlpl_o3': './build/bench_matrix_o3',
+            'nxl_o0': './build/bench_matrix_o0',
+            'nxl_o2': './build/bench_matrix_o2',
+            'nxl_o3': './build/bench_matrix_o3',
             'c_o0': './benchmarks/bench_matrix_c_o0',
             'c_o2': './benchmarks/bench_matrix_c_o2',
             'c_o3': './benchmarks/bench_matrix_c_o3',
@@ -92,18 +92,18 @@ def main():
             else:
                 print("✗ Failed")
         
-        # Run NLPL benchmarks
+        # Run NexusLang benchmarks
         for opt in ['o0', 'o2', 'o3']:
-            exe = bench[f'nlpl_{opt}']
+            exe = bench[f'nxl_{opt}']
             if not Path(exe).exists():
                 print(f"Skipping {exe} (not found)")
                 continue
             
-            print(f"Running NLPL -{opt.upper()}... ", end='', flush=True)
+            print(f"Running NexusLang -{opt.upper()}... ", end='', flush=True)
             perf = run_benchmark(exe, runs=20)
             if perf:
-                results[f'nlpl_{opt}'] = perf
-                results[f'nlpl_{opt}_size'] = get_binary_size(exe)
+                results[f'nxl_{opt}'] = perf
+                results[f'nxl_{opt}_size'] = get_binary_size(exe)
                 print(f"✓ {perf['median']*1000:.3f}ms")
             else:
                 print("✗ Failed")
@@ -137,12 +137,12 @@ def main():
         print(f"{'-' * 80}\n")
         
         # Calculate speedups
-        if 'nlpl_o2' in results and 'c_o2' in results:
-            nlpl_o2_time = results['nlpl_o2']['median']
+        if 'nxl_o2' in results and 'c_o2' in results:
+            nxl_o2_time = results['nxl_o2']['median']
             c_o2_time = results['c_o2']['median']
-            slowdown = nlpl_o2_time / c_o2_time
+            slowdown = nxl_o2_time / c_o2_time
             
-            print(f"📊 NLPL -O2 vs C -O2: {slowdown:.2f}x slower ({1/slowdown:.2f}x of C performance)")
+            print(f"📊 NexusLang -O2 vs C -O2: {slowdown:.2f}x slower ({1/slowdown:.2f}x of C performance)")
             
             # Check if we meet target
             if slowdown <= 3.0:
@@ -150,12 +150,12 @@ def main():
             else:
                 print(f"✗ BELOW TARGET: Need to be within 3x of C (currently {slowdown:.2f}x)")
         
-        if 'nlpl_o3' in results and 'c_o2' in results:
-            nlpl_o3_time = results['nlpl_o3']['median']
+        if 'nxl_o3' in results and 'c_o2' in results:
+            nxl_o3_time = results['nxl_o3']['median']
             c_o2_time = results['c_o2']['median']
-            slowdown = nlpl_o3_time / c_o2_time
+            slowdown = nxl_o3_time / c_o2_time
             
-            print(f"📊 NLPL -O3 vs C -O2: {slowdown:.2f}x slower ({1/slowdown:.2f}x of C performance)")
+            print(f"📊 NexusLang -O3 vs C -O2: {slowdown:.2f}x slower ({1/slowdown:.2f}x of C performance)")
             
             if slowdown <= 2.0:
                 print(f"✓ MEETS STRETCH TARGET: Within 2x of C performance")
@@ -163,13 +163,13 @@ def main():
                 print(f"  STRETCH TARGET: Aiming for within 2x of C (currently {slowdown:.2f}x)")
         
         # Optimization effectiveness
-        if 'nlpl_o0' in results and 'nlpl_o2' in results:
-            speedup = results['nlpl_o0']['median'] / results['nlpl_o2']['median']
-            print(f"\n🚀 NLPL Optimization Effectiveness: -O2 is {speedup:.2f}x faster than -O0")
+        if 'nxl_o0' in results and 'nxl_o2' in results:
+            speedup = results['nxl_o0']['median'] / results['nxl_o2']['median']
+            print(f"\n🚀 NexusLang Optimization Effectiveness: -O2 is {speedup:.2f}x faster than -O0")
         
-        if 'nlpl_o2' in results and 'nlpl_o3' in results:
-            speedup = results['nlpl_o2']['median'] / results['nlpl_o3']['median']
-            print(f"🚀 NLPL -O3 vs -O2: {speedup:.2f}x faster")
+        if 'nxl_o2' in results and 'nxl_o3' in results:
+            speedup = results['nxl_o2']['median'] / results['nxl_o3']['median']
+            print(f"🚀 NexusLang -O3 vs -O2: {speedup:.2f}x faster")
 
 if __name__ == '__main__':
     main()

@@ -1,7 +1,7 @@
-# Natural Language Programming Language (NLPL) Requirements Analysis
+# NexusLang (NexusLang) Requirements Analysis
 
 ## Overview
-This document analyzes the requirements and features for a Natural Language Programming Language (NLPL) that combines the intuitive syntax of English with the power and capabilities of C++. The goal is to create a programming language that feels like writing English while maintaining the performance, control, and flexibility of a systems programming language like C++.
+This document analyzes the requirements and features for a NexusLang (NexusLang) that combines the intuitive syntax of English with the power and capabilities of C++. The goal is to create a programming language that feels like writing English while maintaining the performance, control, and flexibility of a systems programming language like C++.
 
 ## Key Requirements
 
@@ -131,11 +131,11 @@ This document analyzes the requirements and features for a Natural Language Prog
 **Potential Solutions:**
 - Create comprehensive documentation with many examples
 - Develop interactive tutorials that teach the language progressively
-- Provide migration tools from C++ to NLPL
+- Provide migration tools from C++ to NexusLang
 - Target educational settings for initial adoption
 
 ## Conclusion
 
-Creating a Natural Language Programming Language with C++-level capabilities presents significant challenges but offers tremendous potential benefits in terms of accessibility and ease of use. The key to success will be balancing the natural feel of English with the precision and performance requirements of systems programming.
+Creating a NexusLang with C++-level capabilities presents significant challenges but offers tremendous potential benefits in terms of accessibility and ease of use. The key to success will be balancing the natural feel of English with the precision and performance requirements of systems programming.
 
-The next steps involve researching existing approaches to natural language programming, designing a formal syntax and grammar for the NLPL, and outlining a compiler architecture that can translate natural language constructs into efficient machine code.
+The next steps involve researching existing approaches to natural language programming, designing a formal syntax and grammar for the NexusLang, and outlining a compiler architecture that can translate natural language constructs into efficient machine code.

@@ -1,8 +1,8 @@
-# NLPL Compiler Optimization Guide
+# NexusLang Compiler Optimization Guide
 
 ## Overview
 
-The NLPL compiler (`nlplc`) supports multiple optimization levels to balance compilation time, binary size, and runtime performance.
+The NexusLang compiler (`nlplc`) supports multiple optimization levels to balance compilation time, binary size, and runtime performance.
 
 ## Optimization Levels
 

@@ -6,7 +6,7 @@ Validates that the hand-written Python parser (src/nlpl/parser/parser.py)
 correctly handles every production rule defined in the ANTLR4 grammar
 (grammar/NLPL.g4).
 
-For each grammar rule, a canonical NLPL source snippet is provided. The
+For each grammar rule, a canonical NexusLang source snippet is provided. The
 script parses each snippet through the real parser and checks:
   1. No crash (the parser does not throw an unhandled exception)
   2. Correct AST node type produced
@@ -43,9 +43,9 @@ _SRC = os.path.join(_ROOT, "src")
 if _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.parser.ast import (
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.parser.ast import (
     Program,
     VariableDeclaration,
     IndexAssignment,
@@ -976,7 +976,7 @@ def _build_rule_registry() -> list[tuple[str, str, str, Callable]]:
 
 
 # ---------------------------------------------------------------------------
-# Grammar rule extraction from NLPL.g4
+# Grammar rule extraction from NexusLang.g4
 # ---------------------------------------------------------------------------
 
 def extract_grammar_rules(g4_path: str) -> list[str]:
@@ -1050,7 +1050,7 @@ def check_grammar_coverage(g4_path: str, results: list[RuleResult]) -> tuple[lis
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Validate NLPL grammar against parser")
+    parser = argparse.ArgumentParser(description="Validate NexusLang grammar against parser")
     parser.add_argument("--verbose", "-v", action="store_true", help="Show details")
     parser.add_argument("--json", action="store_true", help="JSON output")
     args = parser.parse_args()

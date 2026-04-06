@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 
 def benchmark_simple_program():
-    """Benchmark a simple NLPL program with basic operations."""
+    """Benchmark a simple NexusLang program with basic operations."""
     source = """
 set x to 0
 while x is less than 100
@@ -22,10 +22,10 @@ while x is less than 100
 end
 """
     
-    from nlpl.parser.lexer import Lexer
-    from nlpl.parser.parser import Parser
-    from nlpl.interpreter.interpreter import Interpreter
-    from nlpl.runtime.runtime import Runtime
+    from nexuslang.parser.lexer import Lexer
+    from nexuslang.parser.parser import Parser
+    from nexuslang.interpreter.interpreter import Interpreter
+    from nexuslang.runtime.runtime import Runtime
     
     # Parse once
     lexer = Lexer(source)
@@ -37,7 +37,7 @@ end
     def run_interpreter():
         runtime = Runtime()
         interpreter = Interpreter(runtime)
-        from nlpl.stdlib import register_stdlib
+        from nexuslang.stdlib import register_stdlib
         register_stdlib(runtime)
         interpreter.interpret(ast)
     
@@ -58,10 +58,10 @@ while i is less than 50
 end
 """
     
-    from nlpl.parser.lexer import Lexer
-    from nlpl.parser.parser import Parser
-    from nlpl.interpreter.interpreter import Interpreter
-    from nlpl.runtime.runtime import Runtime
+    from nexuslang.parser.lexer import Lexer
+    from nexuslang.parser.parser import Parser
+    from nexuslang.interpreter.interpreter import Interpreter
+    from nexuslang.runtime.runtime import Runtime
     
     lexer = Lexer(source)
     tokens = lexer.tokenize()
@@ -71,7 +71,7 @@ end
     def run_interpreter():
         runtime = Runtime()
         interpreter = Interpreter(runtime)
-        from nlpl.stdlib import register_stdlib
+        from nexuslang.stdlib import register_stdlib
         register_stdlib(runtime)
         interpreter.interpret(ast)
     
@@ -90,10 +90,10 @@ while i is less than 100
 end
 """
     
-    from nlpl.parser.lexer import Lexer
-    from nlpl.parser.parser import Parser
-    from nlpl.interpreter.interpreter import Interpreter
-    from nlpl.runtime.runtime import Runtime
+    from nexuslang.parser.lexer import Lexer
+    from nexuslang.parser.parser import Parser
+    from nexuslang.interpreter.interpreter import Interpreter
+    from nexuslang.runtime.runtime import Runtime
     
     lexer = Lexer(source)
     tokens = lexer.tokenize()
@@ -103,7 +103,7 @@ end
     def run_interpreter():
         runtime = Runtime()
         interpreter = Interpreter(runtime)
-        from nlpl.stdlib import register_stdlib
+        from nexuslang.stdlib import register_stdlib
         register_stdlib(runtime)
         interpreter.interpret(ast)
     

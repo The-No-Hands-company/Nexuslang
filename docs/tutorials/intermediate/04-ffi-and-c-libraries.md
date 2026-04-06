@@ -7,8 +7,8 @@
 
 ## Part 1 — What Is FFI?
 
-The **Foreign Function Interface** (FFI) lets NLPL call functions compiled in
-C or any C-compatible language.  This gives NLPL access to the vast world of
+The **Foreign Function Interface** (FFI) lets NexusLang call functions compiled in
+C or any C-compatible language.  This gives NexusLang access to the vast world of
 existing C libraries: compression, cryptography, image processing, databases,
 hardware drivers, and more.
 
@@ -19,7 +19,7 @@ passing them across the FFI boundary.
 Enable FFI access with:
 
 ```bash
-PYTHONPATH=src python -m nlpl.main program.nlpl --allow-ffi
+PYTHONPATH=src python -m nexuslang.main program.nlpl --allow-ffi
 ```
 
 ---
@@ -78,7 +78,7 @@ else
 
 ## Part 5 — Using Structs with FFI
 
-Define an NLPL struct that matches a C struct layout:
+Define an NexusLang struct that matches a C struct layout:
 
 ```nlpl
 # C definition:
@@ -110,7 +110,7 @@ extern function compress with dest as Pointer and dest_len as Pointer and src as
 extern function uncompress with dest as Pointer and dest_len as Pointer and src as Pointer and src_len as Integer returns Integer from library "z"
 ```
 
-For a full Zlib binding example, see [examples/07_low_level/03_ffi_c_interop.nlpl](../../examples/07_low_level/03_ffi_c_interop.nlpl).
+For a full Zlib binding example, see [examples/07_low_level/03_ffi_c_interop.nlpl](../../examples/07_low_level/03_ffi_c_interop.nxl).
 
 ---
 
@@ -159,7 +159,7 @@ always
 Run FFI-heavy code in a sandbox to limit blast radius:
 
 ```nlpl
-from nlpl.security.sandbox import Sandbox, SandboxPolicy
+from nexuslang.security.sandbox import Sandbox, SandboxPolicy
 
 set policy to create SandboxPolicy with allow_ffi: true and max_memory_mb: 256
 set sandbox to create Sandbox with policy

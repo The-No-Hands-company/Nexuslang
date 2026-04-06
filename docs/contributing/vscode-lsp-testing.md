@@ -2,14 +2,14 @@
 
 **Date:** February 16, 2026  
 **Phase:** Week 1 - Day 2/3  
-**Goal:** Validate all 13 LSP features in VS Code with NLPL workspace
+**Goal:** Validate all 13 LSP features in VS Code with NexusLang workspace
 
 ---
 
 ## Overview
 
 This guide describes how to:
-1. Install and configure the NLPL LSP extension in VS Code
+1. Install and configure the NexusLang LSP extension in VS Code
 2. Test all 13 implemented LSP features
 3. Validate performance and user experience
 4. Debug issues and collect metrics
@@ -22,7 +22,7 @@ This guide describes how to:
 - VS Code 1.75.0 or later
 - Node.js 16+ and npm (for extension build)
 - Python 3.10+ (for LSP server)
-- NLPL workspace (examples/ or test_programs/)
+- NexusLang workspace (examples/ or test_programs/)
 
 **Optional:**
 - VS Code Extension Test Runner
@@ -56,7 +56,7 @@ This guide describes how to:
 
 5. **Press F5** to launch Extension Development Host
    - A new VS Code window opens with the extension loaded
-   - Opens NLPL workspace automatically
+   - Opens NexusLang workspace automatically
 
 ### Method 2: Install Extension Globally
 
@@ -82,16 +82,16 @@ This guide describes how to:
 
 ### Extension Settings
 
-Open VS Code settings (Ctrl+,) and search for "NLPL":
+Open VS Code settings (Ctrl+,) and search for "NexusLang":
 
 ```json
 {
-  "nlpl.languageServer.enabled": true,
-  "nlpl.languageServer.pythonPath": "python3",
-  "nlpl.languageServer.path": "",  // Leave empty for auto-detect
-  "nlpl.trace.server": "verbose",  // For debugging
-  "nlpl.languageServer.debug": false,
-  "nlpl.languageServer.logFile": ""
+  "nexuslang.languageServer.enabled": true,
+  "nexuslang.languageServer.pythonPath": "python3",
+  "nexuslang.languageServer.path": "",  // Leave empty for auto-detect
+  "nexuslang.trace.server": "verbose",  // For debugging
+  "nexuslang.languageServer.debug": false,
+  "nexuslang.languageServer.logFile": ""
 }
 ```
 
@@ -103,7 +103,7 @@ Open VS Code settings (Ctrl+,) and search for "NLPL":
 2. **Select channel:** "NLPL Language Server" from dropdown
 3. **Check for startup message:**
    ```
-   Starting NLPL Language Server...
+   Starting NexusLang Language Server...
    Workspace root: /path/to/NLPL
    Indexing workspace...
    Found 41 files
@@ -463,7 +463,7 @@ Open VS Code settings (Ctrl+,) and search for "NLPL":
 4. Check activation time and memory usage
 
 **Method 2: LSP Trace Logs**
-1. Set `"nlpl.lsp.trace.server": "verbose"`
+1. Set `"nexuslang.lsp.trace.server": "verbose"`
 2. Open Output panel → "NLPL LSP Trace"
 3. Observe request/response times:
    ```
@@ -502,9 +502,9 @@ Open VS Code settings (Ctrl+,) and search for "NLPL":
    - View → Output → "NLPL Language Server"
    - Look for error messages
 
-4. Verify file is recognized as NLPL:
-   - Bottom right of VS Code → should say "NLPL"
-   - If not, click and select "NLPL" manually
+4. Verify file is recognized as NexusLang:
+   - Bottom right of VS Code → should say "NexusLang"
+   - If not, click and select "NexusLang" manually
 
 ### Slow Performance
 
@@ -513,13 +513,13 @@ Open VS Code settings (Ctrl+,) and search for "NLPL":
 **Debug steps:**
 1. Check workspace size:
    ```bash
-   find . -name "*.nlpl" | wc -l
+   find . -name "*.nxl" | wc -l
    ```
    If >100 files, indexing may be slow
 
 2. Enable trace logging:
    ```json
-   "nlpl.lsp.trace.server": "verbose"
+   "nexuslang.lsp.trace.server": "verbose"
    ```
    Check for repeated re-indexing
 

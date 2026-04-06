@@ -85,7 +85,7 @@ end
 
 **Session 3**:
 - Bugs fixed: 3
-- Examples fixed: 1 (26_ffi_struct_marshalling.nlpl)
+- Examples fixed: 1 (26_ffi_struct_marshalling.nxl)
 - Success rate: 86% (6/7)
 - Lines changed: ~70 across 3 bug fixes
 
@@ -108,7 +108,7 @@ if class_name in self.class_types:
     # Handle class properties (dict with 'name' and 'type' keys)
     for prop in self._get_all_class_properties(class_name):
         if prop['name'] == member_name:
-            return self._map_nlpl_type_to_llvm(prop.get('type', 'Integer'))
+            return self._map_nxl_type_to_llvm(prop.get('type', 'Integer'))
 
 elif class_name in self.struct_types:
     # Handle struct fields (tuples)

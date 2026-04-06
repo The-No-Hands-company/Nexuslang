@@ -300,16 +300,16 @@ if (DOCS / "archive").exists():
     mv_dir_contents("archive", "_internal/archive")
     rmdir_if_empty("archive")
 
-# Move "Creating a Truly Natural Language Programming Language/" to _internal/archive/early-design
-early_design_src = DOCS / "Creating a Truly Natural Language Programming Language"
+# Move "Creating a Truly NexusLang/" to _internal/archive/early-design
+early_design_src = DOCS / "Creating a Truly NexusLang"
 if early_design_src.exists():
     mkdir(DOCS / "_internal/archive/early-design")
     for f in early_design_src.iterdir():
-        mv(f"Creating a Truly Natural Language Programming Language/{f.name}",
+        mv(f"Creating a Truly NexusLang/{f.name}",
            f"_internal/archive/early-design/{f.name}")
     try:
         early_design_src.rmdir()
-        print(f"  rmdir 'Creating a Truly Natural Language Programming Language/'")
+        print(f"  rmdir 'Creating a Truly NexusLang/'")
     except OSError:
         print(f"  NOTE: early-design dir not empty after migration")
 
@@ -333,9 +333,9 @@ if (DOCS / "reorganize_docs.sh").exists():
 
 print("\n=== writing docs/README.md ===")
 README = """\
-# NLPL Documentation
+# NexusLang Documentation
 
-Welcome to the NLPL documentation. NLPL is a general-purpose programming language
+Welcome to the NexusLang documentation. NexusLang is a general-purpose programming language
 designed to read like natural English while offering full systems-level capabilities.
 
 ## Contents

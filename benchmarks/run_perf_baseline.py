@@ -13,16 +13,16 @@ Usage:
 
 Output format (perf-baseline.json):
 {
-    "meta": { "date": "...", "git_commit": "...", "nlpl_version": "..." },
+    "meta": { "date": "...", "git_commit": "...", "nxl_version": "..." },
     "dispatch_speedup": 22.1,
     "benchmarks": {
         "fibonacci_iterative": {
-            "nlpl_O0_ms": 0.85,
-            "nlpl_O1_ms": 0.72,
-            "nlpl_O2_ms": 0.68,
-            "nlpl_O3_ms": 0.65,
+            "nxl_O0_ms": 0.85,
+            "nxl_O1_ms": 0.72,
+            "nxl_O2_ms": 0.68,
+            "nxl_O3_ms": 0.65,
             "c_o3_ms": 0.002,
-            "nlpl_vs_c_ratio": 425.0
+            "nxl_vs_c_ratio": 425.0
         },
         ...
     }
@@ -50,21 +50,21 @@ sys.path.insert(0, str(SRC_DIR))
 
 
 # ---------------------------------------------------------------------------
-# Python-level NLPL interpreter timing (no subprocess overhead)
+# Python-level NexusLang interpreter timing (no subprocess overhead)
 # ---------------------------------------------------------------------------
 
-def time_nlpl_program(source_code: str, optimization_level: int = 0, runs: int = 5) -> Tuple[float, float]:
+def time_nxl_program(source_code: str, optimization_level: int = 0, runs: int = 5) -> Tuple[float, float]:
     """
-    Time an NLPL program using the interpreter directly.
+    Time an NexusLang program using the interpreter directly.
 
     Returns:
         (median_ms, stdev_ms) - execution times in milliseconds
     """
-    from nlpl.interpreter.interpreter import Interpreter
-    from nlpl.runtime.runtime import Runtime
-    from nlpl.stdlib import register_stdlib
-    from nlpl.parser.lexer import Lexer
-    from nlpl.parser.parser import Parser
+    from nexuslang.interpreter.interpreter import Interpreter
+    from nexuslang.runtime.runtime import Runtime
+    from nexuslang.stdlib import register_stdlib
+    from nexuslang.parser.lexer import Lexer
+    from nexuslang.parser.parser import Parser
 
     # Pre-parse to separate parse time from execution time
     lexer = Lexer(source_code)
@@ -87,11 +87,11 @@ def time_nlpl_program(source_code: str, optimization_level: int = 0, runs: int =
     return med, std
 
 
-def time_nlpl_file(nlpl_path: str, optimization_level: int = 0, runs: int = 5) -> Tuple[float, float]:
-    """Time an NLPL file."""
-    with open(nlpl_path) as f:
+def time_nxl_file(nxl_path: str, optimization_level: int = 0, runs: int = 5) -> Tuple[float, float]:
+    """Time an NexusLang file."""
+    with open(nxl_path) as f:
         source = f.read()
-    return time_nlpl_program(source, optimization_level=optimization_level, runs=runs)
+    return time_nxl_program(source, optimization_level=optimization_level, runs=runs)
 
 
 # ---------------------------------------------------------------------------
@@ -216,9 +216,9 @@ def measure_dispatch_speedup() -> float:
     import timeit
     import re as _re
 
-    from nlpl.interpreter.interpreter import Interpreter
-    from nlpl.runtime.runtime import Runtime
-    from nlpl.stdlib import register_stdlib
+    from nexuslang.interpreter.interpreter import Interpreter
+    from nexuslang.runtime.runtime import Runtime
+    from nexuslang.stdlib import register_stdlib
 
     rt = Runtime()
     register_stdlib(rt)
@@ -251,7 +251,7 @@ BENCHMARKS = [
     {
         "name": "fibonacci_iterative",
         "description": "Iterative Fibonacci(1000) - loop + integer arithmetic",
-        "nlpl_file": str(BENCH_DIR / "bench_fibonacci.nlpl"),
+        "nxl_file": str(BENCH_DIR / "bench_fibonacci.nxl"),
         "c_file": str(BENCH_DIR / "bench_fibonacci_iter.c"),
         "c_opt": "O3",
         "python_file": str(BENCH_DIR / "bench_fibonacci_iter.py"),
@@ -260,7 +260,7 @@ BENCHMARKS = [
     {
         "name": "matrix_sum",
         "description": "Matrix sum (200x200) - nested loops, arithmetic",
-        "nlpl_file": str(BENCH_DIR / "bench_matrix.nlpl"),
+        "nxl_file": str(BENCH_DIR / "bench_matrix.nxl"),
         "c_file": str(BENCH_DIR / "bench_matrix.c"),
         "c_opt": "O3",
         "python_file": str(BENCH_DIR / "bench_matrix.py"),
@@ -269,7 +269,7 @@ BENCHMARKS = [
     {
         "name": "sieve_of_eratosthenes",
         "description": "Prime sieve up to 1000 - array access, conditional branching",
-        "nlpl_file": str(BENCH_DIR / "bench_sieve.nlpl"),
+        "nxl_file": str(BENCH_DIR / "bench_sieve.nxl"),
         "c_file": str(BENCH_DIR / "bench_sieve.c"),
         "c_opt": "O3",
         "python_file": str(BENCH_DIR / "bench_sieve.py"),
@@ -291,39 +291,39 @@ def run_benchmark(bench: dict, runs: int, verbose: bool,
 
     result = {
         "description": bench["description"],
-        "nlpl_O0_ms": None,
-        "nlpl_O1_ms": None,
-        "nlpl_O2_ms": None,
-        "nlpl_O3_ms": None,
+        "nxl_O0_ms": None,
+        "nxl_O1_ms": None,
+        "nxl_O2_ms": None,
+        "nxl_O3_ms": None,
         "c_o3_ms": None,
         "python_ms": None,
         "rust_release_ms": None,
-        "nlpl_vs_c_ratio": None,
-        "nlpl_vs_python_ratio": None,
-        "nlpl_vs_rust_ratio": None,
-        "nlpl_O3_vs_O0_speedup": None,
+        "nxl_vs_c_ratio": None,
+        "nxl_vs_python_ratio": None,
+        "nxl_vs_rust_ratio": None,
+        "nxl_O3_vs_O0_speedup": None,
         "errors": [],
     }
 
-    nlpl_file = bench.get("nlpl_file")
+    nxl_file = bench.get("nxl_file")
     c_file = bench.get("c_file")
 
-    # Time NLPL at each optimization level
-    if nlpl_file and Path(nlpl_file).exists():
+    # Time NexusLang at each optimization level
+    if nxl_file and Path(nxl_file).exists():
         for opt in [0, 1, 2, 3]:
-            key = f"nlpl_O{opt}_ms"
+            key = f"nxl_O{opt}_ms"
             try:
-                med, std = time_nlpl_file(nlpl_file, optimization_level=opt, runs=runs)
+                med, std = time_nxl_file(nxl_file, optimization_level=opt, runs=runs)
                 result[key] = round(med, 3)
                 if verbose:
-                    print(f"    NLPL -O{opt}: {med:.3f} ms  (stdev={std:.3f})")
+                    print(f"    NexusLang -O{opt}: {med:.3f} ms  (stdev={std:.3f})")
             except Exception as e:
                 result["errors"].append(f"nlpl O{opt}: {e}")
                 if verbose:
-                    print(f"    NLPL -O{opt}: ERROR - {e}")
+                    print(f"    NexusLang -O{opt}: ERROR - {e}")
     else:
-        result["errors"].append(f"NLPL file not found: {nlpl_file}")
-        print(f"    SKIP: NLPL file not found")
+        result["errors"].append(f"NLPL file not found: {nxl_file}")
+        print(f"    SKIP: NexusLang file not found")
 
     # Time C reference at O3
     if c_file and Path(c_file).exists():
@@ -391,29 +391,29 @@ def run_benchmark(bench: dict, runs: int, verbose: bool,
         print(f"    Rust reference: not available")
 
     # Compute ratios
-    nlpl_best = result.get("nlpl_O3_ms") or result.get("nlpl_O2_ms") or result.get("nlpl_O0_ms")
-    nlpl_o0 = result.get("nlpl_O0_ms")
-    nlpl_o3 = result.get("nlpl_O3_ms")
+    nxl_best = result.get("nxl_O3_ms") or result.get("nxl_O2_ms") or result.get("nxl_O0_ms")
+    nxl_o0 = result.get("nxl_O0_ms")
+    nxl_o3 = result.get("nxl_O3_ms")
 
-    if nlpl_best and result["c_o3_ms"] and result["c_o3_ms"] > 0:
-        result["nlpl_vs_c_ratio"] = round(nlpl_best / result["c_o3_ms"], 1)
+    if nxl_best and result["c_o3_ms"] and result["c_o3_ms"] > 0:
+        result["nxl_vs_c_ratio"] = round(nxl_best / result["c_o3_ms"], 1)
         if verbose:
-            print(f"    NLPL/C ratio:      {result['nlpl_vs_c_ratio']}x slower")
+            print(f"    NexusLang/C ratio:      {result['nxl_vs_c_ratio']}x slower")
 
-    if nlpl_best and result["python_ms"] and result["python_ms"] > 0:
-        result["nlpl_vs_python_ratio"] = round(nlpl_best / result["python_ms"], 3)
+    if nxl_best and result["python_ms"] and result["python_ms"] > 0:
+        result["nxl_vs_python_ratio"] = round(nxl_best / result["python_ms"], 3)
         if verbose:
-            print(f"    NLPL/Python ratio: {result['nlpl_vs_python_ratio']}x")
+            print(f"    NexusLang/Python ratio: {result['nxl_vs_python_ratio']}x")
 
-    if nlpl_best and result["rust_release_ms"] and result["rust_release_ms"] > 0:
-        result["nlpl_vs_rust_ratio"] = round(nlpl_best / result["rust_release_ms"], 1)
+    if nxl_best and result["rust_release_ms"] and result["rust_release_ms"] > 0:
+        result["nxl_vs_rust_ratio"] = round(nxl_best / result["rust_release_ms"], 1)
         if verbose:
-            print(f"    NLPL/Rust ratio:   {result['nlpl_vs_rust_ratio']}x slower")
+            print(f"    NexusLang/Rust ratio:   {result['nxl_vs_rust_ratio']}x slower")
 
-    if nlpl_o0 and nlpl_o3 and nlpl_o0 > 0:
-        result["nlpl_O3_vs_O0_speedup"] = round(nlpl_o0 / nlpl_o3, 3)
+    if nxl_o0 and nxl_o3 and nxl_o0 > 0:
+        result["nxl_O3_vs_O0_speedup"] = round(nxl_o0 / nxl_o3, 3)
         if verbose:
-            print(f"    O3 vs O0 speedup:  {result['nlpl_O3_vs_O0_speedup']}x")
+            print(f"    O3 vs O0 speedup:  {result['nxl_O3_vs_O0_speedup']}x")
 
     return result
 
@@ -522,19 +522,19 @@ def main():
     print()
     for bench_name, r in bench_results.items():
         print(f"{bench_name}:")
-        o0 = r.get("nlpl_O0_ms")
-        o3 = r.get("nlpl_O3_ms")
+        o0 = r.get("nxl_O0_ms")
+        o3 = r.get("nxl_O3_ms")
         c = r.get("c_o3_ms")
         py = r.get("python_ms")
         rs = r.get("rust_release_ms")
-        ratio_c = r.get("nlpl_vs_c_ratio")
-        ratio_py = r.get("nlpl_vs_python_ratio")
-        ratio_rs = r.get("nlpl_vs_rust_ratio")
-        speedup = r.get("nlpl_O3_vs_O0_speedup")
+        ratio_c = r.get("nxl_vs_c_ratio")
+        ratio_py = r.get("nxl_vs_python_ratio")
+        ratio_rs = r.get("nxl_vs_rust_ratio")
+        speedup = r.get("nxl_O3_vs_O0_speedup")
         if o0:
-            print(f"  NLPL O0:        {o0:.3f} ms")
+            print(f"  NexusLang O0:        {o0:.3f} ms")
         if o3:
-            print(f"  NLPL O3:        {o3:.3f} ms", end="")
+            print(f"  NexusLang O3:        {o3:.3f} ms", end="")
             if speedup:
                 print(f"  ({speedup:.2f}x vs O0)", end="")
             print()
@@ -545,12 +545,12 @@ def main():
         if rs:
             print(f"  Rust --release: {rs:.6f} ms")
         if ratio_c:
-            print(f"  NLPL/C ratio:   {ratio_c}x slower than C")
+            print(f"  NexusLang/C ratio:   {ratio_c}x slower than C")
         if ratio_py:
             direction = "faster" if ratio_py < 1 else "slower"
-            print(f"  NLPL/Python:    {ratio_py}x {direction} than Python")
+            print(f"  NexusLang/Python:    {ratio_py}x {direction} than Python")
         if ratio_rs:
-            print(f"  NLPL/Rust:      {ratio_rs}x slower than Rust")
+            print(f"  NexusLang/Rust:      {ratio_rs}x slower than Rust")
         if r.get("errors"):
             for e in r["errors"]:
                 print(f"  WARNING: {e}")

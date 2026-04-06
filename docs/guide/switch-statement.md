@@ -1,4 +1,4 @@
-# Switch Statement in NLPL
+# Switch Statement in NexusLang
 
 ## Overview
 
@@ -218,7 +218,7 @@ switch value
 
 ### No Fall-Through
 
-Unlike C/C++, NLPL switch cases do NOT fall through. Each case automatically breaks after execution:
+Unlike C/C++, NexusLang switch cases do NOT fall through. Each case automatically breaks after execution:
 
 ```nlpl
 switch value

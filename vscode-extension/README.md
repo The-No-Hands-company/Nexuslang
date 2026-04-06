@@ -1,6 +1,6 @@
-# NLPL Language Support for VS Code
+# NexusLang Language Support for VS Code
 
-Language support extension for NLPL (Natural Language Programming Language) with full LSP features.
+Language support extension for NexusLang (NexusLang) with full LSP features.
 
 ## Features
 
@@ -15,7 +15,7 @@ Language support extension for NLPL (Natural Language Programming Language) with
 
 ## Requirements
 
-The NLPL language server must be installed:
+The NexusLang language server must be installed:
 
 ```bash
 pip install nlpl-compiler

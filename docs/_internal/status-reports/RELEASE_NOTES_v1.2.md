@@ -1,4 +1,4 @@
-# NLPL v1.2 Release Notes
+# NexusLang v1.2 Release Notes
 
 **Release Date**: February 4, 2026  
 **Codename**: "IDE Experience"  
@@ -8,7 +8,7 @@
 
 ## Overview
 
-NLPL v1.2 brings **complete IDE support** with a production-ready VS Code extension, AST-based language server features, and semantic highlighting. This release transforms NLPL from a command-line compiler into a fully-featured development environment.
+NLPL v1.2 brings **complete IDE support** with a production-ready VS Code extension, AST-based language server features, and semantic highlighting. This release transforms NexusLang from a command-line compiler into a fully-featured development environment.
 
 ---
 
@@ -217,9 +217,9 @@ code --install-extension nlpl-language-support-0.1.0.vsix
 
 ### Language Server
 
-Already installed if you have NLPL:
+Already installed if you have NexusLang:
 ```bash
-python -m nlpl.lsp --help
+python -m nexuslang.lsp --help
 ```
 
 Or update to v1.2:
@@ -236,13 +236,13 @@ pip install --upgrade nlpl-compiler
 ```json
 {
   // Enable/disable language server
-  "nlpl.languageServer.enabled": true,
+  "nexuslang.languageServer.enabled": true,
   
   // Path to language server (leave empty for auto-detect)
-  "nlpl.languageServer.path": "",
+  "nexuslang.languageServer.path": "",
   
   // Enable debug mode
-  "nlpl.languageServer.debug": false,
+  "nexuslang.languageServer.debug": false,
   
   // Enable semantic highlighting
   "editor.semanticHighlighting.enabled": true
@@ -376,7 +376,7 @@ None. v1.2 is fully backward compatible with v1.1.
 
 ## Contributors
 
-- NLPL Team
+- NexusLang Team
 - Community Contributors (testing, feedback)
 
 ---
@@ -419,14 +419,14 @@ None. All features tested and working.
 
 ## Thank You
 
-Thank you to everyone who tested, provided feedback, and contributed to NLPL v1.2. This release represents a major milestone: **NLPL is now a fully-featured language with production-ready IDE support.**
+Thank you to everyone who tested, provided feedback, and contributed to NexusLang v1.2. This release represents a major milestone: **NLPL is now a fully-featured language with production-ready IDE support.**
 
 ---
 
 ## Getting Help
 
-- **Documentation**: https://github.com/Zajfan/NLPL/docs
-- **Issues**: https://github.com/Zajfan/NLPL/issues
+- **Documentation**: https://github.com/Zajfan/NexusLang/docs
+- **Issues**: https://github.com/Zajfan/NexusLang/issues
 - **Discord**: (TBD)
 
 ---
@@ -452,7 +452,7 @@ This is what professional language development looks like.
 
 ## What's Next?
 
-Install the extension and start coding in NLPL with full IDE support!
+Install the extension and start coding in NexusLang with full IDE support!
 
 ```bash
 code --install-extension nlpl-language-support-0.1.0.vsix

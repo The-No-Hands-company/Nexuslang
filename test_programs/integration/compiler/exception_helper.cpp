@@ -1,14 +1,14 @@
-// C++ helper for testing NLPL exception handling
-// This provides a function that throws, which NLPL can invoke
+// C++ helper for testing NexusLang exception handling
+// This provides a function that throws, which NexusLang can invoke
 
-// NLPL exception structure - must match LLVM IR layout
+// NexusLang exception structure - must match LLVM IR layout
 // struct NLPLException { i8* message; }
 struct NLPLException {
     const char* message;
     NLPLException(const char* msg) : message(msg) {}
 };
 
-// Extern "C" to avoid name mangling - callable from NLPL
+// Extern "C" to avoid name mangling - callable from NexusLang
 extern "C" {
 
 // Function that throws NLPL-compatible exception

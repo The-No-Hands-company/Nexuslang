@@ -111,7 +111,7 @@ class WorkspaceIndex:
 
 - [ ] Test symbol extraction
   - Create `tests/test_workspace_index.py`
-  - Test with simple NLPL file (1 function, 1 class)
+  - Test with simple NexusLang file (1 function, 1 class)
   - Verify symbols extracted correctly
 
 **Example Test:**
@@ -206,7 +206,7 @@ print text result  # Ctrl+Click on 'add' should jump to math_utils.nlpl
   - Include symbol kind, name, range, selection range
 
 - [ ] Test in VS Code
-  - Open NLPL file in VS Code
+  - Open NexusLang file in VS Code
   - Verify outline view shows functions/classes
   - Verify clicking outline item navigates to symbol
 
@@ -289,15 +289,15 @@ print text result  # Ctrl+Click on 'add' should jump to math_utils.nlpl
 
 ### Morning: Integration Testing (3-4 hours)
 - [ ] Test in real VS Code workflow
-  - Open multi-file NLPL project
+  - Open multi-file NexusLang project
   - Edit files, verify incremental indexing works
   - Test go-to-definition across files
   - Test document outline
   - Test call hierarchy
 
-- [ ] Test with existing NLPL examples
+- [ ] Test with existing NexusLang examples
   - Use `examples/` directory as test workspace
-  - Verify navigation works on real NLPL code
+  - Verify navigation works on real NexusLang code
 
 ### Afternoon: Documentation & Reporting (2-3 hours)
 - [ ] Write week 1 status report

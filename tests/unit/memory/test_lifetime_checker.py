@@ -10,10 +10,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 import unittest
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.typesystem.lifetime_checker import LifetimeChecker
-from nlpl.parser.ast import (
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.typesystem.lifetime_checker import LifetimeChecker
+from nexuslang.parser.ast import (
     BorrowExpressionWithLifetime, LifetimeAnnotation,
     ReturnTypeWithLifetime,
 )

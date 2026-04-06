@@ -1,5 +1,5 @@
 """
-Comprehensive parser test corpus for NLPL.
+Comprehensive parser test corpus for NexusLang.
 
 Covers every major AST node type and grammar production rule.
 Each test parses a canonical snippet and validates:
@@ -21,9 +21,9 @@ _SRC = os.path.join(_ROOT, "src")
 if _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.parser.ast import (
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.parser.ast import (
     Program,
     VariableDeclaration,
     IndexAssignment,
@@ -388,7 +388,7 @@ class TestInterfacesAndTraits:
         assert node.name == "Greetable"
 
     def test_abstract_class(self):
-        from nlpl.parser.ast import AbstractClassDefinition
+        from nexuslang.parser.ast import AbstractClassDefinition
         src = (
             "abstract class Shape\n"
             "    abstract function area returns Float\n"
@@ -705,7 +705,7 @@ class TestErrorHandling:
         assert node.exception_type == "ValueError"
 
     def test_assert_statement(self):
-        # NLPL assertion syntax uses 'expect ... to equal ...'
+        # NexusLang assertion syntax uses 'expect ... to equal ...'
         src = "expect x to equal 0"
         node = first(src)
         assert isinstance(node, ExpectStatement)
@@ -840,13 +840,13 @@ class TestExpressions:
         assert isinstance(node.value, TypeCastExpression)
 
     @pytest.mark.xfail(
-        reason="Ternary '?' operator is not supported by the NLPL lexer — known coverage gap",
+        reason="Ternary '?' operator is not supported by the NexusLang lexer — known coverage gap",
         strict=True,
     )
     def test_ternary_expression(self):
         node = first("set val to x > 0 ? x : 0")
         assert isinstance(node, VariableDeclaration)
-        from nlpl.parser.ast import TernaryExpression
+        from nexuslang.parser.ast import TernaryExpression
         assert isinstance(node.value, TernaryExpression)
 
     def test_lambda_expression(self):

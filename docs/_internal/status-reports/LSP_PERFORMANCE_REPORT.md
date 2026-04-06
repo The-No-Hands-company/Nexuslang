@@ -1,4 +1,4 @@
-# NLPL LSP Performance Report
+# NexusLang LSP Performance Report
 **Date:** February 16, 2026  
 **Test Workspace:** examples/ (41 files, 718 symbols)  
 **System:** Python 3.14.2, Linux
@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-The NLPL LSP server demonstrates excellent performance characteristics for typical workspaces:
+The NexusLang LSP server demonstrates excellent performance characteristics for typical workspaces:
 - **Workspace indexing**: 10.9 files/sec, 191.6 symbols/sec (~3.7s for 41 files)
 - **Symbol lookup**: <1ms average (O(1) hash table lookup)
 - **Fuzzy search**: <0.2ms average for workspace-wide search
@@ -64,7 +64,7 @@ Symbols/sec:      191.6
 
 **Bottleneck:** Lexer keyword identification dominates indexing time (74%).
 
-**Why:** NLPL uses natural language keywords (`function X with`, `set X to`, `is greater than`, etc.) requiring extensive string pattern matching.
+**Why:** NexusLang uses natural language keywords (`function X with`, `set X to`, `is greater than`, etc.) requiring extensive string pattern matching.
 
 **Optimization opportunities:**
 1. **Cache parsed ASTs**: Avoid re-parsing unchanged files (70% speedup)
@@ -268,7 +268,7 @@ python3 dev_tools/profile_lsp.py /path/to/large/workspace
 | rust-analyzer | Rust | 5-10s | <1ms | 50-100 MB |
 | pyright | Python | 3-8s | <1ms | 30-80 MB |
 | typescript-ls | TypeScript | 2-5s | <1ms | 40-90 MB |
-| **nlpl-lsp** | NLPL | **9.2s** | **<1ms** | **~0.7 MB** |
+| **nlpl-lsp** | NexusLang | **9.2s** | **<1ms** | **~0.7 MB** |
 
 **NLPL LSP Advantages:**
 - Lower memory footprint (10x less than others)
@@ -282,7 +282,7 @@ python3 dev_tools/profile_lsp.py /path/to/large/workspace
 
 ## Conclusion
 
-The NLPL LSP server demonstrates **production-ready performance** for typical workspaces (<100 files):
+The NexusLang LSP server demonstrates **production-ready performance** for typical workspaces (<100 files):
 - Sub-millisecond symbol lookups
 - Acceptable indexing times (3.7s for 41 files)
 - Minimal memory footprint (48 KB)

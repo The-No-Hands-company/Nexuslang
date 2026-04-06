@@ -1,4 +1,4 @@
-# NLPL Development Status Report - January 4, 2026
+# NexusLang Development Status Report - January 4, 2026
 
 ## Session Summary: Type System Completion
 
@@ -32,7 +32,7 @@
 #### 6. **Updated Example Programs**
 - `examples/01_basic_concepts.nlpl`: Updated file operations, fixed length usage, reordered functions
 - `examples/02_object_oriented.nlpl`: Changed method names, fixed length, updated syntax
-- `examples/04_type_system_basics.nlpl`: Modernized to current NLPL standards
+- `examples/04_type_system_basics.nlpl`: Modernized to current NexusLang standards
 
 ### Test Results
 - Type system comprehensive test: **5/5 tests passing**
@@ -310,7 +310,7 @@
 3. Add diagnostics (syntax/type errors)
 4. Add go-to-definition
 
-**Why this**: Makes NLPL usable in real development workflows.
+**Why this**: Makes NexusLang usable in real development workflows.
 
 ---
 
@@ -370,7 +370,7 @@
 - **Parser is very mature** - handles complex natural language syntax
 - **Standard library** covers essential operations
 - **Next major milestone**: Either complete type system OR add LSP support
-- **Vision**: NLPL aims to be usable for OS development, system programming, AND high-level applications
+- **Vision**: NexusLang aims to be usable for OS development, system programming, AND high-level applications
 
 ---
 

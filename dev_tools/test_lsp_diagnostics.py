@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test the NLPL LSP Server diagnostics integration.
+Test the NexusLang LSP Server diagnostics integration.
 
 This script simulates what the LSP client does:
 1. Opens a document
@@ -14,16 +14,16 @@ import os
 # Add src directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from nlpl.lsp.server import NLPLLanguageServer
+from nexuslang.lsp.server import NLPLLanguageServer
 
 
 def test_diagnostics():
-    """Test diagnostics on a sample NLPL file."""
+    """Test diagnostics on a sample NexusLang file."""
     server = NLPLLanguageServer()
     
     # Read test file
     root_dir = os.path.join(os.path.dirname(__file__), '..')
-    test_file = os.path.join(root_dir, 'test_programs', 'lsp_test.nlpl')
+    test_file = os.path.join(root_dir, 'test_programs', 'lsp_test.nxl')
     
     if not os.path.exists(test_file):
         print(f"Test file not found: {test_file}")
@@ -33,7 +33,7 @@ def test_diagnostics():
         text = f.read()
     
     print("=" * 60)
-    print("Testing NLPL LSP Server Diagnostics")
+    print("Testing NexusLang LSP Server Diagnostics")
     print("=" * 60)
     print(f"\nTest file: {test_file}\n")
     print("File contents:")
@@ -79,7 +79,7 @@ set y to 123
     print(broken_code)
     print("-" * 60)
     
-    broken_diagnostics = server.diagnostics_provider.get_diagnostics("file://broken.nlpl", broken_code)
+    broken_diagnostics = server.diagnostics_provider.get_diagnostics("file://broken.nxl", broken_code)
     
     print(f"\n\nDiagnostics found: {len(broken_diagnostics)}\n")
     

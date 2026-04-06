@@ -220,7 +220,7 @@
 
 ## Real-World Applications
 
-### Now Possible with NLPL Crypto Module
+### Now Possible with NexusLang Crypto Module
 
 1. **Secure File Storage**
    - Encrypt user files with password-derived keys
@@ -360,7 +360,7 @@
 - ✅ Usage examples in code
 
 ### User Guides
-- ✅ Example program created (crypto_file_encryption.nlpl)
+- ✅ Example program created (crypto_file_encryption.nxl)
 - ⏳ Needs: Crypto best practices guide
 - ⏳ Needs: Security considerations document
 - ⏳ Needs: Algorithm selection guide
@@ -382,8 +382,8 @@
 - ✅ Example program demonstrates real-world usage
 
 ### Challenges
-- ⚠️ NLPL syntax for dictionary handling needs refinement
-- ⚠️ Binary data handling (bytes objects) in NLPL
+- ⚠️ NexusLang syntax for dictionary handling needs refinement
+- ⚠️ Binary data handling (bytes objects) in NexusLang
 - ⚠️ Serialization of complex data structures (nonce, tag, ciphertext)
 
 ### Recommendations for Future Modules
@@ -395,10 +395,10 @@
 
 ---
 
-## Impact on NLPL Ecosystem
+## Impact on NexusLang Ecosystem
 
 ### Before Crypto Expansion
-- NLPL could hash data but not encrypt it
+- NexusLang could hash data but not encrypt it
 - No way to implement secure applications
 - Missing critical building block for:
   - Secure communication
@@ -407,13 +407,13 @@
   - Digital signatures
 
 ### After Crypto Expansion
-- ✅ NLPL can now build **production-grade secure applications**
+- ✅ NexusLang can now build **production-grade secure applications**
 - ✅ Enables compliance with security standards (GDPR, HIPAA, PCI-DSS)
 - ✅ Supports modern authentication (JWT, OAuth)
 - ✅ Enables end-to-end encryption
 - ✅ Competitive with Python, Go, Rust for security features
 
-**This expansion moves NLPL from "toy language" to "production-ready language" for secure applications.**
+**This expansion moves NexusLang from "toy language" to "production-ready language" for secure applications.**
 
 ---
 
@@ -459,7 +459,7 @@
 
 ## Conclusion
 
-The crypto module expansion was **completed successfully in record time** (2 hours vs 2-week estimate). NLPL now has a **production-grade cryptography module** with:
+The crypto module expansion was **completed successfully in record time** (2 hours vs 2-week estimate). NexusLang now has a **production-grade cryptography module** with:
 
 - ✅ Symmetric encryption (AES, ChaCha20)
 - ✅ Asymmetric encryption (RSA)

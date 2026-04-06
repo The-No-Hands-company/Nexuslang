@@ -26,13 +26,13 @@ _INIT_PATH = os.path.join(
 def pt():
     """Load the property_testing module in isolation (no full nlpl install needed)."""
     _pkgs = (
-        "nlpl", "nlpl.runtime", "nlpl.runtime.runtime",
-        "nlpl.stdlib", "nlpl.stdlib.property_testing",
+        "nlpl", "nexuslang.runtime", "nexuslang.runtime.runtime",
+        "nexuslang.stdlib", "nexuslang.stdlib.property_testing",
     )
     # Save originals so we can restore after tests
     _originals = {pkg: sys.modules.get(pkg) for pkg in _pkgs}
-    _had_runtime_cls = hasattr(sys.modules.get("nlpl.runtime.runtime", object()), "Runtime")
-    _orig_runtime_cls = getattr(sys.modules.get("nlpl.runtime.runtime"), "Runtime", None) if _had_runtime_cls else None
+    _had_runtime_cls = hasattr(sys.modules.get("nexuslang.runtime.runtime", object()), "Runtime")
+    _orig_runtime_cls = getattr(sys.modules.get("nexuslang.runtime.runtime"), "Runtime", None) if _had_runtime_cls else None
 
     for pkg in _pkgs:
         if pkg not in sys.modules:
@@ -42,8 +42,8 @@ def pt():
         def register_function(self, name, fn): pass
         def register_module(self, name): pass
 
-    sys.modules["nlpl.runtime.runtime"].Runtime = _StubRuntime
-    spec = importlib.util.spec_from_file_location("nlpl.stdlib.property_testing", _INIT_PATH)
+    sys.modules["nexuslang.runtime.runtime"].Runtime = _StubRuntime
+    spec = importlib.util.spec_from_file_location("nexuslang.stdlib.property_testing", _INIT_PATH)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     yield mod
@@ -54,8 +54,8 @@ def pt():
             sys.modules.pop(pkg, None)
         else:
             sys.modules[pkg] = _originals[pkg]
-    if _had_runtime_cls and "nlpl.runtime.runtime" in sys.modules:
-        sys.modules["nlpl.runtime.runtime"].Runtime = _orig_runtime_cls
+    if _had_runtime_cls and "nexuslang.runtime.runtime" in sys.modules:
+        sys.modules["nexuslang.runtime.runtime"].Runtime = _orig_runtime_cls
 
 
 # ---------------------------------------------------------------------------

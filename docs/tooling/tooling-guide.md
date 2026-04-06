@@ -1,4 +1,4 @@
-# NLPL Development Tooling Guide
+# NexusLang Development Tooling Guide
 
 ## Overview
 
@@ -63,10 +63,10 @@ INFO:      file.nlpl:20 [empty-class] Class 'MyClass' has no properties or metho
 ### Integration
 
 ```python
-from nlpl.tools import StaticAnalyzer, Severity
+from nexuslang.tools import StaticAnalyzer, Severity
 
 analyzer = StaticAnalyzer(strict=False)
-issues = analyzer.analyze_file("my_program.nlpl")
+issues = analyzer.analyze_file("my_program.nxl")
 
 # Filter by severity
 errors = [i for i in issues if i.severity == Severity.ERROR]
@@ -139,7 +139,7 @@ set list to [1, 2, 3, 4]
 ### Configuration
 
 ```python
-from nlpl.tools import Formatter, FormatConfig
+from nexuslang.tools import Formatter, FormatConfig
 
 config = FormatConfig(
     indent_size=4,
@@ -150,7 +150,7 @@ config = FormatConfig(
 )
 
 formatter = Formatter(config)
-formatted = formatter.format_file("my_program.nlpl")
+formatted = formatter.format_file("my_program.nxl")
 ```
 
 ## Runtime Profiler
@@ -169,7 +169,7 @@ python src/main.py --profile my_program.nlpl
 **Option 2: Programmatic integration**
 
 ```python
-from nlpl.tools import Profiler, enable_profiling
+from nexuslang.tools import Profiler, enable_profiling
 
 # Enable profiling
 profiler = enable_profiling()
@@ -184,7 +184,7 @@ profiler.print_report()
 **Option 3: Manual instrumentation**
 
 ```python
-from nlpl.tools import get_profiler
+from nexuslang.tools import get_profiler
 
 profiler = get_profiler()
 profiler.start()
@@ -195,7 +195,7 @@ profiler.enter_function("my_function")
 profiler.exit_function("my_function")
 
 # Track line execution
-profiler.record_line("file.nlpl", 42)
+profiler.record_line("file.nxl", 42)
 
 # Track memory allocation
 profiler.record_allocation(1024)  # bytes
@@ -300,13 +300,13 @@ git clone https://github.com/brendangregg/FlameGraph
 # Open profile.svg in browser
 ```
 
-## Integration with NLPL Interpreter
+## Integration with NexusLang Interpreter
 
 To add profiler support to the interpreter, update `src/main.py`:
 
 ```python
 import argparse
-from nlpl.tools import enable_profiling, disable_profiling, get_profiler
+from nexuslang.tools import enable_profiling, disable_profiling, get_profiler
 
 def main():
     parser = argparse.ArgumentParser()
@@ -396,7 +396,7 @@ Create `.git/hooks/pre-commit`:
 ```bash
 #!/bin/bash
 # Run analyzer on staged .nlpl files
-STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep '\.nlpl$')
+STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep '\.nxl$')
 
 if [ -n "$STAGED" ]; then
     echo "Running static analysis..."
@@ -501,10 +501,10 @@ Planned improvements:
 
 ## Summary
 
-The NLPL tooling suite provides production-quality code analysis, formatting, and profiling capabilities:
+The NexusLang tooling suite provides production-quality code analysis, formatting, and profiling capabilities:
 
 - **Analyze** code for bugs and quality issues with `nlpl-analyze`
 - **Format** code consistently with `nlpl-format`
 - **Profile** runtime performance with the integrated profiler
 
-All tools work seamlessly with the NLPL interpreter and compiler, helping you write better, faster, and more maintainable code.
+All tools work seamlessly with the NexusLang interpreter and compiler, helping you write better, faster, and more maintainable code.

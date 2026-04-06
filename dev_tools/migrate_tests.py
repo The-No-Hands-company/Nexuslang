@@ -358,10 +358,10 @@ if src_utils.exists():
 # ---------------------------------------------------------------------------
 
 print("\n=== fixtures ===")
-for nlpl_file in TESTS.glob("*.nlpl"):
-    dst = TESTS / "fixtures" / nlpl_file.name
-    shutil.move(str(nlpl_file), str(dst))
-    print(f"  mv  {nlpl_file.name} -> fixtures/{nlpl_file.name}")
+for nxl_file in TESTS.glob("*.nxl"):
+    dst = TESTS / "fixtures" / nxl_file.name
+    shutil.move(str(nxl_file), str(dst))
+    print(f"  mv  {nxl_file.name} -> fixtures/{nxl_file.name}")
 
 
 # ---------------------------------------------------------------------------
@@ -465,7 +465,7 @@ if _SRC not in sys.path:
             ["TestBufferedIO"],
         ),
         "unit/compiler/test_test_framework.py": (
-            "Native NLPL test-framework: lexer tokens, AST nodes, parser, interpreter.",
+            "Native NexusLang test-framework: lexer tokens, AST nodes, parser, interpreter.",
             ["TestLexerTestTokens", "TestASTNodes",
              "TestParserTestFramework", "TestInterpreterTestFramework"],
         ),

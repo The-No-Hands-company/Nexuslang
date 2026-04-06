@@ -1,6 +1,6 @@
 # Migration Guides
 
-Practical guides for developers coming to NLPL from other languages.
+Practical guides for developers coming to NexusLang from other languages.
 
 | Guide | Best for |
 |-------|----------|
@@ -10,7 +10,7 @@ Practical guides for developers coming to NLPL from other languages.
 
 ## Common Themes Across All Guides
 
-- NLPL uses **natural English keywords** rather than punctuation (`set x to 5`, not `x = 5`)
+- NexusLang uses **natural English keywords** rather than punctuation (`set x to 5`, not `x = 5`)
 - Every block ends with an explicit `end` keyword (no braces or indentation rules)
 - Types are written **after** the identifier: `x as Integer`, not `int x`
 - Calling a function with arguments uses `with` and `and`: `f with a: 1 and b: 2`

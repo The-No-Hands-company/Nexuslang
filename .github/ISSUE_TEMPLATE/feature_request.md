@@ -17,7 +17,7 @@ Link to any relevant discussions, papers, or prior art.
 
 ## Proposed syntax / API
 
-Show how the feature would look to a user of NLPL:
+Show how the feature would look to a user of NexusLang:
 
 ```nlpl
 # Example of the proposed syntax or API
@@ -41,6 +41,6 @@ What other designs were considered and why were they rejected?
 
 ## Checklist
 
-- [ ] The proposed syntax is consistent with existing NLPL style
+- [ ] The proposed syntax is consistent with existing NexusLang style
 - [ ] I have searched existing issues for duplicates
-- [ ] This is not domain-specific — NLPL is a universal language
+- [ ] This is not domain-specific — NexusLang is a universal language

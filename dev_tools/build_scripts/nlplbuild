@@ -3,7 +3,7 @@
 NLPL Build System CLI
 =====================
 
-Modern package management and build system for NLPL.
+Modern package management and build system for NexusLang.
 
 Usage:
     nlplbuild init [NAME]           # Initialize new project
@@ -31,18 +31,18 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
-from nlpl.build_system import Project, Builder, BuildConfig
+from nexuslang.build_system import Project, Builder, BuildConfig
 
 
 def cmd_init(args):
-    """Initialize a new NLPL project."""
+    """Initialize a new NexusLang project."""
     name = args.name or Path.cwd().name
     
-    if (Path.cwd() / "nlpl.toml").exists():
+    if (Path.cwd() / "nexuslang.toml").exists():
         print(f"Error: nlpl.toml already exists in {Path.cwd()}")
         return 1
     
-    print(f"Creating new NLPL project: {name}")
+    print(f"Creating new NexusLang project: {name}")
     
     project = Project.init(
         Path.cwd(),
@@ -53,7 +53,7 @@ def cmd_init(args):
     )
     
     print(f"✓ Created {name}")
-    print(f"  - src/main.nlpl")
+    print(f"  - src/main.nxl")
     print(f"  - nlpl.toml")
     print(f"  - .gitignore")
     print()
@@ -69,7 +69,7 @@ def cmd_build(args):
     # Find project root
     current = Path.cwd()
     while current != current.parent:
-        if (current / "nlpl.toml").exists():
+        if (current / "nexuslang.toml").exists():
             break
         current = current.parent
     else:
@@ -124,7 +124,7 @@ def cmd_run(args):
     # Find project root
     current = Path.cwd()
     while current != current.parent:
-        if (current / "nlpl.toml").exists():
+        if (current / "nexuslang.toml").exists():
             break
         current = current.parent
     else:
@@ -168,7 +168,7 @@ def cmd_clean(args):
     # Find project root
     current = Path.cwd()
     while current != current.parent:
-        if (current / "nlpl.toml").exists():
+        if (current / "nexuslang.toml").exists():
             break
         current = current.parent
     else:
@@ -193,7 +193,7 @@ def cmd_check(args):
     # Find project root
     current = Path.cwd()
     while current != current.parent:
-        if (current / "nlpl.toml").exists():
+        if (current / "nexuslang.toml").exists():
             break
         current = current.parent
     else:
@@ -211,34 +211,34 @@ def cmd_check(args):
     errors = []
     warnings = []
     
-    # Find all NLPL source files
+    # Find all NexusLang source files
     src_dir = current / "src"
     if not src_dir.exists():
         print("Error: No src/ directory found")
         return 1
     
-    nlpl_files = list(src_dir.rglob("*.nlpl"))
+    nxl_files = list(src_dir.rglob("*.nxl"))
     
-    if not nlpl_files:
+    if not nxl_files:
         print("Warning: No .nlpl files found in src/")
         return 0
     
-    print(f"Found {len(nlpl_files)} file(s) to check")
+    print(f"Found {len(nxl_files)} file(s) to check")
     
-    # Import NLPL compiler components
+    # Import NexusLang compiler components
     sys.path.insert(0, str(current / "src"))
     
     try:
-        from nlpl.parser.lexer import Lexer
-        from nlpl.parser.parser import Parser
-        from nlpl.typesystem.typechecker import TypeChecker
+        from nexuslang.parser.lexer import Lexer
+        from nexuslang.parser.parser import Parser
+        from nexuslang.typesystem.typechecker import TypeChecker
     except ImportError as e:
-        print(f"Warning: Could not import NLPL compiler: {e}")
+        print(f"Warning: Could not import NexusLang compiler: {e}")
         print("Skipping type checking")
         return 0
     
     # Check each file
-    for file_path in nlpl_files:
+    for file_path in nxl_files:
         rel_path = file_path.relative_to(current)
         
         try:
@@ -295,7 +295,7 @@ def cmd_test(args):
     # Find project root
     current = Path.cwd()
     while current != current.parent:
-        if (current / "nlpl.toml").exists():
+        if (current / "nexuslang.toml").exists():
             break
         current = current.parent
     else:
@@ -321,8 +321,8 @@ def cmd_test(args):
         test_files.extend(tests_dir.rglob("test_*.py"))
     
     if test_programs_dir.exists():
-        # NLPL test programs
-        test_files.extend(test_programs_dir.rglob("test_*.nlpl"))
+        # NexusLang test programs
+        test_files.extend(test_programs_dir.rglob("test_*.nxl"))
     
     if not test_files:
         print("No test files found in tests/ or test_programs/")
@@ -364,19 +364,19 @@ def cmd_test(args):
         except Exception as e:
             print(f"  Error running Python tests: {e}")
     
-    # Run NLPL test programs
-    nlpl_tests = [f for f in test_files if f.suffix == '.nlpl']
-    if nlpl_tests:
-        print(f"\nRunning {len(nlpl_tests)} NLPL test(s)...")
+    # Run NexusLang test programs
+    nxl_tests = [f for f in test_files if f.suffix == '.nxl']
+    if nxl_tests:
+        print(f"\nRunning {len(nxl_tests)} NexusLang test(s)...")
         
-        for test_file in nlpl_tests:
+        for test_file in nxl_tests:
             rel_path = test_file.relative_to(current)
             
             try:
                 # Try to compile and run the test
                 import subprocess
                 
-                # Use the NLPL compiler
+                # Use the NexusLang compiler
                 result = subprocess.run(
                     ['python3', 'src/main.py', str(test_file)],
                     cwd=current,
@@ -426,7 +426,7 @@ def cmd_doc(args):
     # Find project root
     current = Path.cwd()
     while current != current.parent:
-        if (current / "nlpl.toml").exists():
+        if (current / "nexuslang.toml").exists():
             break
         current = current.parent
     else:
@@ -445,34 +445,34 @@ def cmd_doc(args):
     docs_dir = current / "docs"
     docs_dir.mkdir(exist_ok=True)
     
-    # Find all NLPL source files
+    # Find all NexusLang source files
     src_dir = current / "src"
     if not src_dir.exists():
         print("Error: No src/ directory found")
         return 1
     
-    nlpl_files = list(src_dir.rglob("*.nlpl"))
+    nxl_files = list(src_dir.rglob("*.nxl"))
     
-    if not nlpl_files:
+    if not nxl_files:
         print("Warning: No .nlpl files found in src/")
         return 0
     
-    print(f"Found {len(nlpl_files)} file(s) to document")
+    print(f"Found {len(nxl_files)} file(s) to document")
     
-    # Import NLPL compiler components
+    # Import NexusLang compiler components
     sys.path.insert(0, str(current / "src"))
     
     try:
-        from nlpl.parser.lexer import Lexer
-        from nlpl.parser.parser import Parser
+        from nexuslang.parser.lexer import Lexer
+        from nexuslang.parser.parser import Parser
     except ImportError as e:
-        print(f"Error: Could not import NLPL compiler: {e}")
+        print(f"Error: Could not import NexusLang compiler: {e}")
         return 1
     
     # Generate documentation for each file
     all_docs = []
     
-    for file_path in nlpl_files:
+    for file_path in nxl_files:
         rel_path = file_path.relative_to(src_dir)
         
         try:

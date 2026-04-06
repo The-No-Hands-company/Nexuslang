@@ -8,8 +8,8 @@ import com.intellij.openapi.options.colors.ColorSettingsPage
 import javax.swing.Icon
 
 /**
- * Provides the Colors & Fonts settings page for NLPL under
- * Settings | Editor | Color Scheme | NLPL.
+ * Provides the Colors & Fonts settings page for NexusLang under
+ * Settings | Editor | Color Scheme | NexusLang.
  */
 class NlplColorSettingsPage : ColorSettingsPage {
 
@@ -72,5 +72,5 @@ end
 
     override fun getColorDescriptors(): Array<ColorDescriptor> = ColorDescriptor.EMPTY_ARRAY
 
-    override fun getDisplayName(): String = "NLPL"
+    override fun getDisplayName(): String = "NexusLang"
 }

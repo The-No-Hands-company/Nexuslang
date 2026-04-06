@@ -1,8 +1,8 @@
-# Function Pointers in NLPL
+# Function Pointers in NexusLang
 
 ## Overview
 
-Function pointers in NLPL allow you to store references to functions and pass them around as values. This enables callbacks, higher-order programming patterns, and dynamic function selection.
+Function pointers in NexusLang allow you to store references to functions and pass them around as values. This enables callbacks, higher-order programming patterns, and dynamic function selection.
 
 ## Current Implementation Status
 
@@ -166,7 +166,7 @@ entry:
 Function names are mangled according to the same rules as function definitions:
 - Global functions: `@function_name`
 - Module functions: `@module_name_function_name`
-- Main function: `@nlpl_main`
+- Main function: `@nxl_main`
 
 ### LLVM Bitcast
 
@@ -232,7 +232,7 @@ int result = func_ptr(5, 3);
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 function add_numbers that takes a as Integer and b as Integer returns Integer
  return a plus b
 
@@ -252,7 +252,7 @@ result = func_ptr(5, 3)
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 function add_numbers that takes a as Integer and b as Integer returns Integer
  return a plus b
 
@@ -271,7 +271,7 @@ let result = func_ptr(5, 3);
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 function add_numbers that takes a as Integer and b as Integer returns Integer
  return a plus b
 

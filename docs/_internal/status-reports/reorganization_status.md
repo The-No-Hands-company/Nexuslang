@@ -1,4 +1,4 @@
-# NLPL Project Reorganization - Status Report
+# NexusLang Project Reorganization - Status Report
 
 ## Completed Successfully
 
@@ -87,7 +87,7 @@ int main(int argc, char** argv) {
 ### High Priority (Blocking Function Support)
 1. **Fix Function Calls**: Implement parsing for `<function> with <args>` syntax
 2. **Fix Return Statements**: Generate proper `return <expression>;` in C
-3. **Fix Function Parameter Types**: Map NLPL types C types in function signatures
+3. **Fix Function Parameter Types**: Map NexusLang types C types in function signatures
 4. **Disable Error Recovery**: Fail compilation on syntax errors instead of generating broken code
 
 ### Medium Priority

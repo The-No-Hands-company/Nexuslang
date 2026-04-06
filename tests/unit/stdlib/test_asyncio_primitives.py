@@ -1,5 +1,5 @@
 """
-Tests for NLPL async concurrency primitives and async runtime core:
+Tests for NexusLang async concurrency primitives and async runtime core:
   - NLPLAsyncChannel  (async_channel_*)
   - NLPLAsyncLock     (async_lock_*)
   - NLPLAsyncSemaphore (async_semaphore_*)
@@ -23,7 +23,7 @@ _PROJECT_ROOT = os.path.abspath(
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from nlpl.stdlib.asyncio_utils.async_runtime import (
+from nexuslang.stdlib.asyncio_utils.async_runtime import (
     # Channel
     NLPLAsyncChannel,
     async_channel_create,

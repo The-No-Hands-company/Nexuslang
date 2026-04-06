@@ -7,7 +7,7 @@
 
 ## Overview
 
-Successfully completed the Memory-Mapped I/O (MMIO) implementation, adding 14 new functions to the hardware stdlib module. During testing, discovered and fixed a critical interpreter bug that prevented ALL functions with underscores in their names from being called from NLPL code. Both the MMIO implementation and the bug fix are now complete, tested, and pushed to GitHub.
+Successfully completed the Memory-Mapped I/O (MMIO) implementation, adding 14 new functions to the hardware stdlib module. During testing, discovered and fixed a critical interpreter bug that prevented ALL functions with underscores in their names from being called from NexusLang code. Both the MMIO implementation and the bug fix are now complete, tested, and pushed to GitHub.
 
 ---
 
@@ -87,7 +87,7 @@ All writes:
 ### 2. Critical Interpreter Bug Fix
 
 **Bug Description:**
-Functions with underscores in their names (e.g., `map_memory`, `read_port_byte`) could not be called from NLPL code. They were registered correctly, tokenized correctly, but failed at runtime with:
+Functions with underscores in their names (e.g., `map_memory`, `read_port_byte`) could not be called from NexusLang code. They were registered correctly, tokenized correctly, but failed at runtime with:
 ```
 Name Error: Name 'map_memory' is not defined
    Did you mean one of these?
@@ -102,12 +102,12 @@ except NameError:
     pass
 ```
 
-But `get_variable()` raises `NLPLNameError` (not `NameError`). `NLPLNameError` inherits from `NLPLError` → `Exception`, NOT from `NameError`. So the exception wasn't caught, causing function lookup to fail.
+But `get_variable()` raises `NxlNameError` (not `NameError`). `NxlNameError` inherits from `NxlError` → `Exception`, NOT from `NameError`. So the exception wasn't caught, causing function lookup to fail.
 
 **Fix:**
 Changed line 2227 to:
 ```python
-except (NameError, NLPLNameError):
+except (NameError, NxlNameError):
     # Variable not found, continue to check if it's a function name
     pass
 ```
@@ -182,7 +182,7 @@ if params and params[0] == 'runtime':
 - ✅ Proper privilege errors without root
 - ✅ Error handling works as expected
 - ✅ Cache hints validated correctly
-- ✅ Basic NLPL functionality unaffected (verified with hello world)
+- ✅ Basic NexusLang functionality unaffected (verified with hello world)
 
 ---
 
@@ -199,7 +199,7 @@ if params and params[0] == 'runtime':
    - Updated `register_stdlib()` to register new functions
 
 2. **`src/nlpl/interpreter/interpreter.py`** (+10 lines, modified 2 sections)
-   - Line 2227: Changed `except NameError:` → `except (NameError, NLPLNameError):`
+   - Line 2227: Changed `except NameError:` → `except (NameError, NxlNameError):`
    - Lines 2248-2269: Added runtime parameter injection with inspect.signature()
 
 3. **`docs/project_status/MISSING_FEATURES_ROADMAP.md`** (+10 lines)
@@ -299,20 +299,20 @@ mem.flush()  # Force write to hardware
 ```
 Exception
 ├── NameError (Python builtin)
-└── NLPLError (custom base class)
-    ├── NLPLSyntaxError
-    ├── NLPLRuntimeError
-    ├── NLPLNameError ← This was the issue
-    └── NLPLTypeError
+└── NxlError (custom base class)
+    ├── NxlSyntaxError
+    ├── NxlRuntimeError
+    ├── NxlNameError ← This was the issue
+    └── NxlTypeError
 ```
 
 **Why It Failed:**
 ```python
 try:
-    var_value = self.get_variable(function_name)  # Raises NLPLNameError
+    var_value = self.get_variable(function_name)  # Raises NxlNameError
     if callable(var_value):
         return var_value(*positional_args, **named_args)
-except NameError:  # ❌ Doesn't catch NLPLNameError!
+except NameError:  # ❌ Doesn't catch NxlNameError!
     pass
 
 # Code never reached here because exception propagated:
@@ -326,7 +326,7 @@ try:
     var_value = self.get_variable(function_name)
     if callable(var_value):
         return var_value(*positional_args, **named_args)
-except (NameError, NLPLNameError):  # ✅ Now catches both!
+except (NameError, NxlNameError):  # ✅ Now catches both!
     pass
 
 # Now code can continue to function lookup:

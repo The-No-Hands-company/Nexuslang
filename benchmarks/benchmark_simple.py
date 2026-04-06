@@ -45,7 +45,7 @@ print()
 
 # Test O0
 print("Compiling with -O0 (no optimization)...", end=" ", flush=True)
-times_o0 = benchmark_compiled("benchmark_fib.nlpl", 0)
+times_o0 = benchmark_compiled("benchmark_fib.nxl", 0)
 if times_o0:
     median_o0 = statistics.median(times_o0)
     mean_o0 = statistics.mean(times_o0)
@@ -59,7 +59,7 @@ else:
 
 # Test O2
 print("\nCompiling with -O2 (optimized)...", end=" ", flush=True)
-times_o2 = benchmark_compiled("benchmark_fib.nlpl", 2)
+times_o2 = benchmark_compiled("benchmark_fib.nxl", 2)
 if times_o2:
     median_o2 = statistics.median(times_o2)
     mean_o2 = statistics.mean(times_o2)
@@ -73,7 +73,7 @@ else:
 
 # Test O3
 print("\nCompiling with -O3 (aggressive optimization)...", end=" ", flush=True)
-times_o3 = benchmark_compiled("benchmark_fib.nlpl", 3)
+times_o3 = benchmark_compiled("benchmark_fib.nxl", 3)
 if times_o3:
     median_o3 = statistics.median(times_o3)
     mean_o3 = statistics.mean(times_o3)

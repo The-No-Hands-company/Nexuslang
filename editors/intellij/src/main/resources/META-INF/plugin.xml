@@ -5,7 +5,7 @@
         The No-Hands Company
     </vendor>
     <description><![CDATA[
-        <p>Native support for the <b>NLPL (Natural Language Programming Language)</b> in IntelliJ-based IDEs.</p>
+        <p>Native support for the <b>NLPL (NexusLang)</b> in IntelliJ-based IDEs.</p>
         <p>NLPL is a general-purpose programming language designed to read like natural English prose
         while providing full low-level control.</p>
 
@@ -13,7 +13,7 @@
         <ul>
             <li>Syntax highlighting for <code>.nlpl</code> files</li>
             <li>LSP integration: code completion, go-to-definition, find references</li>
-            <li>Hover documentation via NLPL language server</li>
+            <li>Hover documentation via NexusLang language server</li>
             <li>Inline diagnostics (errors and warnings)</li>
             <li>Signature help for function calls</li>
             <li>File type recognition with custom icon</li>
@@ -35,19 +35,19 @@
             name="NLPL File"
             implementationClass="com.nlpl.intellij.NlplFileType"
             fieldName="INSTANCE"
-            language="NLPL"
+            language="NexusLang"
             extensions="nlpl" />
 
         <!-- Syntax highlighting -->
         <lang.syntaxHighlighterFactory
-            language="NLPL"
+            language="NexusLang"
             implementationClass="com.nlpl.intellij.NlplSyntaxHighlighterFactory" />
 
         <!-- LSP server activation -->
         <platform.lsp.serverSupportProvider
             implementation="com.nlpl.intellij.NlplLspServerSupportProvider" />
 
-        <!-- Color settings page for customizing NLPL colors -->
+        <!-- Color settings page for customizing NexusLang colors -->
         <colorSettingsPage
             implementation="com.nlpl.intellij.NlplColorSettingsPage" />
 

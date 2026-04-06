@@ -1,17 +1,17 @@
 """
-Test suite for generic type system in NLPL.
+Test suite for generic type system in NexusLang.
 Tests generic type parsing, type inference, and type checking with generic types.
 """
 
 import pytest
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.parser.ast import ObjectInstantiation
-from nlpl.typesystem.types import (
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.parser.ast import ObjectInstantiation
+from nexuslang.typesystem.types import (
     get_type_by_name, ListType, DictionaryType,
     INTEGER_TYPE, STRING_TYPE, FLOAT_TYPE, BOOLEAN_TYPE, ANY_TYPE
 )
-from nlpl.typesystem.simple_inference import SimpleTypeInference
+from nexuslang.typesystem.simple_inference import SimpleTypeInference
 
 
 class TestGenericTypeParsing:

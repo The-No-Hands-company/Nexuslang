@@ -1,7 +1,7 @@
 """
-Compiler round-trip integration tests: NLPL source -> LLVM IR -> native binary -> execute.
+Compiler round-trip integration tests: NexusLang source -> LLVM IR -> native binary -> execute.
 
-Each test compiles a small NLPL program all the way to a native executable (via the
+Each test compiles a small NexusLang program all the way to a native executable (via the
 LLVMIRGenerator + LLVM/clang tool chain), runs it, and checks stdout against the
 expected output.
 
@@ -24,9 +24,9 @@ import pytest
 # Ensure the src/ tree is importable regardless of how pytest is invoked.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.compiler.backends.llvm_ir_generator import LLVMIRGenerator
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.compiler.backends.llvm_ir_generator import LLVMIRGenerator
 
 
 # ---------------------------------------------------------------------------
@@ -57,7 +57,7 @@ def compile_and_run(source: str) -> tuple[int, str, str]:
     ast = Parser(tokens).parse()
 
     gen = LLVMIRGenerator()
-    gen.generate(ast, source_file="test.nlpl")
+    gen.generate(ast, source_file="test.nxl")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         exe = os.path.join(tmpdir, "test_prog")
@@ -89,7 +89,7 @@ class CompilationFailed(Exception):
 
 @skip_no_llvm
 class TestCompilerRoundtrip:
-    """Each method compiles a specific NLPL program and checks the native output."""
+    """Each method compiles a specific NexusLang program and checks the native output."""
 
     # --- basic output -------------------------------------------------------
 
@@ -950,10 +950,10 @@ end
         ast = Parser(tokens).parse()
 
         gen_o0 = LLVMIRGenerator()
-        gen_o0.generate(ast, source_file="test.nlpl")
+        gen_o0.generate(ast, source_file="test.nxl")
 
         gen_o3 = LLVMIRGenerator()
-        gen_o3.generate(ast, source_file="test.nlpl")
+        gen_o3.generate(ast, source_file="test.nxl")
 
         import tempfile, io
         with tempfile.TemporaryDirectory() as d:

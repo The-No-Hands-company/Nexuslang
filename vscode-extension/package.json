@@ -1,7 +1,7 @@
 {
   "name": "nlpl-language-support",
   "displayName": "NLPL Language Support",
-  "description": "Language support for NLPL (Natural Language Programming Language) with LSP features",
+  "description": "Language support for NexusLang (NexusLang) with LSP features",
   "version": "0.1.0",
   "publisher": "nlpl",
   "license": "MIT",
@@ -33,11 +33,11 @@
       {
         "id": "nlpl",
         "aliases": [
-          "NLPL",
+          "NexusLang",
           "nlpl"
         ],
         "extensions": [
-          ".nlpl"
+          ".nxl"
         ],
         "configuration": "./language-configuration.json"
       }
@@ -45,47 +45,47 @@
     "grammars": [
       {
         "language": "nlpl",
-        "scopeName": "source.nlpl",
+        "scopeName": "source.nxl",
         "path": "./syntaxes/nlpl.tmLanguage.json"
       }
     ],
     "configuration": {
       "type": "object",
-      "title": "NLPL",
+      "title": "NexusLang",
       "properties": {
-        "nlpl.languageServer.enabled": {
+        "nexuslang.languageServer.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Enable NLPL language server"
+          "description": "Enable NexusLang language server"
         },
-        "nlpl.languageServer.path": {
+        "nexuslang.languageServer.path": {
           "type": "string",
           "default": "",
-          "description": "Path to NLPL language server executable. Leave empty to auto-detect from workspace."
+          "description": "Path to NexusLang language server executable. Leave empty to auto-detect from workspace."
         },
-        "nlpl.languageServer.pythonPath": {
+        "nexuslang.languageServer.pythonPath": {
           "type": "string",
           "default": "python3",
           "description": "Path to Python interpreter for running LSP server"
         },
-        "nlpl.languageServer.arguments": {
+        "nexuslang.languageServer.arguments": {
           "type": "array",
           "default": [
             "--stdio"
           ],
           "description": "Arguments to pass to the language server"
         },
-        "nlpl.languageServer.debug": {
+        "nexuslang.languageServer.debug": {
           "type": "boolean",
           "default": false,
           "description": "Enable debug mode for language server"
         },
-        "nlpl.languageServer.logFile": {
+        "nexuslang.languageServer.logFile": {
           "type": "string",
           "default": "",
           "description": "Path to log file for language server output"
         },
-        "nlpl.trace.server": {
+        "nexuslang.trace.server": {
           "type": "string",
           "enum": [
             "off",
@@ -95,12 +95,12 @@
           "default": "off",
           "description": "Traces the communication between VS Code and the language server"
         },
-        "nlpl.debugger.pythonPath": {
+        "nexuslang.debugger.pythonPath": {
           "type": "string",
           "default": "python3",
           "description": "Path to Python interpreter for running debug adapter"
         },
-        "nlpl.debugger.logFile": {
+        "nexuslang.debugger.logFile": {
           "type": "string",
           "default": "/tmp/nlpl-dap.log",
           "description": "Path to log file for debugger output"
@@ -109,9 +109,9 @@
     },
     "commands": [
       {
-        "command": "nlpl.explainErrorCode",
+        "command": "nexuslang.explainErrorCode",
         "title": "NLPL: Explain Error Code",
-        "category": "NLPL"
+        "category": "NexusLang"
       }
     ],
     "breakpoints": [
@@ -133,7 +133,7 @@
             "properties": {
               "program": {
                 "type": "string",
-                "description": "Absolute path to the NLPL program to debug",
+                "description": "Absolute path to the NexusLang program to debug",
                 "default": "${file}"
               },
               "stopOnEntry": {
@@ -158,7 +158,7 @@
               },
               "debugServerPath": {
                 "type": "string",
-                "description": "Path to NLPL debug adapter server",
+                "description": "Path to NexusLang debug adapter server",
                 "default": ""
               }
             }
@@ -170,7 +170,7 @@
             "properties": {
               "program": {
                 "type": "string",
-                "description": "Absolute path to the NLPL program to attach to"
+                "description": "Absolute path to the NexusLang program to attach to"
               }
             }
           }
@@ -179,7 +179,7 @@
           {
             "type": "nlpl",
             "request": "launch",
-            "name": "Debug NLPL Program",
+            "name": "Debug NexusLang Program",
             "program": "${file}",
             "stopOnEntry": false
           }
@@ -187,11 +187,11 @@
         "configurationSnippets": [
           {
             "label": "NLPL: Launch",
-            "description": "A new configuration for debugging NLPL programs",
+            "description": "A new configuration for debugging NexusLang programs",
             "body": {
               "type": "nlpl",
               "request": "launch",
-              "name": "Debug NLPL Program",
+              "name": "Debug NexusLang Program",
               "program": "^\"\\${file}\"",
               "stopOnEntry": false
             }

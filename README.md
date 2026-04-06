@@ -1,8 +1,8 @@
-# NLPL — Natural Language Programming Language
+# NexusLang — NexusLang
 
 > A general-purpose programming language that reads like English
 
-[![CI](https://github.com/Zajfan/NLPL/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Zajfan/NLPL/actions/workflows/ci.yml)
+[![CI](https://github.com/Zajfan/NexusLang/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Zajfan/NexusLang/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-4288%20passing-brightgreen)](tests/)
@@ -63,7 +63,7 @@ NLPL is pre-v1.0 and under active development. This is an honest assessment of w
 - **Performance:** The interpreter is significantly slower than C for computation-heavy code. The LLVM compiled path produces fast native code, and compiler coverage has improved, but not every language construct is fully covered with production-grade semantics yet.
 - **Concurrency:** The async runtime exists and is tested, but has not been validated under heavy real-world workloads.
 - **FFI safety:** The FFI layer allows raw pointer operations; safety is the caller's responsibility inside `unsafe` blocks — there is no automatic checking.
-- **Self-hosting:** NLPL is not self-hosted. The entire toolchain is written in Python.
+- **Self-hosting:** NexusLang is not self-hosted. The entire toolchain is written in Python.
 - **Parser size:** The recursive descent parser is approximately 9,900 lines (~9,913 currently). This works but is a maintenance concern as the language evolves.
 
 ---
@@ -72,17 +72,17 @@ NLPL is pre-v1.0 and under active development. This is an honest assessment of w
 
 ```bash
 git clone https://github.com/Zajfan/NLPL
-cd NLPL
+cd NexusLang
 pip install -r requirements.txt
 
 # Run a program
-PYTHONPATH=src python -m nlpl.main examples/01_basics/01_basic_concepts.nlpl
+PYTHONPATH=src python -m nexuslang.main examples/01_basics/01_basic_concepts.nlpl
 
 # Start the LSP server (stdio mode for editor integration)
-PYTHONPATH=src python -m nlpl.lsp --stdio
+PYTHONPATH=src python -m nexuslang.lsp --stdio
 
 # Interactive REPL
-PYTHONPATH=src python -m nlpl.repl
+PYTHONPATH=src python -m nexuslang.repl
 
 # Run the full test suite
 PYTHONPATH=src python -m pytest tests/

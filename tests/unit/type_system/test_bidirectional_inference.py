@@ -2,12 +2,12 @@
 Test bidirectional type inference.
 """
 
-from nlpl.typesystem.types import (
+from nexuslang.typesystem.types import (
     ListType, DictionaryType, FunctionType,
     INTEGER_TYPE, STRING_TYPE, FLOAT_TYPE, get_type_by_name
 )
-from nlpl.typesystem.type_inference import TypeInferenceEngine
-from nlpl.parser.ast import Literal, VariableDeclaration
+from nexuslang.typesystem.type_inference import TypeInferenceEngine
+from nexuslang.parser.ast import Literal, VariableDeclaration
 
 def test_bidirectional_inference():
     """Test bidirectional type inference with expected types."""

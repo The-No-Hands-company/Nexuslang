@@ -1,4 +1,4 @@
-# NLPL Compiler Quick Reference
+# NexusLang Compiler Quick Reference
 
 ## Building & Running Programs
 

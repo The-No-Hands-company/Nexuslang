@@ -8,8 +8,8 @@ import os
 # Add parent directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from nlpl.parser.ast_cache import ASTCache
-from nlpl.parser.cached_parser import CachedParser
+from nexuslang.parser.ast_cache import ASTCache
+from nexuslang.parser.cached_parser import CachedParser
 
 
 def test_ast_cache():
@@ -21,29 +21,29 @@ def test_ast_cache():
     cache = ASTCache(max_entries=3, max_memory_mb=1)
     
     # Test cache miss
-    result = cache.get('test1.nlpl', 'set x to 1')
+    result = cache.get('test1.nxl', 'set x to 1')
     assert result is None, "Expected cache miss"
     print("✓ Cache miss works")
     
     # Test cache put and hit
     fake_ast = {'type': 'Program', 'statements': []}
-    cache.put('test1.nlpl', 'set x to 1', fake_ast)
-    result = cache.get('test1.nlpl', 'set x to 1')
+    cache.put('test1.nxl', 'set x to 1', fake_ast)
+    result = cache.get('test1.nxl', 'set x to 1')
     assert result == fake_ast, "Expected cache hit"
     print("✓ Cache put and hit works")
     
     # Test hash invalidation
-    result = cache.get('test1.nlpl', 'set x to 2')  # Different source
+    result = cache.get('test1.nxl', 'set x to 2')  # Different source
     assert result is None, "Expected invalidation on source change"
     print("✓ Hash-based invalidation works")
     
     # Test LRU eviction
-    cache.put('test1.nlpl', 'set x to 1', fake_ast)
-    cache.put('test2.nlpl', 'set y to 2', fake_ast)
-    cache.put('test3.nlpl', 'set z to 3', fake_ast)
-    cache.put('test4.nlpl', 'set w to 4', fake_ast)  # Should evict test1
+    cache.put('test1.nxl', 'set x to 1', fake_ast)
+    cache.put('test2.nxl', 'set y to 2', fake_ast)
+    cache.put('test3.nxl', 'set z to 3', fake_ast)
+    cache.put('test4.nxl', 'set w to 4', fake_ast)  # Should evict test1
     
-    result = cache.get('test1.nlpl', 'set x to 1')
+    result = cache.get('test1.nxl', 'set x to 1')
     assert result is None, "Expected test1 to be evicted"
     print("✓ LRU eviction works (max_entries limit)")
     
@@ -69,12 +69,12 @@ print text "Hello"
 """
     
     print("\n--- Parse 1: First time (should be cache miss) ---")
-    ast1 = cached_parser.parse('test_cached_1.nlpl', source1)
+    ast1 = cached_parser.parse('test_cached_1.nxl', source1)
     assert ast1 is not None, "Expected AST"
     print(f"✓ AST type: {type(ast1).__name__}")
     
     print("\n--- Parse 2: Same file, same content (should be cache hit) ---")
-    ast2 = cached_parser.parse('test_cached_1.nlpl', source1)
+    ast2 = cached_parser.parse('test_cached_1.nxl', source1)
     assert ast2 is ast1, "Expected same AST object from cache"
     print("✓ Got same AST object from cache (identity check)")
     
@@ -83,7 +83,7 @@ print text "Hello"
 set x to 100
 print text "Hello World"
 """
-    ast3 = cached_parser.parse('test_cached_1.nlpl', source1_modified)
+    ast3 = cached_parser.parse('test_cached_1.nxl', source1_modified)
     assert ast3 is not ast1, "Expected different AST object"
     print("✓ Got new AST object (content changed)")
     
@@ -93,12 +93,12 @@ function add with a as Integer, b as Integer returns Integer
     return a plus b
 end
 """
-    ast4 = cached_parser.parse('test_cached_2.nlpl', source2)
+    ast4 = cached_parser.parse('test_cached_2.nxl', source2)
     assert ast4 is not None, "Expected AST"
     print(f"✓ AST type: {type(ast4).__name__}")
     
     print("\n--- Parse 5: Re-parse test_cached_2.nlpl (should be cache hit) ---")
-    ast5 = cached_parser.parse('test_cached_2.nlpl', source2)
+    ast5 = cached_parser.parse('test_cached_2.nxl', source2)
     assert ast5 is ast4, "Expected same AST object from cache"
     print("✓ Got same AST object from cache")
     
@@ -118,7 +118,7 @@ def test_performance_benefit():
     import time
     
     # Read a real example file
-    example_file = 'examples/01_basic_concepts.nlpl'
+    example_file = 'examples/01_basic_concepts.nxl'
     if not os.path.exists(example_file):
         print(f"⚠ Skipping performance test - {example_file} not found")
         return
@@ -174,15 +174,15 @@ def test_memory_limits():
     print(f"Large source: {len(large_source)} chars, {large_source.count(chr(10))} lines")
     
     # Parse and cache
-    from nlpl.parser.lexer import Lexer
-    from nlpl.parser.parser import Parser
+    from nexuslang.parser.lexer import Lexer
+    from nexuslang.parser.parser import Parser
     
     lexer = Lexer(large_source)
     tokens = lexer.tokenize()
     parser = Parser(tokens)
     ast = parser.parse()
     
-    cache.put('large.nlpl', large_source, ast)
+    cache.put('large.nxl', large_source, ast)
     
     stats = cache.get_stats()
     print(f"Cache after large file:")
@@ -198,7 +198,7 @@ def test_memory_limits():
         tokens = lexer.tokenize()
         parser = Parser(tokens)
         ast = parser.parse()
-        cache.put(f'file{i}.nlpl', source, ast)
+        cache.put(f'file{i}.nxl', source, ast)
     
     stats = cache.get_stats()
     print(f"\nCache after adding 5 more files:")

@@ -1,4 +1,4 @@
-# NLPL LSP Quick Start Guide
+# NexusLang LSP Quick Start Guide
 
 ## Install Extension (30 seconds)
 
@@ -23,9 +23,9 @@ Then reload VS Code: `Ctrl+Shift+P` → "Reload Window"
 python3 --version
 
 # Check LSP runs
-python -m nlpl.lsp --help
+python -m nexuslang.lsp --help
 
-# Check VS Code Output panel (View → Output → NLPL Language Server)
+# Check VS Code Output panel (View → Output → NexusLang Language Server)
 ```
 
 **Enable debug logging:**

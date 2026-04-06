@@ -3,10 +3,10 @@ Tests for generic type parameter inference.
 """
 
 import pytest
-from nlpl.typesystem.generic_inference import (
+from nexuslang.typesystem.generic_inference import (
     GenericTypeInference, TypeSubstitution, infer_generic_types
 )
-from nlpl.typesystem.types import (
+from nexuslang.typesystem.types import (
     ListType, DictionaryType, INTEGER_TYPE, STRING_TYPE, FLOAT_TYPE, BOOLEAN_TYPE
 )
 

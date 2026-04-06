@@ -1,12 +1,12 @@
-# Source Code Analyzer -- NLPL Showcase Project
+# Source Code Analyzer -- NexusLang Showcase Project
 
-A practical CLI tool written entirely in NLPL (~590 lines) that scans a directory of source files and produces a detailed analysis report with formatted tables and visual bars.
+A practical CLI tool written entirely in NexusLang (~590 lines) that scans a directory of source files and produces a detailed analysis report with formatted tables and visual bars.
 
 ## Running
 
 ```bash
-# From the NLPL repo root:
-PYTHONPATH=src python -m nlpl.main showcase/source_analyzer/analyze.nlpl --no-type-check
+# From the NexusLang repo root:
+PYTHONPATH=src python -m nexuslang.main showcase/source_analyzer/analyze.nlpl --no-type-check
 ```
 
 By default, the analyzer scans `src/nlpl/parser`. To change the target, edit the `target_directory` variable at the top of `analyze.nlpl`.
@@ -23,7 +23,7 @@ By default, the analyzer scans `src/nlpl/parser`. To change the target, edit the
 
 ```
 ================================================================================
-  NLPL Source Code Analyzer
+  NexusLang Source Code Analyzer
   Scanning: src/nlpl/parser
 ================================================================================
 
@@ -60,9 +60,9 @@ By default, the analyzer scans `src/nlpl/parser`. To change the target, edit the
   TOTAL                  9     13637      9598      1693    2346    571.0 KB
 ```
 
-## NLPL Features Exercised
+## NexusLang Features Exercised
 
-This program demonstrates a wide range of NLPL language capabilities:
+This program demonstrates a wide range of NexusLang language capabilities:
 
 | Feature | Usage |
 |---------|-------|
@@ -78,7 +78,7 @@ This program demonstrates a wide range of NLPL language capabilities:
 
 ## Development History
 
-Building this tool initially revealed 5 usability gaps in NLPL. All 5 were fixed at the
+Building this tool initially revealed 5 usability gaps in NexusLang. All 5 were fixed at the
 language implementation level (not worked around):
 
 | Issue Found | Fix Applied |

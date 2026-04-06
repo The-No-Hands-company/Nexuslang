@@ -18,7 +18,7 @@ Working on expanding NLPL's example library and documenting advanced features in
 - Best practices guide
 
 **Learnings:**
-- NLPL parser has full async/await infrastructure (AsyncFunctionDefinition, AwaitExpression)
+- NexusLang parser has full async/await infrastructure (AsyncFunctionDefinition, AwaitExpression)
 - String concatenation cannot use nested parentheses with `to_string` - must extract to intermediate variables
 - `callback` is a reserved token - renamed parameter to `handler`
 
@@ -59,7 +59,7 @@ print text "Number: " plus (num to_string)  # SYNTAX ERROR
 3. Nested try-catch is not supported
 4. Decorator error on line 87 (unclear cause)
 
-**Learnings about NLPL error handling:**
+**Learnings about NexusLang error handling:**
 - Parser has `raise_statement()` method
 - Supports:
   - `raise` - re-raise current exception
@@ -121,11 +121,11 @@ raise error with message "message"
 ### Error System
 **Location:** `src/nlpl/errors.py`
 **Classes:**
-- `NLPLError` - Base error with formatting, line/column/source context
-- `NLPLSyntaxError` - Suggestions, expected/got comparison
-- `NLPLRuntimeError` - Stack traces, variable context
-- `NLPLNameError` - Did-you-mean suggestions using difflib
-- `NLPLTypeError` - Type mismatch information
+- `NxlError` - Base error with formatting, line/column/source context
+- `NxlSyntaxError` - Suggestions, expected/got comparison
+- `NxlRuntimeError` - Stack traces, variable context
+- `NxlNameError` - Did-you-mean suggestions using difflib
+- `NxlTypeError` - Type mismatch information
 
 **Methods:**
 - `get_close_matches()` - Fuzzy string matching for suggestions
@@ -186,7 +186,7 @@ raise error with message "message"
 
 ## Lessons Learned
 
-### NLPL Syntax Quirks
+### NexusLang Syntax Quirks
 1. No nested parentheses in string concatenation expressions
 2. Reserved tokens cannot be used as identifiers (even parameters)
 3. Some features have parser support but no interpreter implementation

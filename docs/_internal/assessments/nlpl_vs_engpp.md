@@ -1,10 +1,10 @@
-# NLPL vs Eng++: Syntax Comparison
+# NexusLang vs Eng++: Syntax Comparison
 
-This document compares the Natural Language Programming Language (NLPL) with the proposed Eng++ syntax, highlighting similarities, differences, and potential integration points.
+This document compares the NexusLang (NexusLang) with the proposed Eng++ syntax, highlighting similarities, differences, and potential integration points.
 
 ## 1. Overview
 
-Both NLPL and Eng++ aim to create programming languages with English-like syntax while maintaining the power of traditional languages like C++. They share similar design goals but differ in some syntactic choices and implementation details.
+Both NexusLang and Eng++ aim to create programming languages with English-like syntax while maintaining the power of traditional languages like C++. They share similar design goals but differ in some syntactic choices and implementation details.
 
 ## 2. Similarities
 
@@ -43,7 +43,7 @@ Create an integer called counter and set it to 0.
 Create integer called x and set it to 10.
 ```
 
-The syntax is nearly identical, with NLPL using articles ("an", "a") before types.
+The syntax is nearly identical, with NexusLang using articles ("an", "a") before types.
 
 ### 3.2 Function Definition
 
@@ -64,7 +64,7 @@ Define a function called add that takes an integer a and an integer b and return
 End the function.
 ```
 
-Both use similar patterns, but Eng++ explicitly ends with "End the function" while NLPL uses just "End".
+Both use similar patterns, but Eng++ explicitly ends with "End the function" while NexusLang uses just "End".
 
 ### 3.3 Conditional Statements
 
@@ -192,7 +192,7 @@ Similar structure, with minor differences in termination syntax.
 
 The two language designs could be integrated by:
 
-1. **Adopting Eng++ Punctuation:** Adding commas and periods to NLPL could improve readability and reduce parsing ambiguity.
+1. **Adopting Eng++ Punctuation:** Adding commas and periods to NexusLang could improve readability and reduce parsing ambiguity.
 
 2. **Merging Loop Constructs:** Combining NLPL's for-each loop with Eng++'s repeat-n-times loop would provide more flexibility.
 
@@ -255,8 +255,8 @@ But if it fails,
 End try.
 ```
 
-This unified syntax combines the clarity of Eng++ with the advanced features and flexibility of NLPL.
+This unified syntax combines the clarity of Eng++ with the advanced features and flexibility of NexusLang.
 
 ## 7. Conclusion
 
-Both NLPL and Eng++ represent significant steps toward making programming more accessible through natural language syntax. By combining their strengths, we can create an even more powerful and user-friendly programming language that maintains the expressiveness of C++ while being more approachable to newcomers and non-programmers.
+Both NexusLang and Eng++ represent significant steps toward making programming more accessible through natural language syntax. By combining their strengths, we can create an even more powerful and user-friendly programming language that maintains the expressiveness of C++ while being more approachable to newcomers and non-programmers.

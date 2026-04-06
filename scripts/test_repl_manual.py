@@ -2,7 +2,7 @@
 """
 Manual REPL Test
 
-Interactive test scenarios for the NLPL REPL.
+Interactive test scenarios for the NexusLang REPL.
 Run manually to verify REPL functionality.
 """
 
@@ -13,22 +13,22 @@ NLPL REPL Manual Test Suite
 This script guides you through testing the REPL interactively.
 Start the REPL in another terminal with:
 
- python -m nlpl.main
+ python -m nexuslang.main
 
 Or:
  
- python nlpl_repl.py
+ python nxl_repl.py
 
 Then test these scenarios:
 
 TEST 1: Basic Variable Assignment
 ----------------------------------
 >>> set x to 42
->>> set name to "NLPL"
+>>> set name to "NexusLang"
 >>> print text name
 >>> :vars
 
-Expected: Should show x=42, name="NLPL"
+Expected: Should show x=42, name="NexusLang"
 
 TEST 2: Multi-line Function Definition
 ---------------------------------------
@@ -167,17 +167,17 @@ Quick Start Commands:
 =====================
 
 # Start REPL:
-python -m nlpl.main
+python -m nexuslang.main
 
 # Start REPL with debug:
-python -m nlpl.main --debug
+python -m nexuslang.main --debug
 
 # Start REPL without type checking:
-python -m nlpl.main --no-type-check
+python -m nexuslang.main --no-type-check
 
 # Or use convenience script:
-python nlpl_repl.py
+python nxl_repl.py
 
 # Run a file then enter REPL:
-python -m nlpl.main examples/01_basic_concepts.nlpl --repl
+python -m nexuslang.main examples/01_basic_concepts.nlpl --repl
 """)

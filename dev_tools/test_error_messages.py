@@ -4,7 +4,7 @@
 import sys
 sys.path.insert(0, 'src')
 
-from nlpl.errors import NLPLSyntaxError, NLPLNameError, NLPLTypeError
+from nexuslang.errors import NxlSyntaxError, NxlNameError, NxlTypeError
 
 # Test 1: Syntax error with context
 source = """set x to 5
@@ -18,7 +18,7 @@ print("TEST 1: Syntax Error with Full Context")
 print("=" * 80)
 
 try:
-    raise NLPLSyntaxError(
+    raise NxlSyntaxError(
         "Unexpected end of expression",
         line=3,
         column=17,
@@ -27,7 +27,7 @@ try:
         got="newline",
         full_source=source
     )
-except NLPLSyntaxError as e:
+except NxlSyntaxError as e:
     print(e)
 
 print("\n\n")
@@ -46,7 +46,7 @@ print("TEST 2: Name Error with Did-You-Mean")
 print("=" * 80)
 
 try:
-    raise NLPLNameError(
+    raise NxlNameError(
         name="countr",
         line=4,
         column=7,
@@ -54,7 +54,7 @@ try:
         error_type_key="undefined_variable",
         full_source=source2
     )
-except NLPLNameError as e:
+except NxlNameError as e:
     print(e)
 
 print("\n\n")
@@ -70,7 +70,7 @@ print("TEST 3: Type Error with Type Info")
 print("=" * 80)
 
 try:
-    raise NLPLTypeError(
+    raise NxlTypeError(
         "Cannot add Integer and String",
         line=3,
         column=15,
@@ -79,5 +79,5 @@ try:
         error_type_key="type_mismatch",
         full_source=source3
     )
-except NLPLTypeError as e:
+except NxlTypeError as e:
     print(e)

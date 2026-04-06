@@ -3,12 +3,12 @@ package com.nlpl.intellij
 import com.intellij.lang.Language
 
 /**
- * Singleton Language descriptor for NLPL.
+ * Singleton Language descriptor for NexusLang.
  * Registered as an IntelliJ Platform Language extension point.
  */
-object NlplLanguage : Language("NLPL") {
+object NlplLanguage : Language("NexusLang") {
 
-    override fun getDisplayName(): String = "NLPL"
+    override fun getDisplayName(): String = "NexusLang"
 
     override fun isCaseSensitive(): Boolean = true
 

@@ -3,7 +3,7 @@
 NLPL Code Formatter
 ===================
 
-Automatic code formatter for NLPL source files.
+Automatic code formatter for NexusLang source files.
 
 Features:
 - Consistent indentation (4 spaces)
@@ -14,9 +14,9 @@ Features:
 - Block structure alignment
 
 Usage:
-    python dev_tools/nlpl_format.py file.nlpl          # Format and print
-    python dev_tools/nlpl_format.py file.nlpl --write  # Format in-place
-    python dev_tools/nlpl_format.py dir/ --recursive   # Format directory
+    python dev_tools/nxl_format.py file.nlpl          # Format and print
+    python dev_tools/nxl_format.py file.nlpl --write  # Format in-place
+    python dev_tools/nxl_format.py dir/ --recursive   # Format directory
 """
 
 import argparse
@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import List, Tuple
 
 class NLPLFormatter:
-    """Format NLPL source code."""
+    """Format NexusLang source code."""
     
     def __init__(self, indent_size: int = 4, max_line_length: int = 100):
         self.indent_size = indent_size
@@ -53,7 +53,7 @@ class NLPLFormatter:
         }
     
     def format_code(self, source: str) -> str:
-        """Format NLPL source code."""
+        """Format NexusLang source code."""
         lines = source.split('\n')
         formatted_lines = []
         current_indent = 0
@@ -244,9 +244,9 @@ class NLPLFormatter:
         results = []
         
         if recursive:
-            pattern = "**/*.nlpl"
+            pattern = "**/*.nxl"
         else:
-            pattern = "*.nlpl"
+            pattern = "*.nxl"
         
         path = Path(dir_path)
         for file_path in path.glob(pattern):
@@ -265,7 +265,7 @@ class NLPLFormatter:
 def main():
     """Main entry point for formatter."""
     parser = argparse.ArgumentParser(
-        description="NLPL Code Formatter - Format NLPL source code",
+        description="NLPL Code Formatter - Format NexusLang source code",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__
     )
@@ -316,7 +316,7 @@ def main():
     
     # Format file or directory
     if os.path.isfile(args.path):
-        if not args.path.endswith('.nlpl'):
+        if not args.path.endswith('.nxl'):
             print("Error: File must have .nlpl extension")
             return 1
         

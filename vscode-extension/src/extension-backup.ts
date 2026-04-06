@@ -11,7 +11,7 @@ import { activateDebugSupport } from './debugAdapter';
 let client: LanguageClient;
 
 export async function activate(context: vscode.ExtensionContext) {
-    console.log('[NLPL] Extension activation started');
+    console.log('[NexusLang] Extension activation started');
     vscode.window.showInformationMessage('NLPL extension is activating...');
 
     // Activate debug support
@@ -21,10 +21,10 @@ export async function activate(context: vscode.ExtensionContext) {
     const config = vscode.workspace.getConfiguration('nlpl');
     const enabled = config.get<boolean>('languageServer.enabled', true);
     
-    console.log('[NLPL] Language server enabled:', enabled);
+    console.log('[NexusLang] Language server enabled:', enabled);
 
     if (!enabled) {
-        console.log('[NLPL] Language server is disabled');
+        console.log('[NexusLang] Language server is disabled');
         return;
     }
 
@@ -60,14 +60,14 @@ export async function activate(context: vscode.ExtensionContext) {
         args.push('--log-file', logFile);
     }
 
-    console.log('[NLPL] Server command:', serverPath);
-    console.log('[NLPL] Server args:', args);
+    console.log('[NexusLang] Server command:', serverPath);
+    console.log('[NexusLang] Server args:', args);
 
     // Server options with PYTHONPATH for workspace
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     const pythonPath = workspaceFolder ? path.join(workspaceFolder.uri.fsPath, 'src') : process.env.PYTHONPATH;
     
-    console.log('[NLPL] PYTHONPATH:', pythonPath);
+    console.log('[NexusLang] PYTHONPATH:', pythonPath);
     
     const serverOptions: ServerOptions = {
         command: serverPath,
@@ -85,12 +85,12 @@ export async function activate(context: vscode.ExtensionContext) {
     const clientOptions: LanguageClientOptions = {
         documentSelector: [{ scheme: 'file', language: 'nlpl' }],
         synchronize: {
-            fileEvents: vscode.workspace.createFileSystemWatcher('**/*.nlpl')
+            fileEvents: vscode.workspace.createFileSystemWatcher('**/*.nxl')
         }
     };
 
     // Create the language client
-    console.log('[NLPL] Creating language client...');
+    console.log('[NexusLang] Creating language client...');
     
     client = new LanguageClient(
         'nlplLanguageServer',
@@ -100,13 +100,13 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     // Start the client (async)
-    console.log('[NLPL] Starting language client...');
+    console.log('[NexusLang] Starting language client...');
     try {
         await client.start();
-        console.log('[NLPL] Language server started successfully!');
+        console.log('[NexusLang] Language server started successfully!');
         vscode.window.showInformationMessage('NLPL Language Server started successfully!');
     } catch (error) {
-        console.error('[NLPL] Failed to start language server:', error);
+        console.error('[NexusLang] Failed to start language server:', error);
         vscode.window.showErrorMessage(`NLPL Language Server failed to start: ${error}`);
     }
 }

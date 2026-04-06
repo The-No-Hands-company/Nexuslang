@@ -1,4 +1,4 @@
-# NLPL Type System Status - Bidirectional Inference Complete
+# NexusLang Type System Status - Bidirectional Inference Complete
 **Date**: January 5, 2026 
 **Session**: Type Inference Enhancement - Phase 1 
 **Commit**: 8635338

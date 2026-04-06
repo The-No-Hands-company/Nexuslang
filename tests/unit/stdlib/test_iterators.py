@@ -5,11 +5,11 @@ Production-ready test suite - comprehensive coverage, no shortcuts.
 """
 
 import pytest
-from nlpl.stdlib.iterators import (
+from nexuslang.stdlib.iterators import (
     RangeIterator, create_range, iterator_map, iterator_filter,
     iterator_reduce, iterator_take, iterator_skip
 )
-from nlpl.stdlib.option_result import Some, NoneValue
+from nexuslang.stdlib.option_result import Some, NoneValue
 
 
 class TestRangeIterator:

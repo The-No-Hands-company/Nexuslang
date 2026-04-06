@@ -5,10 +5,10 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.typesystem.typechecker import TypeChecker
-from nlpl.typesystem.types import ChannelType, INTEGER_TYPE
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.typesystem.typechecker import TypeChecker
+from nexuslang.typesystem.types import ChannelType, INTEGER_TYPE
 
 
 def _parse(code: str):

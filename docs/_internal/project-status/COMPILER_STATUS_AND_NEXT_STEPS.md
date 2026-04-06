@@ -1,4 +1,4 @@
-# NLPL Compiler - Current Status & Next Steps
+# NexusLang Compiler - Current Status & Next Steps
 
 ## What We've Accomplished
 
@@ -115,7 +115,7 @@
 
 3. **C Header Generation**
  ```nlpl
- # Export NLPL function to C
+ # Export NexusLang function to C
  export function calculate that takes x as Integer returns Integer
  return x times 2
  
@@ -274,7 +274,7 @@
 2. **Production Readiness**
  - Currently: Panics crash the program
  - With error handling: Graceful recovery
- - Makes NLPL viable for real applications
+ - Makes NexusLang viable for real applications
 
 3. **Perfect Timing**
  - Optimization system is complete

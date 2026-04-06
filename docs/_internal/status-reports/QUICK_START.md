@@ -1,6 +1,6 @@
-# NLPL Quick Start Guide
+# NexusLang Quick Start Guide
 
-Get NLPL running in **5 minutes** - choose your installation method.
+Get NexusLang running in **5 minutes** - choose your installation method.
 
 ## Prerequisites
 
@@ -22,7 +22,7 @@ python3 --version # Should be 3.11 or higher
 **For developers in this repository:**
 
 ```bash
-# 1. Install NLPL globally
+# 1. Install NexusLang globally
 ./install_extension_globally.sh
 
 # 2. Reload VSCode
@@ -39,13 +39,13 @@ code examples/01_basic_concepts.nlpl
 cd your-project/
 
 # 2. Copy extension files
-cp -r /path/to/NLPL/.vscode/extensions/nlpl .vscode/extensions/
+cp -r /path/to/NexusLang/.vscode/extensions/nlpl .vscode/extensions/
 
 # 3. Configure workspace
 cat > .vscode/settings.json << 'EOF'
 {
- "nlpl.languageServer.enabled": true,
- "nlpl.languageServer.path": "/path/to/NLPL/src/nlpl_lsp.py"
+ "nexuslang.languageServer.enabled": true,
+ "nexuslang.languageServer.path": "/path/to/NexusLang/src/nxl_lsp.py"
 }
 EOF
 
@@ -58,7 +58,7 @@ EOF
 
 ```bash
 # 1. Download latest release
-wget https://github.com/Zajfan/NLPL/releases/latest/download/nlpl-extension.vsix
+wget https://github.com/Zajfan/NexusLang/releases/latest/download/nlpl-extension.vsix
 
 # 2. Install in VSCode
 code --install-extension nlpl-extension.vsix
@@ -72,13 +72,13 @@ code --install-extension nlpl-extension.vsix
 
 1. Open VSCode
 2. Go to Extensions (Ctrl+Shift+X)
-3. Search "NLPL"
+3. Search "NexusLang"
 4. Click Install
 5. Reload VSCode
 
 ---
 
-## Your First NLPL Program
+## Your First NexusLang Program
 
 ### Step 1: Create a file
 
@@ -89,7 +89,7 @@ touch hello.nlpl
 ### Step 2: Write your code
 
 ```nlpl
-# hello.nlpl - Your first NLPL program
+# hello.nlpl - Your first NexusLang program
 
 # Variables are natural
 set name to "World"
@@ -213,9 +213,9 @@ Create `.vscode/settings.json` in your project:
 
 ```json
 {
- "nlpl.languageServer.enabled": true,
- "nlpl.languageServer.path": "/custom/path/to/nlpl_lsp.py",
- "nlpl.trace.server": "off"
+ "nexuslang.languageServer.enabled": true,
+ "nexuslang.languageServer.path": "/custom/path/to/nxl_lsp.py",
+ "nexuslang.trace.server": "off"
 }
 ```
 
@@ -225,7 +225,7 @@ Debug LSP issues with verbose logging:
 
 ```json
 {
- "nlpl.trace.server": "verbose"
+ "nexuslang.trace.server": "verbose"
 }
 ```
 
@@ -233,12 +233,12 @@ Then check: `View Output "NLPL Language Server"`
 
 ### File Associations
 
-Auto-detect NLPL files:
+Auto-detect NexusLang files:
 
 ```json
 {
  "files.associations": {
- "*.nlpl": "nlpl"
+ "*.nxl": "nlpl"
  }
 }
 ```
@@ -265,29 +265,29 @@ Auto-detect NLPL files:
 
 4. **Check extension is installed:**
  - Open Extensions (Ctrl+Shift+X)
- - Search "NLPL"
+ - Search "NexusLang"
  - Should show "Installed"
 
 ### No Auto-Completion?
 
 1. Ensure file has `.nlpl` extension
-2. Check language mode (bottom-right) shows "NLPL"
+2. Check language mode (bottom-right) shows "NexusLang"
 3. Try manual trigger: `Ctrl+Space`
 4. Check for errors in Problems panel: `Ctrl+Shift+M`
 
 ### Custom Installation Path?
 
-If NLPL is not in the default location:
+If NexusLang is not in the default location:
 
 1. Find LSP server:
  ```bash
- find ~ -name "nlpl_lsp.py" 2>/dev/null
+ find ~ -name "nxl_lsp.py" 2>/dev/null
  ```
 
 2. Update settings:
  ```json
  {
- "nlpl.languageServer.path": "/your/path/to/nlpl_lsp.py"
+ "nexuslang.languageServer.path": "/your/path/to/nxl_lsp.py"
  }
  ```
 
@@ -300,14 +300,14 @@ chmod +x package_extension.sh
 chmod +x setup_vscode_extension.sh
 
 # Ensure LSP server is accessible
-chmod +x src/nlpl_lsp.py
+chmod +x src/nxl_lsp.py
 ```
 
 ---
 
 ## Next Steps
 
-### Learn NLPL
+### Learn NexusLang
 
 1. **Language Guide:** `docs/2_language_basics/`
 2. **Examples:** `examples/` directory (25+ examples)
@@ -396,8 +396,8 @@ python3 src/main.py calculator.nlpl
 
 ## Get Help
 
-- **Issues:** https://github.com/Zajfan/NLPL/issues
-- **Discussions:** https://github.com/Zajfan/NLPL/discussions
+- **Issues:** https://github.com/Zajfan/NexusLang/issues
+- **Discussions:** https://github.com/Zajfan/NexusLang/discussions
 - **Documentation:** `docs/` directory
 - **Examples:** `examples/` directory
 

@@ -1,5 +1,5 @@
 """
-Tests for the NLPL linear algebra stdlib module (src/nlpl/stdlib/linalg).
+Tests for the NexusLang linear algebra stdlib module (src/nlpl/stdlib/linalg).
 
 Coverage
 --------
@@ -20,7 +20,7 @@ Coverage
 import math
 import pytest
 
-from nlpl.stdlib.linalg import (
+from nexuslang.stdlib.linalg import (
     mat_zeros, mat_ones, mat_identity, mat_diagonal, mat_from_list, mat_random,
     mat_shape, mat_rows, mat_cols, mat_is_square,
     mat_add, mat_sub, mat_scale, mat_negate, mat_element_mul,

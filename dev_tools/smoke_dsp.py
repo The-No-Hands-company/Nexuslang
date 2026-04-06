@@ -4,7 +4,7 @@ import math
 
 sys.path.insert(0, "src")
 
-import nlpl.stdlib.dsp as dsp_mod
+import nexuslang.stdlib.dsp as dsp_mod
 
 fft = dsp_mod.fft
 ifft = dsp_mod.ifft

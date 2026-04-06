@@ -7,7 +7,7 @@
 
 ## Part 1 — Project Structure
 
-A NLPL project is a directory containing a manifest file (`nlpl.toml`) and
+A NexusLang project is a directory containing a manifest file (`nlpl.toml`) and
 one or more `.nlpl` source files.
 
 ```
@@ -37,7 +37,7 @@ nlpl-math = "1.0"
 
 [[bin]]
 name = "my-project"
-path = "src/main.nlpl"
+path = "src/main.nxl"
 ```
 
 | Key | Meaning |
@@ -53,7 +53,7 @@ path = "src/main.nlpl"
 ## Part 3 — Common Build Commands
 
 ```bash
-# Run the project (interprets src/main.nlpl)
+# Run the project (interprets src/main.nxl)
 nlpl build run
 
 # Run with capabilities
@@ -113,11 +113,11 @@ nlpl-http = "1.3"
 ```
 
 ```nlpl
-import nlpl_csv
-import nlpl_http
+import nxl_csv
+import nxl_http
 
-set rows to nlpl_csv.parse_file with "data.csv"
-set response to nlpl_http.get with "https://api.example.com"
+set rows to nxl_csv.parse_file with "data.csv"
+set response to nxl_http.get with "https://api.example.com"
 ```
 
 Install dependencies (fetches from the registry):
@@ -135,15 +135,15 @@ A single project can produce several executables:
 ```toml
 [[bin]]
 name = "server"
-path = "src/server.nlpl"
+path = "src/server.nxl"
 
 [[bin]]
 name = "worker"
-path = "src/worker.nlpl"
+path = "src/worker.nxl"
 
 [[bin]]
 name = "cli"
-path = "src/cli.nlpl"
+path = "src/cli.nxl"
 ```
 
 ```bash

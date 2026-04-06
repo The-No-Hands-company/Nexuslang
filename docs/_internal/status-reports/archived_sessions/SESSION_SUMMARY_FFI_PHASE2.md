@@ -1,4 +1,4 @@
-# NLPL Development Session Summary - FFI Phase 2 Integration
+# NexusLang Development Session Summary - FFI Phase 2 Integration
 
 **Date**: November 26, 2024 
 **Session Duration**: ~2-3 hours 
@@ -6,7 +6,7 @@
 
 ## Objective
 
-Integrate the FFI (Foreign Function Interface) system into the NLPL compiler pipeline, enabling NLPL programs to call C library functions with full type safety and proper code generation.
+Integrate the FFI (Foreign Function Interface) system into the NexusLang compiler pipeline, enabling NexusLang programs to call C library functions with full type safety and proper code generation.
 
 ## Achievements
 
@@ -33,7 +33,7 @@ Integrate the FFI (Foreign Function Interface) system into the NLPL compiler pip
 
 3. **C Function Name Flexibility**:
  - Allowed keywords like "malloc", "free", "printf", "sin", "cos", "pow" as extern function names
- - Parser accepts C function names even when they conflict with NLPL keywords
+ - Parser accepts C function names even when they conflict with NexusLang keywords
 
 ### 2. Type System Integration 
 
@@ -59,7 +59,7 @@ elif expr_type == 'FunctionCall':
 
 ### 3. Code Generation Quality 
 
-**Generated LLVM IR** (excerpt from test_ffi_math.nlpl):
+**Generated LLVM IR** (excerpt from test_ffi_math.nxl):
 ```llvm
 ; Correct type declarations
 @result = global double 0.0, align 8 ; Double (was i64)
@@ -82,7 +82,7 @@ store double %2, double* @result, align 8 ; Stores as double
 **All 4 test programs pass**:
 
 1. **test_ffi_basic.nlpl**: Basic printf call
- - Output: `Hello from NLPL calling C printf!`
+ - Output: `Hello from NexusLang calling C printf!`
 
 2. **test_ffi_math.nlpl**: Math library functions (sqrt, pow, sin)
  - Output: All calculations correct
@@ -161,17 +161,17 @@ store double %2, double* @result, align 8 ; Stores as double
 ### Phase 3: Advanced FFI Features (12-18 hours)
 
 1. **Struct Marshalling** (4-6 hours)
- - Pass NLPL structs to C functions
+ - Pass NexusLang structs to C functions
  - Handle struct alignment and padding
  - Support nested structs
 
 2. **Callback Functions** (6-8 hours)
- - Generate function pointers for NLPL functions
+ - Generate function pointers for NexusLang functions
  - Implement trampolines for calling convention compatibility
  - Support pthread_create, qsort, signal, etc.
 
-3. **Variadic NLPL Functions** (4-5 hours)
- - Allow NLPL functions to accept variable arguments
+3. **Variadic NexusLang Functions** (4-5 hours)
+ - Allow NexusLang functions to accept variable arguments
  - Implement va_list equivalents
 
 4. **Advanced Types** (3-4 hours)
@@ -196,7 +196,7 @@ store double %2, double* @result, align 8 ; Stores as double
 
 ## Conclusion
 
-Phase 2 of FFI integration is **100% complete**. The NLPL compiler can now:
+Phase 2 of FFI integration is **100% complete**. The NexusLang compiler can now:
 - Declare external C functions with proper signatures
 - Call C library functions with correct type marshalling
 - Infer return types from extern declarations

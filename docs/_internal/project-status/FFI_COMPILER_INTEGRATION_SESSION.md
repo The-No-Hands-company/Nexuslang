@@ -3,7 +3,7 @@
 **Focus**: Phase 3 - FFI & Interop (Compiler Integration)
 
 ## Objectives
-Integrate the existing FFI infrastructure into the NLPL compiler pipeline to enable compilation of programs that call C library functions.
+Integrate the existing FFI infrastructure into the NexusLang compiler pipeline to enable compilation of programs that call C library functions.
 
 ## Completed Work
 
@@ -38,7 +38,7 @@ Integrate the existing FFI infrastructure into the NLPL compiler pipeline to ena
 
 6. **Linker Integration**:
  - Added `get_library_link_flags()` method
- - Maps NLPL library names to linker flags (`c -> -lc`, `m -> -lm`)
+ - Maps NexusLang library names to linker flags (`c -> -lc`, `m -> -lm`)
  - Integrated flags into `compile_to_executable()` pipeline
 
 ### 2. Testing & Validation
@@ -47,7 +47,7 @@ Integrate the existing FFI infrastructure into the NLPL compiler pipeline to ena
 ```nlpl
 extern function printf with format as Pointer returns Integer from library "c"
 
-set message to "Hello from NLPL FFI!\n"
+set message to "Hello from NexusLang FFI!\n"
 call printf with message
 ```
 
@@ -56,7 +56,7 @@ call printf with message
 - Generated valid LLVM IR
 - Linked with libc
 - Executable runs correctly
-- Output: "Hello from NLPL FFI!"
+- Output: "Hello from NexusLang FFI!"
 
 **Generated LLVM IR** (excerpt):
 ```llvm
@@ -159,13 +159,13 @@ Executable
  - Cross-platform validation
 
 3. **Struct Marshalling** (4-6 hours)
- - Pass NLPL structs to C functions
+ - Pass NexusLang structs to C functions
  - Layout compatibility checking
  - Automatic padding/alignment
 
 ### Medium Term (Priority 3)
 4. **Callback Functions** (6-8 hours)
- - Pass NLPL functions as C callbacks
+ - Pass NexusLang functions as C callbacks
  - Function pointer generation
  - Trampolines for NLPLC calls
 
@@ -197,14 +197,14 @@ The FFI compiler integration is **functionally complete** for single-argument ex
 ```bash
 $ cat test_ffi_simple.nlpl
 extern function printf with format as Pointer returns Integer from library "c"
-set message to "Hello from NLPL FFI!\n"
+set message to "Hello from NexusLang FFI!\n"
 call printf with message
 
 $ python nlplc_llvm.py test_ffi_simple.nlpl -o test_ffi
  Compilation successful!
 
 $ ./test_ffi
-Hello from NLPL FFI!
+Hello from NexusLang FFI!
 ```
 
-**Achievement**: NLPL can now interface with C libraries! 
+**Achievement**: NexusLang can now interface with C libraries! 

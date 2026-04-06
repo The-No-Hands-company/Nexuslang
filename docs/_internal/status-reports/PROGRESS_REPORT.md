@@ -1,4 +1,4 @@
-# NLPL Development Progress Report
+# NexusLang Development Progress Report
 
 ## Current Status (November 20, 2025)
 
@@ -44,7 +44,7 @@
 
 2. **Operators**
  - Tests use `+`, `-`, `*`, `/` operators directly
- - NLPL requires natural keywords: `plus`, `minus`, `times`, `divided by`
+ - NexusLang requires natural keywords: `plus`, `minus`, `times`, `divided by`
 
 3. **Error Handling**
  - Try/catch implementation incomplete
@@ -61,7 +61,7 @@
 ```bash
 source venv/bin/activate # Activate venv
 pytest tests/test_parser.py -v # Run specific tests
-python -m nlpl.main examples/01_basic_concepts.nlpl # Run NLPL programs
+python -m nexuslang.main examples/01_basic_concepts.nlpl # Run NexusLang programs
 ```
 
 ### Recent Improvements
@@ -83,7 +83,7 @@ python -m nlpl.main examples/01_basic_concepts.nlpl # Run NLPL programs
 ### Priority 2: Test Modernization
 
 1. Update test_lexer.py to use new API
-2. Rewrite test_interpreter.py with correct NLPL syntax
+2. Rewrite test_interpreter.py with correct NexusLang syntax
 3. Fix test_stdlib.py syntax issues
 
 ### Priority 3: Feature Enhancements
@@ -126,10 +126,10 @@ pytest tests/ --cov=src/nlpl --cov-report=html
 # Quick test
 echo 'set x to 42
 print text x' > test.nlpl
-python -m nlpl.main test.nlpl
+python -m nexuslang.main test.nlpl
 
 # Debug mode
-python -m nlpl.main test.nlpl --debug
+python -m nexuslang.main test.nlpl --debug
 ```
 
 ### Code Quality

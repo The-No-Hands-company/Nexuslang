@@ -14,7 +14,7 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../../src"))
 
-from nlpl.typesystem.associated_types import (
+from nexuslang.typesystem.associated_types import (
     AssociatedTypeDecl,
     TypeProjection,
     AssociatedTypeRegistry,
@@ -23,7 +23,7 @@ from nlpl.typesystem.associated_types import (
     bind_associated_type,
     resolve_projection,
 )
-from nlpl.typesystem.types import (
+from nexuslang.typesystem.types import (
     TraitType, ClassType, FunctionType,
     INTEGER_TYPE, STRING_TYPE, FLOAT_TYPE, ANY_TYPE,
     TypeKind, get_type_by_name,
@@ -93,7 +93,7 @@ class TestAssociatedTypeDecl:
 
     def test_satisfies_bounds_with_trait_lookup_pass(self):
         """A type that implements the trait should pass."""
-        from nlpl.typesystem.types import COMPARABLE_TRAIT
+        from nexuslang.typesystem.types import COMPARABLE_TRAIT
         decl = AssociatedTypeDecl("Key", bounds=["Comparable"])
         # INTEGER_TYPE implements Comparable via _check_primitive_trait_impl
         result = decl.satisfies_bounds(INTEGER_TYPE, trait_lookup={"Comparable": COMPARABLE_TRAIT})
@@ -108,40 +108,40 @@ class TestTypeProjection:
     """Tests for TypeProjection (T::Item)."""
 
     def test_basic_projection_creation(self):
-        from nlpl.typesystem.types import GenericParameter
+        from nexuslang.typesystem.types import GenericParameter
         T = GenericParameter("T")
         proj = TypeProjection(T, "Item")
         assert proj.associated_type_name == "Item"
         assert proj.base_type is T
 
     def test_repr_format(self):
-        from nlpl.typesystem.types import GenericParameter
+        from nexuslang.typesystem.types import GenericParameter
         T = GenericParameter("T")
         proj = TypeProjection(T, "Item")
         assert repr(proj) == "T::Item"
 
     def test_project_helper(self):
-        from nlpl.typesystem.types import GenericParameter
+        from nexuslang.typesystem.types import GenericParameter
         T = GenericParameter("T")
         proj = project(T, "Key")
         assert proj.associated_type_name == "Key"
 
     def test_equality(self):
-        from nlpl.typesystem.types import GenericParameter
+        from nexuslang.typesystem.types import GenericParameter
         T = GenericParameter("T")
         p1 = TypeProjection(T, "Item")
         p2 = TypeProjection(T, "Item")
         assert p1 == p2
 
     def test_inequality_different_member(self):
-        from nlpl.typesystem.types import GenericParameter
+        from nexuslang.typesystem.types import GenericParameter
         T = GenericParameter("T")
         p1 = TypeProjection(T, "Item")
         p2 = TypeProjection(T, "Key")
         assert p1 != p2
 
     def test_hash_consistent(self):
-        from nlpl.typesystem.types import GenericParameter
+        from nexuslang.typesystem.types import GenericParameter
         T = GenericParameter("T")
         p1 = TypeProjection(T, "Item")
         p2 = TypeProjection(T, "Item")
@@ -149,7 +149,7 @@ class TestTypeProjection:
 
     def test_resolve_with_registry_found(self):
         """Projection resolves when registry has the binding."""
-        from nlpl.typesystem.types import GenericParameter
+        from nexuslang.typesystem.types import GenericParameter
         T = GenericParameter("T")
         proj = TypeProjection(T, "Item")
         reg = AssociatedTypeRegistry()
@@ -159,7 +159,7 @@ class TestTypeProjection:
 
     def test_resolve_with_registry_not_found(self):
         """Projection returns self if not in registry."""
-        from nlpl.typesystem.types import GenericParameter
+        from nexuslang.typesystem.types import GenericParameter
         T = GenericParameter("T")
         proj = TypeProjection(T, "Item")
         reg = AssociatedTypeRegistry()
@@ -167,20 +167,20 @@ class TestTypeProjection:
         assert resolved is proj
 
     def test_compatibility_with_same_projection(self):
-        from nlpl.typesystem.types import GenericParameter
+        from nexuslang.typesystem.types import GenericParameter
         T = GenericParameter("T")
         p1 = TypeProjection(T, "Item")
         p2 = TypeProjection(T, "Item")
         assert p1.is_compatible_with(p2)
 
     def test_compatibility_with_any(self):
-        from nlpl.typesystem.types import GenericParameter
+        from nexuslang.typesystem.types import GenericParameter
         T = GenericParameter("T")
         p = TypeProjection(T, "Item")
         assert p.is_compatible_with(ANY_TYPE)
 
     def test_compatibility_with_different_projection_false(self):
-        from nlpl.typesystem.types import GenericParameter
+        from nexuslang.typesystem.types import GenericParameter
         T = GenericParameter("T")
         p1 = TypeProjection(T, "Item")
         p2 = TypeProjection(T, "Key")
@@ -282,7 +282,7 @@ class TestAssociatedTypeRegistry:
         assert resolved is INTEGER_TYPE
 
     def test_resolve_projection_helper(self):
-        from nlpl.typesystem.types import GenericParameter
+        from nexuslang.typesystem.types import GenericParameter
         T = GenericParameter("NumberIter2")
         proj = TypeProjection(T, "Item")
         reg = AssociatedTypeRegistry()

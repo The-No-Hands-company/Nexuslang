@@ -1,12 +1,12 @@
 # Migrating from C / C++
 
-This guide maps C and C++ patterns to their NLPL equivalents.
+This guide maps C and C++ patterns to their NexusLang equivalents.
 
 ---
 
 ## Syntax Quick-Reference
 
-| Concept | C / C++ | NLPL |
+| Concept | C / C++ | NexusLang |
 |---------|---------|------|
 | Variable | `int x = 5;` | `set x as Integer to 5` |
 | Print | `printf("%d\n", x);` | `print text convert x to string` |
@@ -28,7 +28,7 @@ This guide maps C and C++ patterns to their NLPL equivalents.
 
 NLPL supports the same pointer concepts as C, with a natural-language syntax.
 
-### C pointer basics → NLPL
+### C pointer basics → NexusLang
 
 ```c
 // C
@@ -39,7 +39,7 @@ printf("%d\n", *p);
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 set x to 42
 set p to address of x
 print text convert (value at p) to string
@@ -56,7 +56,7 @@ printf("%d\n", *(p + 2));   // 3
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 set arr to [1, 2, 3, 4]
 set p to address of arr[0]
 set step to sizeof Integer
@@ -72,7 +72,7 @@ int *iptr = (int*)raw_ptr;
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 set iptr to convert raw_ptr to Pointer to Integer
 ```
 
@@ -80,7 +80,7 @@ set iptr to convert raw_ptr to Pointer to Integer
 
 ## Manual Memory Management
 
-### C malloc / free → NLPL allocate / free
+### C malloc / free → NexusLang allocate / free
 
 ```c
 // C
@@ -91,7 +91,7 @@ free(buf);
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 set buf to allocate buf of size 1024 bytes
 try
     # ... use buf ...
@@ -128,7 +128,7 @@ printf("%.1f\n", p.x);
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 struct Point
     x as Float
     y as Float
@@ -161,7 +161,7 @@ public:
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 class Animal
     public set name to String
 
@@ -194,7 +194,7 @@ T max_value(T a, T b) {
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 function max_value<T> that takes a as T and b as T returns T
     if a is greater than b
         return a
@@ -220,7 +220,7 @@ __asm__ volatile (
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 set result as Integer to 0
 asm volatile
     code "mov $1, %0"
@@ -233,7 +233,7 @@ print text convert result to string    # 3
 
 Key differences:
 
-| GCC | NLPL |
+| GCC | NexusLang |
 |-----|------|
 | `__asm__ volatile(...)` | `asm volatile ... end` |
 | Multi-line strings | Separate `code` lines |
@@ -245,7 +245,7 @@ Key differences:
 
 ## Calling C Libraries (FFI)
 
-### In C you link directly; in NLPL use `extern function`
+### In C you link directly; in NexusLang use `extern function`
 
 ```c
 // C — just include a header
@@ -254,7 +254,7 @@ size_t n = strlen("hello");
 ```
 
 ```nlpl
-# NLPL — declare the extern then call it
+# NexusLang — declare the extern then call it
 extern function strlen with s as Pointer returns Integer from library "c"
 
 set n to call strlen with "hello"
@@ -271,7 +271,7 @@ crc = crc32(crc, (Bytef*)data, len);
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 extern function crc32_init with seed as Integer and buf as Pointer and len as Integer returns Integer from library "z"
 
 set crc to call crc32_init with 0 and null and 0
@@ -281,7 +281,7 @@ set crc to call crc32_init with 0 and null and 0
 
 ## Error Handling
 
-C uses return codes; C++ uses exceptions. NLPL uses `try/catch`.
+C uses return codes; C++ uses exceptions. NexusLang uses `try/catch`.
 
 ```c
 // C — return code pattern
@@ -293,7 +293,7 @@ if (!f) {
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 import io
 try
     set content to io.read_file with "data.txt"
@@ -313,7 +313,7 @@ try {
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 try
     set data to risky_op()
 catch error with message
@@ -325,7 +325,7 @@ end
 
 ## Header Files
 
-C/C++ uses `.h`/`.hpp` headers for declarations. NLPL modules have no separate declaration files; import the module directly.
+C/C++ uses `.h`/`.hpp` headers for declarations. NexusLang modules have no separate declaration files; import the module directly.
 
 ```c
 // C — mylib.h + mylib.c
@@ -333,7 +333,7 @@ void greet(const char *name);   // declaration in .h
 ```
 
 ```nlpl
-# NLPL — mylib.nlpl (single file, no header needed)
+# NexusLang — mylib.nlpl (single file, no header needed)
 function greet with name as String
     print text "Hello, " plus name
 end
@@ -350,7 +350,7 @@ greet with "Alice"
 
 ## Build System
 
-| C / C++ | NLPL |
+| C / C++ | NexusLang |
 |---------|------|
 | `Makefile` / CMake | `nlpl.toml` |
 | `gcc -o out main.c` | `nlpl build` |
@@ -368,7 +368,7 @@ version = "1.0.0"
 
 [[bin]]
 name = "myapp"
-source = "src/main.nlpl"
+source = "src/main.nxl"
 
 [profile.release]
 optimization = 3
@@ -379,7 +379,7 @@ link_time_optimization = true
 
 ## Key Differences Summary
 
-| Topic | C / C++ | NLPL |
+| Topic | C / C++ | NexusLang |
 |-------|---------|------|
 | Memory | Manual malloc/free | Automatic + optional manual |
 | Strings | `char*` / `std::string` | `String` (built-in, UTF-8) |

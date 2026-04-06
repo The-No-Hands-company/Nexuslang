@@ -2,11 +2,11 @@
 Test enhanced generic constraints with multiple trait bounds.
 """
 
-from nlpl.typesystem.types import (
+from nexuslang.typesystem.types import (
     ClassType, FunctionType, INTEGER_TYPE, BOOLEAN_TYPE, STRING_TYPE,
     COMPARABLE_TRAIT, EQUATABLE_TRAIT, PRINTABLE_TRAIT
 )
-from nlpl.typesystem.generic_types import GenericTypeConstraint, GenericTypeContext
+from nexuslang.typesystem.generic_types import GenericTypeConstraint, GenericTypeContext
 
 def test_multiple_trait_constraints():
     """Test generic constraints with multiple trait bounds."""
@@ -67,5 +67,5 @@ def test_multiple_trait_constraints():
     print("\n All enhanced generic constraint tests passed!")
 
 if __name__ == "__main__":
-    from nlpl.typesystem.types import STRING_TYPE
+    from nexuslang.typesystem.types import STRING_TYPE
     test_multiple_trait_constraints()

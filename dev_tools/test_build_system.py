@@ -17,8 +17,8 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
-from nlpl.tooling.config import ProjectConfig, PackageConfig, BuildConfig
-from nlpl.tooling.builder import BuildSystem
+from nexuslang.tooling.config import ProjectConfig, PackageConfig, BuildConfig
+from nexuslang.tooling.builder import BuildSystem
 
 
 def test_detect_main_entry_point():
@@ -34,9 +34,9 @@ def test_detect_main_entry_point():
         
         # Create test files
         files = [
-            'utils.nlpl',
-            'helper.nlpl',
-            'main.nlpl'  # This should be detected as main
+            'utils.nxl',
+            'helper.nxl',
+            'main.nxl'  # This should be detected as main
         ]
         
         for filename in files:
@@ -54,7 +54,7 @@ def test_detect_main_entry_point():
         
         # Get all sources
         import glob
-        sources = glob.glob(os.path.join(src_dir, '*.nlpl'))
+        sources = glob.glob(os.path.join(src_dir, '*.nxl'))
         
         # Test detection
         main_file = builder._detect_main_entry_point(sources)
@@ -63,7 +63,7 @@ def test_detect_main_entry_point():
         print(f"Detected main: {os.path.basename(main_file) if main_file else 'None'}")
         
         assert main_file is not None, "Should detect a main file"
-        assert os.path.basename(main_file) == 'main.nlpl', "Should detect main.nlpl"
+        assert os.path.basename(main_file) == 'main.nxl', "Should detect main.nxl"
         
         print(" Test passed: main.nlpl correctly detected")
     
@@ -82,8 +82,8 @@ def test_detect_main_by_package_name():
         
         # Create test files
         files = [
-            'utils.nlpl',
-            'myapp.nlpl'  # Matches package name
+            'utils.nxl',
+            'myapp.nxl'  # Matches package name
         ]
         
         for filename in files:
@@ -100,7 +100,7 @@ def test_detect_main_by_package_name():
         builder = BuildSystem(config)
         
         import glob
-        sources = glob.glob(os.path.join(src_dir, '*.nlpl'))
+        sources = glob.glob(os.path.join(src_dir, '*.nxl'))
         main_file = builder._detect_main_entry_point(sources)
         
         print(f"\nPackage name: {config.package.name}")
@@ -108,7 +108,7 @@ def test_detect_main_by_package_name():
         print(f"Detected main: {os.path.basename(main_file) if main_file else 'None'}")
         
         assert main_file is not None
-        assert os.path.basename(main_file) == 'myapp.nlpl'
+        assert os.path.basename(main_file) == 'myapp.nxl'
         
         print(" Test passed: Package name file correctly detected")
     
@@ -126,11 +126,11 @@ def test_detect_main_by_function():
         os.makedirs(src_dir)
         
         # Create test files
-        utils_file = os.path.join(src_dir, 'utils.nlpl')
+        utils_file = os.path.join(src_dir, 'utils.nxl')
         with open(utils_file, 'w') as f:
             f.write('# Utility functions\nfunction helper\n    print text "helper"\nend\n')
         
-        app_file = os.path.join(src_dir, 'app.nlpl')
+        app_file = os.path.join(src_dir, 'app.nxl')
         with open(app_file, 'w') as f:
             f.write('# Main application\nfunction main\n    print text "Hello"\nend\n')
         
@@ -142,14 +142,14 @@ def test_detect_main_by_function():
         builder = BuildSystem(config)
         
         import glob
-        sources = glob.glob(os.path.join(src_dir, '*.nlpl'))
+        sources = glob.glob(os.path.join(src_dir, '*.nxl'))
         main_file = builder._detect_main_entry_point(sources)
         
         print(f"\nSource files: {[os.path.basename(f) for f in sources]}")
         print(f"Detected main: {os.path.basename(main_file) if main_file else 'None'}")
         
         assert main_file is not None
-        assert os.path.basename(main_file) == 'app.nlpl'
+        assert os.path.basename(main_file) == 'app.nxl'
         
         print(" Test passed: File with main() function correctly detected")
     
@@ -171,10 +171,10 @@ def test_group_into_modules():
         
         # Create test files
         files = [
-            'main.nlpl',
-            'utils/string.nlpl',
-            'utils/math.nlpl',
-            'models/user.nlpl'
+            'main.nxl',
+            'utils/string.nxl',
+            'utils/math.nxl',
+            'models/user.nxl'
         ]
         
         for filename in files:
@@ -190,7 +190,7 @@ def test_group_into_modules():
         builder = BuildSystem(config)
         
         import glob
-        sources = glob.glob(os.path.join(src_dir, '**/*.nlpl'), recursive=True)
+        sources = glob.glob(os.path.join(src_dir, '**/*.nxl'), recursive=True)
         modules = builder._group_into_modules(sources)
         
         print(f"\nSource files: {[os.path.relpath(f, src_dir) for f in sources]}")

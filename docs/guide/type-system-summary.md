@@ -1,8 +1,8 @@
-# NLPL Type System Implementation Summary
+# NexusLang Type System Implementation Summary
 
 ## Overview
 
-We have successfully implemented a static type system for the NLPL language. This type system provides compile-time type checking to catch type errors before program execution, enhancing the robustness and reliability of NLPL programs.
+We have successfully implemented a static type system for the NexusLang language. This type system provides compile-time type checking to catch type errors before program execution, enhancing the robustness and reliability of NexusLang programs.
 
 ## Components Implemented
 
@@ -57,7 +57,7 @@ We have successfully implemented a static type system for the NLPL language. Thi
 ```
 # Variable declarations with type annotations
 Create count as Integer and set it to 10.
-Create name as String and set it to "NLPL".
+Create name as String and set it to "NexusLang".
 
 # Function with type annotations
 Define a function called calculate_total that takes quantity as Integer, price as Float and returns Float
@@ -79,4 +79,4 @@ Create total as Float and set it to calculate_total(count, 19.99).
 
 ## Conclusion
 
-The type system implementation significantly enhances the NLPL language by providing static type safety. This helps catch errors early in the development process and improves code reliability. The design is flexible enough to support future extensions while maintaining compatibility with the existing language features.
+The type system implementation significantly enhances the NexusLang language by providing static type safety. This helps catch errors early in the development process and improves code reliability. The design is flexible enough to support future extensions while maintaining compatibility with the existing language features.

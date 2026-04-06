@@ -1,4 +1,4 @@
-# NLPL Best Practices Guide
+# NexusLang Best Practices Guide
 ## Shader Separation & Code Organization
 
 ### Date: January 31, 2026
@@ -74,9 +74,9 @@ call use_shader with skybox_shader
 
 ### Benefits
 
-1. **Separation of Concerns** - GLSL stays in `.glsl` files, NLPL stays in `.nlpl` files
+1. **Separation of Concerns** - GLSL stays in `.glsl` files, NexusLang stays in `.nlpl` files
 2. **Syntax Highlighting** - Editors can properly highlight GLSL in `.glsl` files
-3. **Reusability** - Same shaders can be used across multiple NLPL programs
+3. **Reusability** - Same shaders can be used across multiple NexusLang programs
 4. **Team Workflow** - Graphics programmers can edit shaders independently
 5. **Version Control** - Cleaner diffs when shaders change
 6. **Organization** - Shaders organized by purpose in directories
@@ -110,7 +110,7 @@ Test:
 
 Output:
 ```
-=== NLPL Skybox Demo (External Shaders) ===
+=== NexusLang Skybox Demo (External Shaders) ===
 Loading shaders from separate .glsl files
 Loading skybox shaders from files...
 Shaders loaded successfully!
@@ -182,11 +182,11 @@ set NORMALS to [[0.0, 1.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, 1.0], [0.0, 0.0, -
 
 **Use in your code:**
 ```nlpl
-# Import constants (if NLPL supports modules)
+# Import constants (if NexusLang supports modules)
 import constants/faces
 
 # Or use read_file to include
-set constants_code to read_file with "constants/faces.nlpl"
+set constants_code to read_file with "constants/faces.nxl"
 # ... evaluate or include mechanism
 ```
 

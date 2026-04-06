@@ -65,9 +65,9 @@ These tests require ARM/AArch64 hardware:
 ### On Raspberry Pi
 
 ```bash
-# 1. Clone NLPL repository
+# 1. Clone NexusLang repository
 git clone https://github.com/yourusername/NLPL.git
-cd NLPL
+cd NexusLang
 
 # 2. Install dependencies
 pip3 install -r requirements.txt
@@ -102,7 +102,7 @@ arch  # Should output: arm64
 
 # 2. Clone and setup (same as Raspberry Pi)
 git clone https://github.com/yourusername/NLPL.git
-cd NLPL
+cd NexusLang
 pip3 install -r requirements.txt
 
 # 3. Run tests (same commands as Raspberry Pi)
@@ -122,7 +122,7 @@ ssh ubuntu@<instance-ip>
 sudo apt update
 sudo apt install python3 python3-pip git
 git clone https://github.com/yourusername/NLPL.git
-cd NLPL
+cd NexusLang
 pip3 install -r requirements.txt
 
 # 3. Run tests
@@ -228,7 +228,7 @@ If you have ARM hardware and can help test:
 
 1. **NEON tests are simplified**: Full NEON vector operations require vector register type support (not yet implemented)
 
-2. **No cross-compilation**: Currently, NLPL must be run on the target architecture
+2. **No cross-compilation**: Currently, NexusLang must be run on the target architecture
 
 3. **Limited instruction coverage**: Only basic ARM instructions tested (no Crypto, SVE, etc.)
 
@@ -247,6 +247,6 @@ If you have ARM hardware and can help test:
 
 **Status**: Ready for hardware testing  
 **Last Updated**: February 14, 2026  
-**Maintainer**: NLPL Development Team
+**Maintainer**: NexusLang Development Team
 
 **Need Help?** See [docs/7_development/cross_platform_inline_assembly.md](../../../docs/7_development/cross_platform_inline_assembly.md) for comprehensive cross-platform guide.

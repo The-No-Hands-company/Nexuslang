@@ -1,4 +1,4 @@
-# NLPL LSP Server - Session 1 Complete
+# NexusLang LSP Server - Session 1 Complete
 
 **Date**: 2026-01-05 
 **Session**: LSP Server Implementation - Session 1/4 
@@ -8,7 +8,7 @@
 
 ## Session Overview
 
-Built upon existing LSP infrastructure (8 files already present) and enhanced it with real NLPL parser/type checker integration. The LSP server now provides production-ready diagnostics and improved auto-completion.
+Built upon existing LSP infrastructure (8 files already present) and enhanced it with real NexusLang parser/type checker integration. The LSP server now provides production-ready diagnostics and improved auto-completion.
 
 ## Achievements
 
@@ -32,10 +32,10 @@ Built upon existing LSP infrastructure (8 files already present) and enhanced it
 **Implementation**:
 ```python
 def _check_parser_syntax(self, text: str) -> List[Dict]:
- """Check syntax using NLPL parser."""
+ """Check syntax using NexusLang parser."""
  try:
- from nlpl.parser.lexer import Lexer
- from nlpl.parser.parser import Parser
+ from nexuslang.parser.lexer import Lexer
+ from nexuslang.parser.parser import Parser
  
  lexer = Lexer(text)
  tokens = lexer.tokenize()
@@ -50,7 +50,7 @@ def _check_parser_syntax(self, text: str) -> List[Dict]:
 **Features**:
 - Real-time syntax error detection
 - Line/column error reporting
-- Integration with NLPL lexer and parser
+- Integration with NexusLang lexer and parser
 - Fallback to basic regex checks
 
 **Test Results**:
@@ -71,7 +71,7 @@ Syntax error: Unterminated string at line 2, column 2
 **Implementation**:
 ```python
 def _check_type_errors(self, text: str) -> List[Dict]:
- """Check for type errors using NLPL type checker."""
+ """Check for type errors using NexusLang type checker."""
  try:
  # Parse AST
  lexer = Lexer(text)
@@ -92,7 +92,7 @@ def _check_type_errors(self, text: str) -> List[Dict]:
 
 **Features**:
 - Real-time type error detection
-- Integration with NLPL type system (100% complete)
+- Integration with NexusLang type system (100% complete)
 - Error message extraction and formatting
 - Graceful handling of parse failures
 
@@ -122,7 +122,7 @@ def get_completions(self, text: str, position) -> List[Dict]:
 ```
 
 **Features**:
-- 60+ NLPL keywords
+- 60+ NexusLang keywords
 - 6 stdlib modules with 40+ functions
 - Context-sensitive suggestions
 - Code snippet templates
@@ -140,12 +140,12 @@ def get_completions(self, text: str, position) -> List[Dict]:
 **Extension Features**:
 ```json
 {
- "languages": [{"id": "nlpl", "extensions": [".nlpl"]}],
- "grammars": [{"scopeName": "source.nlpl"}],
+ "languages": [{"id": "nlpl", "extensions": [".nxl"]}],
+ "grammars": [{"scopeName": "source.nxl"}],
  "configuration": {
- "nlpl.languageServer.enabled": true,
- "nlpl.languageServer.path": "...",
- "nlpl.trace.server": "off|messages|verbose"
+ "nexuslang.languageServer.enabled": true,
+ "nexuslang.languageServer.path": "...",
+ "nexuslang.trace.server": "off|messages|verbose"
  }
 }
 ```
@@ -161,7 +161,7 @@ def get_completions(self, text: str, position) -> List[Dict]:
 ### 6. Entry Point & Testing 
 
 **Created Files**:
-- `src/nlpl_lsp.py` - LSP server entry point
+- `src/nxl_lsp.py` - LSP server entry point
 - `dev_tools/test_lsp_diagnostics.py` - Comprehensive test suite
 - `test_programs/lsp_test.nlpl` - Test program
 - `src/nlpl/lsp/README.md` - Complete documentation (300+ lines)
@@ -205,7 +205,7 @@ Server Client: completion items
 ### Parser Integration Strategy
 
 **Two-Layer Approach**:
-1. **Primary**: NLPL parser integration (`_check_parser_syntax`)
+1. **Primary**: NexusLang parser integration (`_check_parser_syntax`)
  - Catches: Syntax errors, malformed tokens
  - Returns: Line/column accurate errors
 2. **Fallback**: Regex-based checks (`_check_syntax`)
@@ -243,7 +243,7 @@ col = int(col_match.group(1)) - 1 if col_match else 0
 ## Files Created/Modified
 
 ### Created (8 files)
-1. `src/nlpl_lsp.py` - Entry point (30 lines)
+1. `src/nxl_lsp.py` - Entry point (30 lines)
 2. `.vscode/nlpl-language-config.json` - Language config (20 lines)
 3. `.vscode/extensions.json` - Recommended extensions (5 lines)
 4. `.vscode/nlpl-extension/package.json` - Extension manifest (70 lines)
@@ -318,7 +318,7 @@ print text name
 
 ## Integration Points
 
-### NLPL Core Systems
+### NexusLang Core Systems
 
 | System | Integration | Status |
 |--------|-------------|--------|
@@ -350,7 +350,7 @@ print text name
 python dev_tools/test_lsp_diagnostics.py
 
 # Start LSP server (for IDE integration)
-python src/nlpl_lsp.py
+python src/nxl_lsp.py
 ```
 
 ### VSCode Integration
@@ -367,9 +367,9 @@ npm run compile
 `.vscode/settings.json`:
 ```json
 {
- "nlpl.languageServer.enabled": true,
- "nlpl.languageServer.path": "/path/to/NLPL/src/nlpl_lsp.py",
- "nlpl.trace.server": "verbose"
+ "nexuslang.languageServer.enabled": true,
+ "nexuslang.languageServer.path": "/path/to/NexusLang/src/nxl_lsp.py",
+ "nexuslang.trace.server": "verbose"
 }
 ```
 
@@ -417,7 +417,7 @@ npm run compile
 - Session 1: 100% Complete
 - Overall LSP Feature Set: 60% Complete
 
-**Overall NLPL Progress**: 38% 42% (+4%)
+**Overall NexusLang Progress**: 38% 42% (+4%)
 
 ## Recommendations
 
@@ -445,9 +445,9 @@ npm run compile
 
 **Session 1 successfully delivered a production-ready LSP server** with real-time diagnostics, context-aware completions, and full IDE integration capabilities. The integration with NLPL's parser and type checker provides accurate, actionable feedback to developers.
 
-**Key Achievement**: NLPL now has professional-grade IDE support, a critical milestone for developer adoption and productivity.
+**Key Achievement**: NexusLang now has professional-grade IDE support, a critical milestone for developer adoption and productivity.
 
-**Impact**: Developers can now write NLPL code with the same modern tooling experience as languages like TypeScript, Python, or Rust.
+**Impact**: Developers can now write NexusLang code with the same modern tooling experience as languages like TypeScript, Python, or Rust.
 
 **Next Session**: Building on this foundation with enhanced diagnostics, code actions, and multi-file analysis.
 

@@ -3,10 +3,10 @@ Tests for AST symbol extraction.
 """
 
 import pytest
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.analysis.symbol_extractor import ASTSymbolExtractor
-from nlpl.analysis.symbol_table import SymbolKind
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.analysis.symbol_extractor import ASTSymbolExtractor
+from nexuslang.analysis.symbol_table import SymbolKind
 
 
 def extract_symbols(source: str):
@@ -15,7 +15,7 @@ def extract_symbols(source: str):
     tokens = lexer.tokenize()
     parser = Parser(tokens)
     ast = parser.parse()
-    extractor = ASTSymbolExtractor(uri="test://test.nlpl")
+    extractor = ASTSymbolExtractor(uri="test://test.nxl")
     return extractor.extract(ast)
 
 

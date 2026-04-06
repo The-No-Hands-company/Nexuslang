@@ -8,8 +8,8 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.join(ROOT, "src"))
 
 # Stub out nlpl.runtime.runtime.Runtime so the module can be imported standalone
-for pkg in ("nlpl", "nlpl.runtime", "nlpl.runtime.runtime",
-            "nlpl.stdlib", "nlpl.stdlib.property_testing"):
+for pkg in ("nlpl", "nexuslang.runtime", "nexuslang.runtime.runtime",
+            "nexuslang.stdlib", "nexuslang.stdlib.property_testing"):
     if pkg not in sys.modules:
         sys.modules[pkg] = types.ModuleType(pkg)
 
@@ -17,10 +17,10 @@ class _StubRuntime:
     def register_function(self, name, fn): pass
     def register_module(self, name): pass
 
-sys.modules["nlpl.runtime.runtime"].Runtime = _StubRuntime
+sys.modules["nexuslang.runtime.runtime"].Runtime = _StubRuntime
 
 INIT_PATH = os.path.join(ROOT, "src", "nlpl", "stdlib", "property_testing", "__init__.py")
-spec = importlib.util.spec_from_file_location("nlpl.stdlib.property_testing", INIT_PATH)
+spec = importlib.util.spec_from_file_location("nexuslang.stdlib.property_testing", INIT_PATH)
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 

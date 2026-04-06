@@ -1,4 +1,4 @@
-# NLPL Development Roadmap
+# NexusLang Development Roadmap
 
 **Last Updated:** February 15, 2026  
 **Status:** 🔴 Phase 1 - Maturity & Production Readiness (LSP + Showcase Projects)
@@ -163,7 +163,7 @@ Advanced features:
 - [x] **Compiler Script** (nlplc) - Command-line compilation
 
 ### Testing (Comprehensive!)
-- [x] **409 NLPL test programs** organized by type:
+- [x] **409 NexusLang test programs** organized by type:
   - unit/ - Single feature tests (basic, stdlib, parser, etc.)
   - integration/ - Multi-feature tests (compiler, features, ffi)
   - regression/ - Bug fix validation (error handling, edge cases)
@@ -253,7 +253,7 @@ Advanced features:
 ### Long-term Vision (6+ Months)
 
 **Self-Hosting:**
-- [ ] NLPL compiler written in NLPL
+- [ ] NexusLang compiler written in NexusLang
 - [ ] Bootstrap process
 - [ ] Self-compilation validation
 
@@ -334,7 +334,7 @@ Advanced features:
 - Standard Library: 62 modules (3,000+ lines)
 
 **Test Coverage:**
-- NLPL test programs: 409 files
+- NexusLang test programs: 409 files
 - Python test files: 44 files
 - Example programs: 24 files
 - Total test cases: 500+ assertions
@@ -420,4 +420,4 @@ Advanced features:
    - Documentation updates
    - Polish and testing
 
-**Conclusion:** NLPL could realistically release v1.0 in Q2 2026 if we focus on closing the remaining gaps and updating documentation to match implementation reality.
+**Conclusion:** NexusLang could realistically release v1.0 in Q2 2026 if we focus on closing the remaining gaps and updating documentation to match implementation reality.

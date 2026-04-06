@@ -2,7 +2,7 @@
 
 import pytest
 import time
-from nlpl.stdlib.asyncio_utils.promise import Promise, async_task
+from nexuslang.stdlib.asyncio_utils.promise import Promise, async_task
 
 
 class TestPromiseBasics:

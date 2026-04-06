@@ -9,16 +9,16 @@ import com.intellij.platform.lsp.api.ProjectWideLspServerDescriptor
 import java.io.File
 
 /**
- * Activates the NLPL LSP server for all .nlpl files in the project.
+ * Activates the NexusLang LSP server for all .nlpl files in the project.
  *
  * The LSP server is started with:
- *   python3 -m nlpl.lsp
+ *   python3 -m nexuslang.lsp
  * or the `nlpl lsp` CLI command if available on PATH.
  *
  * Server path resolution order:
  *   1. NLPL_LSP_COMMAND environment variable
  *   2. `nlpl lsp` on PATH
- *   3. `python3 -m nlpl.lsp`
+ *   3. `python3 -m nexuslang.lsp`
  */
 class NlplLspServerSupportProvider : LspServerSupportProvider {
 
@@ -34,9 +34,9 @@ class NlplLspServerSupportProvider : LspServerSupportProvider {
 }
 
 /**
- * Descriptor for the NLPL language server process.
+ * Descriptor for the NexusLang language server process.
  */
-class NlplLspServerDescriptor(project: Project) : ProjectWideLspServerDescriptor(project, "NLPL") {
+class NlplLspServerDescriptor(project: Project) : ProjectWideLspServerDescriptor(project, "NexusLang") {
 
     override fun isSupportedFile(file: VirtualFile): Boolean {
         return file.extension.equals("nlpl", ignoreCase = true)
@@ -57,10 +57,10 @@ class NlplLspServerDescriptor(project: Project) : ProjectWideLspServerDescriptor
                 .withWorkDirectory(project.basePath)
         }
 
-        // Fall back to python3 -m nlpl.lsp
+        // Fall back to python3 -m nexuslang.lsp
         val python = findExecutableOnPath("python3") ?: findExecutableOnPath("python")
         val pythonPath = python?.absolutePath ?: "python3"
-        return GeneralCommandLine(pythonPath, "-m", "nlpl.lsp")
+        return GeneralCommandLine(pythonPath, "-m", "nexuslang.lsp")
             .withWorkDirectory(project.basePath)
             .withEnvironment("PYTHONUNBUFFERED", "1")
     }

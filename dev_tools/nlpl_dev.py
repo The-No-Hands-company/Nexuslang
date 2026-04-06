@@ -3,7 +3,7 @@
 NLPL Development Tools - Unified CLI
 =====================================
 
-Main command-line interface for all NLPL development and debugging tools.
+Main command-line interface for all NexusLang development and debugging tools.
 
 Usage:
     nlpl-dev <command> [options]
@@ -12,9 +12,9 @@ Commands:
     lex         Lexer debugging tools
     parse       Parser debugging tools
     debug       Interpreter debugging tools
-    run         Run NLPL code with enhanced debugging
+    run         Run NexusLang code with enhanced debugging
     test        Testing utilities
-    doctor      Check NLPL development environment
+    doctor      Check NexusLang development environment
 
 Examples:
     nlpl-dev lex myfile.nlpl --visualize
@@ -35,11 +35,11 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 
 def print_banner():
-    """Print the NLPL dev tools banner."""
+    """Print the NexusLang dev tools banner."""
     banner = """
 
-                    NLPL Development Tools Suite                            
-                    Natural Language Programming Language                   
+                    NexusLang Development Tools Suite                            
+                    NexusLang                   
 
 """
     print(banner)
@@ -66,11 +66,11 @@ def run_interpreter_tools(args):
     execution_debugger.main()
 
 
-def run_nlpl_enhanced(args):
-    """Run NLPL with enhanced debugging options."""
+def run_nxl_enhanced(args):
+    """Run NexusLang with enhanced debugging options."""
     import argparse
     
-    parser = argparse.ArgumentParser(description='Run NLPL with debugging')
+    parser = argparse.ArgumentParser(description='Run NexusLang with debugging')
     parser.add_argument('file', help='NLPL file to run')
     parser.add_argument('--trace', action='store_true', help='Trace execution')
     parser.add_argument('--scope', action='store_true', help='Show scope state')
@@ -152,7 +152,7 @@ def run_nlpl_enhanced(args):
 
 
 def run_doctor():
-    """Check NLPL development environment."""
+    """Check NexusLang development environment."""
     print("\nNLPL Development Environment Check")
     print("="*80 + "\n")
     
@@ -247,7 +247,7 @@ def main():
         'lex': run_lexer_tools,
         'parse': run_parser_tools,
         'debug': run_interpreter_tools,
-        'run': run_nlpl_enhanced,
+        'run': run_nxl_enhanced,
         'doctor': lambda _: run_doctor(),
         'help': lambda _: print_help(),
         '--help': lambda _: print_help(),

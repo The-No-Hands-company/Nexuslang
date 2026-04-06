@@ -2,7 +2,7 @@
 
 **Date:** February 16, 2026  
 **Priority:** 🔴 CRITICAL (Next phase after debugger completion)  
-**Goal:** Expand NLPL stdlib from 62 to 70+ modules with deep, production-ready implementations  
+**Goal:** Expand NexusLang stdlib from 62 to 70+ modules with deep, production-ready implementations  
 **Timeline:** 4-6 months  
 **Current Status:** Foundation exists, needs deepening and expansion
 
@@ -488,6 +488,6 @@ NLPL has **62 stdlib modules** with basic implementations. The next critical pha
 
 NLPL's stdlib expansion is **critical for production readiness**. We have solid foundations (62 modules, 4 critical modules with implementations) but need to **deepen, test, and validate** before declaring victory.
 
-**This 4-6 month effort transforms NLPL from "feature-rich toy" to "production-ready universal language" by ensuring developers can build real-world applications without reinventing the wheel.**
+**This 4-6 month effort transforms NexusLang from "feature-rich toy" to "production-ready universal language" by ensuring developers can build real-world applications without reinventing the wheel.**
 
 **Next Step:** Begin Week 1 - Crypto Module Expansion (AES, RSA, Ed25519, PBKDF2).

@@ -16,34 +16,34 @@ if _SRC not in sys.path:
 
 class TestLinterChecks:
     def test_performance_check_import(self):
-        from nlpl.tooling.analyzer.checks.performance import PerformanceChecker
+        from nexuslang.tooling.analyzer.checks.performance import PerformanceChecker
         assert PerformanceChecker is not None
 
     def test_security_check_import(self):
-        from nlpl.tooling.analyzer.checks.security import SecurityChecker
+        from nexuslang.tooling.analyzer.checks.security import SecurityChecker
         assert SecurityChecker is not None
 
     def test_data_flow_check_import(self):
-        from nlpl.tooling.analyzer.checks.data_flow import DataFlowChecker
+        from nexuslang.tooling.analyzer.checks.data_flow import DataFlowChecker
         assert DataFlowChecker is not None
 
     def test_performance_check_instantiate(self):
-        from nlpl.tooling.analyzer.checks.performance import PerformanceChecker
+        from nexuslang.tooling.analyzer.checks.performance import PerformanceChecker
         c = PerformanceChecker()
         assert hasattr(c, "check") or hasattr(c, "run") or hasattr(c, "analyze")
 
     def test_security_check_instantiate(self):
-        from nlpl.tooling.analyzer.checks.security import SecurityChecker
+        from nexuslang.tooling.analyzer.checks.security import SecurityChecker
         c = SecurityChecker()
         assert c is not None
 
     def test_data_flow_check_instantiate(self):
-        from nlpl.tooling.analyzer.checks.data_flow import DataFlowChecker
+        from nexuslang.tooling.analyzer.checks.data_flow import DataFlowChecker
         c = DataFlowChecker()
         assert c is not None
 
     def test_analyzer_includes_checks(self):
-        from nlpl.tooling.analyzer.analyzer import StaticAnalyzer
+        from nexuslang.tooling.analyzer.analyzer import StaticAnalyzer
         a = StaticAnalyzer()
         assert a is not None
 
@@ -52,9 +52,9 @@ class TestControlFlowChecker:
     """Comprehensive tests for ControlFlowChecker (CF001/CF002/CF003)."""
 
     def _check(self, src):
-        from nlpl.tooling.analyzer.checks.control_flow import ControlFlowChecker
-        from nlpl.parser.parser import Parser
-        from nlpl.parser.lexer import Lexer
+        from nexuslang.tooling.analyzer.checks.control_flow import ControlFlowChecker
+        from nexuslang.parser.parser import Parser
+        from nexuslang.parser.lexer import Lexer
         prog = Parser(Lexer(src).tokenize()).parse()
         return ControlFlowChecker().check(prog, src, src.splitlines())
 
@@ -73,11 +73,11 @@ class TestControlFlowChecker:
     # ------------------------------------------------------------------
 
     def test_import(self):
-        from nlpl.tooling.analyzer.checks.control_flow import ControlFlowChecker
+        from nexuslang.tooling.analyzer.checks.control_flow import ControlFlowChecker
         assert callable(ControlFlowChecker)
 
     def test_instantiate(self):
-        from nlpl.tooling.analyzer.checks.control_flow import ControlFlowChecker
+        from nexuslang.tooling.analyzer.checks.control_flow import ControlFlowChecker
         c = ControlFlowChecker()
         assert hasattr(c, "check")
 
@@ -85,21 +85,21 @@ class TestControlFlowChecker:
         assert isinstance(self._check("set x to 1"), list)
 
     def test_control_flow_category_importable(self):
-        from nlpl.tooling.analyzer.report import Category
+        from nexuslang.tooling.analyzer.report import Category
         assert hasattr(Category, "CONTROL_FLOW")
 
     def test_checker_registered_in_init(self):
-        from nlpl.tooling.analyzer.checks import ControlFlowChecker
+        from nexuslang.tooling.analyzer.checks import ControlFlowChecker
         assert ControlFlowChecker is not None
 
     def test_analyzer_includes_control_flow(self):
-        from nlpl.tooling.analyzer.analyzer import StaticAnalyzer
+        from nexuslang.tooling.analyzer.analyzer import StaticAnalyzer
         analyzer = StaticAnalyzer(enable_all=True)
         checker_types = [type(c).__name__ for c in analyzer.checkers]
         assert "ControlFlowChecker" in checker_types
 
     def test_checker_name(self):
-        from nlpl.tooling.analyzer.checks.control_flow import ControlFlowChecker
+        from nexuslang.tooling.analyzer.checks.control_flow import ControlFlowChecker
         assert ControlFlowChecker.CHECKER_NAME == "control_flow"
 
     # ------------------------------------------------------------------
@@ -498,7 +498,7 @@ class TestControlFlowChecker:
         assert all(hasattr(i, "category") for i in issues)
 
     def test_cf001_issue_category_is_control_flow(self):
-        from nlpl.tooling.analyzer.report import Category
+        from nexuslang.tooling.analyzer.report import Category
         src = (
             "function bad returns Integer\n"
             "    set x to 1\n"
@@ -510,7 +510,7 @@ class TestControlFlowChecker:
         assert cf001[0].category == Category.CONTROL_FLOW
 
     def test_cf002_issue_category_is_control_flow(self):
-        from nlpl.tooling.analyzer.report import Category
+        from nexuslang.tooling.analyzer.report import Category
         src = (
             "while true\n"
             "    set x to 0\n"
@@ -522,7 +522,7 @@ class TestControlFlowChecker:
         assert cf002[0].category == Category.CONTROL_FLOW
 
     def test_cf003_issue_category_is_control_flow(self):
-        from nlpl.tooling.analyzer.report import Category
+        from nexuslang.tooling.analyzer.report import Category
         src = (
             "function foo returns Integer\n"
             "    return 1\n"
@@ -540,13 +540,13 @@ class TestControlFlowChecker:
 
     def test_static_analyzer_emits_cf001_via_analyze_file(self):
         import tempfile, os
-        from nlpl.tooling.analyzer.analyzer import StaticAnalyzer
+        from nexuslang.tooling.analyzer.analyzer import StaticAnalyzer
         src = (
             "function broken returns Integer\n"
             "    set x to 0\n"
             "end"
         )
-        with tempfile.NamedTemporaryFile(suffix=".nlpl", mode="w",
+        with tempfile.NamedTemporaryFile(suffix=".nxl", mode="w",
                                          delete=False) as f:
             f.write(src)
             path = f.name
@@ -560,13 +560,13 @@ class TestControlFlowChecker:
 
     def test_static_analyzer_emits_cf002_via_analyze_file(self):
         import tempfile, os
-        from nlpl.tooling.analyzer.analyzer import StaticAnalyzer
+        from nexuslang.tooling.analyzer.analyzer import StaticAnalyzer
         src = (
             "while true\n"
             "    set x to 1\n"
             "end"
         )
-        with tempfile.NamedTemporaryFile(suffix=".nlpl", mode="w",
+        with tempfile.NamedTemporaryFile(suffix=".nxl", mode="w",
                                          delete=False) as f:
             f.write(src)
             path = f.name

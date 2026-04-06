@@ -1,11 +1,11 @@
-# NLPL Module System Design
+# NexusLang Module System Design
 
 ## Overview
-The NLPL module system provides a way to organize code into reusable components that can be imported and used across different files. This system enables better code organization, encapsulation, and reuse.
+The NexusLang module system provides a way to organize code into reusable components that can be imported and used across different files. This system enables better code organization, encapsulation, and reuse.
 
 ## Module Definition
 
-A module in NLPL is simply a file containing NLPL code. Each file automatically becomes a module that can be imported by other files. The module name is derived from the file name (without the `.nlpl` extension).
+A module in NexusLang is simply a file containing NexusLang code. Each file automatically becomes a module that can be imported by other files. The module name is derived from the file name (without the `.nlpl` extension).
 
 ## Import Syntax
 

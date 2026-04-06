@@ -1,6 +1,6 @@
-# NLPL Fuzzing Infrastructure
+# NexusLang Fuzzing Infrastructure
 
-Continuous fuzz testing for the NLPL compiler pipeline. Five independent harnesses
+Continuous fuzz testing for the NexusLang compiler pipeline. Five independent harnesses
 cover every major trust boundary: lexer input, parser input, interpreter execution,
 type checker analysis, and FFI type marshalling.
 
@@ -107,14 +107,14 @@ unexpected exception with its full traceback.
 
 ## Exception Policy
 
-Each harness distinguishes expected failures (normal NLPL error conditions) from
+Each harness distinguishes expected failures (normal NexusLang error conditions) from
 unexpected Python exceptions (bugs):
 
 | Category | Treatment |
 |----------|-----------|
-| `NLPLError`, `NLPLSyntaxError`, `NLPLRuntimeError`, `NLPLTypeError`, `NLPLNameError` | Silently ignored (correct language error) |
+| `NxlError`, `NxlSyntaxError`, `NxlRuntimeError`, `NxlTypeError`, `NxlNameError` | Silently ignored (correct language error) |
 | `ValueError`, `UnicodeDecodeError`, `OverflowError` | Silently ignored |
-| `RecursionError` | Silently ignored in interpreter harness (infinite NLPL recursion is acceptable) |
+| `RecursionError` | Silently ignored in interpreter harness (infinite NexusLang recursion is acceptable) |
 | Any other Python exception | Re-raised (treated as a bug, causes fuzzer to save crash file) |
 
 ---
@@ -122,7 +122,7 @@ unexpected Python exceptions (bugs):
 ## Adding Corpus Inputs
 
 Seed inputs for libFuzzer live in `fuzzing/corpus/<target>/`. Each file should
-contain a single NLPL snippet (raw UTF-8 text). Aim for:
+contain a single NexusLang snippet (raw UTF-8 text). Aim for:
 
 - Small: 50-200 bytes is ideal; libFuzzer mutates from here
 - Diverse: cover different language features per target

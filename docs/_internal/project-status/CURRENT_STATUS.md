@@ -1,4 +1,4 @@
-# NLPL Compiler - Current Development Status
+# NexusLang Compiler - Current Development Status
 
 **Last Updated:** November 25, 2024
 
@@ -25,7 +25,7 @@
 - Natural language tokenization
 - Recursive descent parser
 - AST generation
-- All NLPL syntax constructs
+- All NexusLang syntax constructs
 - Error recovery
 
 ### 1.2 LLVM Backend
@@ -145,7 +145,7 @@
 
 ## Current Capabilities
 
-### What NLPL Can Do Right Now
+### What NexusLang Can Do Right Now
 
  **Compile to Native Executables**
 ```bash
@@ -287,7 +287,7 @@ gdb ./program
 - Community growth
 
 ### Dream Goals (3-6 months)
-- NLPL IDE (custom editor)
+- NexusLang IDE (custom editor)
 - Plugin ecosystem
 - AI-assisted code generation
 - Cross-platform GUI framework

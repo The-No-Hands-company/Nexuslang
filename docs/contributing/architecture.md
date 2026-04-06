@@ -1,12 +1,12 @@
-# Natural Language Programming Language (NLPL) Compiler Architecture
+# NexusLang (NexusLang) Compiler Architecture
 
 ## Overview
 
-The NLPL compiler architecture is designed to translate natural language programming code into efficient machine code while maintaining the power and flexibility of C++. This document outlines the key components of the compiler architecture, their interactions, and the strategies for handling the unique challenges of natural language programming.
+The NexusLang compiler architecture is designed to translate natural language programming code into efficient machine code while maintaining the power and flexibility of C++. This document outlines the key components of the compiler architecture, their interactions, and the strategies for handling the unique challenges of natural language programming.
 
 ## High-Level Architecture
 
-The NLPL compiler follows a multi-stage pipeline architecture with specialized components for handling natural language processing:
+The NexusLang compiler follows a multi-stage pipeline architecture with specialized components for handling natural language processing:
 
 ```
 [Source Code] [Lexer] [Parser] [Semantic Analyzer] [NLP Resolver] 
@@ -29,7 +29,7 @@ The lexer breaks the natural language source code into tokens, but with special 
 - **Synonym recognition**: Maps synonymous terms to canonical tokens
 
 #### Implementation Strategy:
-- Use a combination of rule-based tokenization and machine learning models trained on the NLPL grammar
+- Use a combination of rule-based tokenization and machine learning models trained on the NexusLang grammar
 - Maintain a dictionary of synonyms and equivalent phrases
 - Implement lookahead and lookbehind capabilities to handle context-dependent tokenization
 
@@ -70,7 +70,7 @@ The semantic analyzer verifies the semantic correctness of the program and build
 
 ### 4. NLP Resolver
 
-This is a specialized component unique to NLPL that resolves natural language ambiguities:
+This is a specialized component unique to NexusLang that resolves natural language ambiguities:
 
 #### Features:
 - **Contextual disambiguation**: Uses program context to resolve ambiguous constructs
@@ -79,7 +79,7 @@ This is a specialized component unique to NLPL that resolves natural language am
 - **Phrase normalization**: Converts varied natural language phrases to canonical forms
 
 #### Implementation Strategy:
-- Implement a machine learning model trained on NLPL code examples
+- Implement a machine learning model trained on NexusLang code examples
 - Use transformer-based models for contextual understanding
 - Maintain a knowledge base of programming patterns and idioms
 - Implement a confidence scoring system to identify constructs requiring human verification
@@ -89,7 +89,7 @@ This is a specialized component unique to NLPL that resolves natural language am
 Translates the semantically analyzed and resolved AST into an intermediate representation (IR):
 
 #### Features:
-- **Language-agnostic IR**: Generates LLVM IR or a custom IR designed for NLPL
+- **Language-agnostic IR**: Generates LLVM IR or a custom IR designed for NexusLang
 - **High-level optimizations**: Performs language-specific optimizations
 - **Memory management integration**: Inserts appropriate memory management operations
 - **Exception handling**: Implements the exception handling mechanism
@@ -142,8 +142,8 @@ Performs various optimizations on the intermediate code:
 - **Implementation**: `has_async_functions` flag in `llvm_ir_generator.py`
 
 **Performance Results**:
-- **Fibonacci(1000)**: 0.934ms NLPL vs 0.518ms C (1.80x slower) ✅ Within 3x target
-- **Matrix(200x200)**: 1.191ms NLPL vs 0.473ms C (2.52x slower) ✅ Within 3x target
+- **Fibonacci(1000)**: 0.934ms NexusLang vs 0.518ms C (1.80x slower) ✅ Within 3x target
+- **Matrix(200x200)**: 1.191ms NexusLang vs 0.473ms C (2.52x slower) ✅ Within 3x target
 - **IR Quality**: Clean SSA form with PHI nodes, perfect function attributes
 
 **CLI Integration**:
@@ -161,7 +161,7 @@ Translates the optimized IR into machine code or target language code:
 #### Features:
 - **Multiple targets**: Generate code for various architectures (x86, ARM, etc.)
 - **Platform-specific optimizations**: Optimize for specific hardware features
-- **Inline assembly integration**: Support for the inline assembly syntax in NLPL
+- **Inline assembly integration**: Support for the inline assembly syntax in NexusLang
 - **Debugging information**: Generate debugging information for developer tools
 
 #### Implementation Strategy:
@@ -174,7 +174,7 @@ Translates the optimized IR into machine code or target language code:
 
 ### Error Handling and Reporting
 
-A critical aspect of NLPL is providing clear, natural language error messages:
+A critical aspect of NexusLang is providing clear, natural language error messages:
 
 - **Natural language error messages**: Generate error messages in plain English
 - **Contextual suggestions**: Provide suggestions based on common mistakes
@@ -273,6 +273,6 @@ The final phase will focus on:
 
 ## Conclusion
 
-The NLPL compiler architecture combines traditional compiler design with specialized components for natural language processing. By leveraging both established compiler techniques and modern NLP approaches, the architecture aims to deliver a programming language that is both natural to write and powerful to use.
+The NexusLang compiler architecture combines traditional compiler design with specialized components for natural language processing. By leveraging both established compiler techniques and modern NLP approaches, the architecture aims to deliver a programming language that is both natural to write and powerful to use.
 
 The multi-phase implementation approach allows for incremental development and testing, with each phase building on the success of the previous one. The result will be a compiler that translates natural language programming into efficient machine code, making programming more accessible while maintaining the power and flexibility of languages like C++.

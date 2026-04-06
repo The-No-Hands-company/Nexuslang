@@ -1,4 +1,4 @@
-# Inline Assembly in NLPL
+# Inline Assembly in NexusLang
 
 **Status:** ✅ Fully implemented (February 2, 2026)  
 **Complexity:** Advanced  
@@ -8,7 +8,7 @@
 
 ## Overview
 
-Inline assembly allows you to embed raw assembly instructions directly in NLPL code. This provides:
+Inline assembly allows you to embed raw assembly instructions directly in NexusLang code. This provides:
 
 - **Hardware control:** Direct CPU instruction access
 - **Performance optimization:** Hand-tuned critical sections
@@ -20,7 +20,7 @@ NLPL's inline assembly features:
 - Register allocation and constraints
 - Input/output operands
 - Memory clobbers and side effects
-- Integration with NLPL variables and types
+- Integration with NexusLang variables and types
 
 **Warning:** Inline assembly is architecture-specific and bypasses NLPL's safety checks. Use with caution!
 
@@ -504,13 +504,13 @@ end
 
 ---
 
-## Integration with NLPL
+## Integration with NexusLang
 
-### Passing NLPL Variables
+### Passing NexusLang Variables
 
 ```nlpl
 function compute with x as Integer, y as Integer returns Integer
-  # NLPL variables are automatically mapped to calling convention
+  # NexusLang variables are automatically mapped to calling convention
   asm "
     ; x is in rdi, y is in rsi
     mov rax, rdi
@@ -560,17 +560,17 @@ function set_point with p as Pointer to Point, x as Integer, y as Integer
 end
 ```
 
-### Calling NLPL Functions from Assembly
+### Calling NexusLang Functions from Assembly
 
 ```nlpl
-function nlpl_helper with x as Integer returns Integer
+function nxl_helper with x as Integer returns Integer
   return x times 2 plus 1
 end
 
 function use_helper with x as Integer returns Integer
   asm "
     push rdi           ; Save argument
-    call nlpl_helper   ; Call NLPL function
+    call nxl_helper   ; Call NexusLang function
     pop rdi            ; Restore
     add rax, rdi       ; Add original x to result
     ret
@@ -690,7 +690,7 @@ end
 
 ```nlpl
 function safe_divide with a as Integer, b as Integer returns Integer
-  # Check for division by zero in NLPL
+  # Check for division by zero in NexusLang
   if b equals 0
     raise error "Division by zero"
   end
@@ -942,7 +942,7 @@ end
 
 ## Summary
 
-Inline assembly in NLPL provides:
+Inline assembly in NexusLang provides:
 
 ✅ **Direct hardware access** - CPU instructions, registers, flags  
 ✅ **x86_64 support** - Full instruction set (SSE, AVX, atomic ops)  
@@ -957,7 +957,7 @@ Inline assembly in NLPL provides:
 - You understand the trade-offs (portability, safety, maintenance)
 
 **Avoid inline assembly when:**
-- NLPL or standard library provides the functionality
+- NexusLang or standard library provides the functionality
 - You haven't profiled to identify bottlenecks
 - You need cross-platform code
 - Compiler optimizations are sufficient

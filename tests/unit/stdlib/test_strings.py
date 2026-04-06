@@ -1,5 +1,5 @@
 """
-Comprehensive test suite for NLPL string operations.
+Comprehensive test suite for NexusLang string operations.
 Tests string creation, concatenation, methods, and operations.
 """
 
@@ -119,7 +119,7 @@ class TestStringMethods(NLPLTestBase):
         """Test replacing substring."""
         code = '''
         set s to "Hello World"
-        set result to replace "World" with "NLPL" in s
+        set result to replace "World" with "NexusLang" in s
         '''
         # Adjust based on actual method name/implementation
     

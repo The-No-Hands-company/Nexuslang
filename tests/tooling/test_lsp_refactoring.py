@@ -15,7 +15,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 import pytest
-from nlpl.lsp.code_actions import CodeActionsProvider
+from nexuslang.lsp.code_actions import CodeActionsProvider
 
 
 class MockServer:
@@ -88,18 +88,18 @@ set x to 1
 
 
 def test_organize_imports_returns_action(provider):
-    params = _params("file:///t.nlpl", UNSORTED_IMPORTS)
-    actions = provider.get_code_actions("file:///t.nlpl", UNSORTED_IMPORTS, params, [])
+    params = _params("file:///t.nxl", UNSORTED_IMPORTS)
+    actions = provider.get_code_actions("file:///t.nxl", UNSORTED_IMPORTS, params, [])
     action = _find_action(actions, "organize import")
     assert action is not None
 
 
 def test_organize_imports_sorts_alphabetically(provider):
-    params = _params("file:///t.nlpl", UNSORTED_IMPORTS)
-    actions = provider.get_code_actions("file:///t.nlpl", UNSORTED_IMPORTS, params, [])
+    params = _params("file:///t.nxl", UNSORTED_IMPORTS)
+    actions = provider.get_code_actions("file:///t.nxl", UNSORTED_IMPORTS, params, [])
     action = _find_action(actions, "organize import")
     assert action is not None
-    edits = action["edit"]["changes"]["file:///t.nlpl"]
+    edits = action["edit"]["changes"]["file:///t.nxl"]
     # The new text for the import block should list them in alpha order
     new_text = edits[0]["newText"]
     lines = [l for l in new_text.splitlines() if l.startswith("import ")]
@@ -108,16 +108,16 @@ def test_organize_imports_sorts_alphabetically(provider):
 
 def test_organize_imports_no_action_when_already_sorted(provider):
     src = "import collections\nimport io\nimport math\nimport string\n\nset x to 1\n"
-    params = _params("file:///t.nlpl", src)
-    actions = provider.get_code_actions("file:///t.nlpl", src, params, [])
+    params = _params("file:///t.nxl", src)
+    actions = provider.get_code_actions("file:///t.nxl", src, params, [])
     action = _find_action(actions, "organize import")
     assert action is None
 
 
 def test_organize_imports_no_action_when_no_imports(provider):
     src = "set x to 1\nset y to 2\n"
-    params = _params("file:///t.nlpl", src)
-    actions = provider.get_code_actions("file:///t.nlpl", src, params, [])
+    params = _params("file:///t.nxl", src)
+    actions = provider.get_code_actions("file:///t.nxl", src, params, [])
     action = _find_action(actions, "organize import")
     assert action is None
 
@@ -129,8 +129,8 @@ def test_organize_imports_multiple_blocks(provider):
         "# some code\nset x to 1\n\n"
         "import zz_lib\nimport aa_lib\n"
     )
-    params = _params("file:///t.nlpl", src)
-    actions = provider.get_code_actions("file:///t.nlpl", src, params, [])
+    params = _params("file:///t.nxl", src)
+    actions = provider.get_code_actions("file:///t.nxl", src, params, [])
     action = _find_action(actions, "organize import")
     assert action is not None
 
@@ -155,53 +155,53 @@ COMMENTED_LINES = """\
 
 
 def test_toggle_comment_adds_hash_to_uncommented(provider):
-    params = _params("file:///t.nlpl", UNCOMMENTED_LINES, sl=0, sc=0, el=2, ec=10)
-    actions = provider.get_code_actions("file:///t.nlpl", UNCOMMENTED_LINES, params, [])
+    params = _params("file:///t.nxl", UNCOMMENTED_LINES, sl=0, sc=0, el=2, ec=10)
+    actions = provider.get_code_actions("file:///t.nxl", UNCOMMENTED_LINES, params, [])
     action = _find_action(actions, "comment")
     assert action is not None
 
 
 def test_toggle_comment_produces_hash_prefix(provider):
-    params = _params("file:///t.nlpl", UNCOMMENTED_LINES, sl=0, sc=0, el=2, ec=10)
-    actions = provider.get_code_actions("file:///t.nlpl", UNCOMMENTED_LINES, params, [])
+    params = _params("file:///t.nxl", UNCOMMENTED_LINES, sl=0, sc=0, el=2, ec=10)
+    actions = provider.get_code_actions("file:///t.nxl", UNCOMMENTED_LINES, params, [])
     action = _find_action(actions, "comment")
     assert action is not None
-    edits = action["edit"]["changes"]["file:///t.nlpl"]
+    edits = action["edit"]["changes"]["file:///t.nxl"]
     assert any("#" in e["newText"] for e in edits)
 
 
 def test_toggle_comment_removes_hash_when_all_commented(provider):
-    params = _params("file:///t.nlpl", COMMENTED_LINES, sl=0, sc=0, el=2, ec=14)
-    actions = provider.get_code_actions("file:///t.nlpl", COMMENTED_LINES, params, [])
+    params = _params("file:///t.nxl", COMMENTED_LINES, sl=0, sc=0, el=2, ec=14)
+    actions = provider.get_code_actions("file:///t.nxl", COMMENTED_LINES, params, [])
     action = _find_action(actions, "uncomment")
     assert action is not None
 
 
 def test_toggle_comment_produces_uncommented_text(provider):
-    params = _params("file:///t.nlpl", COMMENTED_LINES, sl=0, sc=0, el=2, ec=14)
-    actions = provider.get_code_actions("file:///t.nlpl", COMMENTED_LINES, params, [])
+    params = _params("file:///t.nxl", COMMENTED_LINES, sl=0, sc=0, el=2, ec=14)
+    actions = provider.get_code_actions("file:///t.nxl", COMMENTED_LINES, params, [])
     action = _find_action(actions, "uncomment")
     assert action is not None
-    edits = action["edit"]["changes"]["file:///t.nlpl"]
+    edits = action["edit"]["changes"]["file:///t.nxl"]
     for edit in edits:
         assert not edit["newText"].lstrip().startswith("#")
 
 
 def test_toggle_comment_skips_blank_lines(provider):
     src = "set x to 1\n\nset y to 2\n"
-    params = _params("file:///t.nlpl", src, sl=0, sc=0, el=2, ec=10)
-    actions = provider.get_code_actions("file:///t.nlpl", src, params, [])
+    params = _params("file:///t.nxl", src, sl=0, sc=0, el=2, ec=10)
+    actions = provider.get_code_actions("file:///t.nxl", src, params, [])
     action = _find_action(actions, "comment")
     if action is not None:
-        edits = action["edit"]["changes"]["file:///t.nlpl"]
+        edits = action["edit"]["changes"]["file:///t.nxl"]
         # Blank line should not be included in edits
         for edit in edits:
             assert edit["newText"].strip() != ""
 
 
 def test_toggle_comment_single_line(provider):
-    params = _params("file:///t.nlpl", "set x to 1\n", sl=0, sc=0, el=0, ec=10)
-    actions = provider.get_code_actions("file:///t.nlpl", "set x to 1\n", params, [])
+    params = _params("file:///t.nxl", "set x to 1\n", sl=0, sc=0, el=0, ec=10)
+    actions = provider.get_code_actions("file:///t.nxl", "set x to 1\n", params, [])
     action = _find_action(actions, "comment")
     assert action is not None
 
@@ -216,44 +216,44 @@ EXTRACT_SRC = "set result to compute x plus y plus z\n"
 
 def test_extract_variable_returns_action_on_selection(provider):
     # Select a portion of line 0
-    params = _params("file:///t.nlpl", EXTRACT_SRC, sl=0, sc=18, el=0, ec=37)
-    actions = provider.get_code_actions("file:///t.nlpl", EXTRACT_SRC, params, [])
+    params = _params("file:///t.nxl", EXTRACT_SRC, sl=0, sc=18, el=0, ec=37)
+    actions = provider.get_code_actions("file:///t.nxl", EXTRACT_SRC, params, [])
     action = _find_action(actions, "to variable")
     assert action is not None
 
 
 def test_extract_variable_creates_set_line(provider):
-    params = _params("file:///t.nlpl", EXTRACT_SRC, sl=0, sc=18, el=0, ec=37)
-    actions = provider.get_code_actions("file:///t.nlpl", EXTRACT_SRC, params, [])
+    params = _params("file:///t.nxl", EXTRACT_SRC, sl=0, sc=18, el=0, ec=37)
+    actions = provider.get_code_actions("file:///t.nxl", EXTRACT_SRC, params, [])
     action = _find_action(actions, "to variable")
     assert action is not None
-    edits = action["edit"]["changes"]["file:///t.nlpl"]
+    edits = action["edit"]["changes"]["file:///t.nxl"]
     new_texts = [e["newText"] for e in edits]
     # One of the edits should have "set newValue to"
     assert any("set newValue to" in t for t in new_texts)
 
 
 def test_extract_variable_replaces_selection(provider):
-    params = _params("file:///t.nlpl", EXTRACT_SRC, sl=0, sc=18, el=0, ec=37)
-    actions = provider.get_code_actions("file:///t.nlpl", EXTRACT_SRC, params, [])
+    params = _params("file:///t.nxl", EXTRACT_SRC, sl=0, sc=18, el=0, ec=37)
+    actions = provider.get_code_actions("file:///t.nxl", EXTRACT_SRC, params, [])
     action = _find_action(actions, "to variable")
     assert action is not None
-    edits = action["edit"]["changes"]["file:///t.nlpl"]
+    edits = action["edit"]["changes"]["file:///t.nxl"]
     assert any("newValue" in e.get("newText", "") and "set newValue to" not in e.get("newText", "") for e in edits)
 
 
 def test_extract_variable_no_action_when_multiline_selection(provider):
     src = "set x to 1\nset y to 2\n"
     # Select across two lines - _extract_variable returns None for multiline
-    params = _params("file:///t.nlpl", src, sl=0, sc=5, el=1, ec=10)
-    actions = provider.get_code_actions("file:///t.nlpl", src, params, [])
+    params = _params("file:///t.nxl", src, sl=0, sc=5, el=1, ec=10)
+    actions = provider.get_code_actions("file:///t.nxl", src, params, [])
     action = _find_action(actions, "to variable")
     assert action is None
 
 
 def test_extract_variable_no_action_when_no_selection(provider):
-    params = _params("file:///t.nlpl", EXTRACT_SRC, sl=0, sc=0, el=0, ec=0)
-    actions = provider.get_code_actions("file:///t.nlpl", EXTRACT_SRC, params, [])
+    params = _params("file:///t.nxl", EXTRACT_SRC, sl=0, sc=0, el=0, ec=0)
+    actions = provider.get_code_actions("file:///t.nxl", EXTRACT_SRC, params, [])
     action = _find_action(actions, "to variable")
     assert action is None
 
@@ -272,37 +272,37 @@ set other to multiplier plus 1
 
 def test_inline_variable_returns_action(provider):
     # Cursor on 'multiplier' in 'set multiplier to 3'
-    params = _params("file:///t.nlpl", INLINE_SRC, sl=0, sc=4, el=0, ec=14)
-    actions = provider.get_code_actions("file:///t.nlpl", INLINE_SRC, params, [])
+    params = _params("file:///t.nxl", INLINE_SRC, sl=0, sc=4, el=0, ec=14)
+    actions = provider.get_code_actions("file:///t.nxl", INLINE_SRC, params, [])
     action = _find_action(actions, "inline")
     assert action is not None
 
 
 def test_inline_variable_produces_edits(provider):
-    params = _params("file:///t.nlpl", INLINE_SRC, sl=0, sc=4, el=0, ec=14)
-    actions = provider.get_code_actions("file:///t.nlpl", INLINE_SRC, params, [])
+    params = _params("file:///t.nxl", INLINE_SRC, sl=0, sc=4, el=0, ec=14)
+    actions = provider.get_code_actions("file:///t.nxl", INLINE_SRC, params, [])
     action = _find_action(actions, "inline")
     assert action is not None
-    edits = action["edit"]["changes"]["file:///t.nlpl"]
+    edits = action["edit"]["changes"]["file:///t.nxl"]
     assert len(edits) >= 1
 
 
 def test_inline_variable_removes_declaration(provider):
-    params = _params("file:///t.nlpl", INLINE_SRC, sl=0, sc=4, el=0, ec=14)
-    actions = provider.get_code_actions("file:///t.nlpl", INLINE_SRC, params, [])
+    params = _params("file:///t.nxl", INLINE_SRC, sl=0, sc=4, el=0, ec=14)
+    actions = provider.get_code_actions("file:///t.nxl", INLINE_SRC, params, [])
     action = _find_action(actions, "inline")
     assert action is not None
-    edits = action["edit"]["changes"]["file:///t.nlpl"]
+    edits = action["edit"]["changes"]["file:///t.nxl"]
     # One edit should produce empty text for the declaration line
     assert any(e.get("newText", "x") == "" for e in edits)
 
 
 def test_inline_variable_replaces_uses_with_value(provider):
-    params = _params("file:///t.nlpl", INLINE_SRC, sl=0, sc=4, el=0, ec=14)
-    actions = provider.get_code_actions("file:///t.nlpl", INLINE_SRC, params, [])
+    params = _params("file:///t.nxl", INLINE_SRC, sl=0, sc=4, el=0, ec=14)
+    actions = provider.get_code_actions("file:///t.nxl", INLINE_SRC, params, [])
     action = _find_action(actions, "inline")
     assert action is not None
-    edits = action["edit"]["changes"]["file:///t.nlpl"]
+    edits = action["edit"]["changes"]["file:///t.nxl"]
     # The implementation replaces whole lines; verify 'multiplier' is gone
     # and '3' appears in the replacement lines for lines 1 and 2
     replaced = [
@@ -321,8 +321,8 @@ set result to count plus 5
 
 def test_inline_variable_no_action_when_multiple_assignments(provider):
     # 'count' has 2 assignment statements → ambiguous, no inline
-    params = _params("file:///t.nlpl", MULTI_ASSIGN_SRC, sl=0, sc=4, el=0, ec=9)
-    actions = provider.get_code_actions("file:///t.nlpl", MULTI_ASSIGN_SRC, params, [])
+    params = _params("file:///t.nxl", MULTI_ASSIGN_SRC, sl=0, sc=4, el=0, ec=9)
+    actions = provider.get_code_actions("file:///t.nxl", MULTI_ASSIGN_SRC, params, [])
     action = _find_action(actions, "inline")
     assert action is None
 
@@ -330,7 +330,7 @@ def test_inline_variable_no_action_when_multiple_assignments(provider):
 def test_inline_variable_no_action_when_cursor_not_on_set(provider):
     src = "print text multiplier\n"
     # Cursor is on 'print text ...' which is not a set statement
-    params = _params("file:///t.nlpl", src, sl=0, sc=11, el=0, ec=21)
-    actions = provider.get_code_actions("file:///t.nlpl", src, params, [])
+    params = _params("file:///t.nxl", src, sl=0, sc=11, el=0, ec=21)
+    actions = provider.get_code_actions("file:///t.nxl", src, params, [])
     action = _find_action(actions, "inline")
     assert action is None

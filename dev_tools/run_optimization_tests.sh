@@ -44,7 +44,7 @@ SKIPPED_TESTS=0
 
 for test in "${TESTS[@]}"; do
     TOTAL_TESTS=$((TOTAL_TESTS + 1))
-    TEST_FILE="$TEST_DIR/${test}.nlpl"
+    TEST_FILE="$TEST_DIR/${test}.nxl"
     
     if [ ! -f "$TEST_FILE" ]; then
         echo -e "${YELLOW}SKIP${NC}: $test (file not found)"

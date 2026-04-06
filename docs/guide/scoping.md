@@ -2,7 +2,7 @@
 
 ## Understanding Blocks
 
-In NLPL, blocks are groups of related commands that are indented together. They define the structure and flow of your program.
+In NexusLang, blocks are groups of related commands that are indented together. They define the structure and flow of your program.
 
 ### Basic Block Structure
 ```

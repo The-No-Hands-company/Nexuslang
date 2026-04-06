@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-Successfully implemented complete DMA (Direct Memory Access) control system for NLPL, providing low-level hardware access for system programming and domains requiring direct hardware control. This completes the **hardware access foundation trilogy**: Port I/O ✅ + MMIO ✅ + Interrupts ✅ + **DMA ✅**.
+Successfully implemented complete DMA (Direct Memory Access) control system for NexusLang, providing low-level hardware access for system programming and domains requiring direct hardware control. This completes the **hardware access foundation trilogy**: Port I/O ✅ + MMIO ✅ + Interrupts ✅ + **DMA ✅**.
 
 ### Implementation Stats
 
@@ -915,7 +915,7 @@ start_dma_transfer with channel: 5
 - **Note**: WinIO or similar driver required for production use
 
 ### Future: Compiled Mode
-When NLPL compiler is implemented:
+When NexusLang compiler is implemented:
 - Direct inline assembly generation
 - No privilege checks (handled by OS)
 - Full performance (no Python overhead)
@@ -1096,7 +1096,7 @@ Complex channel state tracking:
 - Configuration parameters
 - Active transfer state
 
-**Solution:** DMAChannelState class with `to_dict()` for NLPL access.
+**Solution:** DMAChannelState class with `to_dict()` for NexusLang access.
 
 ### 5. Error Handling Granularity
 12+ distinct error cases identified:
@@ -1193,7 +1193,7 @@ python src/main.py examples/hardware_dma.nlpl
 
 ## Hardware Access Foundation Complete
 
-With DMA implementation, NLPL now has **complete low-level hardware access**:
+With DMA implementation, NexusLang now has **complete low-level hardware access**:
 
 1. **✅ Port I/O** (Feb 2026)
    - 6 functions (byte/word/dword)
@@ -1248,9 +1248,9 @@ With DMA implementation, NLPL now has **complete low-level hardware access**:
 
 ## Conclusion
 
-DMA Control implementation is **production-ready** and **complete**. All 17 functions are fully implemented with comprehensive error handling, extensive test coverage, and detailed documentation. This completes the hardware access foundation, providing NLPL with the low-level capabilities needed for system programming and domains requiring direct hardware control.
+DMA Control implementation is **production-ready** and **complete**. All 17 functions are fully implemented with comprehensive error handling, extensive test coverage, and detailed documentation. This completes the hardware access foundation, providing NexusLang with the low-level capabilities needed for system programming and domains requiring direct hardware control.
 
-**Key Achievement:** NLPL can now perform all essential hardware access operations, enabling bare-metal programming, system-level software, and any domain requiring direct hardware control.
+**Key Achievement:** NexusLang can now perform all essential hardware access operations, enabling bare-metal programming, system-level software, and any domain requiring direct hardware control.
 
 **Philosophy Adherence:** Zero shortcuts, zero compromises, complete implementations. Every function is production-ready with real-world use cases validated.
 

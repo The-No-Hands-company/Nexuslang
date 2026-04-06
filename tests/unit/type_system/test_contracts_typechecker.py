@@ -5,8 +5,8 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from nlpl.parser.ast import Program, Literal, RequireStatement, ExpectStatement
-from nlpl.typesystem.typechecker import TypeChecker
+from nexuslang.parser.ast import Program, Literal, RequireStatement, ExpectStatement
+from nexuslang.typesystem.typechecker import TypeChecker
 
 
 def test_typechecker_accepts_well_typed_require_and_expect():

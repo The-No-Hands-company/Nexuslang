@@ -25,18 +25,18 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.parser.ast import VariableDeclaration, AllocatorHint
-from nlpl.interpreter.interpreter import Interpreter
-from nlpl.runtime.runtime import Runtime
-from nlpl.stdlib import register_stdlib
-from nlpl.stdlib.allocators import (
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.parser.ast import VariableDeclaration, AllocatorHint
+from nexuslang.interpreter.interpreter import Interpreter
+from nexuslang.runtime.runtime import Runtime
+from nexuslang.stdlib import register_stdlib
+from nexuslang.stdlib.allocators import (
     ArenaAllocator, PoolAllocator, SystemAllocator, SlabAllocator,
     AllocatorTrackedList, AllocatorTrackedDict,
     wrap_collection_with_allocator,
 )
-from nlpl.errors import NLPLRuntimeError
+from nexuslang.errors import NxlRuntimeError
 
 
 # ---------------------------------------------------------------------------
@@ -438,7 +438,7 @@ set stats to get_allocator_stats with slab
         assert stats['allocation_count'] == 2
 
     def test_undefined_allocator_raises_error(self):
-        with pytest.raises(NLPLRuntimeError) as exc_info:
+        with pytest.raises(NxlRuntimeError) as exc_info:
             _run('''
 set items to [] as List of Integer with allocator nonexistent_alloc
 ''')
@@ -552,7 +552,7 @@ class TestTypeSystemAllocatorHint:
     """Type checker and inference handle AllocatorHint correctly."""
 
     def _check(self, source: str):
-        from nlpl.typesystem.typechecker import TypeChecker
+        from nexuslang.typesystem.typechecker import TypeChecker
         checker = TypeChecker()
         tokens = Lexer(source).tokenize()
         parser = Parser(tokens, source)
@@ -561,14 +561,14 @@ class TestTypeSystemAllocatorHint:
         return checker.errors
 
     def test_allocator_hint_stripped_for_inference(self):
-        from nlpl.typesystem.type_inference import TypeInferenceEngine
-        from nlpl.parser.ast import VariableDeclaration
-        from nlpl.parser.ast import AllocatorHint
+        from nexuslang.typesystem.type_inference import TypeInferenceEngine
+        from nexuslang.parser.ast import VariableDeclaration
+        from nexuslang.parser.ast import AllocatorHint
 
         engine = TypeInferenceEngine()
         hint = AllocatorHint('List of Integer', 'arena')
         decl = VariableDeclaration('items', None, hint)
-        from nlpl.typesystem.types import ListType, INTEGER_TYPE
+        from nexuslang.typesystem.types import ListType, INTEGER_TYPE
         result_type = engine.infer_variable_declaration(decl, {})
         # Should produce a list type, not crash
         assert result_type is not None

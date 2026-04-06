@@ -177,7 +177,7 @@ call bind_texture with shadow_map and 0  # Bind as texture unit 0
 ### Testing Results
 
 ```
-=== NLPL Shadow Mapping Demo ===
+=== NexusLang Shadow Mapping Demo ===
 Two-pass rendering with depth buffer shadows
 Compiling shadow shaders...
 Compiling scene shaders...

@@ -18,10 +18,10 @@ SCRIPT_DIR = Path(__file__).parent
 NLPL_ROOT = SCRIPT_DIR.parent
 sys.path.insert(0, str(NLPL_ROOT / "src"))
 
-from nlpl.compiler.profiling import CompilerProfiler, enable_profiling
+from nexuslang.compiler.profiling import CompilerProfiler, enable_profiling
 
 
-BENCHMARK_FILE = NLPL_ROOT / "test_programs" / "benchmarks" / "bench_inline_asm.nlpl"
+BENCHMARK_FILE = NLPL_ROOT / "test_programs" / "benchmarks" / "bench_inline_asm.nxl"
 OUTPUT_FILE = NLPL_ROOT / "build" / "bench_inline_asm"
 COMPILER = NLPL_ROOT / "dev_tools" / "nlplc"
 
@@ -172,7 +172,7 @@ def analyze_binary(binary_path: Path):
 
 def compare_with_c_baseline():
     """
-    Compare NLPL inline asm performance with C inline asm.
+    Compare NexusLang inline asm performance with C inline asm.
     
     This would require creating equivalent C benchmarks.
     For now, just a placeholder.
@@ -188,7 +188,7 @@ def main():
     print("""
 ╔══════════════════════════════════════════════════════════════════╗
 ║                                                                  ║
-║       NLPL INLINE ASSEMBLY PERFORMANCE BENCHMARK SUITE           ║
+║       NexusLang INLINE ASSEMBLY PERFORMANCE BENCHMARK SUITE           ║
 ║                                                                  ║
 ║  Tests compilation speed and runtime performance of inline       ║
 ║  assembly features with comprehensive profiling.                 ║

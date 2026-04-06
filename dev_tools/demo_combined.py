@@ -4,16 +4,16 @@ Combined demo: Arrays + For-Each Loops
 """
 
 import sys
-sys.path.insert(0, '/run/media/zajferx/Data/dev/The-No-hands-Company/projects/NLPL/src')
+sys.path.insert(0, '/run/media/zajferx/Data/dev/The-No-hands-Company/projects/NexusLang/src')
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.compiler.backends.c_generator import CCodeGenerator
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.compiler.backends.c_generator import CCodeGenerator
 
 def main():
     """Demonstrate arrays with for-each loops."""
     
-    nlpl_code = """
+    nxl_code = """
 set numbers to [1, 2, 3, 4, 5]
 set total to 0
 
@@ -38,13 +38,13 @@ end
     print("="*70)
     print("ARRAYS + FOR-EACH LOOPS - COMBINED DEMONSTRATION")
     print("="*70)
-    print("\nNLPL Source Code:")
+    print("\nNexusLang Source Code:")
     print("-"*70)
-    print(nlpl_code)
+    print(nxl_code)
     print("-"*70)
     
     # Parse
-    lexer = Lexer(nlpl_code)
+    lexer = Lexer(nxl_code)
     tokens = lexer.tokenize()
     parser = Parser(tokens)
     ast = parser.parse()

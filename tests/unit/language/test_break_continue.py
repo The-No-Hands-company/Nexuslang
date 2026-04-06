@@ -1,5 +1,5 @@
 """
-Comprehensive tests for break and continue statements in NLPL.
+Comprehensive tests for break and continue statements in NexusLang.
 Tests various scenarios including nested loops, edge cases, and error conditions.
 """
 

@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-Completed comprehensive performance optimization of the NLPL interpreter and compiler pipeline. Implemented **critical optimizations** targeting the hottest code paths identified through profiling, resulting in significant performance improvements across the entire execution pipeline.
+Completed comprehensive performance optimization of the NexusLang interpreter and compiler pipeline. Implemented **critical optimizations** targeting the hottest code paths identified through profiling, resulting in significant performance improvements across the entire execution pipeline.
 
 ---
 
@@ -116,7 +116,7 @@ has_potential_match = candidate in self._keyword_prefixes
 
 **Usage**:
 ```python
-from nlpl.interpreter.scope_optimizer import enable_scope_optimization
+from nexuslang.interpreter.scope_optimizer import enable_scope_optimization
 
 interpreter = Interpreter(runtime)
 enable_scope_optimization(interpreter) # Enable optimization
@@ -272,7 +272,7 @@ This allows O(1) determination of whether a partial match could become a full ke
 ### Test Commands
 ```bash
 # Verify interpreter works
-python -m nlpl.main test_programs/stdlib_test.nlpl --no-type-check
+python -m nexuslang.main test_programs/stdlib_test.nlpl --no-type-check
 
 # Run benchmarks
 python dev_tools/benchmark_interpreter.py
@@ -302,7 +302,7 @@ python dev_tools/profile_interpreter.py test_programs/stdlib_test.nlpl
 3. **`dev_tools/profile_interpreter.py`** - Interpreter profiling tool
 4. **`dev_tools/profile_compiler.py`** - Compiler profiling tool
 5. **`dev_tools/benchmark_interpreter.py`** - Performance benchmarking suite
-6. **`benchmarks/performance_benchmark.nlpl`** - NLPL benchmark program
+6. **`benchmarks/performance_benchmark.nlpl`** - NexusLang benchmark program
 7. **`src/nlpl/interpreter/scope_optimizer.py`** - Optional scope lookup optimization module
 8. **`dev_tools/test_scope_optimizer.py`** - Scope optimizer correctness and benchmark tests
 
@@ -406,6 +406,6 @@ Phase 2 (Performance Optimization) successfully achieved its goals:
 4. Validated improvements with real measurements
 5. Maintained code quality and test coverage
 
-The NLPL interpreter is now **3-5x faster** than before optimization, with the most critical hot paths (execute dispatch, keyword matching) seeing **10-20x speedups**. The codebase is well-instrumented for future performance work, and the optimization techniques are documented for future reference.
+The NexusLang interpreter is now **3-5x faster** than before optimization, with the most critical hot paths (execute dispatch, keyword matching) seeing **10-20x speedups**. The codebase is well-instrumented for future performance work, and the optimization techniques are documented for future reference.
 
 **Status**: Ready to proceed to Phase 3 (New Features) 

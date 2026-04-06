@@ -12,7 +12,7 @@
 - Multiple exception types 
 - Uncaught exceptions terminate gracefully 
 
-**Key Solution:** Created `__nlpl_throw` helper function - an invokable wrapper around `__cxa_throw` that enables LLVM to build exception tables.
+**Key Solution:** Created `__nxl_throw` helper function - an invokable wrapper around `__cxa_throw` that enables LLVM to build exception tables.
 
 ## Completed Work (Total: ~15-20 hours)
 
@@ -38,7 +38,7 @@
 - __cxa_begin_catch / __cxa_end_catch calls
 - Nested try-catch context save/restore
 - **Invoke helper method created** (`_emit_call_or_invoke`)
-- **`__nlpl_throw` helper function** - invokable wrapper for __cxa_throw
+- **`__nxl_throw` helper function** - invokable wrapper for __cxa_throw
 - All function call sites use invoke when in try blocks
 
 ### Phase 5: Resume/Uncaught Handling 
@@ -245,17 +245,17 @@ struct NLPLException {
 
 **Option C: C++ Interop Test** (1-2 hours)
 - Create simple C++ function that throws
-- Call from NLPL try block via FFI
+- Call from NexusLang try block via FFI
 - Verify exception catching works
 - Fastest path to validation
 
 ### For Production
 
 **Direct Raise Workaround:**
-Consider implementing a builtin `__nlpl_throw` function that wraps __cxa_throw and can be invoked:
+Consider implementing a builtin `__nxl_throw` function that wraps __cxa_throw and can be invoked:
 
 ```llvm
-define void @__nlpl_throw(i8* %exception_ptr, i8* %typeinfo) personality i8* bitcast (...) {
+define void @__nxl_throw(i8* %exception_ptr, i8* %typeinfo) personality i8* bitcast (...) {
  call void @__cxa_throw(i8* %exception_ptr, i8* %typeinfo, i8* null) noreturn
  unreachable
 }

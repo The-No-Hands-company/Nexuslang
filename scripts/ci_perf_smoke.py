@@ -7,8 +7,8 @@ import sys
 import time
 from pathlib import Path
 
-from nlpl.parser.ast_cache import get_global_cache
-from nlpl.parser.cached_parser import parse_with_cache
+from nexuslang.parser.ast_cache import get_global_cache
+from nexuslang.parser.cached_parser import parse_with_cache
 
 
 def measure_parse_ms(file_path: Path) -> float:
@@ -33,8 +33,8 @@ def load_baseline(path: Path) -> dict[str, float]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run NLPL perf smoke")
-    parser.add_argument("--sample", action="append", default=[], help="Sample NLPL file (repeatable)")
+    parser = argparse.ArgumentParser(description="Run NexusLang perf smoke")
+    parser.add_argument("--sample", action="append", default=[], help="Sample NexusLang file (repeatable)")
     parser.add_argument("--threshold-ms", type=float, default=1500.0, help="Maximum allowed parse time per sample")
     parser.add_argument("--baseline", type=Path, default=Path("perf-baseline.json"), help="Optional baseline JSON to compare")
     parser.add_argument("--tolerance", type=float, default=0.15, help="Allowed regression vs baseline (fraction)")
@@ -42,8 +42,8 @@ def main() -> int:
     args = parser.parse_args()
 
     samples = [Path(p) for p in (args.sample or [])] or [
-        Path("examples/01_basic_concepts.nlpl"),
-        Path("examples/24_struct_and_union.nlpl"),
+        Path("examples/01_basic_concepts.nxl"),
+        Path("examples/24_struct_and_union.nxl"),
     ]
 
     missing = [str(p) for p in samples if not p.exists()]

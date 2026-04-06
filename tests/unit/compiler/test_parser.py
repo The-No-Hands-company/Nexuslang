@@ -1,5 +1,5 @@
 """
-Test cases for the NLPL parser.
+Test cases for the NexusLang parser.
 Tests AST construction and basic parsing functionality.
 """
 
@@ -8,9 +8,9 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 import unittest
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.parser.ast import (
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.parser.ast import (
     Program, FunctionDefinition, VariableDeclaration, 
     BinaryOperation, UnaryOperation, FunctionCall, 
     IfStatement, WhileLoop, ForLoop, ReturnStatement, 
@@ -18,7 +18,7 @@ from nlpl.parser.ast import (
 )
 
 class TestParser(unittest.TestCase):
-    """Test cases for the NLPL parser."""
+    """Test cases for the NexusLang parser."""
     
     def setUp(self):
         """Set up test fixtures before each test method."""

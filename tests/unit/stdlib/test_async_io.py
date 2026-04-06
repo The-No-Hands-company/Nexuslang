@@ -1,5 +1,5 @@
 """
-Tests for NLPL stdlib async I/O additions:
+Tests for NexusLang stdlib async I/O additions:
   - Async TCP sockets (connect, listen, accept, send, recv, recv_exactly, close)
   - Async UDP sockets (open, send_to, recv_from, close)
   - Async subprocess (subprocess, subprocess_output)
@@ -24,7 +24,7 @@ _PROJECT_ROOT = os.path.abspath(
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from nlpl.stdlib.asyncio_utils.async_runtime import (
+from nexuslang.stdlib.asyncio_utils.async_runtime import (
     NLPLTask,
     task_result,
     task_is_done,
@@ -313,7 +313,7 @@ class TestAsyncSubprocess:
         assert 'from stdin' in result['stdout']
 
     def test_missing_command_returns_error_dict(self):
-        task = async_subprocess('this_command_does_not_exist_nlpl_test')
+        task = async_subprocess('this_command_does_not_exist_nxl_test')
         result = task_result(task, timeout=10)
         assert 'error' in result
         assert not result['success']
@@ -326,7 +326,7 @@ class TestAsyncSubprocess:
         assert 'world' in result
 
     def test_subprocess_output_missing_command(self):
-        task = async_subprocess_output('this_command_does_not_exist_nlpl_test')
+        task = async_subprocess_output('this_command_does_not_exist_nxl_test')
         result = task_result(task, timeout=10)
         assert isinstance(result, dict)
         assert 'error' in result

@@ -5,7 +5,7 @@ Production-ready test suite.
 """
 
 import pytest
-from nlpl.stdlib.option_result import Ok, Err, Result
+from nexuslang.stdlib.option_result import Ok, Err, Result
 
 
 class TestErrorPropagation:

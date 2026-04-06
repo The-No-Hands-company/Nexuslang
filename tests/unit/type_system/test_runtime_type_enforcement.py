@@ -22,8 +22,8 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "src"))
 
-from nlpl.main import run_program
-from nlpl.errors import NLPLTypeError
+from nexuslang.main import run_program
+from nexuslang.errors import NxlTypeError
 
 
 # ---------------------------------------------------------------------------
@@ -31,12 +31,12 @@ from nlpl.errors import NLPLTypeError
 # ---------------------------------------------------------------------------
 
 def _run(source: str):
-    """Run NLPL source with static type checking disabled."""
+    """Run NexusLang source with static type checking disabled."""
     return run_program(source, type_check=False)
 
 
 def _run_with_tc(source: str):
-    """Run NLPL source with static type checking enabled."""
+    """Run NexusLang source with static type checking enabled."""
     return run_program(source, type_check=True)
 
 
@@ -76,35 +76,35 @@ class TestCorrectAssignments:
 
 
 # ---------------------------------------------------------------------------
-# Incorrect initial assignments must raise NLPLTypeError
+# Incorrect initial assignments must raise NxlTypeError
 # ---------------------------------------------------------------------------
 
 class TestWrongInitialAssignment:
     """Declaring a variable with a type annotation and an incompatible value."""
 
     def test_string_to_integer(self):
-        with pytest.raises(NLPLTypeError, match="Cannot assign"):
+        with pytest.raises(NxlTypeError, match="Cannot assign"):
             _run('set x to "hello" as Integer\n')
 
     def test_int_to_string(self):
-        with pytest.raises(NLPLTypeError, match="Cannot assign"):
+        with pytest.raises(NxlTypeError, match="Cannot assign"):
             _run("set x to 42 as String\n")
 
     def test_string_to_boolean(self):
-        with pytest.raises(NLPLTypeError, match="Cannot assign"):
+        with pytest.raises(NxlTypeError, match="Cannot assign"):
             _run('set x to "yes" as Boolean\n')
 
     def test_bool_to_integer(self):
-        # In Python bool is a subclass of int; NLPL must still reject this.
-        with pytest.raises(NLPLTypeError, match="Cannot assign"):
+        # In Python bool is a subclass of int; NexusLang must still reject this.
+        with pytest.raises(NxlTypeError, match="Cannot assign"):
             _run("set x to true as Integer\n")
 
     def test_int_to_list(self):
-        with pytest.raises(NLPLTypeError, match="Cannot assign"):
+        with pytest.raises(NxlTypeError, match="Cannot assign"):
             _run("set x to 42 as List\n")
 
     def test_string_to_float(self):
-        with pytest.raises(NLPLTypeError, match="Cannot assign"):
+        with pytest.raises(NxlTypeError, match="Cannot assign"):
             _run('set x to "pi" as Float\n')
 
 
@@ -119,14 +119,14 @@ class TestReassignment:
         _run("set x to 1 as Integer\nset x to 99\n")
 
     def test_invalid_reassignment(self):
-        with pytest.raises(NLPLTypeError, match="Cannot assign"):
+        with pytest.raises(NxlTypeError, match="Cannot assign"):
             _run('set x to 1 as Integer\nset x to "oops"\n')
 
     def test_float_accepts_int_reassignment(self):
         _run("set x to 3.14 as Float\nset x to 7\n")
 
     def test_string_rejects_int_reassignment(self):
-        with pytest.raises(NLPLTypeError, match="Cannot assign"):
+        with pytest.raises(NxlTypeError, match="Cannot assign"):
             _run('set x to "hello" as String\nset x to 42\n')
 
 
@@ -138,11 +138,11 @@ class TestNullAcceptance:
     """None (null) should be accepted for any typed variable (nullable by default)."""
 
     def test_null_to_integer(self):
-        # NLPL does not currently have a null literal in the parser,
+        # NexusLang does not currently have a null literal in the parser,
         # so this is tested at the Python level via the Interpreter API.
-        from nlpl.runtime.runtime import Runtime
-        from nlpl.stdlib import register_stdlib
-        from nlpl.interpreter.interpreter import Interpreter
+        from nexuslang.runtime.runtime import Runtime
+        from nexuslang.stdlib import register_stdlib
+        from nexuslang.interpreter.interpreter import Interpreter
 
         runtime = Runtime()
         register_stdlib(runtime)
@@ -165,7 +165,7 @@ class TestWithStaticTypeChecking:
 
     def test_static_checker_catches_mismatch(self):
         # The static type checker should catch this before runtime hits it
-        with pytest.raises((NLPLTypeError,)):
+        with pytest.raises((NxlTypeError,)):
             _run_with_tc('set x to "hello" as Integer\n')
 
 
@@ -178,8 +178,8 @@ class TestInterpreterDefaults:
 
     def test_constructor_defaults_off(self):
         # Constructor defaults to False (type checker requires stdlib sync)
-        from nlpl.runtime.runtime import Runtime
-        from nlpl.interpreter.interpreter import Interpreter
+        from nexuslang.runtime.runtime import Runtime
+        from nexuslang.interpreter.interpreter import Interpreter
         runtime = Runtime()
         interp = Interpreter(runtime)
         assert interp.enable_type_checking is False
@@ -192,8 +192,8 @@ class TestInterpreterDefaults:
         assert sig.parameters["type_check"].default is True
 
     def test_explicit_disable(self):
-        from nlpl.runtime.runtime import Runtime
-        from nlpl.interpreter.interpreter import Interpreter
+        from nexuslang.runtime.runtime import Runtime
+        from nexuslang.interpreter.interpreter import Interpreter
         runtime = Runtime()
         interp = Interpreter(runtime, enable_type_checking=False)
         assert interp.enable_type_checking is False

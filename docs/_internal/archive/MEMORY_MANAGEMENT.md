@@ -1,4 +1,4 @@
-# NLPL Memory Management
+# NexusLang Memory Management
 
 ## Overview
 
@@ -135,8 +135,8 @@ set second to value at second_ptr    # second = 20
 ## Complete Example
 
 ```nlpl
-# NLPL Memory Management Demo
-print text "=== NLPL Memory Management Demo ==="
+# NexusLang Memory Management Demo
+print text "=== NexusLang Memory Management Demo ==="
 
 # Allocate memory for 5 integers (8 bytes each = 40 bytes)
 set data_ptr to alloc with 40
@@ -176,7 +176,7 @@ print text "Memory freed successfully"
 
 **Output:**
 ```
-=== NLPL Memory Management Demo ===
+=== NexusLang Memory Management Demo ===
 Allocated 40 bytes
 Stored 100 at data_ptr
 Read value: 
@@ -297,6 +297,6 @@ Run tests:
 
 ## See Also
 
-- [Pointer Operations Example](../examples/23_pointer_operations.nlpl) - Comprehensive pointer usage
-- [Struct and Union Example](../examples/24_struct_and_union.nlpl) - Using memory with custom types
+- [Pointer Operations Example](../examples/23_pointer_operations.nxl) - Comprehensive pointer usage
+- [Struct and Union Example](../examples/24_struct_and_union.nxl) - Using memory with custom types
 - [ROADMAP.md](../ROADMAP.md) - Future memory management features

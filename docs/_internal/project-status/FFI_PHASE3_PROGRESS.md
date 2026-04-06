@@ -1,4 +1,4 @@
-# NLPL Compiler - FFI Phase 3 Progress Update
+# NexusLang Compiler - FFI Phase 3 Progress Update
 
 ## Session Summary: FFI Advanced Features Implementation
 
@@ -22,7 +22,7 @@
 **Test Results**:
 ```bash
 $ ./test_qsort_callback
-Testing qsort with NLPL callback
+Testing qsort with NexusLang callback
 Qsort completed successfully
 Test complete
 ```
@@ -95,7 +95,7 @@ declare i32 @printf(i8*, ...) ; Variadic declaration
 ### Completed 
 1. **Basic FFI** (Phase 1) - extern function declarations, library linking
 2. **Struct Marshalling** (Phase 2) - Pass/return C structs
-3. **Callback Functions** (Phase 3) - Pass NLPL functions to C 
+3. **Callback Functions** (Phase 3) - Pass NexusLang functions to C 
 4. **Variadic Functions** (Phase 3) - Variable argument lists
 
 ### Remaining 
@@ -177,7 +177,7 @@ declare i32 @printf(i8*, ...) ; Variadic declaration
 ### Phase 4: Advanced Features
 - Generics (Type inference, monomorphization)
 - Module System (Compilation, linking)
-- NLPL Variadic Functions (va_list support)
+- NexusLang Variadic Functions (va_list support)
 
 ---
 
@@ -208,7 +208,7 @@ Developer tooling:
 
 ## Key Achievements This Session
 
-1. **Callbacks Working** - NLPL functions can be passed to C code
+1. **Callbacks Working** - NexusLang functions can be passed to C code
 2. **Variadic Functions** - Full printf-style variable arguments
 3. **Real-world Testing** - Works with actual C libraries (libc)
 4. **Clean Implementation** - Minimal code changes, maximum impact
@@ -239,9 +239,9 @@ Developer tooling:
 
 ## Conclusion
 
-**FFI Phase 3 is nearly complete!** The NLPL compiler can now:
+**FFI Phase 3 is nearly complete!** The NexusLang compiler can now:
 - Call C functions with any signature
-- Pass NLPL functions as callbacks to C
+- Pass NexusLang functions as callbacks to C
 - Use variadic C functions (printf, scanf, etc.)
 - Marshal complex data structures
 

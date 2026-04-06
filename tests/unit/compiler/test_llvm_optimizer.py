@@ -1,5 +1,5 @@
 """
-Tests for the NLPL optimiser infrastructure.
+Tests for the NexusLang optimiser infrastructure.
 
 Covers:
   - OptimizationLevel / OptimizationStats / OptimizationPass / OptimizationPipeline
@@ -28,7 +28,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "sr
 # ---------------------------------------------------------------------------
 # Imports under test
 # ---------------------------------------------------------------------------
-from nlpl.optimizer import (
+from nexuslang.optimizer import (
     OptimizationLevel,
     OptimizationPass,
     OptimizationPipeline,
@@ -36,7 +36,7 @@ from nlpl.optimizer import (
     create_optimization_pipeline,
     int_to_opt_level,
 )
-from nlpl.compiler.llvm_optimizer import (
+from nexuslang.compiler.llvm_optimizer import (
     LLVMOptimizer,
     OptimizationLevel as LLVMLevel,
     optimize_llvm_ir,
@@ -559,16 +559,16 @@ class TestOptimizeLlvmIr:
 # ===========================================================================
 
 def _import_passes():
-    from nlpl.optimizer.constant_folding import ConstantFoldingPass
-    from nlpl.optimizer.dead_code_elimination import DeadCodeEliminationPass
-    from nlpl.optimizer.function_inlining import FunctionInliningPass
-    from nlpl.optimizer.strength_reduction import StrengthReductionPass
-    from nlpl.optimizer.loop_unrolling import LoopUnrollingPass
-    from nlpl.optimizer.common_subexpression_elimination import CommonSubexpressionEliminationPass
-    from nlpl.optimizer.tail_call_optimization import TailCallOptimizationPass
-    from nlpl.optimizer.string_interning import StringInterningPass
-    from nlpl.optimizer.type_specialization import TypeSpecializationPass
-    from nlpl.optimizer.dispatch_optimization import DispatchOptimizationPass
+    from nexuslang.optimizer.constant_folding import ConstantFoldingPass
+    from nexuslang.optimizer.dead_code_elimination import DeadCodeEliminationPass
+    from nexuslang.optimizer.function_inlining import FunctionInliningPass
+    from nexuslang.optimizer.strength_reduction import StrengthReductionPass
+    from nexuslang.optimizer.loop_unrolling import LoopUnrollingPass
+    from nexuslang.optimizer.common_subexpression_elimination import CommonSubexpressionEliminationPass
+    from nexuslang.optimizer.tail_call_optimization import TailCallOptimizationPass
+    from nexuslang.optimizer.string_interning import StringInterningPass
+    from nexuslang.optimizer.type_specialization import TypeSpecializationPass
+    from nexuslang.optimizer.dispatch_optimization import DispatchOptimizationPass
     return (
         ConstantFoldingPass, DeadCodeEliminationPass, FunctionInliningPass,
         StrengthReductionPass, LoopUnrollingPass, CommonSubexpressionEliminationPass,
@@ -651,7 +651,7 @@ class TestPassInstantiation:
 
 class TestConstantFoldingFunctional:
     def setup_method(self):
-        from nlpl.optimizer.constant_folding import ConstantFoldingPass
+        from nexuslang.optimizer.constant_folding import ConstantFoldingPass
         self.pass_ = ConstantFoldingPass()
 
     def _fold(self, left_val, op, right_val):
@@ -744,7 +744,7 @@ class TestConstantFoldingFunctional:
 
 class TestLTOStats:
     def _cls(self):
-        from nlpl.optimizer.lto import LTOStats
+        from nexuslang.optimizer.lto import LTOStats
         return LTOStats
 
     def test_defaults_zero(self):
@@ -775,7 +775,7 @@ class TestLTOStats:
 
 class TestLTOUnit:
     def _cls(self):
-        from nlpl.optimizer.lto import LTOUnit
+        from nexuslang.optimizer.lto import LTOUnit
         return LTOUnit
 
     def test_name_stored(self):
@@ -803,14 +803,14 @@ class TestLTOUnit:
         assert "alpha" in repr(u)
 
     def test_stats_initialised(self):
-        from nlpl.optimizer.lto import LTOStats
+        from nexuslang.optimizer.lto import LTOStats
         u = self._cls()("x")
         assert isinstance(u.stats, LTOStats)
 
 
 class TestLTOContext:
     def _classes(self):
-        from nlpl.optimizer.lto import LTOContext, LTOUnit
+        from nexuslang.optimizer.lto import LTOContext, LTOUnit
         return LTOContext, LTOUnit
 
     def test_empty_context(self):
@@ -872,7 +872,7 @@ class TestLTOContext:
 
 class TestCrossModuleDCEPass:
     def _setup(self):
-        from nlpl.optimizer.lto import (
+        from nexuslang.optimizer.lto import (
             CrossModuleDCEPass, LTOContext, LTOUnit
         )
         # modA exports "foo" and "bar"; modB imports only "foo"
@@ -882,7 +882,7 @@ class TestCrossModuleDCEPass:
         return CrossModuleDCEPass, ctx, unit_a, unit_b
 
     def test_run_returns_ast_unchanged(self):
-        from nlpl.optimizer.lto import CrossModuleDCEPass
+        from nexuslang.optimizer.lto import CrossModuleDCEPass
         p = CrossModuleDCEPass()
         sentinel = object()
         assert p.run(sentinel) is sentinel
@@ -900,7 +900,7 @@ class TestCrossModuleDCEPass:
         assert "foo" in unit_a.exports
 
     def test_entry_exports_kept_by_default(self):
-        from nlpl.optimizer.lto import CrossModuleDCEPass, LTOContext, LTOUnit
+        from nexuslang.optimizer.lto import CrossModuleDCEPass, LTOContext, LTOUnit
         unit_ep = LTOUnit("main", exports={"run_app"})
         ctx = LTOContext(units=[unit_ep], entry_points={"main"})
         CrossModuleDCEPass().run_on_context(ctx)
@@ -915,7 +915,7 @@ class TestCrossModuleDCEPass:
 
 class TestDeadImportEliminationPass:
     def test_unused_import_removed(self):
-        from nlpl.optimizer.lto import DeadImportEliminationPass, LTOContext, LTOUnit
+        from nexuslang.optimizer.lto import DeadImportEliminationPass, LTOContext, LTOUnit
 
         unit = LTOUnit("user", imports={"unused_fn": "libA"})
         unit.referenced_symbols = set()  # nothing referenced
@@ -925,7 +925,7 @@ class TestDeadImportEliminationPass:
         assert "unused_fn" not in unit.imports
 
     def test_used_import_kept(self):
-        from nlpl.optimizer.lto import DeadImportEliminationPass, LTOContext, LTOUnit
+        from nexuslang.optimizer.lto import DeadImportEliminationPass, LTOContext, LTOUnit
 
         unit = LTOUnit("user", imports={"used_fn": "libA"})
         unit.referenced_symbols = {"used_fn"}
@@ -937,7 +937,7 @@ class TestDeadImportEliminationPass:
 
 class TestConstantPropagationPass:
     def test_propagates_exported_constant(self):
-        from nlpl.optimizer.lto import ConstantPropagationPass, LTOContext, LTOUnit
+        from nexuslang.optimizer.lto import ConstantPropagationPass, LTOContext, LTOUnit
 
         exporter = LTOUnit("constants", exports={"MAX"}, constants={"MAX": 100})
         importer = LTOUnit("user", imports={"MAX": "constants"})
@@ -948,7 +948,7 @@ class TestConstantPropagationPass:
 
 class TestRedundantExportPass:
     def test_removes_unexported_symbol(self):
-        from nlpl.optimizer.lto import RedundantExportPass, LTOContext, LTOUnit
+        from nexuslang.optimizer.lto import RedundantExportPass, LTOContext, LTOUnit
 
         unit = LTOUnit("lib", exports={"used", "unused"})
         user = LTOUnit("main", imports={"used": "lib"})
@@ -957,7 +957,7 @@ class TestRedundantExportPass:
         assert "unused" not in unit.exports
 
     def test_keeps_entry_point_exports(self):
-        from nlpl.optimizer.lto import RedundantExportPass, LTOContext, LTOUnit
+        from nexuslang.optimizer.lto import RedundantExportPass, LTOContext, LTOUnit
 
         unit = LTOUnit("app", exports={"main_func"})
         ctx = LTOContext(units=[unit], entry_points={"app"})
@@ -967,7 +967,7 @@ class TestRedundantExportPass:
 
 class TestSymbolReferenceAnalysisPass:
     def test_populates_referenced_symbols_from_dict_ast(self):
-        from nlpl.optimizer.lto import SymbolReferenceAnalysisPass, LTOContext, LTOUnit
+        from nexuslang.optimizer.lto import SymbolReferenceAnalysisPass, LTOContext, LTOUnit
 
         ast = {"statements": [
             {"type": "FunctionCall", "name": "greet"},
@@ -981,25 +981,25 @@ class TestSymbolReferenceAnalysisPass:
 
 class TestLTOPipelineClass:
     def test_default_pipeline_has_passes(self):
-        from nlpl.optimizer.lto import LTOPipeline
+        from nexuslang.optimizer.lto import LTOPipeline
         p = LTOPipeline.default()
         assert len(p.passes) >= 5
 
     def test_aggressive_pipeline_has_more_passes(self):
-        from nlpl.optimizer.lto import LTOPipeline
+        from nexuslang.optimizer.lto import LTOPipeline
         std = LTOPipeline.default(aggressive=False)
         agg = LTOPipeline.default(aggressive=True)
         assert len(agg.passes) >= len(std.passes)
 
     def test_run_returns_context(self):
-        from nlpl.optimizer.lto import LTOPipeline, LTOContext, LTOUnit
+        from nexuslang.optimizer.lto import LTOPipeline, LTOContext, LTOUnit
         ctx = LTOContext(units=[LTOUnit("x", exports={"a"})], entry_points=set())
         result = LTOPipeline.default().run(ctx)
-        from nlpl.optimizer.lto import LTOContext as C
+        from nexuslang.optimizer.lto import LTOContext as C
         assert isinstance(result, C)
 
     def test_stats_total_passes_incremented(self):
-        from nlpl.optimizer.lto import LTOPipeline, LTOContext, LTOUnit
+        from nexuslang.optimizer.lto import LTOPipeline, LTOContext, LTOUnit
         ctx = LTOContext(units=[LTOUnit("x")], entry_points=set())
         result = LTOPipeline.default().run(ctx)
         assert result.stats.total_passes_run > 0
@@ -1007,26 +1007,26 @@ class TestLTOPipelineClass:
 
 class TestLTOConvenienceFunctions:
     def test_lto_optimize_returns_context(self):
-        from nlpl.optimizer.lto import lto_optimize, LTOUnit, LTOContext
+        from nexuslang.optimizer.lto import lto_optimize, LTOUnit, LTOContext
         units = [LTOUnit("main")]
         ctx = lto_optimize(units)
         assert isinstance(ctx, LTOContext)
 
     def test_lto_optimize_sets_default_entry_point(self):
-        from nlpl.optimizer.lto import lto_optimize, LTOUnit
+        from nexuslang.optimizer.lto import lto_optimize, LTOUnit
         units = [LTOUnit("alpha"), LTOUnit("beta")]
         ctx = lto_optimize(units)
         assert "beta" in ctx.entry_points
 
     def test_lto_stats_report_returns_string(self):
-        from nlpl.optimizer.lto import lto_optimize, lto_stats_report, LTOUnit
+        from nexuslang.optimizer.lto import lto_optimize, lto_stats_report, LTOUnit
         ctx = lto_optimize([LTOUnit("x")])
         report = lto_stats_report(ctx)
         assert isinstance(report, str)
         assert "LTO" in report or "Link" in report or "lto" in report.lower()
 
     def test_lto_stats_report_has_per_unit_section(self):
-        from nlpl.optimizer.lto import lto_optimize, lto_stats_report, LTOUnit
+        from nexuslang.optimizer.lto import lto_optimize, lto_stats_report, LTOUnit
         ctx = lto_optimize([LTOUnit("my_module")])
         report = lto_stats_report(ctx)
         assert "my_module" in report
@@ -1039,7 +1039,7 @@ class TestLTOConvenienceFunctions:
 
 class TestLoopOptimizationPasses:
     def _import(self):
-        from nlpl.optimizer.loop_optimizations import (
+        from nexuslang.optimizer.loop_optimizations import (
             LoopAnalysisPass,
             LoopInvariantCodeMotionPass,
             LoopFusionPass,
@@ -1094,7 +1094,7 @@ class TestLoopOptimizationPasses:
         assert result is not None
 
     def test_loop_unrolling_pass_instantiates(self):
-        from nlpl.optimizer.loop_unrolling import LoopUnrollingPass
+        from nexuslang.optimizer.loop_unrolling import LoopUnrollingPass
         p = LoopUnrollingPass(max_unroll_count=4)
         assert p is not None
         assert "unroll" in p.name.lower() or "loop" in p.name.lower()

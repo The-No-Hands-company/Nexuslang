@@ -1,8 +1,8 @@
-# NLPL Security Guide
+# NexusLang Security Guide
 
-This document describes the security architecture of the NLPL runtime, the hardening
+This document describes the security architecture of the NexusLang runtime, the hardening
 features available in version 2.0+ of the security module (`nlpl.security`), and
-practical guidance for writing secure NLPL programs.
+practical guidance for writing secure NexusLang programs.
 
 For the threat model see [threat-model.md](threat-model.md).
 For the vulnerability reporting process see [cve-process.md](cve-process.md).
@@ -86,7 +86,7 @@ Each layer is independent and can be enabled or disabled individually.
 ### Command-line Flags
 
 ```bash
-PYTHONPATH=src python -m nlpl.main program.nlpl --allow-read=/data --allow-net=api.example.com
+PYTHONPATH=src python -m nexuslang.main program.nlpl --allow-read=/data --allow-net=api.example.com
 ```
 
 | Flag | Effect |
@@ -105,7 +105,7 @@ PYTHONPATH=src python -m nlpl.main program.nlpl --allow-read=/data --allow-net=a
 ### Python API
 
 ```python
-from nlpl.security import PermissionManager, PermissionType, set_permission_manager
+from nexuslang.security import PermissionManager, PermissionType, set_permission_manager
 
 mgr = PermissionManager()
 mgr.grant(PermissionType.READ, scope=["/data/input"])
@@ -116,7 +116,7 @@ set_permission_manager(mgr)
 ### Checking Permissions
 
 ```python
-from nlpl.security import get_permission_manager, PermissionType, PermissionDeniedError
+from nexuslang.security import get_permission_manager, PermissionType, PermissionDeniedError
 
 mgr = get_permission_manager()
 
@@ -164,7 +164,7 @@ sinks.  When a tainted value reaches a sink, a `TaintViolation` is raised
 **Usage:**
 
 ```python
-from nlpl.security.analysis import TaintTracker, TaintLabel, TaintSink
+from nexuslang.security.analysis import TaintTracker, TaintLabel, TaintSink
 
 tracker = TaintTracker()
 
@@ -182,7 +182,7 @@ tracker.check_sink(derived, TaintSink.SHELL_EXEC, location="line 42")
 **Violation policies:**
 
 ```python
-from nlpl.security.analysis import AnalysisPolicy, ViolationPolicy, set_analysis_policy
+from nexuslang.security.analysis import AnalysisPolicy, ViolationPolicy, set_analysis_policy
 
 set_analysis_policy(AnalysisPolicy(
     taint_policy=ViolationPolicy.RAISE,   # raise TaintViolation
@@ -196,7 +196,7 @@ set_analysis_policy(AnalysisPolicy(
 CFI ensures that function calls only target registered, expected callables.
 
 ```python
-from nlpl.security.analysis import CFIChecker
+from nexuslang.security.analysis import CFIChecker
 
 checker = CFIChecker()
 
@@ -223,7 +223,7 @@ checker.exit_frame(frame_id, "process_request")
 ### 3.3 Memory Safety Validation
 
 ```python
-from nlpl.security.analysis import MemorySafetyValidator
+from nexuslang.security.analysis import MemorySafetyValidator
 
 v = MemorySafetyValidator()
 
@@ -242,7 +242,7 @@ v.record_alloc(address=ptr.address)
 ### Combined Facade
 
 ```python
-from nlpl.security.analysis import SecurityAnalyser, TaintLabel, TaintSink
+from nexuslang.security.analysis import SecurityAnalyser, TaintLabel, TaintSink
 
 sa = SecurityAnalyser()
 
@@ -271,7 +271,7 @@ sa.report()
 `SandboxPolicy`.  It works on all platforms.
 
 ```python
-from nlpl.security.sandbox import RestrictedMode, SandboxPolicy
+from nexuslang.security.sandbox import RestrictedMode, SandboxPolicy
 
 policy = SandboxPolicy(
     allow_ffi=False,
@@ -300,7 +300,7 @@ rm.check_asm()                  # raises PermissionDeniedError if denied
 `ResourceLimits` wraps POSIX `resource.setrlimit()`.  No-op on Windows.
 
 ```python
-from nlpl.security.sandbox import ResourceLimits, SandboxPolicy
+from nexuslang.security.sandbox import ResourceLimits, SandboxPolicy
 
 policy = SandboxPolicy(
     max_memory_mb=256,
@@ -333,7 +333,7 @@ SECCOMP_MODE_FILTER)`.
   if custom C extensions need additional syscalls.
 
 ```python
-from nlpl.security.sandbox import SeccompFilter, SandboxPolicy
+from nexuslang.security.sandbox import SeccompFilter, SandboxPolicy
 
 policy = SandboxPolicy(
     enable_seccomp=True,
@@ -350,11 +350,11 @@ if sf.available:
 `Sandbox` combines all three layers:
 
 ```python
-from nlpl.security.sandbox import Sandbox, SandboxPolicy, STRICT_POLICY
+from nexuslang.security.sandbox import Sandbox, SandboxPolicy, STRICT_POLICY
 
 # Use the built-in strict policy
 with Sandbox(STRICT_POLICY):
-    run_untrusted_nlpl()
+    run_untrusted_nxl()
 
 # Or a custom policy
 policy = SandboxPolicy(
@@ -385,7 +385,7 @@ Stack canaries detect in-process frame corruption caused by misbehaving
 C extensions accessed via FFI.
 
 ```python
-from nlpl.security.runtime_protections import StackCanary, StackSmashingDetected
+from nexuslang.security.runtime_protections import StackCanary, StackSmashingDetected
 
 sc = StackCanary(enabled=True)
 
@@ -413,7 +413,7 @@ return result
 ### 5.2 Bounds Checking
 
 ```python
-from nlpl.security.runtime_protections import BoundsChecker, BoundsCheckError
+from nexuslang.security.runtime_protections import BoundsChecker, BoundsCheckError
 
 bc = BoundsChecker(enabled=True)
 
@@ -427,7 +427,7 @@ bc.check_slice(start=2, stop=7, size=len(data))
 ### 5.3 Integer Overflow Detection
 
 ```python
-from nlpl.security.runtime_protections import IntegerOverflowChecker
+from nexuslang.security.runtime_protections import IntegerOverflowChecker
 
 checker = IntegerOverflowChecker(enabled=True, threshold=(1 << 63) - 1)
 
@@ -442,7 +442,7 @@ checker.check_shift(shift_amount)
 ### 5.4 ASLR Awareness
 
 ```python
-from nlpl.security.runtime_protections import check_and_warn_aslr
+from nexuslang.security.runtime_protections import check_and_warn_aslr
 
 # Call at interpreter startup to log a warning if ASLR is disabled:
 check_and_warn_aslr()
@@ -451,7 +451,7 @@ check_and_warn_aslr()
 ### RuntimeProtector Facade
 
 ```python
-from nlpl.security.runtime_protections import RuntimeProtector, RuntimeProtectorConfig
+from nexuslang.security.runtime_protections import RuntimeProtector, RuntimeProtectorConfig
 
 config = RuntimeProtectorConfig(
     enable_canaries=True,
@@ -468,7 +468,7 @@ rp.startup_checks()  # warns if ASLR disabled
 ## 6. Path and Input Validation Utilities
 
 ```python
-from nlpl.security import (
+from nexuslang.security import (
     validate_path, PathTraversalError,
     safe_execute, CommandInjectionError,
     validate_email, validate_url,
@@ -501,7 +501,7 @@ if not check_rate_limit(client_ip, max_calls=100, window_seconds=60):
 
 ## 7. Security Checklist
 
-Use this checklist before deploying a NLPL program in production:
+Use this checklist before deploying a NexusLang program in production:
 
 ### Permissions
 - [ ] Only grant permissions actually needed (`--allow-read`, not `--allow-all`)
@@ -537,7 +537,7 @@ Use this checklist before deploying a NLPL program in production:
 ### Dependencies
 - [ ] Audit all FFI libraries for known CVEs
 - [ ] Pin FFI library versions
-- [ ] Do not expose raw FFI handles to untrusted NLPL code
+- [ ] Do not expose raw FFI handles to untrusted NexusLang code
 
 ---
 
@@ -546,7 +546,7 @@ Use this checklist before deploying a NLPL program in production:
 ### `AnalysisPolicy`
 
 ```python
-from nlpl.security.analysis import AnalysisPolicy, ViolationPolicy
+from nexuslang.security.analysis import AnalysisPolicy, ViolationPolicy
 
 AnalysisPolicy(
     taint_policy=ViolationPolicy.RAISE,   # RAISE | WARN | LOG | IGNORE
@@ -559,7 +559,7 @@ AnalysisPolicy(
 ### `SandboxPolicy`
 
 ```python
-from nlpl.security.sandbox import SandboxPolicy
+from nexuslang.security.sandbox import SandboxPolicy
 
 SandboxPolicy(
     allow_ffi=False,
@@ -579,7 +579,7 @@ SandboxPolicy(
 ### `RuntimeProtectorConfig`
 
 ```python
-from nlpl.security.runtime_protections import RuntimeProtectorConfig
+from nexuslang.security.runtime_protections import RuntimeProtectorConfig
 
 RuntimeProtectorConfig(
     enable_canaries=False,                # Stack canary protection

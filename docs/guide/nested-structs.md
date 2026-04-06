@@ -1,4 +1,4 @@
-# NLPL Nested Struct Support
+# NexusLang Nested Struct Support
 
 ## Overview
 NLPL now supports **nested struct member access and assignment**, allowing you to work with complex hierarchical data structures naturally.
@@ -342,7 +342,7 @@ Rect r;
 r.tl.x = 10; // Identical syntax
 ```
 
-### NLPL
+### NexusLang
 ```nlpl
 struct Point
  x as Integer
@@ -357,7 +357,7 @@ set r.tl to new Point
 set r.tl.x to 10 # Natural English-like syntax
 ```
 
-**Key Difference**: NLPL uses natural language keywords (`set`, `to`, `as`) while maintaining the familiar dot notation for member access.
+**Key Difference**: NexusLang uses natural language keywords (`set`, `to`, `as`) while maintaining the familiar dot notation for member access.
 
 ## Version History
 - **December 2024**: Initial implementation with full nested access support

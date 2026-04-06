@@ -242,7 +242,7 @@ print text double(10)  # Output: 20
 
 Trailing block syntax is **fully functional** and ready for use. The core implementation is complete, with all major features working correctly. Remaining work is enhancement (type checking, standard library, optimizations) rather than core functionality.
 
-This feature enables NLPL to support clean DSL-style syntax for:
+This feature enables NexusLang to support clean DSL-style syntax for:
 - Callbacks and event handlers
 - Iterators and functional programming
 - Custom control structures

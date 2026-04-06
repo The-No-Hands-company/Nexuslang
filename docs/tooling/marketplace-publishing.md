@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide walks through publishing the NLPL extension to the Visual Studio Code Marketplace. Publishing requires a Microsoft Azure DevOps account and personal access token.
+This guide walks through publishing the NexusLang extension to the Visual Studio Code Marketplace. Publishing requires a Microsoft Azure DevOps account and personal access token.
 
 ---
 
@@ -231,7 +231,7 @@ Update `README.md` with marketplace installation:
 code --install-extension nlpl-team.nlpl-language-support
 ```
 
-Or search "NLPL" in VS Code Extensions view.
+Or search "NexusLang" in VS Code Extensions view.
 ```
 
 ### 6.2 Tag Release
@@ -243,7 +243,7 @@ git push origin v1.2.1
 
 ### 6.3 Create GitHub Release
 
-1. Go to: https://github.com/Zajfan/NLPL/releases/new
+1. Go to: https://github.com/Zajfan/NexusLang/releases/new
 2. Tag: `v1.2.1`
 3. Title: `v1.2.1 - Marketplace Release`
 4. Description: Link to marketplace
@@ -378,7 +378,7 @@ Choose appropriate categories:
 ### 5. Icon
 
 Add professional icon (128x128 PNG):
-- Represents NLPL brand
+- Represents NexusLang brand
 - Clear at small sizes
 - Looks good on light/dark backgrounds
 

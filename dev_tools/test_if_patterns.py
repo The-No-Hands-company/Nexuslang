@@ -9,7 +9,7 @@ PYTHON = sys.executable
 
 def run(code):
     r = subprocess.run(
-        [PYTHON, '-c', f'import sys; sys.path.insert(0,"src"); from nlpl.main import run_program; run_program({repr(code)})'],
+        [PYTHON, '-c', f'import sys; sys.path.insert(0,"src"); from nexuslang.main import run_program; run_program({repr(code)})'],
         capture_output=True, text=True, timeout=15, cwd=ROOT
     )
     return r.returncode, r.stdout, r.stderr

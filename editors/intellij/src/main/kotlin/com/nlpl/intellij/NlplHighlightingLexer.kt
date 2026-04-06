@@ -4,7 +4,7 @@ import com.intellij.lexer.LexerBase
 import com.intellij.psi.tree.IElementType
 
 /**
- * A simple regex-based lexer for NLPL syntax highlighting.
+ * A simple regex-based lexer for NexusLang syntax highlighting.
  * This is used only for initial token colouring; semantic enrichment
  * is provided by the LSP server at runtime.
  */

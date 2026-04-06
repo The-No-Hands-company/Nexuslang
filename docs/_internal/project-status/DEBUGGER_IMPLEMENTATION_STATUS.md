@@ -1,10 +1,10 @@
-# NLPL Debugger Integration Status
+# NexusLang Debugger Integration Status
 
 ## Status: COMPLETE
 
 ### Mission Accomplished
 
-The NLPL compiler now has full debugger integration with DWARF debug information generation, enabling source-level debugging with GDB/LLDB!
+The NexusLang compiler now has full debugger integration with DWARF debug information generation, enabling source-level debugging with GDB/LLDB!
 
 ---
 
@@ -93,10 +93,10 @@ python nlplc_llvm.py input.nlpl -o output --debug # Same as -g
 
 ```
 
- NLPL Source Code 
+ NexusLang Source Code 
  test_debug.nlpl 
 
- NLPL Compiler 
+ NexusLang Compiler 
  
  Lexer Parser AST 
  
@@ -134,9 +134,9 @@ python nlplc_llvm.py input.nlpl -o output --debug # Same as -g
  llc clang -g Executable 
 
  GDB/LLDB Debugger 
- - Set breakpoints at NLPL source lines 
- - Inspect NLPL variables 
- - Step through NLPL code 
+ - Set breakpoints at NexusLang source lines 
+ - Inspect NexusLang variables 
+ - Step through NexusLang code 
  - View call stack 
 
 ```
@@ -148,7 +148,7 @@ python nlplc_llvm.py input.nlpl -o output --debug # Same as -g
 ### 1. Compile with Debug Info
 
 ```bash
-# Compile NLPL program with debug symbols
+# Compile NexusLang program with debug symbols
 python nlplc_llvm.py test_programs/debug/test_debug.nlpl -o test_debug -g
 
 # The executable now contains DWARF debug information
@@ -251,7 +251,7 @@ Factorial of 5 is: 120
 
 ```llvm
 ; ModuleID = "test_debug"
-source_filename = "test_debug.nlpl"
+source_filename = "test_debug.nxl"
 
 ; Function definition with debug info
 define i64 @calculate_factorial(i64 %n) !dbg !5 {
@@ -265,7 +265,7 @@ entry:
 }
 
 ; Debug metadata
-!0 = !DIFile(filename: "test_debug.nlpl", directory: "/path/to/dir")
+!0 = !DIFile(filename: "test_debug.nxl", directory: "/path/to/dir")
 !1 = distinct !DICompileUnit(
  language: DW_LANG_C99,
  file: !0,
@@ -302,10 +302,10 @@ entry:
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| **Source-level debugging** | | Set breakpoints at NLPL source lines |
-| **Variable inspection** | | Print/watch NLPL variables |
+| **Source-level debugging** | | Set breakpoints at NexusLang source lines |
+| **Variable inspection** | | Print/watch NexusLang variables |
 | **Function debugging** | | Step into/over/out of functions |
-| **Call stack** | | View call stack with NLPL source |
+| **Call stack** | | View call stack with NexusLang source |
 | **Line stepping** | | Step through code line by line |
 | **Type information** | | Variable types visible in debugger |
 | **Local variables** | | Inspect local variables in scope |
@@ -409,7 +409,7 @@ python nlplc_llvm.py test.nlpl -o test -g -O3
 def test_debug_info_generation():
  """Test DWARF debug info is generated."""
  source = "set x to 10"
- gen = DebugInfoGenerator("test.nlpl", source)
+ gen = DebugInfoGenerator("test.nxl", source)
  gen.generate_compile_unit()
  metadata = gen.get_debug_metadata()
  assert "!DICompileUnit" in metadata
@@ -519,7 +519,7 @@ cppcheck --enable=all ./test_debug
 **Status:** **PRODUCTION READY**
 
 **Benefits:**
-- Debug NLPL programs like C/C++
+- Debug NexusLang programs like C/C++
 - Use industry-standard tools (GDB, LLDB)
 - IDE integration support
 - Profiling and analysis capabilities

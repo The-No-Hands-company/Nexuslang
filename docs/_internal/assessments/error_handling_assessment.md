@@ -1,4 +1,4 @@
-# NLPL Error Handling & Debugging Experience Assessment
+# NexusLang Error Handling & Debugging Experience Assessment
 
 **Date:** November 20, 2025
 **Status:** Current State Analysis
@@ -14,7 +14,7 @@ NLPL's error handling is **significantly better** than traditional programming l
 
 ### The Core Question
 
-**Will debugging NLPL be pure hell?** **No, definitely not.**
+**Will debugging NexusLang be pure hell?** **No, definitely not.**
 
 **Will it be as straightforward as fixing typos/grammar?** **Almost, but not quite yet.**
 
@@ -61,28 +61,28 @@ NLPL implements comprehensive error detection across all compilation/interpretat
 
 ### Error Class Hierarchy
 
-**Base:** `NLPLError` (`src/nlpl/errors.py:10-39`)
+**Base:** `NxlError` (`src/nlpl/errors.py:10-39`)
 - Stores: message, line number, column, source line, error type
 - Formats with visual caret pointer (^) showing exact location
 
 **Specialized Classes:**
 
-1. **`NLPLSyntaxError`** (lines 42-63)
+1. **`NxlSyntaxError`** (lines 42-63)
  - Includes expected vs. got tokens
  - Provides contextual suggestions
  - Example: " Suggestion: Make sure to close all blocks with 'end'"
 
-2. **`NLPLRuntimeError`** (lines 66-92)
+2. **`NxlRuntimeError`** (lines 66-92)
  - Shows stack trace with numbered frames
  - Displays local variables at error point (truncated to 50 chars)
 
-3. **`NLPLNameError`** (lines 95-120)
+3. **`NxlNameError`** (lines 95-120)
  - **Most user-friendly feature:** "Did you mean?" suggestions
  - Uses fuzzy string matching (difflib) with 0.6 similarity cutoff
  - Shows top 3 similar names
  - Example: "conter" suggests "counter"
 
-4. **`NLPLTypeError`** (lines 123-140)
+4. **`NxlTypeError`** (lines 123-140)
  - Shows expected vs. got types clearly
  - Example: "Expected type: Integer / Got type: String"
 
@@ -271,7 +271,7 @@ NameError: name 'conter' is not defined
 - No suggestions or help
 - Just tells you what's wrong
 
-### NLPL Today: 7.5-8/10 for Beginners
+### NexusLang Today: 7.5-8/10 for Beginners
 ```
 Name Error: Name 'conter' is not defined
  at line 5, column 11
@@ -424,7 +424,7 @@ if fix_example:
 
 **Example implementation:**
 ```python
-class NLPLError(Exception):
+class NxlError(Exception):
  def __init__(self, ..., beginner_mode: bool = False):
  self.beginner_mode = beginner_mode
  ...
@@ -569,14 +569,14 @@ NLPL has comprehensive error testing:
 > "NLPL gives you clear, helpful feedback when something's not quite right - like a copyeditor for your code. Errors show you exactly where the issue is and suggest fixes, so you spend less time stuck and more time creating."
 
 **For Domain Experts:**
-> "When NLPL encounters an issue, it explains what went wrong in plain language and points to the exact location. Smart suggestions help you quickly fix typos and common mistakes, similar to how spell-check works in documents."
+> "When NexusLang encounters an issue, it explains what went wrong in plain language and points to the exact location. Smart suggestions help you quickly fix typos and common mistakes, similar to how spell-check works in documents."
 
 **For Hobby Programmers:**
-> "Frustrated by cryptic error messages in other languages? NLPL shows you exactly what's wrong, where it's wrong, and suggests fixes - all in natural language you can actually understand."
+> "Frustrated by cryptic error messages in other languages? NexusLang shows you exactly what's wrong, where it's wrong, and suggests fixes - all in natural language you can actually understand."
 
 ### Comparison Chart for Marketing
 
-| Feature | Traditional Languages | Python | NLPL |
+| Feature | Traditional Languages | Python | NexusLang |
 |---------|----------------------|---------|------|
 | Visual error location | | | |
 | Natural language messages | | | |
@@ -628,42 +628,42 @@ Legend: Yes, Partial, No
 3. "How frustrated did you feel?" (1-5 scale, lower is better)
  - Target: <2 average
 
-4. "Would you recommend NLPL to a non-programmer friend?" (Yes/No)
+4. "Would you recommend NexusLang to a non-programmer friend?" (Yes/No)
  - Target: >70% yes
 
 ---
 
 ## 11. Competitive Analysis
 
-### How NLPL Compares to Natural Language Attempts
+### How NexusLang Compares to Natural Language Attempts
 
 **Inform (1960s-1970s):**
 - Error handling: Minimal, technical
 - User friendliness: Poor
-- NLPL advantage: Significantly better visual feedback and suggestions
+- NexusLang advantage: Significantly better visual feedback and suggestions
 
 **COBOL:**
 - Error handling: Verbose but technical
 - User friendliness: Moderate for era, dated now
-- NLPL advantage: Modern UX, better suggestions
+- NexusLang advantage: Modern UX, better suggestions
 
 **AppleScript:**
 - Error handling: Better than most, still cryptic
 - User friendliness: Moderate
-- NLPL advantage: Smarter suggestions, better visual formatting
+- NexusLang advantage: Smarter suggestions, better visual formatting
 
 **Modern comparisons:**
 
 **Scratch (visual programming):**
 - Error handling: Prevents many errors through UI
 - User friendliness: Excellent (can't make syntax errors)
-- NLPL advantage: More powerful, text-based flexibility
-- NLPL disadvantage: Scratch prevents errors; NLPL detects and explains
+- NexusLang advantage: More powerful, text-based flexibility
+- NexusLang disadvantage: Scratch prevents errors; NexusLang detects and explains
 
 **English (natural language):**
 - Error handling: Context-dependent, ambiguity allowed
 - User friendliness: Native speakers = excellent
-- NLPL challenge: Programming requires precision that natural language doesn't
+- NexusLang challenge: Programming requires precision that natural language doesn't
 - This is the fundamental tension: precision vs. naturalness
 
 ---
@@ -708,13 +708,13 @@ Programming requires: Explicit handling of all edge cases
 - Scope and lifetime
 - Error handling itself
 
-**What NLPL can do:**
+**What NexusLang can do:**
 - Make error messages educational
 - Teach concepts through feedback
 - Provide examples and analogies
 - Guide users toward correct understanding
 
-**What NLPL cannot do:**
+**What NexusLang cannot do:**
 - Make programming concepts disappear
 - Eliminate the need to think logically
 - Read the user's mind
@@ -738,7 +738,7 @@ Programming requires: Explicit handling of all edge cases
 2. **Target realistic user segments** - Not complete beginners (yet)
 3. **Emphasize improvement over traditional languages** - Not perfection
 4. **Collect user testimonials** - Real experiences trump claims
-5. **Show before/after comparisons** - C++ error vs. NLPL error
+5. **Show before/after comparisons** - C++ error vs. NexusLang error
 
 ### For Documentation Team
 
@@ -788,7 +788,7 @@ Programming requires: Explicit handling of all edge cases
 
 ### Final Verdict
 
-**Should NLPL attract users now?**
+**Should NexusLang attract users now?**
 
 **Yes, with appropriate messaging:**
 - Target: People comfortable with logical thinking

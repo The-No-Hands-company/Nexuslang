@@ -1,4 +1,4 @@
-# NLPL Interpreter vs Compiler: Architectural Decision
+# NexusLang Interpreter vs Compiler: Architectural Decision
 
 ## Your Question
 "As this is to be a native language, is the interpreter necessary? I understand it has functionality we've used during development, but in production will we not be using native only?"
@@ -117,7 +117,7 @@ Segmentation fault at 0x7fff8a3b2c10
 ```
 
 ### 6. Educational Use
-Students learning NLPL need:
+Students learning NexusLang need:
 - Immediate feedback (interpreter)
 - Forgiving environment (interpreter)
 - Clear error messages (interpreter)
@@ -233,7 +233,7 @@ nlplc src/main.nlpl -o dist/app --optimize 3
 
 ## Conclusion
 
-**YES, keep the interpreter!** It's not just a development tool—it's a **core feature** that makes NLPL:
+**YES, keep the interpreter!** It's not just a development tool—it's a **core feature** that makes NexusLang:
 1. **Accessible** (easy for beginners)
 2. **Productive** (fast iteration for experts)
 3. **Flexible** (scripting + compiled)
@@ -250,4 +250,4 @@ The compiler (nlplc) achieving 100% success is a **milestone**, not a replacemen
 4. 🔄 Add package manager (needs both interpreter and compiler)
 5. 🔄 Create VSCode extension (needs both for different use cases)
 
-The interpreter isn't going anywhere—it's staying forever as a **first-class citizen** of the NLPL ecosystem.
+The interpreter isn't going anywhere—it's staying forever as a **first-class citizen** of the NexusLang ecosystem.

@@ -18,7 +18,7 @@
    - Error codes displayed: `Syntax Error [E001]`
    - Clear caret pointer (^) to error location
    - "How to fix" suggestions inline
-   - "For more help: nlpl --explain E001" footer
+   - "For more help: nxl --explain E001" footer
    
 3. **Error Explainer Tool** (dev_tools/explain_error.py)
    - `python dev_tools/explain_error.py E001` - Explain specific code
@@ -29,7 +29,7 @@
    - Parser stores source text and passes to errors
    - Interpreter stores source text for runtime errors
    - `error_type_key` parameter added to error methods
-   - main.py catches and formats NLPL errors properly
+   - main.py catches and formats NexusLang errors properly
 
 ### Error Categories
 
@@ -54,7 +54,7 @@ How to fix:
   • Check the syntax for this statement type
   • Look for missing or extra words around the error location
 
-For more help: nlpl --explain E001
+For more help: nxl --explain E001
 ```
 
 #### Name Error (E100)
@@ -65,7 +65,7 @@ How to fix:
   • Declare variable first: set name to value
   • Check spelling of variable name
 
-For more help: nlpl --explain E100
+For more help: nxl --explain E100
 
 Did you mean one of these?
   • counter
@@ -87,7 +87,7 @@ Did you mean one of these?
 - `src/nlpl/errors.py` - Enhanced with error codes and Rust-style formatting
 - `src/nlpl/parser/parser.py` - Stores source, passes error_type_key
 - `src/nlpl/interpreter/interpreter.py` - Stores source, uses error codes
-- `src/nlpl/main.py` - Catches and formats NLPLError properly
+- `src/nlpl/main.py` - Catches and formats NxlError properly
 
 ### Test Results
 
@@ -95,7 +95,7 @@ Did you mean one of these?
 ✅ Multi-line context shows 2 lines before/after error
 ✅ "How to fix" suggestions shown inline
 ✅ "Did you mean" suggestions working
-✅ `nlpl --explain` references included
+✅ `nxl --explain` references included
 ✅ Explainer tool functional
 
 ### Day 1 Achievements
@@ -130,7 +130,7 @@ Did you mean one of these?
 
 4. **Connect --explain to main CLI** (1 hour)
    - Add --explain flag to main.py
-   - Integration: `nlpl --explain E001`
+   - Integration: `nxl --explain E001`
    - Add --list-errors flag
 
 ### Impact
@@ -148,7 +148,7 @@ How to fix:
   • Declare variable first: set name to value
   • Check spelling of variable name
 
-For more help: nlpl --explain E100
+For more help: nxl --explain E100
 
 Did you mean one of these?
   • counter
@@ -156,7 +156,7 @@ Did you mean one of these?
 
 ### Summary
 
-Day 1 focused on building the foundation: error code system, beautiful formatting, and proving the concept with 2 working examples (syntax error + name error). The error messages now match the quality of Rust/TypeScript compilers, making NLPL much easier to learn for beginners. Day 2 will focus on applying error codes throughout the entire codebase to ensure all errors benefit from this system.
+Day 1 focused on building the foundation: error code system, beautiful formatting, and proving the concept with 2 working examples (syntax error + name error). The error messages now match the quality of Rust/TypeScript compilers, making NexusLang much easier to learn for beginners. Day 2 will focus on applying error codes throughout the entire codebase to ensure all errors benefit from this system.
 
 ---
 *Date: February 17, 2026*

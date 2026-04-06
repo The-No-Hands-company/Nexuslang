@@ -15,7 +15,7 @@ _SRC = str(Path(__file__).resolve().parent.parent.parent.parent / "src")
 if _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
-from nlpl.optimizer.lto import (
+from nexuslang.optimizer.lto import (
     LTOStats,
     LTOUnit,
     LTOContext,
@@ -925,31 +925,31 @@ class TestLTOIntegration:
 
 class TestLazyImportViaPackage:
     def test_lto_unit_accessible(self):
-        from nlpl.optimizer import LTOUnit
+        from nexuslang.optimizer import LTOUnit
         assert LTOUnit is not None
 
     def test_lto_context_accessible(self):
-        from nlpl.optimizer import LTOContext
+        from nexuslang.optimizer import LTOContext
         assert LTOContext is not None
 
     def test_lto_pipeline_accessible(self):
-        from nlpl.optimizer import LTOPipeline
+        from nexuslang.optimizer import LTOPipeline
         assert LTOPipeline is not None
 
     def test_lto_optimize_accessible(self):
-        from nlpl.optimizer import lto_optimize
+        from nexuslang.optimizer import lto_optimize
         assert callable(lto_optimize)
 
     def test_lto_stats_report_accessible(self):
-        from nlpl.optimizer import lto_stats_report
+        from nexuslang.optimizer import lto_stats_report
         assert callable(lto_stats_report)
 
     def test_lto_stats_accessible(self):
-        from nlpl.optimizer import LTOStats
+        from nexuslang.optimizer import LTOStats
         assert LTOStats is not None
 
     def test_lto_names_in_all(self):
-        import nlpl.optimizer as opt
+        import nexuslang.optimizer as opt
         assert "LTOUnit" in opt.__all__
         assert "LTOContext" in opt.__all__
         assert "LTOPipeline" in opt.__all__

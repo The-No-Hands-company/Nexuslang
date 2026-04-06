@@ -135,7 +135,7 @@ Created 6 colored skybox faces (512×512 RGBA):
 
 ### Texture Loading
 ```
-=== NLPL Texture Loading Demo ===
+=== NexusLang Texture Loading Demo ===
 Loading textures from image files...
 Textures loaded successfully!
 Demo complete!
@@ -144,7 +144,7 @@ Demo complete!
 
 ### Shadow Mapping
 ```
-=== NLPL Shadow Mapping Demo ===
+=== NexusLang Shadow Mapping Demo ===
 Two-pass rendering with depth buffer shadows
 Creating shadow map framebuffer...
 Rendering scene with shadows...
@@ -154,7 +154,7 @@ Shadow mapping demo complete!
 
 ### Skybox Rendering
 ```
-=== NLPL Skybox Rendering Demo ===
+=== NexusLang Skybox Rendering Demo ===
 Cubemap environment with rotating camera
 Loading skybox textures...
 Skybox cubemap loaded!

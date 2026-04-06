@@ -1,4 +1,4 @@
-# NLPL GUI Features Roadmap
+# NexusLang GUI Features Roadmap
 
 **Based on:** NLPLDev field testing results 
 **Date:** January 5, 2026 
@@ -36,7 +36,7 @@ void gtk_button_set_click_handler(GtkWidget* button,
  void (*callback)(GtkWidget*, void*),
  void* user_data);
 
-// NLPL needs to provide:
+// NexusLang needs to provide:
 function on_button_click that takes widget as Pointer with data as Pointer
  print text "Button clicked!"
  
@@ -73,7 +73,7 @@ set my_handler to reference of on_button_click
 call register_callback with my_handler
 ```
 
-**Current NLPL:**
+**Current NexusLang:**
 ```nlpl
 # Can define functions
 function handler that takes data as Pointer
@@ -151,13 +151,13 @@ call SDL_RenderFillRect with renderer and address of rect
 # Can declare extern with string
 extern function MessageBoxA with hwnd as Integer with text as Pointer ...
 
-# Can't convert NLPL string to C string pointer
+# Can't convert NexusLang string to C string pointer
 set message to "Hello World"
 # Need: set c_string to pointer from message
 
-# Can't read C string back to NLPL
+# Can't read C string back to NexusLang
 set result_ptr to call some_c_function # Returns char*
-# Need: set nlpl_string to string from result_ptr
+# Need: set nxl_string to string from result_ptr
 ```
 
 **What we need:**
@@ -255,15 +255,15 @@ print text "User: " plus user_name
 ```python
 # In interpreter.py
 class CallbackWrapper:
- """Wraps NLPL function for C callback."""
- def __init__(self, nlpl_function, interpreter):
- self.nlpl_function = nlpl_function
+ """Wraps NexusLang function for C callback."""
+ def __init__(self, nxl_function, interpreter):
+ self.nxl_function = nxl_function
  self.interpreter = interpreter
  self.c_callback = ctypes.CFUNCTYPE(...)(self._trampoline)
  
  def _trampoline(self, *args):
- """Bridge C call to NLPL function."""
- return self.interpreter.call_function(self.nlpl_function, args)
+ """Bridge C call to NexusLang function."""
+ return self.interpreter.call_function(self.nxl_function, args)
 ```
 
 ---
@@ -312,7 +312,7 @@ set button to Button with
 ---
 
 ### Phase 5: C# Bridge (Future) - Game Changer
-**Goal:** Access .NET ecosystem from NLPL
+**Goal:** Access .NET ecosystem from NexusLang
 
 **Concept:**
 ```nlpl
@@ -404,8 +404,8 @@ def register_string_conversion_builtins(self):
  """Register string pointer conversion functions."""
  import ctypes
  
- def c_string_from_nlpl(text):
- """Convert NLPL string to C char* pointer."""
+ def c_string_from_nxl(text):
+ """Convert NexusLang string to C char* pointer."""
  if isinstance(text, str):
  encoded = text.encode('utf-8')
  buffer = ctypes.create_string_buffer(encoded)
@@ -413,13 +413,13 @@ def register_string_conversion_builtins(self):
  return 0
  
  def string_from_c_pointer(ptr, length=None):
- """Convert C char* pointer to NLPL string."""
+ """Convert C char* pointer to NexusLang string."""
  if ptr == 0 or ptr is None:
  return ""
  c_str = ctypes.c_char_p(ptr)
  return c_str.value.decode('utf-8') if c_str.value else ""
  
- self.runtime.register_function("c_string_from", c_string_from_nlpl)
+ self.runtime.register_function("c_string_from", c_string_from_nxl)
  self.runtime.register_function("string_from", string_from_c_pointer)
 ```
 
@@ -495,8 +495,8 @@ Complexity Scale: = Low, = High (10 blocks max)
 - [ ] Nested structs work
 
 ### Phase 4 Success (Strings)
-- [ ] NLPL string C string C function
-- [ ] C function C string NLPL string
+- [ ] NexusLang string C string C function
+- [ ] C function C string NexusLang string
 - [ ] Unicode handling (UTF-8/UTF-16)
 - [ ] No memory leaks
 
@@ -567,7 +567,7 @@ Complexity Scale: = Low, = High (10 blocks max)
 
 ## Code Examples: Before & After
 
-### Before (Current NLPL - Console Only)
+### Before (Current NexusLang - Console Only)
 
 ```nlpl
 # calculator_console.nlpl - Works perfectly! 
@@ -704,7 +704,7 @@ call main
 
 ## Learning Resources
 
-### For NLPL Contributors
+### For NexusLang Contributors
 
 **Must Read:**
 1. `src/nlpl/interpreter/interpreter.py` - Execution engine
@@ -733,7 +733,7 @@ call main
 # 1. Clone both repositories
 cd ~/dev
 git clone https://github.com/Zajfan/NLPL.git
-cd NLPL
+cd NexusLang
 
 # 2. Link NLPLDev for testing
 cd ~/dev
@@ -751,7 +751,7 @@ python3 src/main.py ~/dev/NLPLDev/apps/calculator_console.nlpl
 ### Testing New Features
 
 ```bash
-# 1. Implement feature in NLPL
+# 1. Implement feature in NexusLang
 # Edit: src/nlpl/interpreter/interpreter.py
 
 # 2. Create test in NLPLDev
@@ -759,10 +759,10 @@ cd ~/dev/NLPLDev/experiments
 nano test_new_feature.nlpl
 
 # 3. Run test
-python3 ~/dev/NLPL/src/main.py test_new_feature.nlpl
+python3 ~/dev/NexusLang/src/main.py test_new_feature.nlpl
 
 # 4. Debug with verbose output
-python3 ~/dev/NLPL/src/main.py test_new_feature.nlpl --debug
+python3 ~/dev/NexusLang/src/main.py test_new_feature.nlpl --debug
 ```
 
 ---
@@ -828,7 +828,7 @@ NLPL Program Any C/C++ Library Unlimited Possibilities
 
 ### This Month Goal
 
-**Deliverable:** Working ImGui calculator in NLPL
+**Deliverable:** Working ImGui calculator in NexusLang
 - Opens window
 - Has input fields
 - Buttons work (immediate mode)
@@ -854,7 +854,7 @@ NLPL is **already 80% ready** for GUI development. The FFI system is solid, cons
 **Week 5-6:** Complete structs (professional apps) 
 **Week 7:** Polish and documentation
 
-After this, NLPL becomes a **true systems programming language** capable of:
+After this, NexusLang becomes a **true systems programming language** capable of:
 - Desktop applications
 - Game development
 - System utilities 

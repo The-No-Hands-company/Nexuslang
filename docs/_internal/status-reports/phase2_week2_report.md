@@ -334,7 +334,7 @@ semantic tokens, enhanced code actions, VS Code extension build.
 ### Priority 1: Extension Testing & Packaging
 - [ ] Package extension as `.vsix` file
 - [ ] Install in VS Code for manual testing
-- [ ] Test all LSP features with real NLPL files
+- [ ] Test all LSP features with real NexusLang files
 - [ ] Validate semantic highlighting
 - [ ] Test refactoring actions
 
@@ -411,7 +411,7 @@ Phase 2 Week 2 is **complete**. We have:
 4. ✅ VS Code extension built and compiled
 5. ✅ All tests passing (no regressions)
 
-The NLPL IDE experience is now **production-ready**. All LSP features use AST-based symbol resolution, semantic highlighting provides advanced syntax coloring, and refactoring actions enable code transformations.
+The NexusLang IDE experience is now **production-ready**. All LSP features use AST-based symbol resolution, semantic highlighting provides advanced syntax coloring, and refactoring actions enable code transformations.
 
 **Next week**: Package extension, test in VS Code, and release v1.2 to VS Code Marketplace.
 

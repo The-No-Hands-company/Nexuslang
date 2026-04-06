@@ -1,15 +1,15 @@
 # Scope Optimizer Usage Guide
 
-The scope optimizer is an **optional performance enhancement** for the NLPL interpreter that speeds up variable lookups using a flat cache.
+The scope optimizer is an **optional performance enhancement** for the NexusLang interpreter that speeds up variable lookups using a flat cache.
 
 ## Quick Start
 
 ### Enable at Initialization
 
 ```python
-from nlpl.interpreter.interpreter import Interpreter
-from nlpl.interpreter.scope_optimizer import enable_scope_optimization
-from nlpl.runtime.runtime import Runtime
+from nexuslang.interpreter.interpreter import Interpreter
+from nexuslang.interpreter.scope_optimizer import enable_scope_optimization
+from nexuslang.runtime.runtime import Runtime
 
 runtime = Runtime()
 interpreter = Interpreter(runtime)
@@ -24,7 +24,7 @@ interpreter.interpret(ast)
 ### Enable/Disable at Runtime
 
 ```python
-from nlpl.interpreter.scope_optimizer import (
+from nexuslang.interpreter.scope_optimizer import (
  enable_scope_optimization,
  disable_scope_optimization
 )
@@ -167,7 +167,7 @@ To enable by default in `main.py`:
 
 ```python
 # In src/nlpl/main.py:
-from nlpl.interpreter.scope_optimizer import enable_scope_optimization
+from nexuslang.interpreter.scope_optimizer import enable_scope_optimization
 
 # After creating interpreter:
 interpreter = Interpreter(runtime, enable_type_checking=not args.no_type_check)

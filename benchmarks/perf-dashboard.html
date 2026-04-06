@@ -232,7 +232,7 @@
   </table>
 </div>
 
-<!-- NLPL optimization levels chart -->
+<!-- NexusLang optimization levels chart -->
 <h2>NLPL Optimization Levels (O0 -> O3)</h2>
 <div class="card">
   <div class="chart-container">
@@ -242,19 +242,19 @@
 
 <div class="note">
   <strong>Interpreter vs Compiled Languages</strong><br>
-  NLPL currently runs as an interpreted language on top of CPython. The ratios above reflect
+  NexusLang currently runs as an interpreted language on top of CPython. The ratios above reflect
   interpreter overhead versus ahead-of-time compiled code (C, Rust) and Python's highly
   optimized CPython interpreter.<br><br>
   <strong>Dispatch table speedup:</strong> A static class-level dispatch table + per-instance
   bound method cache replaced per-node regex processing, delivering 18.0x faster
   AST node dispatch. This is an interpreter-level optimization, not an algorithmic one.<br><br>
-  <strong>Next steps to reduce NLPL/C ratio:</strong> LLVM native code generation backend
+  <strong>Next steps to reduce NexusLang/C ratio:</strong> LLVM native code generation backend
   (planned — Phase 3 compiler work) will eliminate interpreter overhead entirely, targeting
   &lt;5x C performance for compute-intensive workloads.
 </div>
 
 <footer>
-  NLPL Performance Dashboard &mdash; 2026-02-18 &mdash; commit c43b482
+  NexusLang Performance Dashboard &mdash; 2026-02-18 &mdash; commit c43b482
 </footer>
 
 <script>

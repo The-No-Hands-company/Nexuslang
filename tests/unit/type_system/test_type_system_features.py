@@ -1,5 +1,5 @@
 """
-Test cases for type-system feature coverage in NLPL.
+Test cases for type-system feature coverage in NexusLang.
 """
 
 import sys
@@ -7,9 +7,9 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 import unittest
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.parser.ast import (
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.parser.ast import (
     AbstractClassDefinition, AbstractMethodDefinition, TraitDefinition,
     TypeAliasDefinition, TypeParameter, TypeConstraint, TypeGuard,
     MethodDefinition, Identifier

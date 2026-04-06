@@ -1,8 +1,8 @@
-# NLPL FFI System - Complete Implementation Summary
+# NexusLang FFI System - Complete Implementation Summary
 
 ## Overview
 
-The NLPL compiler now has **100% complete FFI (Foreign Function Interface)** system, enabling seamless interoperability with C libraries.
+The NexusLang compiler now has **100% complete FFI (Foreign Function Interface)** system, enabling seamless interoperability with C libraries.
 
 ---
 
@@ -27,7 +27,7 @@ The NLPL compiler now has **100% complete FFI (Foreign Function Interface)** sys
 ### Phase 3: Callbacks (Week 2) 
 **Duration**: 2-3 hours 
 **Features**:
-- Pass NLPL functions to C (qsort, signal)
+- Pass NexusLang functions to C (qsort, signal)
 - Function pointer generation
 - Callback wrappers (cdecl/stdcall)
 - Direct function reference (@function_name)
@@ -77,7 +77,7 @@ The NLPL compiler now has **100% complete FFI (Foreign Function Interface)** sys
 - [x] Return values (primitives, pointers, structs)
 - [x] Calling conventions (cdecl, stdcall)
 - [x] Function pointers as parameters
-- [x] Callbacks to NLPL functions
+- [x] Callbacks to NexusLang functions
 
 ### Library Integration 
 - [x] Standard C library (libc)
@@ -264,7 +264,7 @@ call free with buffer
 
 ### Supported C Features
 
-| Feature | NLPL Support | Notes |
+| Feature | NexusLang Support | Notes |
 |---------|-------------|-------|
 | Primitive types | Full | int, float, double, char, bool |
 | Pointers | Full | void*, T*, nested pointers |
@@ -295,7 +295,7 @@ call free with buffer
 ## Known Limitations & Future Work
 
 ### Current Limitations (Minor)
-1. **Varargs in NLPL functions** - Can call C variadics, but can't define NLPL variadics yet
+1. **Varargs in NexusLang functions** - Can call C variadics, but can't define NexusLang variadics yet
 2. **Bitfield structs** - Not yet supported
 3. **Packed structures** - No explicit packing control
 4. **Custom alignment** - Uses default LLVM alignment
@@ -303,7 +303,7 @@ call free with buffer
 ### Planned Enhancements
 1. **NLPL Variadic Functions** (~8 hours)
  - va_list support
- - Variable argument unpacking in NLPL
+ - Variable argument unpacking in NexusLang
  
 2. **Advanced Struct Features** (~4 hours)
  - Bitfields
@@ -336,7 +336,7 @@ call free with buffer
 
 ### FFI Comparison
 
-| Feature | NLPL | Rust | Python (ctypes) | Go (cgo) |
+| Feature | NexusLang | Rust | Python (ctypes) | Go (cgo) |
 |---------|------|------|-----------------|----------|
 | Syntax | Natural English | Complex | Verbose | Go-like |
 | Type Safety | Strong | Strongest | Weak | Strong |
@@ -356,7 +356,7 @@ call free with buffer
 
 ## Conclusion
 
-The NLPL FFI system is **production-ready** and provides **best-in-class C interoperability** with:
+The NexusLang FFI system is **production-ready** and provides **best-in-class C interoperability** with:
 
  Comprehensive type support 
  Natural, readable syntax 

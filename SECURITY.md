@@ -8,7 +8,7 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in NLPL, please report it responsibly.
+If you discover a security vulnerability in NexusLang, please report it responsibly.
 
 **Do NOT open a public issue for security vulnerabilities.**
 
@@ -33,9 +33,9 @@ Include the following in your report:
 - We will credit reporters in the security advisory (unless they prefer anonymity)
 - We aim to release a fix before or simultaneously with public disclosure
 
-## Security Considerations for NLPL Programs
+## Security Considerations for NexusLang Programs
 
-NLPL is a general-purpose programming language. When writing NLPL programs that
+NLPL is a general-purpose programming language. When writing NexusLang programs that
 handle untrusted input, follow these security practices:
 
 ### Input Validation
@@ -59,11 +59,11 @@ handle untrusted input, follow these security practices:
 ## Scope
 
 This policy covers:
-- The NLPL interpreter and compiler (`src/nlpl/`)
+- The NexusLang interpreter and compiler (`src/nlpl/`)
 - The standard library (`src/nlpl/stdlib/`)
 - The build system and CI infrastructure
 - Official documentation and examples
 
 Out of scope:
-- Third-party libraries or tools not maintained by the NLPL project
-- Vulnerabilities in user-written NLPL programs
+- Third-party libraries or tools not maintained by the NexusLang project
+- Vulnerabilities in user-written NexusLang programs

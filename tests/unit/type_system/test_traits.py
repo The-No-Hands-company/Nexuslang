@@ -2,7 +2,7 @@
 Test the trait system implementation.
 """
 
-from nlpl.typesystem.types import (
+from nexuslang.typesystem.types import (
     TraitType, ClassType, FunctionType, PrimitiveType,
     INTEGER_TYPE, STRING_TYPE, BOOLEAN_TYPE,
     COMPARABLE_TRAIT, EQUATABLE_TRAIT, PRINTABLE_TRAIT

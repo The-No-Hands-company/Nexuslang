@@ -1,11 +1,11 @@
 """
-Tests for NLPL security system.
+Tests for NexusLang security system.
 """
 
 import pytest
 import os
 import tempfile
-from nlpl.security import (
+from nexuslang.security import (
     PermissionManager,
     PermissionType,
     PermissionDeniedError,
@@ -89,7 +89,7 @@ class TestPathValidation:
     
     def test_normalize_path(self):
         """Test path normalization."""
-        from nlpl.security import normalize_path
+        from nexuslang.security import normalize_path
         
         # Should resolve .. and .
         path = normalize_path("./test/../file.txt")
@@ -128,7 +128,7 @@ class TestPathValidation:
     
     def test_safe_filename(self):
         """Test filename sanitization."""
-        from nlpl.security import get_safe_filename
+        from nexuslang.security import get_safe_filename
         
         # Should remove dangerous characters
         assert get_safe_filename("../../../etc/passwd") == "passwd"
@@ -271,7 +271,7 @@ class TestRateLimit:
     
     def test_rate_limit_enforcement(self):
         """Test that rate limit is enforced."""
-        from nlpl.security import check_rate_limit
+        from nexuslang.security import check_rate_limit
         
         # Should allow first 3 calls
         assert check_rate_limit("user1", max_calls=3, window_seconds=60)
@@ -283,7 +283,7 @@ class TestRateLimit:
     
     def test_rate_limit_per_identifier(self):
         """Test that rate limits are per-identifier."""
-        from nlpl.security import check_rate_limit
+        from nexuslang.security import check_rate_limit
         
         # Reset by using new identifiers
         assert check_rate_limit("user_a", max_calls=2, window_seconds=60)

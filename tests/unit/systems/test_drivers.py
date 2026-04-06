@@ -7,7 +7,7 @@ import tempfile
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from nlpl.stdlib.drivers import (
+from nexuslang.stdlib.drivers import (
     CharDevice,
     BlockDevice,
     GpioPin,
@@ -47,8 +47,8 @@ from nlpl.stdlib.drivers import (
     unbind_vfio_pci,
     get_iommu_group,
 )
-from nlpl.runtime.runtime import Runtime
-from nlpl.stdlib import register_stdlib
+from nexuslang.runtime.runtime import Runtime
+from nexuslang.stdlib import register_stdlib
 
 
 IS_LINUX = platform.system().lower() == "linux"

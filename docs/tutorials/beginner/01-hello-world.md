@@ -1,7 +1,7 @@
 # Tutorial 1: Hello World
 
 **Time:** ~10 minutes  
-**Prerequisites:** NLPL installed ([installation guide](../../getting-started/installation.md))
+**Prerequisites:** NexusLang installed ([installation guide](../../getting-started/installation.md))
 
 ---
 
@@ -16,7 +16,7 @@ print text "Hello, World!"
 Run it:
 
 ```bash
-PYTHONPATH=src python -m nlpl.main hello.nlpl
+PYTHONPATH=src python -m nexuslang.main hello.nlpl
 ```
 
 You should see:
@@ -47,7 +47,7 @@ print 100
 ## Comments
 
 ```nlpl
-# This is a comment — ignored by NLPL
+# This is a comment — ignored by NexusLang
 print text "Comments don't affect output"
 
 # You can comment out code:

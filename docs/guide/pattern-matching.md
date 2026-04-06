@@ -1,4 +1,4 @@
-# Pattern Matching in NLPL
+# Pattern Matching in NexusLang
 
 **Status:** ✅ Fully implemented (February 3, 2026)  
 **Complexity:** Intermediate
@@ -615,7 +615,7 @@ match value {
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 match value with
   case 0 then "zero"
   case n if n is less than 10 then "small"
@@ -624,8 +624,8 @@ end
 ```
 
 **Differences:**
-- NLPL uses `with...case...then...end` instead of braces
-- NLPL uses natural language comparisons (`is less than` vs `<`)
+- NexusLang uses `with...case...then...end` instead of braces
+- NexusLang uses natural language comparisons (`is less than` vs `<`)
 - Both support guards, destructuring, and variable binding
 
 ### Python-style Matching (3.10+)
@@ -819,7 +819,7 @@ end
 
 ## Summary
 
-Pattern matching in NLPL provides:
+Pattern matching in NexusLang provides:
 
 ✅ **Literal matching** - Exact value comparison  
 ✅ **Variable binding** - Capture matched values  
@@ -828,6 +828,6 @@ Pattern matching in NLPL provides:
 ✅ **Type safety** - Full type checking integration  
 ✅ **Expressiveness** - Cleaner than if/else chains  
 
-Pattern matching makes NLPL code more readable, safer, and more maintainable. Use it whenever you need to match values against multiple patterns or destructure complex data structures.
+Pattern matching makes NexusLang code more readable, safer, and more maintainable. Use it whenever you need to match values against multiple patterns or destructure complex data structures.
 
 **Status:** Fully implemented and ready for production use!

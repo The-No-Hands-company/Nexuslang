@@ -53,7 +53,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from nlpl.tooling.registry import (
+from nexuslang.tooling.registry import (
     AuthError,
     PackageInfo,
     PackageNotFoundError,
@@ -67,7 +67,7 @@ from nlpl.tooling.registry import (
     _extract_archive,
     resolve_version,
 )
-from nlpl.tooling.workspace import (
+from nexuslang.tooling.workspace import (
     WorkspaceBuilder,
     WorkspaceError,
     WorkspaceManifest,
@@ -77,14 +77,14 @@ from nlpl.tooling.workspace import (
     load_workspace,
     WORKSPACE_MANIFEST_NAME,
 )
-from nlpl.tooling.lockfile import (
+from nexuslang.tooling.lockfile import (
     LockFile,
     LockedPackage,
     compute_directory_checksum,
     generate_lockfile,
     resolve_path_dependency,
 )
-from nlpl.tooling.dependency_manager import (
+from nexuslang.tooling.dependency_manager import (
     add_dependency,
     update_lockfile,
 )
@@ -98,11 +98,11 @@ def _write_toml(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
-def _make_nlpl_project(root: Path, name: str = "mylib", version: str = "0.1.0") -> Path:
-    """Create a minimal NLPL project directory."""
+def _make_nxl_project(root: Path, name: str = "mylib", version: str = "0.1.0") -> Path:
+    """Create a minimal NexusLang project directory."""
     root.mkdir(parents=True, exist_ok=True)
     (root / "src").mkdir(exist_ok=True)
-    _write_toml(root / "nlpl.toml", f"""\
+    _write_toml(root / "nexuslang.toml", f"""\
 [package]
 name = "{name}"
 version = "{version}"
@@ -114,7 +114,7 @@ source_dir = "src"
 output_dir = "build"
 target = "c"
 """)
-    (root / "src" / "main.nlpl").write_text(f'function main\n    print text "{name}"\nend\n')
+    (root / "src" / "main.nxl").write_text(f'function main\n    print text "{name}"\nend\n')
     return root
 
 
@@ -138,20 +138,20 @@ class TestRegistryConfig:
         assert cfg.url == "https://example.com"
 
     def test_env_token_override(self, tmp_path, monkeypatch):
-        _make_nlpl_project(tmp_path)
+        _make_nxl_project(tmp_path)
         monkeypatch.setenv("NLPL_REGISTRY_TOKEN", "mytoken123")
         cfg = RegistryConfig.from_project(tmp_path)
         assert cfg.token == "mytoken123"
 
     def test_env_url_override(self, tmp_path, monkeypatch):
-        _make_nlpl_project(tmp_path)
+        _make_nxl_project(tmp_path)
         monkeypatch.setenv("NLPL_REGISTRY_URL", "https://private.example.com")
         cfg = RegistryConfig.from_project(tmp_path)
         assert cfg.url == "https://private.example.com"
 
     def test_project_toml_registry_section(self, tmp_path):
-        proj = _make_nlpl_project(tmp_path)
-        _write_toml(tmp_path / "nlpl.toml", """\
+        proj = _make_nxl_project(tmp_path)
+        _write_toml(tmp_path / "nexuslang.toml", """\
 [package]
 name = "proj"
 version = "0.1.0"
@@ -267,11 +267,11 @@ class TestArchiveRoundTrip:
     def test_create_and_extract(self, tmp_path):
         src = tmp_path / "src_pkg"
         src.mkdir()
-        (src / "nlpl.toml").write_text("[package]\nname = \"test\"\nversion = \"1.0.0\"\n")
-        (src / "main.nlpl").write_text("function main\n    print text \"hi\"\nend\n")
+        (src / "nexuslang.toml").write_text("[package]\nname = \"test\"\nversion = \"1.0.0\"\n")
+        (src / "main.nxl").write_text("function main\n    print text \"hi\"\nend\n")
         subdir = src / "utils"
         subdir.mkdir()
-        (subdir / "helper.nlpl").write_text("function helper\nend\n")
+        (subdir / "helper.nxl").write_text("function helper\nend\n")
 
         archive = tmp_path / "pkg.tar.gz"
         _create_archive(src, archive)
@@ -280,14 +280,14 @@ class TestArchiveRoundTrip:
 
         dest = tmp_path / "extracted"
         _extract_archive(archive, dest)
-        assert (dest / "nlpl.toml").exists()
-        assert (dest / "main.nlpl").exists()
-        assert (dest / "utils" / "helper.nlpl").exists()
+        assert (dest / "nexuslang.toml").exists()
+        assert (dest / "main.nxl").exists()
+        assert (dest / "utils" / "helper.nxl").exists()
 
     def test_build_dir_excluded(self, tmp_path):
         src = tmp_path / "src_pkg"
         src.mkdir()
-        (src / "nlpl.toml").write_text("[package]\nname = \"x\"\nversion = \"0.1.0\"\n")
+        (src / "nexuslang.toml").write_text("[package]\nname = \"x\"\nversion = \"0.1.0\"\n")
         (src / "build").mkdir()
         (src / "build" / "output.o").write_bytes(b"\x7f\x45\x4c\x46")
 
@@ -336,7 +336,7 @@ class TestRegistryClientSearch:
             ]
         }).encode()
 
-        with patch("nlpl.tooling.registry._make_request", return_value=payload):
+        with patch("nexuslang.tooling.registry._make_request", return_value=payload):
             results = client.search("mylib")
 
         assert len(results) == 2
@@ -347,7 +347,7 @@ class TestRegistryClientSearch:
     def test_search_network_error(self, tmp_path):
         client = _make_client(tmp_path)
         with patch(
-            "nlpl.tooling.registry._make_request",
+            "nexuslang.tooling.registry._make_request",
             side_effect=urllib.error.URLError("connection refused"),
         ):
             with pytest.raises(RegistryError, match="Network error"):
@@ -356,7 +356,7 @@ class TestRegistryClientSearch:
     def test_search_404(self, tmp_path):
         client = _make_client(tmp_path)
         with patch(
-            "nlpl.tooling.registry._make_request",
+            "nexuslang.tooling.registry._make_request",
             side_effect=urllib.error.HTTPError(None, 404, "Not Found", {}, None),
         ):
             with pytest.raises(RegistryError, match="Search failed"):
@@ -365,7 +365,7 @@ class TestRegistryClientSearch:
     def test_search_empty_results(self, tmp_path):
         client = _make_client(tmp_path)
         payload = json.dumps({"results": []}).encode()
-        with patch("nlpl.tooling.registry._make_request", return_value=payload):
+        with patch("nexuslang.tooling.registry._make_request", return_value=payload):
             results = client.search("nonexistent_pkg")
         assert results == []
 
@@ -390,7 +390,7 @@ class TestRegistryClientGetPackageInfo:
             ],
         }).encode()
 
-        with patch("nlpl.tooling.registry._make_request", return_value=payload):
+        with patch("nexuslang.tooling.registry._make_request", return_value=payload):
             info = client.get_package_info("coolpkg")
 
         assert info.name == "coolpkg"
@@ -403,7 +403,7 @@ class TestRegistryClientGetPackageInfo:
     def test_get_missing_package(self, tmp_path):
         client = _make_client(tmp_path)
         with patch(
-            "nlpl.tooling.registry._make_request",
+            "nexuslang.tooling.registry._make_request",
             side_effect=urllib.error.HTTPError(None, 404, "Not Found", {}, None),
         ):
             with pytest.raises(PackageNotFoundError, match="not found in registry"):
@@ -414,10 +414,10 @@ class TestRegistryClientDownload:
     def _make_archive(self, tmp_path: Path, name: str = "pkg", version: str = "1.0.0") -> bytes:
         src = tmp_path / "src"
         src.mkdir(exist_ok=True)
-        (src / "nlpl.toml").write_text(
+        (src / "nexuslang.toml").write_text(
             f'[package]\nname = "{name}"\nversion = "{version}"\n'
         )
-        (src / "main.nlpl").write_text("function main\nend\n")
+        (src / "main.nxl").write_text("function main\nend\n")
         archive = tmp_path / "archive.tar.gz"
         _create_archive(src, archive)
         return archive.read_bytes()
@@ -443,11 +443,11 @@ class TestRegistryClientDownload:
                 return archive_bytes
             return ver_info_payload
 
-        with patch("nlpl.tooling.registry._make_request", side_effect=_fake_request):
+        with patch("nexuslang.tooling.registry._make_request", side_effect=_fake_request):
             extracted = client.download("mypkg", "1.0.0", quiet=True)
 
         assert extracted.is_dir()
-        assert (extracted / "nlpl.toml").exists()
+        assert (extracted / "nexuslang.toml").exists()
 
     def test_download_uses_cache(self, tmp_path):
         client = _make_client(tmp_path)
@@ -467,17 +467,17 @@ class TestRegistryClientDownload:
                 return archive_bytes
             return json.dumps(ver_info).encode()
 
-        with patch("nlpl.tooling.registry._make_request", side_effect=_fake_request):
+        with patch("nexuslang.tooling.registry._make_request", side_effect=_fake_request):
             client.download("mypkg", "1.0.0", quiet=True)
 
         # Second download — must use cache (no network)
         with patch(
-            "nlpl.tooling.registry._make_request",
+            "nexuslang.tooling.registry._make_request",
             side_effect=AssertionError("Should not make network call on cache hit"),
         ):
             extracted = client.download("mypkg", "1.0.0", quiet=True)
 
-        assert (extracted / "nlpl.toml").exists()
+        assert (extracted / "nexuslang.toml").exists()
 
     def test_download_yanked_raises(self, tmp_path):
         client = _make_client(tmp_path)
@@ -489,7 +489,7 @@ class TestRegistryClientDownload:
             "yanked": True,
         }).encode()
 
-        with patch("nlpl.tooling.registry._make_request", return_value=ver_info_payload):
+        with patch("nexuslang.tooling.registry._make_request", return_value=ver_info_payload):
             with pytest.raises(RegistryError, match="yanked"):
                 client.download("oldpkg", "0.1.0", quiet=True)
 
@@ -511,7 +511,7 @@ class TestRegistryClientDownload:
                 return archive_bytes
             return ver_info_payload
 
-        with patch("nlpl.tooling.registry._make_request", side_effect=_fake_request):
+        with patch("nexuslang.tooling.registry._make_request", side_effect=_fake_request):
             with pytest.raises(RegistryError, match="Checksum mismatch"):
                 client.download("badpkg", "1.0.0", quiet=True)
 
@@ -535,7 +535,7 @@ class TestRegistryClientDownload:
                 return archive_bytes
             return json.dumps(ver_info).encode()
 
-        with patch("nlpl.tooling.registry._make_request", side_effect=_fake_request):
+        with patch("nexuslang.tooling.registry._make_request", side_effect=_fake_request):
             client.download("mypkg", "1.0.0", quiet=True)
             first_calls = network_calls["n"]
             client.download("mypkg", "1.0.0", force=True, quiet=True)
@@ -545,19 +545,19 @@ class TestRegistryClientDownload:
 
 class TestRegistryClientPublish:
     def test_dry_run_no_upload(self, tmp_path):
-        proj = _make_nlpl_project(tmp_path, name="myapp", version="1.0.0")
+        proj = _make_nxl_project(tmp_path, name="myapp", version="1.0.0")
         cfg = RegistryConfig(url="https://test.registry", cache_dir=tmp_path / "cache")
         cfg.cache_dir.mkdir(parents=True, exist_ok=True)
         client = RegistryClient(cfg)
 
         with patch(
-            "nlpl.tooling.registry._make_request",
+            "nexuslang.tooling.registry._make_request",
             side_effect=AssertionError("Should not make network call in dry-run"),
         ):
             client.publish(proj, dry_run=True, quiet=True)  # Should not raise
 
     def test_missing_token_raises_auth_error(self, tmp_path):
-        proj = _make_nlpl_project(tmp_path, name="myapp", version="1.0.0")
+        proj = _make_nxl_project(tmp_path, name="myapp", version="1.0.0")
         cfg = RegistryConfig(url="https://test.registry", token=None, cache_dir=tmp_path / "cache")
         cfg.cache_dir.mkdir(parents=True, exist_ok=True)
         client = RegistryClient(cfg)
@@ -572,26 +572,26 @@ class TestRegistryClientPublish:
             client.publish(tmp_path)
 
     def test_duplicate_version_409(self, tmp_path):
-        proj = _make_nlpl_project(tmp_path, name="dup", version="1.0.0")
+        proj = _make_nxl_project(tmp_path, name="dup", version="1.0.0")
         cfg = RegistryConfig(url="https://test.registry", token="tok", cache_dir=tmp_path / "cache")
         cfg.cache_dir.mkdir(parents=True, exist_ok=True)
         client = RegistryClient(cfg)
 
         with patch(
-            "nlpl.tooling.registry._make_request",
+            "nexuslang.tooling.registry._make_request",
             side_effect=urllib.error.HTTPError(None, 409, "Conflict", {}, None),
         ):
             with pytest.raises(RegistryError, match="already exists"):
                 client.publish(proj, quiet=True)
 
     def test_auth_error_401(self, tmp_path):
-        proj = _make_nlpl_project(tmp_path, name="myapp", version="0.1.0")
+        proj = _make_nxl_project(tmp_path, name="myapp", version="0.1.0")
         cfg = RegistryConfig(url="https://test.registry", token="bad-token", cache_dir=tmp_path / "cache")
         cfg.cache_dir.mkdir(parents=True, exist_ok=True)
         client = RegistryClient(cfg)
 
         with patch(
-            "nlpl.tooling.registry._make_request",
+            "nexuslang.tooling.registry._make_request",
             side_effect=urllib.error.HTTPError(None, 401, "Unauthorized", {}, None),
         ):
             with pytest.raises(AuthError, match="authentication failed"):
@@ -599,7 +599,7 @@ class TestRegistryClientPublish:
 
     def test_invalid_package_name_raises(self, tmp_path):
         tmp_path.mkdir(parents=True, exist_ok=True)
-        _write_toml(tmp_path / "nlpl.toml", """\
+        _write_toml(tmp_path / "nexuslang.toml", """\
 [package]
 name = "INVALID NAME!"
 version = "1.0.0"
@@ -684,7 +684,7 @@ members = ["packages/*", "tools/mytool"]
 
     def test_expand_members_glob(self, tmp_path):
         for pkg in ("libfoo", "libbar"):
-            _make_nlpl_project(tmp_path / "packages" / pkg, name=pkg)
+            _make_nxl_project(tmp_path / "packages" / pkg, name=pkg)
         _write_toml(tmp_path / WORKSPACE_MANIFEST_NAME, """\
 [workspace]
 members = ["packages/*"]
@@ -696,7 +696,7 @@ members = ["packages/*"]
         assert "libbar" in names
 
     def test_expand_members_literal(self, tmp_path):
-        _make_nlpl_project(tmp_path / "tools" / "mytool", name="mytool")
+        _make_nxl_project(tmp_path / "tools" / "mytool", name="mytool")
         _write_toml(tmp_path / WORKSPACE_MANIFEST_NAME, """\
 [workspace]
 members = ["tools/mytool"]
@@ -706,7 +706,7 @@ members = ["tools/mytool"]
         assert len(members) == 1
         assert members[0].name == "mytool"
 
-    def test_expand_members_missing_nlpl_toml(self, tmp_path):
+    def test_expand_members_missing_nxl_toml(self, tmp_path):
         (tmp_path / "packages" / "broken").mkdir(parents=True)
         # No nlpl.toml in that dir
         _write_toml(tmp_path / WORKSPACE_MANIFEST_NAME, """\
@@ -724,7 +724,7 @@ members = ["packages/*"]
 
 class TestWorkspaceMember:
     def test_load_valid(self, tmp_path):
-        proj = _make_nlpl_project(tmp_path, name="mylib", version="1.2.3")
+        proj = _make_nxl_project(tmp_path, name="mylib", version="1.2.3")
         member = WorkspaceMember.load(proj)
         assert member.name == "mylib"
         assert member.version == "1.2.3"
@@ -734,15 +734,15 @@ class TestWorkspaceMember:
             WorkspaceMember.load(tmp_path)
 
     def test_load_missing_package_section(self, tmp_path):
-        _write_toml(tmp_path / "nlpl.toml", "[build]\nsource_dir = \"src\"\n")
+        _write_toml(tmp_path / "nexuslang.toml", "[build]\nsource_dir = \"src\"\n")
         with pytest.raises(ValueError, match=r"\[package\]"):
             WorkspaceMember.load(tmp_path)
 
     def test_intra_workspace_deps_path(self, tmp_path):
-        lib = _make_nlpl_project(tmp_path / "lib", name="lib")
+        lib = _make_nxl_project(tmp_path / "lib", name="lib")
         app_root = tmp_path / "app"
-        _make_nlpl_project(app_root, name="app")
-        _write_toml(app_root / "nlpl.toml", f"""\
+        _make_nxl_project(app_root, name="app")
+        _write_toml(app_root / "nexuslang.toml", f"""\
 [package]
 name = "app"
 version = "0.1.0"
@@ -762,7 +762,7 @@ lib = {{ path = "../lib" }}
         assert "lib" in deps
 
     def test_intra_workspace_deps_no_match(self, tmp_path):
-        _make_nlpl_project(tmp_path / "app", name="app")
+        _make_nxl_project(tmp_path / "app", name="app")
         member = WorkspaceMember.load(tmp_path / "app")
         assert member.intra_workspace_deps({}) == []
 
@@ -780,14 +780,14 @@ class TestWorkspaceResolver:
         """
         for name, version, deps in members_config:
             pkg_root = tmp_path / "packages" / name
-            _make_nlpl_project(pkg_root, name=name, version=version)
+            _make_nxl_project(pkg_root, name=name, version=version)
             if deps:
                 dep_lines = "\n".join(
                     f'{d} = {{ path = "{p}" }}' for d, p in deps.items()
                 )
                 extra = f"\n[dependencies]\n{dep_lines}\n"
-                toml = (pkg_root / "nlpl.toml").read_text()
-                (pkg_root / "nlpl.toml").write_text(toml + extra)
+                toml = (pkg_root / "nexuslang.toml").read_text()
+                (pkg_root / "nexuslang.toml").write_text(toml + extra)
 
         _write_toml(tmp_path / WORKSPACE_MANIFEST_NAME, """\
 [workspace]
@@ -830,11 +830,11 @@ members = ["packages/*"]
         # Create two packages that depend on each other
         a_root = tmp_path / "packages" / "a"
         b_root = tmp_path / "packages" / "b"
-        _make_nlpl_project(a_root, name="a")
-        _make_nlpl_project(b_root, name="b")
+        _make_nxl_project(a_root, name="a")
+        _make_nxl_project(b_root, name="b")
 
         # a depends on b (via path)
-        _write_toml(a_root / "nlpl.toml", f"""\
+        _write_toml(a_root / "nexuslang.toml", f"""\
 [package]
 name = "a"
 version = "0.1.0"
@@ -846,7 +846,7 @@ target = "c"
 b = {{ path = "../../packages/b" }}
 """)
         # b depends on a (via path) — creates a cycle
-        _write_toml(b_root / "nlpl.toml", f"""\
+        _write_toml(b_root / "nexuslang.toml", f"""\
 [package]
 name = "b"
 version = "0.1.0"
@@ -870,8 +870,8 @@ members = ["packages/*"]
     def test_resolve_duplicate_name(self, tmp_path):
         a1 = tmp_path / "pkg1"
         a2 = tmp_path / "pkg2"
-        _make_nlpl_project(a1, name="duplicate")
-        _make_nlpl_project(a2, name="duplicate")
+        _make_nxl_project(a1, name="duplicate")
+        _make_nxl_project(a2, name="duplicate")
 
         _write_toml(tmp_path / WORKSPACE_MANIFEST_NAME, """\
 [workspace]
@@ -934,7 +934,7 @@ class TestLoadWorkspace:
         deep_dir = tmp_path / "packages" / "mypkg" / "src"
         deep_dir.mkdir(parents=True)
         # Temporarily chdir is not needed — we pass the path directly
-        _make_nlpl_project(tmp_path / "packages" / "mypkg", name="mypkg")
+        _make_nxl_project(tmp_path / "packages" / "mypkg", name="mypkg")
 
         manifest, resolver = load_workspace(deep_dir)
         assert manifest.root == tmp_path.resolve()
@@ -946,7 +946,7 @@ class TestLoadWorkspace:
     def test_member_count(self, tmp_path):
         init_workspace(tmp_path, quiet=True)
         for name in ("pkg1", "pkg2", "pkg3"):
-            _make_nlpl_project(tmp_path / "packages" / name, name=name)
+            _make_nxl_project(tmp_path / "packages" / name, name=name)
 
         _, resolver = load_workspace(tmp_path)
         assert len(resolver.members) == 3
@@ -958,8 +958,8 @@ class TestLoadWorkspace:
 
 class TestResolvePathDependency:
     def test_basic_resolution(self, tmp_path):
-        lib = _make_nlpl_project(tmp_path / "mylib", name="mylib", version="1.5.0")
-        app = _make_nlpl_project(tmp_path / "myapp", name="myapp")
+        lib = _make_nxl_project(tmp_path / "mylib", name="mylib", version="1.5.0")
+        app = _make_nxl_project(tmp_path / "myapp", name="myapp")
 
         spec = {"path": "../mylib"}
         pkg = resolve_path_dependency("mylib", spec, app)
@@ -972,25 +972,25 @@ class TestResolvePathDependency:
         assert pkg.checksum.startswith("sha256:")
 
     def test_missing_path_raises(self, tmp_path):
-        app = _make_nlpl_project(tmp_path / "myapp", name="myapp")
+        app = _make_nxl_project(tmp_path / "myapp", name="myapp")
         spec = {"path": "../nonexistent-lib"}
         with pytest.raises(FileNotFoundError, match="not found"):
             resolve_path_dependency("nonexistentlib", spec, app)
 
     def test_missing_spec_path_raises(self, tmp_path):
-        app = _make_nlpl_project(tmp_path / "myapp", name="myapp")
+        app = _make_nxl_project(tmp_path / "myapp", name="myapp")
         with pytest.raises(ValueError, match="must specify 'path'"):
             resolve_path_dependency("somepkg", {}, app)
 
     def test_checksum_changes_on_file_change(self, tmp_path):
-        lib = _make_nlpl_project(tmp_path / "lib", name="lib")
-        app = _make_nlpl_project(tmp_path / "app", name="app")
+        lib = _make_nxl_project(tmp_path / "lib", name="lib")
+        app = _make_nxl_project(tmp_path / "app", name="app")
         spec = {"path": "../lib"}
 
         pkg1 = resolve_path_dependency("lib", spec, app)
 
         # Modify a source file
-        (lib / "src" / "extra.nlpl").write_text("function extra\nend\n")
+        (lib / "src" / "extra.nxl").write_text("function extra\nend\n")
 
         pkg2 = resolve_path_dependency("lib", spec, app)
         assert pkg1.checksum != pkg2.checksum
@@ -1001,7 +1001,7 @@ class TestResolvePathDependency:
         (lib / "src").mkdir()
         # No nlpl.toml in lib — version should default to "0.0.0"
         spec = {"path": "../lib", "version": "0.0.0"}
-        app = _make_nlpl_project(tmp_path / "app", name="app")
+        app = _make_nxl_project(tmp_path / "app", name="app")
         # lib dir exists but has no nlpl.toml
         pkg = resolve_path_dependency("lib", spec, app)
         assert pkg.version == "0.0.0"
@@ -1013,10 +1013,10 @@ class TestResolvePathDependency:
 
 class TestGenerateLockfile:
     def test_path_dep_resolved(self, tmp_path):
-        lib = _make_nlpl_project(tmp_path / "lib", name="lib", version="0.5.0")
+        lib = _make_nxl_project(tmp_path / "lib", name="lib", version="0.5.0")
         app = tmp_path / "app"
-        _make_nlpl_project(app, name="app")
-        _write_toml(app / "nlpl.toml", """\
+        _make_nxl_project(app, name="app")
+        _write_toml(app / "nexuslang.toml", """\
 [package]
 name = "app"
 version = "0.1.0"
@@ -1037,8 +1037,8 @@ lib = { path = "../lib" }
         assert pkg.resolved_path is not None
 
     def test_registry_dep_offline(self, tmp_path):
-        app = _make_nlpl_project(tmp_path / "app", name="app")
-        _write_toml(app / "nlpl.toml", """\
+        app = _make_nxl_project(tmp_path / "app", name="app")
+        _write_toml(app / "nexuslang.toml", """\
 [package]
 name = "app"
 version = "0.1.0"
@@ -1059,8 +1059,8 @@ somelib = "^1.0"
 
     def test_registry_dep_with_resolver(self, tmp_path):
         """Registry resolution falls back gracefully when registry is unavailable."""
-        app = _make_nlpl_project(tmp_path / "app", name="app")
-        _write_toml(app / "nlpl.toml", """\
+        app = _make_nxl_project(tmp_path / "app", name="app")
+        _write_toml(app / "nexuslang.toml", """\
 [package]
 name = "app"
 version = "0.1.0"
@@ -1075,7 +1075,7 @@ netlib = "^2.0"
 """)
         # The registry is unreachable -> fallback recording
         with patch(
-            "nlpl.tooling.lockfile.resolve_registry_dependency",
+            "nexuslang.tooling.lockfile.resolve_registry_dependency",
             side_effect=Exception("Network unavailable"),
         ):
             import io, contextlib
@@ -1086,8 +1086,8 @@ netlib = "^2.0"
             assert "netlib" in lock.packages
 
     def test_missing_path_dep_raises(self, tmp_path):
-        app = _make_nlpl_project(tmp_path / "app", name="app")
-        _write_toml(app / "nlpl.toml", """\
+        app = _make_nxl_project(tmp_path / "app", name="app")
+        _write_toml(app / "nexuslang.toml", """\
 [package]
 name = "app"
 version = "0.1.0"
@@ -1104,9 +1104,9 @@ missing = { path = "../missing-lib" }
             generate_lockfile(app, resolve_registry=False)
 
     def test_dev_deps_also_resolved(self, tmp_path):
-        lib = _make_nlpl_project(tmp_path / "testlib", name="testlib")
-        app = _make_nlpl_project(tmp_path / "app", name="app")
-        _write_toml(app / "nlpl.toml", """\
+        lib = _make_nxl_project(tmp_path / "testlib", name="testlib")
+        app = _make_nxl_project(tmp_path / "app", name="app")
+        _write_toml(app / "nexuslang.toml", """\
 [package]
 name = "app"
 version = "0.1.0"
@@ -1129,26 +1129,26 @@ testlib = { path = "../testlib" }
 
 class TestAddDependencyPath:
     def test_add_path_dep(self, tmp_path):
-        lib = _make_nlpl_project(tmp_path / "lib", name="lib")
-        app = _make_nlpl_project(tmp_path / "app", name="app")
+        lib = _make_nxl_project(tmp_path / "lib", name="lib")
+        app = _make_nxl_project(tmp_path / "app", name="app")
 
         add_dependency(app, "lib", path="../lib")
 
         import tomllib
-        with open(app / "nlpl.toml", "rb") as f:
+        with open(app / "nexuslang.toml", "rb") as f:
             data = tomllib.load(f)
 
         assert "lib" in data["dependencies"]
         assert data["dependencies"]["lib"]["path"] == "../lib"
 
     def test_add_path_dep_with_version(self, tmp_path):
-        _make_nlpl_project(tmp_path / "lib", name="lib")
-        app = _make_nlpl_project(tmp_path / "app", name="app")
+        _make_nxl_project(tmp_path / "lib", name="lib")
+        app = _make_nxl_project(tmp_path / "app", name="app")
 
         add_dependency(app, "lib@^1.0", path="../lib")
 
         import tomllib
-        with open(app / "nlpl.toml", "rb") as f:
+        with open(app / "nexuslang.toml", "rb") as f:
             data = tomllib.load(f)
 
         dep = data["dependencies"]["lib"]
@@ -1156,17 +1156,17 @@ class TestAddDependencyPath:
         assert dep["version"] == "^1.0"
 
     def test_add_path_and_git_mutually_exclusive(self, tmp_path):
-        app = _make_nlpl_project(tmp_path / "app", name="app")
+        app = _make_nxl_project(tmp_path / "app", name="app")
         with pytest.raises(ValueError, match="either --path or --git"):
             add_dependency(app, "lib", path="../lib", git="https://github.com/x/y")
 
     def test_add_dep_updates_lockfile(self, tmp_path):
-        lib = _make_nlpl_project(tmp_path / "lib", name="lib")
-        app = _make_nlpl_project(tmp_path / "app", name="app")
+        lib = _make_nxl_project(tmp_path / "lib", name="lib")
+        app = _make_nxl_project(tmp_path / "app", name="app")
 
         add_dependency(app, "lib", path="../lib")
 
-        lock_path = app / "nlpl.lock"
+        lock_path = app / "nexuslang.lock"
         assert lock_path.exists()
         lf = LockFile.load(lock_path)
         assert "lib" in lf.packages
@@ -1178,8 +1178,8 @@ class TestAddDependencyPath:
 
 class TestUpdateLockfileOffline:
     def test_offline_flag_skips_registry(self, tmp_path):
-        app = _make_nlpl_project(tmp_path / "app", name="app")
-        _write_toml(app / "nlpl.toml", """\
+        app = _make_nxl_project(tmp_path / "app", name="app")
+        _write_toml(app / "nexuslang.toml", """\
 [package]
 name = "app"
 version = "0.1.0"
@@ -1193,16 +1193,16 @@ target = "c"
 remotelib = "^1.0"
 """)
         with patch(
-            "nlpl.tooling.lockfile.resolve_registry_dependency",
+            "nexuslang.tooling.lockfile.resolve_registry_dependency",
             side_effect=AssertionError("Should not be called in offline mode"),
         ):
             update_lockfile(app, offline=True)
 
-        assert (app / "nlpl.lock").exists()
+        assert (app / "nexuslang.lock").exists()
 
     def test_online_calls_registry(self, tmp_path):
-        app = _make_nlpl_project(tmp_path / "app", name="app")
-        _write_toml(app / "nlpl.toml", """\
+        app = _make_nxl_project(tmp_path / "app", name="app")
+        _write_toml(app / "nexuslang.toml", """\
 [package]
 name = "app"
 version = "0.1.0"
@@ -1221,9 +1221,9 @@ netpkg = "^2.0"
             called["n"] += 1
             return LockedPackage(name=name, version="2.1.0", source="registry")
 
-        with patch("nlpl.tooling.lockfile.resolve_registry_dependency", side_effect=_fake_resolve):
+        with patch("nexuslang.tooling.lockfile.resolve_registry_dependency", side_effect=_fake_resolve):
             update_lockfile(app, offline=False)
 
         assert called["n"] == 1
-        lock = LockFile.load(app / "nlpl.lock")
+        lock = LockFile.load(app / "nexuslang.lock")
         assert lock.packages["netpkg"].version == "2.1.0"

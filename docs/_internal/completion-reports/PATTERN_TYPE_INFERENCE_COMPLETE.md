@@ -188,8 +188,8 @@ for elem_pattern in pattern.elements:
 ### Type Inference Engine
 
 ```python
-from nlpl.typesystem import TypeInferenceEngine
-from nlpl.typesystem.types import ListType, INTEGER_TYPE
+from nexuslang.typesystem import TypeInferenceEngine
+from nexuslang.typesystem.types import ListType, INTEGER_TYPE
 
 engine = TypeInferenceEngine()
 
@@ -204,7 +204,7 @@ bindings = engine.infer_pattern_binding_type(pattern, match_type)
 ### Type Checker Integration
 
 ```python
-from nlpl.typesystem import TypeChecker
+from nexuslang.typesystem import TypeChecker
 
 checker = TypeChecker()
 # Pattern matching type inference is automatically used

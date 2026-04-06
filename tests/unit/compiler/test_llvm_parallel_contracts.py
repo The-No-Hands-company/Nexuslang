@@ -6,8 +6,8 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from nlpl.compiler.backends.llvm_ir_generator import LLVMIRGenerator
-from nlpl.parser.ast import (
+from nexuslang.compiler.backends.llvm_ir_generator import LLVMIRGenerator
+from nexuslang.parser.ast import (
     Program,
     ParallelForLoop,
     ListExpression,
@@ -44,5 +44,5 @@ def test_llvm_contracts_and_expect_emit_runtime_panic_guards():
     generator = LLVMIRGenerator()
     llvm_ir = generator.generate(ast)
 
-    assert "call void @nlpl_panic(i8*" in llvm_ir
+    assert "call void @nxl_panic(i8*" in llvm_ir
     assert "contract.fail" in llvm_ir

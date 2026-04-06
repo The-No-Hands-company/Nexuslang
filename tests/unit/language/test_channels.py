@@ -7,7 +7,7 @@ import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../src")))
 
-from nlpl.errors import NLPLRuntimeError
+from nexuslang.errors import NxlRuntimeError
 from tests.helpers.utils import NLPLTestBase
 
 
@@ -54,7 +54,7 @@ class TestChannels(NLPLTestBase):
         assert self.get_variable("list_value") == [1, 2, 3]
 
     def test_receive_from_empty_channel_raises(self):
-        with pytest.raises(NLPLRuntimeError, match="empty channel"):
+        with pytest.raises(NxlRuntimeError, match="empty channel"):
             self.parse_and_execute(
                 """
                 set ch to create channel

@@ -3,7 +3,7 @@
 NLPL Linter
 ===========
 
-Static analysis tool for NLPL source code.
+Static analysis tool for NexusLang source code.
 
 Checks:
 - Undefined variables
@@ -15,9 +15,9 @@ Checks:
 - Unreachable code
 
 Usage:
-    python dev_tools/nlpl_lint.py file.nlpl           # Lint single file
-    python dev_tools/nlpl_lint.py dir/ --recursive    # Lint directory
-    python dev_tools/nlpl_lint.py file.nlpl --strict  # Strict mode
+    python dev_tools/nxl_lint.py file.nlpl           # Lint single file
+    python dev_tools/nxl_lint.py dir/ --recursive    # Lint directory
+    python dev_tools/nxl_lint.py file.nlpl --strict  # Strict mode
 """
 
 import argparse
@@ -49,7 +49,7 @@ class LintMessage:
 
 
 class NLPLLinter:
-    """Static analysis linter for NLPL code."""
+    """Static analysis linter for NexusLang code."""
     
     def __init__(self, strict: bool = False):
         self.strict = strict
@@ -290,7 +290,7 @@ class NLPLLinter:
 def main():
     """Main entry point for linter."""
     parser = argparse.ArgumentParser(
-        description="NLPL Linter - Static analysis for NLPL code",
+        description="NLPL Linter - Static analysis for NexusLang code",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__
     )
@@ -331,13 +331,13 @@ def main():
     # Collect files to lint
     files_to_lint = []
     if os.path.isfile(args.path):
-        if not args.path.endswith('.nlpl'):
+        if not args.path.endswith('.nxl'):
             print("Error: File must have .nlpl extension")
             return 1
         files_to_lint.append(args.path)
     elif os.path.isdir(args.path):
         path = Path(args.path)
-        pattern = "**/*.nlpl" if args.recursive else "*.nlpl"
+        pattern = "**/*.nxl" if args.recursive else "*.nxl"
         files_to_lint = list(path.glob(pattern))
     
     # Lint all files

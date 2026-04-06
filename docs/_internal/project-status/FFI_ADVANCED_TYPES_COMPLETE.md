@@ -1,4 +1,4 @@
-# NLPL Compiler - FFI Advanced Types Implementation Complete
+# NexusLang Compiler - FFI Advanced Types Implementation Complete
 
 ## Session Summary: FFI Phase 3 - Advanced Types
 
@@ -309,11 +309,11 @@ if self.current_token.type == TokenType.TYPE:
 
 ## Next Steps
 
-### Option 1: NLPL Variadic Functions (~8 hours)
-Implement variadic NLPL functions (not just calling C variadics):
+### Option 1: NexusLang Variadic Functions (~8 hours)
+Implement variadic NexusLang functions (not just calling C variadics):
 - va_list runtime support
 - Variable argument unpacking
-- Type-safe variadic NLPL functions
+- Type-safe variadic NexusLang functions
 
 ### Option 2: Generics Implementation (~15-20 hours)
 Major language feature:
@@ -377,7 +377,7 @@ Developer tooling:
 
 **FFI Phase 3 is 100% COMPLETE!** 
 
-The NLPL compiler now has a **comprehensive, production-grade FFI system** with:
+The NexusLang compiler now has a **comprehensive, production-grade FFI system** with:
 - Full C library interoperability
 - All major type patterns supported
 - Zero-overhead native performance

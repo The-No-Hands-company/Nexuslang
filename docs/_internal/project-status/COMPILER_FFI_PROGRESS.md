@@ -1,4 +1,4 @@
-# NLPL Compiler - FFI & Interop Progress
+# NexusLang Compiler - FFI & Interop Progress
 
 ## Phase 3: FFI & Interop Implementation
 
@@ -25,12 +25,12 @@
 ---
 
 ### 2. Struct Marshalling (100% Complete)
-**Implementation**: Pass structs between NLPL and C
+**Implementation**: Pass structs between NexusLang and C
 
 **Features**:
 - Struct type registration
-- Marshal NLPL structs C representation
-- Unmarshal C structs NLPL representation
+- Marshal NexusLang structs C representation
+- Unmarshal C structs NexusLang representation
 - By-value struct passing
 - By-reference struct passing
 - Deep struct copying
@@ -45,7 +45,7 @@
 ---
 
 ### 3. Callback Functions (100% Complete) 
-**Implementation**: Pass NLPL functions to C as callbacks
+**Implementation**: Pass NexusLang functions to C as callbacks
 
 **Features**:
 - Callback wrapper generation
@@ -76,11 +76,11 @@
 
 ## Remaining Components 
 
-### 4. Variadic NLPL Functions (0% Complete)
+### 4. Variadic NexusLang Functions (0% Complete)
 **Estimated Time**: 4-5 hours
 
 **Scope**:
-- Variable argument lists in NLPL functions
+- Variable argument lists in NexusLang functions
 - va_list handling
 - Type-safe variadic functions
 - Integration with C variadic functions (printf, scanf)
@@ -227,7 +227,7 @@ end
 ### Current
 1. No closure capture in callbacks (pure functions only)
 2. No lambda expressions for callbacks
-3. No variadic NLPL functions yet
+3. No variadic NexusLang functions yet
 4. Limited advanced type support (unions, bit fields)
 
 ### Future Improvements
@@ -309,9 +309,9 @@ end
 - [x] Parse extern declarations
 - [x] Generate correct LLVM IR
 - [x] Link with C libraries
-- [x] Call C functions from NLPL
+- [x] Call C functions from NexusLang
 - [x] Pass structs to C functions
-- [x] Pass NLPL functions as callbacks
+- [x] Pass NexusLang functions as callbacks
 - [x] Compile and run successfully
 
 ### Pending 

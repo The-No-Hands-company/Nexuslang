@@ -16,7 +16,7 @@ NLPL v1.0+ includes intelligent AST caching and optimized parsing to improve per
 
 ### Performance Metrics
 
-Based on benchmarks with typical NLPL files (50-70 lines):
+Based on benchmarks with typical NexusLang files (50-70 lines):
 
 | Scenario | Time (uncached) | Time (cached) | Speedup |
 |----------|----------------|---------------|---------|
@@ -37,7 +37,7 @@ Based on benchmarks with typical NLPL files (50-70 lines):
 The cache is automatically used by the LSP server. No configuration needed:
 
 ```python
-from nlpl.parser.cached_parser import parse_with_cache
+from nexuslang.parser.cached_parser import parse_with_cache
 
 # Automatically uses global cache
 ast = parse_with_cache(file_path, source_code)
@@ -54,8 +54,8 @@ ast = parse_with_cache(file_path, modified_source)
 For fine-grained control:
 
 ```python
-from nlpl.parser.ast_cache import ASTCache
-from nlpl.parser.cached_parser import CachedParser
+from nexuslang.parser.ast_cache import ASTCache
+from nexuslang.parser.cached_parser import CachedParser
 
 # Create custom cache with limits
 cache = ASTCache(
@@ -79,7 +79,7 @@ cache.print_stats()
 Configure global cache limits:
 
 ```python
-from nlpl.parser.ast_cache import set_cache_limits
+from nexuslang.parser.ast_cache import set_cache_limits
 
 # Set limits before first use
 set_cache_limits(max_entries=200, max_memory_mb=100)
@@ -90,7 +90,7 @@ set_cache_limits(max_entries=200, max_memory_mb=100)
 Monitor cache performance:
 
 ```python
-from nlpl.parser.ast_cache import get_global_cache
+from nexuslang.parser.ast_cache import get_global_cache
 
 cache = get_global_cache()
 stats = cache.get_stats()
@@ -139,7 +139,7 @@ The LSP server automatically uses the cache for:
 
 ### Baseline Metrics
 
-Without caching, the NLPL parser is already fast:
+Without caching, the NexusLang parser is already fast:
 
 | Metric | Value |
 |--------|-------|
@@ -242,7 +242,7 @@ Validates:
 3. **Monitor statistics**: Track hit rate to ensure cache is effective
 4. **Invalidate on external changes**: Call `cache.invalidate(file_path)` when files change outside LSP
 
-### For NLPL Core Developers
+### For NexusLang Core Developers
 
 1. **Keep AST nodes lightweight**: Minimize unnecessary attributes
 2. **Avoid circular references**: Prevents memory leaks and improves size estimation

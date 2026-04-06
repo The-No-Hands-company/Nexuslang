@@ -57,7 +57,7 @@ end
 - `do...end` already has `do` keyword in lexer
 
 **Cons:**
-- Pipe syntax `|param|` is new for NLPL
+- Pipe syntax `|param|` is new for NexusLang
 - Need to handle `do` in multiple contexts
 
 ### Option 2: `with...end` Extended (NLPL Native)

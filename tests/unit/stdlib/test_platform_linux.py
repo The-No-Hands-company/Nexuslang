@@ -1,5 +1,5 @@
 """
-Tests for the NLPL platform_linux stdlib module.
+Tests for the NexusLang platform_linux stdlib module.
 
 On Linux these tests execute real Linux APIs.
 POSIX, epoll, inotify, and systemd integration are all validated.
@@ -15,7 +15,7 @@ import pytest
 # Ensure the project source tree is on the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from nlpl.stdlib.platform_linux import (
+from nexuslang.stdlib.platform_linux import (
     PlatformError,
     # POSIX
     posix_getpid, posix_getppid, posix_getuid, posix_getgid,
@@ -122,7 +122,7 @@ class TestPosixChdir:
             os.chdir(original)
 
     def test_chdir_nonexistent_returns_error(self):
-        result = posix_chdir('/nonexistent_path_that_does_not_exist_nlpl')
+        result = posix_chdir('/nonexistent_path_that_does_not_exist_nxl')
         assert isinstance(result, dict)
         assert 'error' in result
 
@@ -405,7 +405,7 @@ class TestInotifyAddWatch:
         fd = inotify_create()
         try:
             with pytest.raises(OSError):
-                inotify_add_watch(fd, '/nonexistent_path_nlpl_test_xyz')
+                inotify_add_watch(fd, '/nonexistent_path_nxl_test_xyz')
         finally:
             inotify_close(fd)
 

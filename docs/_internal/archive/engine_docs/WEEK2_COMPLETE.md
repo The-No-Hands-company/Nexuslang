@@ -28,7 +28,7 @@
 - **OBJ Support**: Vertices, normals, texture coordinates, triangulated faces
 - **Features**: Vertex deduplication, index generation, quad triangulation
 - **Procedural Meshes**: `create_cube_mesh()` for testing
-- **Integration**: Registered with NLPL runtime (`load_obj_mesh`, `create_cube_mesh`)
+- **Integration**: Registered with NexusLang runtime (`load_obj_mesh`, `create_cube_mesh`)
 
 ---
 
@@ -197,7 +197,7 @@ All demos run at **60+ FPS** (vsync limited) in Python interpreter mode:
 ### Multi-Line Strings
 - ✅ Work perfectly at runtime (confirmed)
 - ❌ Static linter doesn't recognize them yet (cosmetic)
-- **Use Case**: Shader code embedded directly in NLPL programs
+- **Use Case**: Shader code embedded directly in NexusLang programs
 
 ### List Limitations
 - ❌ Multi-line lists not supported (parser issue)
@@ -239,7 +239,7 @@ All demos run at **60+ FPS** (vsync limited) in Python interpreter mode:
 
 ## Conclusion
 
-Week 2 objectives exceeded. NLPL now has a complete basic 3D rendering pipeline:
+Week 2 objectives exceeded. NexusLang now has a complete basic 3D rendering pipeline:
 - ✅ Geometry rendering (triangles, cubes, arbitrary meshes)
 - ✅ Lighting system (Phong shading)
 - ✅ Texture mapping (UV coordinates, procedural textures)

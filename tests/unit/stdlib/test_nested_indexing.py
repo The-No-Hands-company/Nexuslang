@@ -4,11 +4,11 @@ Test nested array indexing (matrix[i][j]).
 """
 
 import sys
-sys.path.insert(0, '/run/media/zajferx/Data/dev/The-No-hands-Company/projects/NLPL/src')
+sys.path.insert(0, '/run/media/zajferx/Data/dev/The-No-hands-Company/projects/NexusLang/src')
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.compiler.backends.c_generator import CCodeGenerator
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.compiler.backends.c_generator import CCodeGenerator
 
 def test_nested_indexing():
     """Test nested array indexing."""
@@ -31,7 +31,7 @@ set cell to row[0]
     print(f" Parsed: {len(ast.statements)} statements\n")
     
     # Analyze AST for nested indexing
-    from nlpl.parser.ast import IndexExpression, VariableDeclaration
+    from nexuslang.parser.ast import IndexExpression, VariableDeclaration
     for i, stmt in enumerate(ast.statements):
         if isinstance(stmt, VariableDeclaration):
             print(f"Statement {i}: set {stmt.name} to {type(stmt.value).__name__}")

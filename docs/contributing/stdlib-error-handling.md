@@ -2,7 +2,7 @@
 
 ## Overview
 
-All NLPL standard library modules must use the unified error types defined in
+All NexusLang standard library modules must use the unified error types defined in
 `src/nlpl/stdlib/errors.py` rather than raw Python exceptions. This ensures
 NLPL programs receive consistent, catchable errors with rich context.
 
@@ -26,7 +26,7 @@ NLPLStdlibError                 -- base class for all stdlib errors
 ## Usage Pattern
 
 ```python
-from nlpl.stdlib.errors import NLPLValueError, NLPLIOError
+from nexuslang.stdlib.errors import NLPLValueError, NLPLIOError
 
 def stdlib_sqrt(x):
     if not isinstance(x, (int, float)):
@@ -49,7 +49,7 @@ def stdlib_sqrt(x):
 ## Rules
 
 1. **Never raise raw Python exceptions** (`ValueError`, `RuntimeError`, etc.)
-   from stdlib code that NLPL programs will call.
+   from stdlib code that NexusLang programs will call.
 
 2. **Always include `module=` and `function=`** keyword arguments so error
    messages identify the source clearly.
@@ -57,7 +57,7 @@ def stdlib_sqrt(x):
 3. **Use the most specific error type** available. For example, use
    `NLPLValueError` for bad argument values, not `NLPLStdlibError`.
 
-4. **Wrap external exceptions** from Python libraries in the appropriate NLPL
+4. **Wrap external exceptions** from Python libraries in the appropriate NexusLang
    error type:
 
    ```python
@@ -74,9 +74,9 @@ def stdlib_sqrt(x):
 5. **Error messages should be human-readable** and describe what went wrong,
    not internal implementation details.
 
-## Mapping from Python to NLPL Error Types
+## Mapping from Python to NexusLang Error Types
 
-| Python Exception     | NLPL Error Type          |
+| Python Exception     | NexusLang Error Type          |
 |---------------------|--------------------------|
 | `ValueError`        | `NLPLValueError`         |
 | `RuntimeError`      | `NLPLStdlibError`        |

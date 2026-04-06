@@ -2,7 +2,7 @@
 Tests: Code Lens Provider
 =========================
 
-Validates CodeLensProvider against NLPL source patterns.
+Validates CodeLensProvider against NexusLang source patterns.
 """
 
 import sys
@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 import pytest
-from nlpl.lsp.code_lens import CodeLensProvider
+from nexuslang.lsp.code_lens import CodeLensProvider
 
 
 class MockServer:
@@ -94,21 +94,21 @@ EMPTY_DOC = "# just a comment\n"
 
 
 def test_function_lens_count(provider):
-    lenses = provider.get_code_lenses("file:///test.nlpl", FUNCTION_DOC)
+    lenses = provider.get_code_lenses("file:///test.nxl", FUNCTION_DOC)
     func_lenses = [
-        l for l in lenses if l["command"]["command"] == "nlpl.findReferences"
+        l for l in lenses if l["command"]["command"] == "nexuslang.findReferences"
     ]
     # Two functions defined
     assert len(func_lenses) == 2
 
 
 def test_function_greet_has_two_references(provider):
-    lenses = provider.get_code_lenses("file:///test.nlpl", FUNCTION_DOC)
+    lenses = provider.get_code_lenses("file:///test.nxl", FUNCTION_DOC)
     greet_lens = next(
         (
             l
             for l in lenses
-            if l["command"]["command"] == "nlpl.findReferences"
+            if l["command"]["command"] == "nexuslang.findReferences"
             and "greet" in l["command"]["title"].lower()
             # Title is "N reference(s)", not function name — check by line
         ),
@@ -125,9 +125,9 @@ def test_function_greet_has_two_references(provider):
 
 
 def test_function_lens_range_is_on_definition_line(provider):
-    lenses = provider.get_code_lenses("file:///test.nlpl", FUNCTION_DOC)
+    lenses = provider.get_code_lenses("file:///test.nxl", FUNCTION_DOC)
     for lens in lenses:
-        if lens["command"]["command"] == "nlpl.findReferences":
+        if lens["command"]["command"] == "nexuslang.findReferences":
             # Range start and end must be on the same line
             assert (
                 lens["range"]["start"]["line"] == lens["range"]["end"]["line"]
@@ -140,23 +140,23 @@ def test_function_lens_range_is_on_definition_line(provider):
 
 
 def test_class_lens_present(provider):
-    lenses = provider.get_code_lenses("file:///test.nlpl", CLASS_DOC)
+    lenses = provider.get_code_lenses("file:///test.nxl", CLASS_DOC)
     ref_lenses = [
-        l for l in lenses if l["command"]["command"] == "nlpl.findReferences"
+        l for l in lenses if l["command"]["command"] == "nexuslang.findReferences"
     ]
     assert len(ref_lenses) >= 1
 
 
 def test_struct_lens_present(provider):
-    lenses = provider.get_code_lenses("file:///test.nlpl", STRUCT_DOC)
+    lenses = provider.get_code_lenses("file:///test.nxl", STRUCT_DOC)
     ref_lenses = [
-        l for l in lenses if l["command"]["command"] == "nlpl.findReferences"
+        l for l in lenses if l["command"]["command"] == "nexuslang.findReferences"
     ]
     assert len(ref_lenses) >= 1
 
 
 def test_struct_two_references(provider):
-    lenses = provider.get_code_lenses("file:///test.nlpl", STRUCT_DOC)
+    lenses = provider.get_code_lenses("file:///test.nxl", STRUCT_DOC)
     # Point is referenced twice via 'new Point'
     point_lenses = [
         l
@@ -173,35 +173,35 @@ def test_struct_two_references(provider):
 
 
 def test_describe_block_lens(provider):
-    lenses = provider.get_code_lenses("file:///test.nlpl", TEST_DOC)
+    lenses = provider.get_code_lenses("file:///test.nxl", TEST_DOC)
     suite_lenses = [
-        l for l in lenses if l["command"]["command"] == "nlpl.runTestSuite"
+        l for l in lenses if l["command"]["command"] == "nexuslang.runTestSuite"
     ]
     assert len(suite_lenses) == 1
 
 
 def test_describe_block_counts_three_tests(provider):
-    lenses = provider.get_code_lenses("file:///test.nlpl", TEST_DOC)
+    lenses = provider.get_code_lenses("file:///test.nxl", TEST_DOC)
     suite_lens = next(
-        l for l in lenses if l["command"]["command"] == "nlpl.runTestSuite"
+        l for l in lenses if l["command"]["command"] == "nexuslang.runTestSuite"
     )
     assert "3" in suite_lens["command"]["title"]
 
 
 def test_standalone_test_lens(provider):
-    lenses = provider.get_code_lenses("file:///test.nlpl", TEST_DOC)
+    lenses = provider.get_code_lenses("file:///test.nxl", TEST_DOC)
     run_lenses = [
-        l for l in lenses if l["command"]["command"] == "nlpl.runTest"
+        l for l in lenses if l["command"]["command"] == "nexuslang.runTest"
     ]
     # One standalone 'test "standalone case"'
     assert len(run_lenses) >= 1
 
 
 def test_run_test_arguments_include_uri(provider):
-    uri = "file:///suite.nlpl"
+    uri = "file:///suite.nxl"
     lenses = provider.get_code_lenses(uri, TEST_DOC)
     for lens in lenses:
-        if lens["command"]["command"] in ("nlpl.runTest", "nlpl.runTestSuite"):
+        if lens["command"]["command"] in ("nexuslang.runTest", "nexuslang.runTestSuite"):
             assert lens["command"]["arguments"][0] == uri
 
 
@@ -211,11 +211,11 @@ def test_run_test_arguments_include_uri(provider):
 
 
 def test_empty_document_returns_empty_list(provider):
-    assert provider.get_code_lenses("file:///empty.nlpl", "") == []
+    assert provider.get_code_lenses("file:///empty.nxl", "") == []
 
 
 def test_comment_only_document_returns_empty_list(provider):
-    assert provider.get_code_lenses("file:///c.nlpl", EMPTY_DOC) == []
+    assert provider.get_code_lenses("file:///c.nxl", EMPTY_DOC) == []
 
 
 # ---------------------------------------------------------------------------
@@ -226,7 +226,7 @@ def test_comment_only_document_returns_empty_list(provider):
 def test_resolve_code_lens_returns_lens_unchanged(provider):
     lens = {
         "range": {"start": {"line": 0, "character": 0}, "end": {"line": 0, "character": 8}},
-        "command": {"title": "1 reference", "command": "nlpl.findReferences", "arguments": []},
+        "command": {"title": "1 reference", "command": "nexuslang.findReferences", "arguments": []},
     }
     result = provider.resolve_code_lens(lens)
     assert result == lens
@@ -238,7 +238,7 @@ def test_resolve_code_lens_returns_lens_unchanged(provider):
 
 
 def test_all_lenses_have_required_fields(provider):
-    lenses = provider.get_code_lenses("file:///test.nlpl", FUNCTION_DOC)
+    lenses = provider.get_code_lenses("file:///test.nxl", FUNCTION_DOC)
     for lens in lenses:
         assert "range" in lens
         assert "start" in lens["range"]

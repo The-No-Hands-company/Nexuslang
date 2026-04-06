@@ -1,5 +1,5 @@
 /*
- * Generated C code from NLPL
+ * Generated C code from NexusLang
  * DO NOT EDIT - This file is auto-generated
  */
 

@@ -1,6 +1,6 @@
 """
-Test cases for the NLPL standard library.
-Tests all standard library modules and functions using valid NLPL syntax.
+Test cases for the NexusLang standard library.
+Tests all standard library modules and functions using valid NexusLang syntax.
 """
 
 import sys
@@ -10,13 +10,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 import math
 import unittest
 import tempfile
-from nlpl.interpreter.interpreter import Interpreter
-from nlpl.runtime.runtime import Runtime
-from nlpl.stdlib import register_stdlib
+from nexuslang.interpreter.interpreter import Interpreter
+from nexuslang.runtime.runtime import Runtime
+from nexuslang.stdlib import register_stdlib
 
 
 class TestStandardLibrary(unittest.TestCase):
-    """Test cases for the NLPL standard library."""
+    """Test cases for the NexusLang standard library."""
 
     def setUp(self):
         """Set up test fixtures before each test method."""
@@ -104,13 +104,13 @@ set jnd to str_join("-", wrds)
         """Test IO module functions."""
         source = """
 set content to "Hello World"
-set file_path to "nlpl_test_io.txt"
+set file_path to "nxl_test_io.txt"
 set r1 to write_file(file_path, content)
 set read_content to read_file(file_path)
 set exists to file_exists(file_path)
 set r2 to delete_file(file_path)
 set deleted_exists to file_exists(file_path)
-set dir_path to "nlpl_test_dir_xyz"
+set dir_path to "nxl_test_dir_xyz"
 set r3 to create_directory(dir_path)
 set dir_exists to directory_exists(dir_path)
 set files to list_directory(dir_path)

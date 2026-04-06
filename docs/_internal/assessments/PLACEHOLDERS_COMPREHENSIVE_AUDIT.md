@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-This document catalogs **ALL TODO/FIXME/placeholder/simplified/stub implementations** found in the NLPL codebase. As a production-ready programming language, **ZERO placeholders** are acceptable. This audit provides:
+This document catalogs **ALL TODO/FIXME/placeholder/simplified/stub implementations** found in the NexusLang codebase. As a production-ready programming language, **ZERO placeholders** are acceptable. This audit provides:
 
 1. Complete inventory of all shortcuts
 2. Severity classification (CRITICAL/HIGH/MEDIUM/LOW)
@@ -71,7 +71,7 @@ This document catalogs **ALL TODO/FIXME/placeholder/simplified/stub implementati
 - C++ exception ABI integration (`__cxa_throw`, `__cxa_begin_catch`, etc.)
 - Personality function on all functions (`@__gxx_personality_v0`)
 - Exception type info (RTTI) generation
-- `__nlpl_throw` helper function (invokable wrapper)
+- `__nxl_throw` helper function (invokable wrapper)
 - `invoke` instructions for function calls in try blocks
 - `landingpad` with catch-all (`catch i8* null`)
 - Nested try-catch with context save/restore
@@ -542,7 +542,7 @@ These are in the interpreter (not compiler), which is expected to have some simp
 **Files:** `safety/panic.py` 
 **Lines:** 124, 129, 131, 165 
 
-**Note:** This is the NLPL `todo()` panic function for user code - not a placeholder.
+**Note:** This is the NexusLang `todo()` panic function for user code - not a placeholder.
 
 ### 27. **Documentation Comments** LEGITIMATE
 **Files:** Various 

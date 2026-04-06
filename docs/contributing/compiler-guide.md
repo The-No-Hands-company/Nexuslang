@@ -1,4 +1,4 @@
-# NLPL Compiler Guide
+# NexusLang Compiler Guide
 
 ## Overview
 
@@ -37,7 +37,7 @@ NLPL includes a production-ready compiler (`nlplc`) that compiles natural langua
 
 ## Performance Characteristics
 
-Based on integration tests, NLPL compiled code shows:
+Based on integration tests, NexusLang compiled code shows:
 
 - **Simple operations**: ~0.5-1x speed (startup overhead)
 - **Iterative algorithms**: ~10-50x speed improvement
@@ -134,7 +134,7 @@ llc myprogram_opt.bc -o myprogram.s
 
 ## Supported Language Features
 
-The compiler supports all NLPL language features:
+The compiler supports all NexusLang language features:
 
 - ✅ Functions (recursive, variadic)
 - ✅ Classes and OOP
@@ -159,7 +159,7 @@ If compilation fails:
 
 1. Check syntax with interpreter first:
    ```bash
-   python -m nlpl.main myprogram.nlpl
+   python -m nexuslang.main myprogram.nlpl
    ```
 
 2. Use verbose mode to see where it fails:

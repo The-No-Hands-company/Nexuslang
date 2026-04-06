@@ -15,7 +15,7 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../../src"))
 
-from nlpl.typesystem.hkt import (
+from nexuslang.typesystem.hkt import (
     Kind, StarKind, ArrowKind,
     STAR, STAR_TO_STAR, STAR_TO_STAR_TO_STAR, HO_FUNCTOR_KIND,
     TypeConstructorParam, TypeApplication, HigherKindedType,

@@ -27,7 +27,7 @@
 - ✅ `extension.ts` (88 lines) - Main activation, LSP client setup
 - ✅ `debugAdapter.ts` - Debug support integration
 - ✅ `package.json` - Manifest with all LSP features declared
-- ✅ `language-configuration.json` - NLPL syntax rules
+- ✅ `language-configuration.json` - NexusLang syntax rules
 - ✅ `syntaxes/nlpl.tmLanguage.json` - TextMate grammar
 
 **LSP Client Configuration:**
@@ -39,7 +39,7 @@
 ### ✅ LSP Server Verification
 
 **Server Status:**
-- ✅ Starts correctly via `python -m nlpl.lsp`
+- ✅ Starts correctly via `python -m nexuslang.lsp`
 - ✅ Accepts `--stdio`, `--tcp`, `--debug`, `--log-file` arguments
 - ✅ Waits for LSP protocol messages (expected behavior)
 - ✅ 5420 lines of implementation code
@@ -51,7 +51,7 @@
 ### Option 1: Install from VSIX (Recommended)
 
 ```bash
-# From NLPL project root
+# From NexusLang project root
 code --install-extension vscode-extension/nlpl-language-support-0.1.0.vsix
 
 # Or if VS Code is already open:
@@ -71,18 +71,18 @@ code .
 ### After Installation
 
 1. **Reload VS Code**: `Ctrl+Shift+P` → "Reload Window"
-2. **Open NLPL workspace**: `/run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NLPL`
+2. **Open NexusLang workspace**: `/run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NLPL`
 3. **Open a test file**: `examples/01_basic_concepts.nlpl`
 4. **Check LSP status**:
    - View → Output
    - Select "NLPL Language Server" from dropdown
-   - Should see "Starting NLPL language server..." message
+   - Should see "Starting NexusLang language server..." message
 
 ### Troubleshooting
 
 **If LSP doesn't start:**
 1. Check Python is available: `python3 --version`
-2. Check LSP server runs: `python -m nlpl.lsp --help`
+2. Check LSP server runs: `python -m nexuslang.lsp --help`
 3. Check logs: `/tmp/nlpl-lsp.log` (if debug enabled)
 4. Check VS Code Output panel for error messages
 
@@ -90,8 +90,8 @@ code .
 ```json
 // settings.json
 {
-  "nlpl.languageServer.debug": true,
-  "nlpl.trace.server": "verbose"
+  "nexuslang.languageServer.debug": true,
+  "nexuslang.trace.server": "verbose"
 }
 ```
 

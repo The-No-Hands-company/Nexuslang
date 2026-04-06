@@ -1,4 +1,4 @@
-"""Tests for the NLPL documentation generator (section 1.4).
+"""Tests for the NexusLang documentation generator (section 1.4).
 
 Coverage:
 - Lexer: DOC_COMMENT token emission
@@ -17,25 +17,25 @@ from pathlib import Path
 
 import pytest
 
-# ── bootstrap path so we can import the NLPL package directly ──────────────
+# ── bootstrap path so we can import the NexusLang package directly ──────────────
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from nlpl.parser.lexer import Lexer, TokenType
-from nlpl.tooling.docgen.extractor import (
+from nexuslang.parser.lexer import Lexer, TokenType
+from nexuslang.tooling.docgen.extractor import (
     DocItem,
     ParamDoc,
     _parse_doc_tags,
     extract_from_directory,
     extract_from_source,
 )
-from nlpl.tooling.docgen.html_writer import (
+from nexuslang.tooling.docgen.html_writer import (
     _build_search_index,
-    _highlight_nlpl,
+    _highlight_nxl,
     _page_filename,
     _slug,
     generate_html,
 )
-from nlpl.tooling.docgen.doc_tester import (
+from nexuslang.tooling.docgen.doc_tester import (
     DocTestFailure,
     DocTestResult,
     run_doc_tests,
@@ -97,7 +97,7 @@ class TestDocCommentLexer:
 
 class TestParserDocAttachment:
     def _parse(self, source: str):
-        from nlpl.parser.parser import Parser
+        from nexuslang.parser.parser import Parser
         tokens = Lexer(source).tokenize()
         parser = Parser(tokens)
         return parser.parse()
@@ -334,8 +334,8 @@ class TestExtractFromSource:
 
     def test_source_file_metadata(self):
         src = "## A thing.\nclass Thing\nend\n"
-        items = extract_from_source(src, source_file="mylib/thing.nlpl")
-        assert items[0].source_file == "mylib/thing.nlpl"
+        items = extract_from_source(src, source_file="mylib/thing.nxl")
+        assert items[0].source_file == "mylib/thing.nxl"
 
     def test_with_example_block(self):
         src = (
@@ -382,10 +382,10 @@ class TestExtractFromSource:
 
 class TestExtractFromDirectory:
     def test_extracts_from_multiple_files(self, tmp_path):
-        (tmp_path / "a.nlpl").write_text(
+        (tmp_path / "a.nxl").write_text(
             "## Item A.\nfunction a_func\n    return 0\nend\n", encoding="utf-8"
         )
-        (tmp_path / "b.nlpl").write_text(
+        (tmp_path / "b.nxl").write_text(
             "## Item B.\nfunction b_func\n    return 0\nend\n", encoding="utf-8"
         )
         result = extract_from_directory(str(tmp_path))
@@ -393,20 +393,20 @@ class TestExtractFromDirectory:
         assert "a_func" in all_names
         assert "b_func" in all_names
 
-    def test_ignores_non_nlpl_files(self, tmp_path):
+    def test_ignores_non_nxl_files(self, tmp_path):
         (tmp_path / "readme.md").write_text("# not NLPL\n", encoding="utf-8")
-        (tmp_path / "code.nlpl").write_text(
+        (tmp_path / "code.nxl").write_text(
             "## A function.\nfunction f\n    return 0\nend\n", encoding="utf-8"
         )
         result = extract_from_directory(str(tmp_path))
-        assert all(k.endswith(".nlpl") for k in result.keys())
+        assert all(k.endswith(".nxl") for k in result.keys())
 
     def test_empty_directory_returns_empty(self, tmp_path):
         result = extract_from_directory(str(tmp_path))
         assert result == {}
 
     def test_undocumented_file_not_in_result(self, tmp_path):
-        (tmp_path / "no_docs.nlpl").write_text(
+        (tmp_path / "no_docs.nxl").write_text(
             "function no_doc\n    return 1\nend\n", encoding="utf-8"
         )
         result = extract_from_directory(str(tmp_path))
@@ -415,7 +415,7 @@ class TestExtractFromDirectory:
     def test_recursive_subdirectory(self, tmp_path):
         sub = tmp_path / "sub"
         sub.mkdir()
-        (sub / "deep.nlpl").write_text(
+        (sub / "deep.nxl").write_text(
             "## Deep item.\nfunction deep_fn\n    return 0\nend\n", encoding="utf-8"
         )
         result = extract_from_directory(str(tmp_path))
@@ -438,21 +438,21 @@ class TestHtmlWriter:
                 returns="the result as Float",
                 examples=["set result to compute with x: 1 and y: 2\nprint text result"],
                 see_also=["other_compute"],
-                source_file="lib/math.nlpl",
+                source_file="lib/math.nxl",
                 line=10,
             ),
             DocItem(
                 name="Vector",
                 kind="struct",
                 description="A 2D vector.",
-                source_file="lib/math.nlpl",
+                source_file="lib/math.nxl",
                 line=50,
             ),
         ]
 
     def test_output_files_created(self, tmp_path):
         items = self._make_items()
-        generate_html({"lib/math.nlpl": items}, str(tmp_path), "TestPkg", "1.0")
+        generate_html({"lib/math.nxl": items}, str(tmp_path), "TestPkg", "1.0")
         assert (tmp_path / "index.html").exists()
         assert (tmp_path / "search_index.json").exists()
         # At least one module page
@@ -461,13 +461,13 @@ class TestHtmlWriter:
 
     def test_index_html_contains_module(self, tmp_path):
         items = self._make_items()
-        generate_html({"lib/math.nlpl": items}, str(tmp_path))
+        generate_html({"lib/math.nxl": items}, str(tmp_path))
         index = (tmp_path / "index.html").read_text()
         assert "math" in index.lower()
 
     def test_module_page_contains_item_names(self, tmp_path):
         items = self._make_items()
-        written = generate_html({"lib/math.nlpl": items}, str(tmp_path))
+        written = generate_html({"lib/math.nxl": items}, str(tmp_path))
         module_pages = [p for p in written if p.name != "index.html" and p.suffix == ".html"]
         assert module_pages
         content = module_pages[0].read_text()
@@ -476,7 +476,7 @@ class TestHtmlWriter:
 
     def test_module_page_contains_params(self, tmp_path):
         items = self._make_items()
-        written = generate_html({"lib/math.nlpl": items}, str(tmp_path))
+        written = generate_html({"lib/math.nxl": items}, str(tmp_path))
         module_pages = [p for p in written if p.name != "index.html" and p.suffix == ".html"]
         content = module_pages[0].read_text()
         assert "x" in content
@@ -484,21 +484,21 @@ class TestHtmlWriter:
 
     def test_module_page_contains_returns(self, tmp_path):
         items = self._make_items()
-        written = generate_html({"lib/math.nlpl": items}, str(tmp_path))
+        written = generate_html({"lib/math.nxl": items}, str(tmp_path))
         module_pages = [p for p in written if p.name != "index.html" and p.suffix == ".html"]
         content = module_pages[0].read_text()
         assert "result as Float" in content
 
     def test_module_page_contains_example(self, tmp_path):
         items = self._make_items()
-        written = generate_html({"lib/math.nlpl": items}, str(tmp_path))
+        written = generate_html({"lib/math.nxl": items}, str(tmp_path))
         module_pages = [p for p in written if p.name != "index.html" and p.suffix == ".html"]
         content = module_pages[0].read_text()
         assert "example" in content.lower() or "compute" in content
 
     def test_search_index_valid_json(self, tmp_path):
         items = self._make_items()
-        generate_html({"lib/math.nlpl": items}, str(tmp_path))
+        generate_html({"lib/math.nxl": items}, str(tmp_path))
         raw = (tmp_path / "search_index.json").read_text()
         data = json.loads(raw)
         assert isinstance(data, list)
@@ -506,7 +506,7 @@ class TestHtmlWriter:
 
     def test_search_index_contains_items(self, tmp_path):
         items = self._make_items()
-        generate_html({"lib/math.nlpl": items}, str(tmp_path))
+        generate_html({"lib/math.nxl": items}, str(tmp_path))
         data = json.loads((tmp_path / "search_index.json").read_text())
         names = {d["name"] for d in data}
         assert "compute" in names
@@ -529,11 +529,11 @@ class TestHtmlWriter:
                 kind="function",
                 description="Deprecated.",
                 deprecated="use new_fn",
-                source_file="lib/old.nlpl",
+                source_file="lib/old.nxl",
                 line=1,
             )
         ]
-        generate_html({"lib/old.nlpl": items}, str(tmp_path))
+        generate_html({"lib/old.nxl": items}, str(tmp_path))
         pages = list(tmp_path.glob("*.html"))
         module_page = next((p for p in pages if p.name != "index.html"), None)
         assert module_page is not None
@@ -552,26 +552,26 @@ class TestSlugAndHelpers:
     def test_slug_lowercase(self):
         assert _slug("FooBar") == "foobar"
 
-    def test_page_filename_strips_nlpl(self):
-        name = _page_filename("lib/math.nlpl")
+    def test_page_filename_strips_nxl(self):
+        name = _page_filename("lib/math.nxl")
         assert name.endswith(".html")
-        assert ".nlpl" not in name
+        assert ".nxl" not in name
 
     def test_highlight_keywords(self):
-        result = _highlight_nlpl("function foo returns Integer")
+        result = _highlight_nxl("function foo returns Integer")
         assert '<span class="kw">' in result
         assert "function" in result
 
     def test_highlight_string(self):
-        result = _highlight_nlpl('set x to "hello"')
+        result = _highlight_nxl('set x to "hello"')
         assert '<span class="str">' in result
 
     def test_highlight_comment(self):
-        result = _highlight_nlpl("## This is a doc comment")
+        result = _highlight_nxl("## This is a doc comment")
         assert '<span class="cmt">' in result
 
     def test_highlight_escapes_html(self):
-        result = _highlight_nlpl('<script>alert(1)</script>')
+        result = _highlight_nxl('<script>alert(1)</script>')
         assert "<script>" not in result
 
 
@@ -586,7 +586,7 @@ class TestDocTester:
             kind=kind,
             description="",
             examples=examples,
-            source_file="test.nlpl",
+            source_file="test.nxl",
             line=1,
         )
 
@@ -667,7 +667,7 @@ class TestDocTester:
     def test_doc_test_failure_label(self):
         f = DocTestFailure(
             item_name="my_func",
-            source_file="lib/foo.nlpl",
+            source_file="lib/foo.nxl",
             example_index=0,
             code="bad code",
             error="SyntaxError: nope",

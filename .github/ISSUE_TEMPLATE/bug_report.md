@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Something in NLPL is broken or behaving unexpectedly
+about: Something in NexusLang is broken or behaving unexpectedly
 title: "[Bug] "
 labels: bug
 assignees: ''
@@ -12,7 +12,7 @@ A clear and concise description of the bug.
 
 ## Reproduction
 
-Minimal NLPL source (or Python snippet) that triggers the issue:
+Minimal NexusLang source (or Python snippet) that triggers the issue:
 
 ```nlpl
 # paste code here
@@ -35,7 +35,7 @@ Paste the full error message or wrong output, including the `[Exxx]` code if pre
 
 - OS:
 - Python version (`python --version`):
-- NLPL commit (`git rev-parse --short HEAD`):
+- NexusLang commit (`git rev-parse --short HEAD`):
 - Flags used (`--debug`, `--no-type-check`, etc.):
 
 ## Additional context

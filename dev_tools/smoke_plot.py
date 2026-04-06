@@ -8,7 +8,7 @@ import importlib.util
 # optional deps like jsonschema/attrs that can be slow to initialise).
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _PLOT_INIT = os.path.join(_HERE, "..", "src", "nlpl", "stdlib", "plot", "__init__.py")
-_spec = importlib.util.spec_from_file_location("nlpl.stdlib.plot", _PLOT_INIT)
+_spec = importlib.util.spec_from_file_location("nexuslang.stdlib.plot", _PLOT_INIT)
 _plot = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_plot)
 

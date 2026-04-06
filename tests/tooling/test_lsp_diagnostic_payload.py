@@ -8,7 +8,7 @@ canonical LSP payload shape required by the error-code integration checklist:
   - stable ``code`` field (E###)
   - ``source`` always "nlpl"
   - ``data.fixes`` populated from registry
-  - ``data.explainHint`` = "nlpl --explain E###"
+  - ``data.explainHint`` = "nxl --explain E###"
   - ``data.title`` and ``data.category`` from registry
   - ``range`` shape is valid
   - Fallback to E309 for "runtime_error" generic type key
@@ -19,8 +19,8 @@ Checklist codes exercised: E001, E100, E200, E301, E309.
 import pytest
 from unittest.mock import MagicMock
 
-from nlpl.lsp.diagnostics import DiagnosticsProvider
-from nlpl.error_codes import get_error_info, get_error_code_for_type
+from nexuslang.lsp.diagnostics import DiagnosticsProvider
+from nexuslang.error_codes import get_error_info, get_error_code_for_type
 
 
 # ---------------------------------------------------------------------------
@@ -56,7 +56,7 @@ class TestBuildDiagnosticShape:
         assert r["end"]["line"] == 3
         assert r["end"]["character"] == 10
 
-    def test_source_is_always_nlpl(self):
+    def test_source_is_always_nxl(self):
         p = make_provider()
         d = p._build_diagnostic(line=0, start_char=0, end_char=1,
                                 severity=1, message="x")
@@ -140,7 +140,7 @@ class TestDiagnosticE001:
         d = p._build_diagnostic(line=0, start_char=0, end_char=5,
                                 severity=1, message="Syntax error",
                                 error_type_key="unexpected_token")
-        assert d["data"]["explainHint"] == f"nlpl --explain {self.CODE}"
+        assert d["data"]["explainHint"] == f"nxl --explain {self.CODE}"
 
     def test_code_via_direct_error_code(self):
         p = make_provider()
@@ -184,7 +184,7 @@ class TestDiagnosticE100:
         d = p._build_diagnostic(line=2, start_char=4, end_char=11,
                                 severity=1, message="Undefined: foo",
                                 error_type_key="undefined_variable")
-        assert d["data"]["explainHint"] == f"nlpl --explain {self.CODE}"
+        assert d["data"]["explainHint"] == f"nxl --explain {self.CODE}"
 
 
 # ---------------------------------------------------------------------------
@@ -257,7 +257,7 @@ class TestDiagnosticE301:
         d = p._build_diagnostic(line=10, start_char=0, end_char=20,
                                 severity=1, message="Index out of range",
                                 error_type_key="index_out_of_range")
-        assert d["data"]["explainHint"] == f"nlpl --explain {self.CODE}"
+        assert d["data"]["explainHint"] == f"nxl --explain {self.CODE}"
 
 
 # ---------------------------------------------------------------------------
@@ -287,7 +287,7 @@ class TestDiagnosticE309:
         d = p._build_diagnostic(line=7, start_char=0, end_char=10,
                                 severity=1, message="Runtime failure",
                                 error_type_key="runtime_error")
-        assert d["data"]["explainHint"] == f"nlpl --explain {self.CODE}"
+        assert d["data"]["explainHint"] == f"nxl --explain {self.CODE}"
 
 
 # ---------------------------------------------------------------------------

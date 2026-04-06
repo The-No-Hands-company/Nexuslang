@@ -1,4 +1,4 @@
-# Feature Suggestions Analysis for NLPL Roadmap
+# Feature Suggestions Analysis for NexusLang Roadmap
 
 **Date**: February 17, 2026  
 **Analyst**: AI Development Assistant  
@@ -23,7 +23,7 @@ Analyzed suggestions for "forgotten or rarely used features" in programming lang
 
 **Analysis**: 
 - **Alignment**: PERFECT for NLPL's "human-first" approach
-- **Gap**: NLPL currently lacks built-in profiling
+- **Gap**: NexusLang currently lacks built-in profiling
 - **Implementation**: Natural syntax like `profile this function's memory use`
 - **Benefit**: Addresses Part 8 (Maturity & Production Readiness)
 - **Priority**: MEDIUM (post-v1.0)
@@ -38,7 +38,7 @@ Analyzed suggestions for "forgotten or rarely used features" in programming lang
 
 **Analysis**:
 - **Alignment**: Interesting but complex
-- **Gap**: No declarative constraint system in NLPL
+- **Gap**: No declarative constraint system in NexusLang
 - **Challenge**: Natural language syntax for logical rules could be awkward
 - **Use cases**: Niche (AI/constraint solving)
 - **Priority**: LOW (post-v1.0, possibly never)
@@ -53,7 +53,7 @@ Analyzed suggestions for "forgotten or rarely used features" in programming lang
 
 **Analysis**:
 - **Alignment**: Good fit for NLPL's concurrency goals
-- **Gap**: NLPL has threading/sync but no actor model
+- **Gap**: NexusLang has threading/sync but no actor model
 - **Benefit**: Safer than threads/locks for distributed systems
 - **Challenge**: Need message-passing infrastructure
 - **Priority**: MEDIUM (Part 4: Concurrency)
@@ -68,7 +68,7 @@ Analyzed suggestions for "forgotten or rarely used features" in programming lang
 
 **Analysis**:
 - **Alignment**: Too complex for "natural language" approach
-- **Gap**: NLPL has strong typing but not dependent types
+- **Gap**: NexusLang has strong typing but not dependent types
 - **Challenge**: Extremely complex type system, steep learning curve
 - **Priority**: VERY LOW (research territory)
 
@@ -81,7 +81,7 @@ Analyzed suggestions for "forgotten or rarely used features" in programming lang
 **Suggestion**: Direct hardware access for performance-critical code.
 
 **Analysis**:
-- **Status**: ✅ NLPL has inline assembly (100% complete Feb 14, 2026)
+- **Status**: ✅ NexusLang has inline assembly (100% complete Feb 14, 2026)
 - **Implementation**: `inline assembly block ... end`
 
 **Recommendation**: No action needed - already implemented!
@@ -93,7 +93,7 @@ Analyzed suggestions for "forgotten or rarely used features" in programming lang
 **Suggestion**: BASIC-style REDIM for dynamic array resizing.
 
 **Analysis**:
-- **Gap**: NLPL lists are dynamic by default (Python-style)
+- **Gap**: NexusLang lists are dynamic by default (Python-style)
 - **Redundant**: Already covered by List<T> operations
 - **Priority**: N/A
 
@@ -167,7 +167,7 @@ Analyzed suggestions for "forgotten or rarely used features" in programming lang
 
 **Analysis**:
 - **Alignment**: Excellent for metaprogramming
-- **Gap**: Limited reflection in NLPL
+- **Gap**: Limited reflection in NexusLang
 - **Benefit**: Generate boilerplate (serializers, builders, etc.)
 - **Priority**: MEDIUM (Part 8.3 - Advanced Type Features)
 
@@ -222,9 +222,9 @@ Literate programming (invented by Donald Knuth) is a paradigm where you write **
 
 2. **Tooling is More Flexible**
    - External tools can support **multiple documentation formats**:
-     - Generate HTML/PDF documentation from NLPL source
-     - Create interactive notebooks that run NLPL code
-     - Weave NLPL code into LaTeX, Markdown, Sphinx, etc.
+     - Generate HTML/PDF documentation from NexusLang source
+     - Create interactive notebooks that run NexusLang code
+     - Weave NexusLang code into LaTeX, Markdown, Sphinx, etc.
    - Language-level support would **lock you into one format**
 
 3. **Parser Complexity**
@@ -235,9 +235,9 @@ Literate programming (invented by Donald Knuth) is a paradigm where you write **
    - External tools avoid this entirely (preprocessor extracts code blocks)
 
 4. **Already Solvable with Existing Tools**
-   - **Option 1**: Use Markdown with NLPL code blocks, run with a preprocessor
-   - **Option 2**: Build an NLPL kernel for Jupyter/Observable notebooks
-   - **Option 3**: Use Sphinx/Doxygen-style documentation generators for NLPL
+   - **Option 1**: Use Markdown with NexusLang code blocks, run with a preprocessor
+   - **Option 2**: Build an NexusLang kernel for Jupyter/Observable notebooks
+   - **Option 3**: Use Sphinx/Doxygen-style documentation generators for NexusLang
    - All of these work **today** without language changes
 
 **Example: How External Tooling Works**
@@ -270,7 +270,7 @@ end
 
 **Conclusion**
 
-Literate programming is a **workflow/tooling decision**, not a language design decision. NLPL should focus on:
+Literate programming is a **workflow/tooling decision**, not a language design decision. NexusLang should focus on:
 - Being a great **general-purpose language** (it already is)
 - Having excellent **documentation generation** tools (future: nlpl-doc CLI)
 - Supporting **interactive notebooks** via Jupyter kernels (future: nlpl-jupyter-kernel)

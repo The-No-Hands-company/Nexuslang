@@ -1,12 +1,12 @@
 /**
- * NLPL Grammar — March 2026
+ * NexusLang Grammar — March 2026
  *
- * ANTLR4 grammar for the Natural Language Programming Language.
+ * ANTLR4 grammar for the NexusLang.
  * This grammar reflects the actual parser implemented in
  * src/nlpl/parser/parser.py (9 700+ lines, hand-written recursive descent).
  *
  * Design note:
- *   NLPL uses structured English as its surface syntax.  Keywords like
+ *   NexusLang uses structured English as its surface syntax.  Keywords like
  *   'and', 'or', 'to', 'with', 'as', 'of' serve dual roles as both
  *   logical/structural connectives and as prose-style flow words.
  *   Certain ambiguities (e.g. 'and' in parameter lists vs. logical 'and')

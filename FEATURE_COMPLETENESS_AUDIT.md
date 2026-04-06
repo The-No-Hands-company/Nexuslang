@@ -1,10 +1,10 @@
-# NLPL Feature Completeness Audit
+# NexusLang Feature Completeness Audit
 
 Updated: 2026-04-02
 
 ## Purpose
 
-This document is a deep audit of NLPL feature completeness across the full language stack, not just the interpreter. The goal is to keep one authoritative inventory of what is still missing, partial, inconsistent, or underpowered across:
+This document is a deep audit of NexusLang feature completeness across the full language stack, not just the interpreter. The goal is to keep one authoritative inventory of what is still missing, partial, inconsistent, or underpowered across:
 
 - lexer
 - parser
@@ -52,7 +52,7 @@ The biggest remaining gaps are not in the basic syntax core anymore, but in cros
 2. The lexer keyword inventory is significantly broader than the actually parsed/documented language surface.
 3. The formal grammar still trails the real parser by a wide margin, even after recent sync work.
 4. Tooling claims in `README.md` are stronger than what is currently evidenced for advanced features.
-5. NLPL needs a deliberate feature-matrix discipline so every feature is tracked across lexer, parser, AST, interpreter, typechecker, compiler, LSP, formatter, tests, and grammar.
+5. NexusLang needs a deliberate feature-matrix discipline so every feature is tracked across lexer, parser, AST, interpreter, typechecker, compiler, LSP, formatter, tests, and grammar.
 
 ## Confirmed High-Priority Gaps
 
@@ -135,7 +135,7 @@ Evidence:
 
 Why it matters:
 
-Parallel iteration is a major feature family. If it cannot compile, NLPL still has a major gap between its execution modes.
+Parallel iteration is a major feature family. If it cannot compile, NexusLang still has a major gap between its execution modes.
 
 #### 4. Contract/assertion features are interpreter-only
 
@@ -414,7 +414,7 @@ Confirmed examples still absent from grammar coverage include:
 
 Why it matters:
 
-`grammar/NLPL.g4` is currently not a reliable feature inventory for NLPL as a whole. It remains a partial reference, not a true grammar-complete spec.
+`grammar/NLPL.g4` is currently not a reliable feature inventory for NexusLang as a whole. It remains a partial reference, not a true grammar-complete spec.
 
 ### 2. The token surface is broader than the documented language contract
 
@@ -436,7 +436,7 @@ Confirmed characteristics:
 
 Why it matters:
 
-A regex formatter will inevitably lag the language as new constructs are added. NLPL needs an AST-aware formatter if it wants formatting to be trustworthy across the whole language.
+A regex formatter will inevitably lag the language as new constructs are added. NexusLang needs an AST-aware formatter if it wants formatting to be trustworthy across the whole language.
 
 ### 2. LSP feature breadth is ahead of feature-specific semantic depth
 
@@ -550,7 +550,7 @@ These are the most important confirmed items to close if the goal is “feature 
 
 NLPL is already broad. The remaining work is mostly about consistency, completeness, and trustworthiness across the stack.
 
-The main problem is no longer “does NLPL have interesting syntax?”
+The main problem is no longer “does NexusLang have interesting syntax?”
 
 The main problem is:
 

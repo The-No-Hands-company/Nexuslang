@@ -1,5 +1,5 @@
 """
-Tests for the NLPL stdlib reflection module (8.2 Reflection).
+Tests for the NexusLang stdlib reflection module (8.2 Reflection).
 
 Groups:
     TestReflectTypeOf         -- reflect_type_of: all primitive and object kinds
@@ -12,7 +12,7 @@ Groups:
                                  reflect_set_field on both structs and classes
     TestReflectMethodAccess   -- reflect_has_method
     TestReflectDescribe       -- reflect_describe for all three value kinds
-    TestReflectIntegration    -- end-to-end via NLPL interpreter
+    TestReflectIntegration    -- end-to-end via NexusLang interpreter
 """
 
 import sys
@@ -31,8 +31,8 @@ import pytest
 # ---------------------------------------------------------------------------
 
 def _make_runtime():
-    from nlpl.runtime.runtime import Runtime
-    from nlpl.stdlib import register_stdlib
+    from nexuslang.runtime.runtime import Runtime
+    from nexuslang.stdlib import register_stdlib
     rt = Runtime()
     register_stdlib(rt)
     return rt
@@ -40,14 +40,14 @@ def _make_runtime():
 
 def _make_struct_instance(struct_name, fields):
     """Helper: create a StructureInstance from a list of (field_name, type_str)."""
-    from nlpl.runtime.structures import StructDefinition, StructureInstance
+    from nexuslang.runtime.structures import StructDefinition, StructureInstance
     defn = StructDefinition(struct_name, fields)
     return StructureInstance(defn)
 
 
 def _make_object(class_name, properties=None, methods=None):
     """Helper: create a runtime Object with optional properties and methods."""
-    from nlpl.runtime.runtime import Object
+    from nexuslang.runtime.runtime import Object
     obj = Object(class_name, properties or {})
     if methods:
         for name, func in methods.items():
@@ -66,7 +66,7 @@ def _rt():
 
 class TestReflectTypeOf:
     def setup_method(self):
-        from nlpl.stdlib.reflection import reflect_type_of
+        from nexuslang.stdlib.reflection import reflect_type_of
         self.fn = lambda v: reflect_type_of(_rt(), v)
 
     def test_none_is_null(self):
@@ -129,7 +129,7 @@ class TestReflectTypeOf:
 
 class TestReflectIsInstanceOf:
     def setup_method(self):
-        from nlpl.stdlib.reflection import reflect_is_instance_of
+        from nexuslang.stdlib.reflection import reflect_is_instance_of
         self.fn = lambda v, t: reflect_is_instance_of(_rt(), v, t)
 
     def test_integer_exact(self):
@@ -186,7 +186,7 @@ class TestReflectIsInstanceOf:
         assert self.fn(inst, "Point") is False
 
     def test_bool_is_not_integer(self):
-        # Boolean and Integer are separate in NLPL
+        # Boolean and Integer are separate in NexusLang
         assert self.fn(True, "Integer") is False
 
 
@@ -196,7 +196,7 @@ class TestReflectIsInstanceOf:
 
 class TestReflectStructUnit:
     def setup_method(self):
-        from nlpl.stdlib.reflection import (
+        from nexuslang.stdlib.reflection import (
             reflect_is_struct, reflect_fields_of, reflect_struct_field_names,
             reflect_struct_size, reflect_class_name,
         )
@@ -263,7 +263,7 @@ class TestReflectStructUnit:
 
 class TestReflectClassUnit:
     def setup_method(self):
-        from nlpl.stdlib.reflection import (
+        from nexuslang.stdlib.reflection import (
             reflect_is_class_instance, reflect_properties_of, reflect_methods_of,
             reflect_class_name,
         )
@@ -313,7 +313,7 @@ class TestReflectClassUnit:
 
 class TestReflectFieldAccess:
     def setup_method(self):
-        from nlpl.stdlib.reflection import (
+        from nexuslang.stdlib.reflection import (
             reflect_has_field, reflect_get_field, reflect_set_field,
         )
         self.has_field = lambda v, f: reflect_has_field(_rt(), v, f)
@@ -390,7 +390,7 @@ class TestReflectFieldAccess:
 
 class TestReflectMethodAccess:
     def setup_method(self):
-        from nlpl.stdlib.reflection import reflect_has_method
+        from nexuslang.stdlib.reflection import reflect_has_method
         self.has_method = lambda v, m: reflect_has_method(_rt(), v, m)
 
     def _obj_with_methods(self):
@@ -416,7 +416,7 @@ class TestReflectMethodAccess:
 
 class TestReflectDescribe:
     def setup_method(self):
-        from nlpl.stdlib.reflection import reflect_describe
+        from nexuslang.stdlib.reflection import reflect_describe
         self.describe = lambda v: reflect_describe(_rt(), v)
 
     def test_describe_int_kind_primitive(self):
@@ -468,18 +468,18 @@ class TestReflectDescribe:
 
 
 # ---------------------------------------------------------------------------
-# 8. Integration via NLPL interpreter
+# 8. Integration via NexusLang interpreter
 # ---------------------------------------------------------------------------
 
 class TestReflectIntegration:
-    """Run NLPL programs that call reflect_* functions, verify outputs."""
+    """Run NexusLang programs that call reflect_* functions, verify outputs."""
 
     def _interp(self, src):
-        from nlpl.interpreter.interpreter import Interpreter
-        from nlpl.runtime.runtime import Runtime
-        from nlpl.stdlib import register_stdlib
-        from nlpl.parser.parser import Parser
-        from nlpl.parser.lexer import Lexer
+        from nexuslang.interpreter.interpreter import Interpreter
+        from nexuslang.runtime.runtime import Runtime
+        from nexuslang.stdlib import register_stdlib
+        from nexuslang.parser.parser import Parser
+        from nexuslang.parser.lexer import Lexer
         rt = Runtime()
         register_stdlib(rt)
         prog = Parser(Lexer(src).tokenize()).parse()
@@ -487,7 +487,7 @@ class TestReflectIntegration:
         i.interpret(prog)
         return i
 
-    def test_reflect_type_of_integer_via_nlpl(self):
+    def test_reflect_type_of_integer_via_nxl(self):
         i = self._interp(
             'set x to 42\n'
             'set t to reflect_type_of with x\n'
@@ -495,56 +495,56 @@ class TestReflectIntegration:
         )
         # If no AssertionError, the test passed.
 
-    def test_reflect_type_of_string_via_nlpl(self):
+    def test_reflect_type_of_string_via_nxl(self):
         self._interp(
             'set s to "hello"\n'
             'set t to reflect_type_of with s\n'
             'expect t to equal "String"'
         )
 
-    def test_reflect_type_of_float_via_nlpl(self):
+    def test_reflect_type_of_float_via_nxl(self):
         self._interp(
             'set f to 3.14\n'
             'set t to reflect_type_of with f\n'
             'expect t to equal "Float"'
         )
 
-    def test_reflect_type_of_list_via_nlpl(self):
+    def test_reflect_type_of_list_via_nxl(self):
         self._interp(
             'set lst to [1, 2, 3]\n'
             'set t to reflect_type_of with lst\n'
             'expect t to equal "List"'
         )
 
-    def test_reflect_type_of_boolean_via_nlpl(self):
+    def test_reflect_type_of_boolean_via_nxl(self):
         self._interp(
             'set b to true\n'
             'set t to reflect_type_of with b\n'
             'expect t to equal "Boolean"'
         )
 
-    def test_reflect_is_instance_of_integer_via_nlpl(self):
+    def test_reflect_is_instance_of_integer_via_nxl(self):
         self._interp(
             'set n to 10\n'
             'set ok to reflect_is_instance_of with n and "Integer"\n'
             'expect ok to be true'
         )
 
-    def test_reflect_is_instance_of_string_alias_via_nlpl(self):
+    def test_reflect_is_instance_of_string_alias_via_nxl(self):
         self._interp(
             'set s to "world"\n'
             'set ok to reflect_is_instance_of with s and "str"\n'
             'expect ok to be true'
         )
 
-    def test_reflect_is_instance_of_mismatch_via_nlpl(self):
+    def test_reflect_is_instance_of_mismatch_via_nxl(self):
         self._interp(
             'set n to 5\n'
             'set ok to reflect_is_instance_of with n and "String"\n'
             'expect ok to be false'
         )
 
-    def test_reflect_type_of_null_via_nlpl(self):
+    def test_reflect_type_of_null_via_nxl(self):
         self._interp(
             'set n to null\n'
             'set t to reflect_type_of with n\n'

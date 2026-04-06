@@ -17,7 +17,7 @@ NLPL's bitwise operations have been **fully implemented, tested, and documented*
 - Performance optimization (fast arithmetic)
 - Data structures (bloom filters, bit arrays)
 
-**Key Achievement:** NLPL now has complete parity with C/C++/Rust for bitwise manipulation, supporting both natural language syntax (`bitwise and`) and symbol syntax (`&`).
+**Key Achievement:** NexusLang now has complete parity with C/C++/Rust for bitwise manipulation, supporting both natural language syntax (`bitwise and`) and symbol syntax (`&`).
 
 ---
 
@@ -147,7 +147,7 @@ Following C/C++ precedence rules:
 All tests passed successfully:
 
 ```bash
-$ python -m nlpl.main /tmp/test_bitwise.nlpl
+$ python -m nexuslang.main /tmp/test_bitwise.nlpl
 Testing bitwise operations:
 a = 5 (binary: 0101)
 b = 3 (binary: 0011)
@@ -268,7 +268,7 @@ b = 3 (binary: 0011)
 
 ---
 
-## Integration with NLPL Ecosystem
+## Integration with NexusLang Ecosystem
 
 ### Parser Integration
 - Bitwise operations fully integrated into expression parsing
@@ -354,29 +354,29 @@ All bitwise operations are fully functional:
 
 ### C/C++
 ```c
-// NLPL has parity with C/C++
-int a = 12 & 10;    // NLPL: 12 bitwise and 10
-int b = 5 << 2;     // NLPL: 5 shift left 2
-int c = ~5;         // NLPL: bitwise not 5
+// NexusLang has parity with C/C++
+int a = 12 & 10;    // NexusLang: 12 bitwise and 10
+int b = 5 << 2;     // NexusLang: 5 shift left 2
+int c = ~5;         // NexusLang: bitwise not 5
 ```
 
 ### Rust
 ```rust
-// NLPL has parity with Rust
-let a = 12 & 10;    // NLPL: 12 bitwise and 10
-let b = 5 << 2;     // NLPL: 5 shift left 2
-let c = !5;         // NLPL: bitwise not 5
+// NexusLang has parity with Rust
+let a = 12 & 10;    // NexusLang: 12 bitwise and 10
+let b = 5 << 2;     // NexusLang: 5 shift left 2
+let c = !5;         // NexusLang: bitwise not 5
 ```
 
 ### Python
 ```python
-# NLPL uses same operators as Python
-a = 12 & 10         # NLPL: 12 bitwise and 10
-b = 5 << 2          # NLPL: 5 shift left 2
-c = ~5              # NLPL: bitwise not 5
+# NexusLang uses same operators as Python
+a = 12 & 10         # NexusLang: 12 bitwise and 10
+b = 5 << 2          # NexusLang: 5 shift left 2
+c = ~5              # NexusLang: bitwise not 5
 ```
 
-**Result:** NLPL has **full parity** with all major systems languages for bitwise operations.
+**Result:** NexusLang has **full parity** with all major systems languages for bitwise operations.
 
 ---
 
@@ -434,9 +434,9 @@ c = ~5              # NLPL: bitwise not 5
 
 ## Conclusion
 
-**Bitwise operations in NLPL are PRODUCTION-READY.**
+**Bitwise operations in NexusLang are PRODUCTION-READY.**
 
-With this completion, NLPL now provides:
+With this completion, NexusLang now provides:
 - ✅ Complete low-level bit manipulation
 - ✅ Domain-agnostic primitives
 - ✅ Full parity with C/C++/Rust

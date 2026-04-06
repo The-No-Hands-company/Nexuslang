@@ -1,12 +1,12 @@
 # Migrating from Rust
 
-This guide maps Rust patterns to their NLPL equivalents.
+This guide maps Rust patterns to their NexusLang equivalents.
 
 ---
 
 ## Syntax Quick-Reference
 
-| Concept | Rust | NLPL |
+| Concept | Rust | NexusLang |
 |---------|------|------|
 | Immutable binding | `let x = 5;` | `set x to 5` |
 | Mutable binding | `let mut x = 5;` | `set x to 5` (all vars mutable by default) |
@@ -31,9 +31,9 @@ This guide maps Rust patterns to their NLPL equivalents.
 
 ## Memory Management
 
-Rust enforces ownership and borrowing at compile time. NLPL provides automatic memory management for most programs and explicit manual control via pointers when you need it.
+Rust enforces ownership and borrowing at compile time. NexusLang provides automatic memory management for most programs and explicit manual control via pointers when you need it.
 
-### Rust ownership → NLPL automatic management
+### Rust ownership → NexusLang automatic management
 
 ```rust
 // Rust — explicit move semantics
@@ -42,7 +42,7 @@ let s2 = s1;  // s1 is moved, cannot be used
 ```
 
 ```nlpl
-# NLPL — values are reference-counted; both names are valid
+# NexusLang — values are reference-counted; both names are valid
 set s1 to "hello"
 set s2 to s1
 print text s1    # fine
@@ -58,7 +58,7 @@ unsafe { libc::free(raw as *mut libc::c_void) };
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 set buf to allocate buf of size 64 bytes
 # ... use buf ...
 free buf
@@ -88,7 +88,7 @@ impl Point {
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 import math
 
 class Point
@@ -123,7 +123,7 @@ impl Shape for Circle {
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 interface Shape
     function area returns Float
 end
@@ -143,7 +143,7 @@ end
 
 ## Error Handling
 
-### Rust `Result<T, E>` → NLPL `try/catch`
+### Rust `Result<T, E>` → NexusLang `try/catch`
 
 ```rust
 // Rust
@@ -154,7 +154,7 @@ fn read_name(path: &str) -> Result<String, std::io::Error> {
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 import io
 
 function read_name with path as String returns String
@@ -166,7 +166,7 @@ function read_name with path as String returns String
 end
 ```
 
-### Rust `Option<T>` → NLPL null checks
+### Rust `Option<T>` → NexusLang null checks
 
 ```rust
 // Rust
@@ -177,7 +177,7 @@ if let Some(v) = maybe {
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 set maybe to 42    # or null
 if maybe is not null
     print text convert maybe to string
@@ -197,7 +197,7 @@ fn largest<T: PartialOrd>(list: &[T]) -> &T {
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 function largest<T> that takes items as List of T returns T
     set best to items[0]
     for each item in items
@@ -211,7 +211,7 @@ end
 
 ## Async / Await
 
-The NLPL model is similar to Rust's `async`/`.await`, but without the need to choose an executor.
+The NexusLang model is similar to Rust's `async`/`.await`, but without the need to choose an executor.
 
 ```rust
 // Rust (with Tokio)
@@ -224,7 +224,7 @@ async fn main() {
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 async function main
     set results to await gather with [fetch_a(), fetch_b()]
     set a to results[0]
@@ -244,16 +244,16 @@ extern "C" {
 }
 ```
 
-### Calling C from NLPL
+### Calling C from NexusLang
 
 ```nlpl
 extern function strlen with s as Pointer returns Integer from library "c"
 ```
 
-Both require unsafe/care — in NLPL, validation helpers are available from `nlpl.security`:
+Both require unsafe/care — in NexusLang, validation helpers are available from `nlpl.security`:
 
 ```nlpl
-from nlpl.security import validate_pointer
+from nexuslang.security import validate_pointer
 
 if validate_pointer with strlen_result
     print text "Pointer is valid"
@@ -273,7 +273,7 @@ match status {
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 match status with
     case 200
         print text "OK"
@@ -288,7 +288,7 @@ end
 
 ## Key Differences Summary
 
-| Topic | Rust | NLPL |
+| Topic | Rust | NexusLang |
 |-------|------|------|
 | Memory safety | Borrow checker | Automatic + optional manual |
 | Null safety | `Option<T>` | Null checks (`is null`) |
@@ -296,4 +296,4 @@ end
 | Concurrency model | `async`/`threads`, `Send`/`Sync` | `async`/`await`, `system.spawn_thread` |
 | Macros | `macro_rules!`, proc macros | No macros; use functions or stdlib |
 | Build system | Cargo + `Cargo.toml` | `nlpl build` + `nlpl.toml` |
-| Package registry | crates.io | NLPL package registry (planned) |
+| Package registry | crates.io | NexusLang package registry (planned) |

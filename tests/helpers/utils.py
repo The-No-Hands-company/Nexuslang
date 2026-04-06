@@ -1,5 +1,5 @@
 """
-Shared test utilities for NLPL test suite.
+Shared test utilities for NexusLang test suite.
 Common helper functions and fixtures.
 """
 
@@ -10,15 +10,15 @@ import textwrap
 # Add src directory to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.interpreter.interpreter import Interpreter
-from nlpl.runtime.runtime import Runtime
-from nlpl.stdlib import register_stdlib
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.interpreter.interpreter import Interpreter
+from nexuslang.runtime.runtime import Runtime
+from nexuslang.stdlib import register_stdlib
 
 
 class NLPLTestBase:
-    """Base class for NLPL tests with common utilities."""
+    """Base class for NexusLang tests with common utilities."""
     
     def setup_method(self):
         """Set up test environment before each test."""
@@ -29,10 +29,10 @@ class NLPLTestBase:
     
     def parse_and_execute(self, code):
         """
-        Helper method to parse and execute NLPL code.
+        Helper method to parse and execute NexusLang code.
         
         Args:
-            code: NLPL source code to execute
+            code: NexusLang source code to execute
             
         Returns:
             Result of interpretation
@@ -60,12 +60,12 @@ class NLPLTestBase:
         assert actual == expected_value, f"Expected {name}={expected_value}, got {actual}"
 
 
-def parse_nlpl(code):
+def parse_nxl(code):
     """
-    Parse NLPL code and return AST.
+    Parse NexusLang code and return AST.
     
     Args:
-        code: NLPL source code
+        code: NexusLang source code
         
     Returns:
         AST representing the code
@@ -79,12 +79,12 @@ def parse_nlpl(code):
     return parser.parse()
 
 
-def execute_nlpl(code):
+def execute_nxl(code):
     """
-    Execute NLPL code and return runtime and interpreter.
+    Execute NexusLang code and return runtime and interpreter.
     
     Args:
-        code: NLPL source code
+        code: NexusLang source code
         
     Returns:
         Tuple of (runtime, interpreter)

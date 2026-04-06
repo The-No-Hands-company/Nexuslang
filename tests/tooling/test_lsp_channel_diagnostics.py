@@ -2,7 +2,7 @@
 
 from unittest.mock import MagicMock
 
-from nlpl.lsp.diagnostics import DiagnosticsProvider
+from nexuslang.lsp.diagnostics import DiagnosticsProvider
 
 
 def _provider() -> DiagnosticsProvider:
@@ -16,7 +16,7 @@ send 1 to ch
 send "oops" to ch
 """
 
-    diagnostics = _provider().get_diagnostics("file:///channel_mismatch.nlpl", code)
+    diagnostics = _provider().get_diagnostics("file:///channel_mismatch.nxl", code)
 
     assert diagnostics, "Expected at least one diagnostic for mismatched channel payload"
     assert any(d.get("code") == "E200" for d in diagnostics)
@@ -30,7 +30,7 @@ function push_bad with ch as Channel<Integer>
 end
 """
 
-    diagnostics = _provider().get_diagnostics("file:///channel_param_mismatch.nlpl", code)
+    diagnostics = _provider().get_diagnostics("file:///channel_param_mismatch.nxl", code)
 
     assert diagnostics, "Expected at least one diagnostic for typed channel mismatch"
     assert any(d.get("code") == "E200" for d in diagnostics)

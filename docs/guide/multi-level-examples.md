@@ -1,4 +1,4 @@
-# NLPL Multi-Level Examples
+# NexusLang Multi-Level Examples
 
 **Demonstrating the Same Programs at All Five Abstraction Levels**
 
@@ -6,7 +6,7 @@
 
 ## Overview
 
-This document shows how the **same functionality** can be implemented at different abstraction levels in NLPL. Each level trades control for convenience, but **all compile to the same performant native code**.
+This document shows how the **same functionality** can be implemented at different abstraction levels in NexusLang. Each level trades control for convenience, but **all compile to the same performant native code**.
 
 ---
 
@@ -76,7 +76,7 @@ function start_server
  
  server.on "GET /" do with request
  spawn
- set welcome to "Welcome to NLPL server!"
+ set welcome to "Welcome to NexusLang server!"
  return new response with 200, welcome
  end
  end
@@ -132,7 +132,7 @@ class HttpServer
  set response to "HTTP/1.1 200 OK\r\nContent-Length: 13\r\n\r\nHello, World!"
  client.write with response
  otherwise if path equals "/"
- set response to "HTTP/1.1 200 OK\r\nContent-Length: 25\r\n\r\nWelcome to NLPL server!"
+ set response to "HTTP/1.1 200 OK\r\nContent-Length: 25\r\n\r\nWelcome to NexusLang server!"
  client.write with response
  otherwise
  set response to "HTTP/1.1 404 Not Found\r\n\r\n"
@@ -214,7 +214,7 @@ function handle_client with client_fd_ptr as Pointer returns Pointer
  if request contains "/hello"
  set response to "HTTP/1.1 200 OK\r\nContent-Length: 13\r\n\r\nHello, World!"
  otherwise if request contains "/ "
- set response to "HTTP/1.1 200 OK\r\nContent-Length: 25\r\n\r\nWelcome to NLPL server!"
+ set response to "HTTP/1.1 200 OK\r\nContent-Length: 25\r\n\r\nWelcome to NexusLang server!"
  otherwise
  set response to "HTTP/1.1 404 Not Found\r\n\r\n"
  end
@@ -999,7 +999,7 @@ when player health reaches 0
 end
 ```
 
-**This is the power of NLPL:** Choose the right level for each part of your program!
+**This is the power of NexusLang:** Choose the right level for each part of your program!
 
 ---
 

@@ -13,8 +13,8 @@ import time
 # Add parent directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from nlpl.parser.cached_parser import CachedParser, get_cached_parser
-from nlpl.parser.ast_cache import get_global_cache, set_cache_limits
+from nexuslang.parser.cached_parser import CachedParser, get_cached_parser
+from nexuslang.parser.ast_cache import get_global_cache, set_cache_limits
 
 
 def simulate_lsp_editing_session(file_path: str, num_edits: int = 10):
@@ -27,7 +27,7 @@ def simulate_lsp_editing_session(file_path: str, num_edits: int = 10):
     3. Small edits (1-2 lines changed at a time)
     
     Args:
-        file_path: Path to NLPL file
+        file_path: Path to NexusLang file
         num_edits: Number of edits to simulate
         
     Returns:
@@ -135,10 +135,10 @@ def benchmark_multiple_files():
     print("=" * 70 + "\n")
     
     test_files = [
-        'examples/01_basic_concepts.nlpl',
-        'examples/02_functions.nlpl',
-        'examples/03_loops.nlpl',
-        'test_programs/unit/stdlib/test_json.nlpl'
+        'examples/01_basic_concepts.nxl',
+        'examples/02_functions.nxl',
+        'examples/03_loops.nxl',
+        'test_programs/unit/stdlib/test_json.nxl'
     ]
     
     results = []
@@ -178,7 +178,7 @@ def benchmark_cache_vs_no_cache():
     print("DIRECT COMPARISON: CACHED vs UNCACHED")
     print("=" * 70 + "\n")
     
-    file_path = 'examples/01_basic_concepts.nlpl'
+    file_path = 'examples/01_basic_concepts.nxl'
     if not os.path.exists(file_path):
         print(f"⚠ Skipping - {file_path} not found")
         return
@@ -187,8 +187,8 @@ def benchmark_cache_vs_no_cache():
         source_code = f.read()
     
     # Uncached parsing
-    from nlpl.parser.lexer import Lexer
-    from nlpl.parser.parser import Parser
+    from nexuslang.parser.lexer import Lexer
+    from nexuslang.parser.parser import Parser
     
     print("Uncached parsing (10 iterations):")
     uncached_times = []

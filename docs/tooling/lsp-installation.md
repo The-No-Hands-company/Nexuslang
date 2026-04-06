@@ -1,6 +1,6 @@
-# NLPL Language Server Installation
+# NexusLang Language Server Installation
 
-The NLPL Language Server provides IDE features like autocomplete, go-to-definition, and diagnostics for NLPL code.
+The NexusLang Language Server provides IDE features like autocomplete, go-to-definition, and diagnostics for NexusLang code.
 
 ## Installation
 
@@ -8,10 +8,10 @@ The NLPL Language Server provides IDE features like autocomplete, go-to-definiti
 
 ```bash
 # From project root
-python -m nlpl.lsp
+python -m nexuslang.lsp
 
 # With debug logging
-python -m nlpl.lsp --debug --log-file /tmp/nlpl-lsp.log
+python -m nexuslang.lsp --debug --log-file /tmp/nlpl-lsp.log
 ```
 
 ### Option 2: Standalone Script
@@ -21,7 +21,7 @@ python -m nlpl.lsp --debug --log-file /tmp/nlpl-lsp.log
 ./scripts/nlpl-lsp
 
 # Or add to PATH
-export PATH="$PATH:/path/to/NLPL/scripts"
+export PATH="$PATH:/path/to/NexusLang/scripts"
 nlpl-lsp
 ```
 
@@ -29,7 +29,7 @@ nlpl-lsp
 
 ```bash
 # Create a symlink in a directory on your PATH
-sudo ln -s /path/to/NLPL/scripts/nlpl-lsp /usr/local/bin/nlpl-lsp
+sudo ln -s /path/to/NexusLang/scripts/nlpl-lsp /usr/local/bin/nlpl-lsp
 
 # Verify installation
 which nlpl-lsp
@@ -40,7 +40,7 @@ nlpl-lsp --help
 
 ### VS Code
 
-The NLPL VS Code extension automatically uses the LSP server. No additional configuration needed.
+The NexusLang VS Code extension automatically uses the LSP server. No additional configuration needed.
 
 ### Neovim (nvim-lspconfig)
 
@@ -50,19 +50,19 @@ Add to your `init.lua`:
 local lspconfig = require('lspconfig')
 local configs = require('lspconfig.configs')
 
--- Define NLPL LSP
+-- Define NexusLang LSP
 if not configs.nlpl then
   configs.nlpl = {
     default_config = {
-      cmd = {'nlpl-lsp'},  -- or {'python', '-m', 'nlpl.lsp'}
+      cmd = {'nlpl-lsp'},  -- or {'python', '-m', 'nexuslang.lsp'}
       filetypes = {'nlpl'},
-      root_dir = lspconfig.util.root_pattern('.git', 'nlpl.toml'),
+      root_dir = lspconfig.util.root_pattern('.git', 'nexuslang.toml'),
       settings = {},
     },
   }
 end
 
--- Enable NLPL LSP
+-- Enable NexusLang LSP
 lspconfig.nlpl.setup{}
 ```
 
@@ -107,7 +107,7 @@ Add to LSP settings (`Preferences > Package Settings > LSP > Settings`):
     "nlpl": {
       "enabled": true,
       "command": ["nlpl-lsp"],
-      "selector": "source.nlpl"
+      "selector": "source.nxl"
     }
   }
 }
@@ -115,7 +115,7 @@ Add to LSP settings (`Preferences > Package Settings > LSP > Settings`):
 
 ## Features
 
-The NLPL Language Server provides:
+The NexusLang Language Server provides:
 
 - **Completions**: Context-aware code completion for keywords, functions, classes, and variables
 - **Diagnostics**: Real-time syntax and semantic error checking
@@ -154,19 +154,19 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{}}
 - **Solution**: Check editor LSP logs and verify `nlpl-lsp` runs from terminal
 
 **Issue**: No completions/diagnostics
-- **Solution**: Ensure NLPL syntax is valid, check LSP logs for errors
+- **Solution**: Ensure NexusLang syntax is valid, check LSP logs for errors
 
 ## Requirements
 
 - Python 3.10 or higher
-- NLPL source code and dependencies installed
+- NexusLang source code and dependencies installed
 
 ## Support
 
 For issues or questions:
-- GitHub Issues: https://github.com/Zajfan/NLPL/issues
+- GitHub Issues: https://github.com/Zajfan/NexusLang/issues
 - Documentation: See `docs/` directory in the project
 
 ## License
 
-Same as NLPL project - see LICENSE file in project root.
+Same as NexusLang project - see LICENSE file in project root.

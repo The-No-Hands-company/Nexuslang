@@ -72,7 +72,7 @@ This session focused on implementing critical low-level systems programming feat
   - Memory ordering demonstrations
   - Memory fences
 
-**Important Discovery**: NLPL functions only support **positional parameters**, not named parameters. Fixed all atomic examples accordingly.
+**Important Discovery**: NexusLang functions only support **positional parameters**, not named parameters. Fixed all atomic examples accordingly.
 
 **Enables**: Lock-free concurrent algorithms, wait-free data structures
 
@@ -241,8 +241,8 @@ This session focused on implementing critical low-level systems programming feat
 
 ## Key Learnings
 
-### 1. NLPL Syntax Constraint
-**Discovery**: NLPL functions only support **positional parameters**, NOT named parameters.
+### 1. NexusLang Syntax Constraint
+**Discovery**: NexusLang functions only support **positional parameters**, NOT named parameters.
 
 **Incorrect Syntax** (will fail):
 ```nlpl
@@ -254,7 +254,7 @@ atomic_load with atomic counter and order "seq_cst"
 atomic_load with counter and "seq_cst"
 ```
 
-**Impact**: All examples updated to use positional parameters only. This pattern must be followed for all future NLPL code.
+**Impact**: All examples updated to use positional parameters only. This pattern must be followed for all future NexusLang code.
 
 ### 2. Try-Catch Block Syntax
 **Correct pattern**:
@@ -268,7 +268,7 @@ end
 
 **Note**: Uses `end` to close try-catch block, NOT `end try`.
 
-### 3. NLPL Block Endings
+### 3. NexusLang Block Endings
 - Most blocks have **implicit endings** (functions, loops)
 - Try-catch blocks require explicit `end`
 - If-else blocks require explicit `end`
@@ -351,7 +351,7 @@ end
 
 ### Lines of Code Added
 - **Implementation**: ~1,593 lines (Python)
-- **Examples**: ~1,174 lines (NLPL)
+- **Examples**: ~1,174 lines (NexusLang)
 - **Total**: ~2,767 lines
 
 ### Functions Implemented
@@ -370,7 +370,7 @@ end
 
 ## Conclusion
 
-This session successfully implemented **4 major feature areas** that bring NLPL closer to C/C++/Rust parity for systems programming. We now have:
+This session successfully implemented **4 major feature areas** that bring NexusLang closer to C/C++/Rust parity for systems programming. We now have:
 
 ✅ **Direct hardware access** (Port I/O)  
 ✅ **Lock-free concurrency** (Atomics with memory ordering)  

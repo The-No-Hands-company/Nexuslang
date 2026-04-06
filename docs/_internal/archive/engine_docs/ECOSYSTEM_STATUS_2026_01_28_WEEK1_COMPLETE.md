@@ -1,4 +1,4 @@
-# NLPL Ecosystem Development Status
+# NexusLang Ecosystem Development Status
 ## Week 1 - Phase 1: Graphics Foundation
 
 **Date**: January 28, 2026  

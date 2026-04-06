@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Debug script to verify trait storage in interpreter."""
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.interpreter.interpreter import Interpreter
-from nlpl.runtime.runtime import Runtime
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.interpreter.interpreter import Interpreter
+from nexuslang.runtime.runtime import Runtime
 
 code = '''
 define a trait called Comparable

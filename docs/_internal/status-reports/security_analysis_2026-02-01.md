@@ -1,4 +1,4 @@
-# NLPL Security Analysis & Enhancement Plan
+# NexusLang Security Analysis & Enhancement Plan
 ## Date: February 1, 2026
 
 ## 1. Security Issues in Modern Languages (Research)
@@ -11,7 +11,7 @@
 - No runtime bounds checking in release mode by default
 - Dependency supply chain attacks (crates.io)
 
-**Lessons for NLPL:**
+**Lessons for NexusLang:**
 - Clearly mark unsafe operations
 - Provide safe wrappers for common FFI patterns
 - Enable bounds checking by default
@@ -27,7 +27,7 @@
 - Path traversal vulnerabilities
 - No built-in permission system
 
-**Lessons for NLPL:**
+**Lessons for NexusLang:**
 - Ban or restrict eval-like features
 - Provide safe serialization alternatives
 - Require explicit opt-in for dangerous operations
@@ -43,7 +43,7 @@
 - Dependency confusion attacks (npm)
 - No filesystem/network permissions
 
-**Lessons for NLPL:**
+**Lessons for NexusLang:**
 - Deno's permission model is excellent (adopt similar)
 - Validate and sanitize all external input
 - Provide XSS-safe output functions
@@ -57,7 +57,7 @@
 - No memory safety for unsafe package
 - TOCTOU (Time-of-check to time-of-use) bugs
 
-**Lessons for NLPL:**
+**Lessons for NexusLang:**
 - Add race detection tools
 - Validate file paths
 - Never use shell expansion by default
@@ -69,7 +69,7 @@
 - Undefined behavior in release mode
 - FFI is completely unsafe
 
-**Lessons for NLPL:**
+**Lessons for NexusLang:**
 - Keep runtime checks even in optimized builds
 - Provide memory safety by default
 
@@ -80,7 +80,7 @@
 - Objective-C interop bypasses safety
 - Reference cycles cause memory leaks
 
-**Lessons for NLPL:**
+**Lessons for NexusLang:**
 - Encourage safe handling of nullable values
 - Make memory leaks detectable
 
@@ -90,16 +90,16 @@
 - Still allows manual memory management
 - Complex ownership model may be error-prone
 
-**Lessons for NLPL:**
+**Lessons for NexusLang:**
 - C interop should be explicitly unsafe
 - Provide high-level safe abstractions
 
-## 2. NLPL Attack Vectors (Current State)
+## 2. NexusLang Attack Vectors (Current State)
 
 ### 2.1 Foreign Function Interface (FFI)
 **Vulnerability:** Direct C function calls can corrupt memory
 ```nlpl
-# Current NLPL allows unrestricted FFI
+# Current NexusLang allows unrestricted FFI
 import foreign function "system" from "libc.so.6" as system
 call system with "/bin/sh -c 'rm -rf /'"  # DANGEROUS!
 ```
@@ -233,7 +233,7 @@ set api_key to get_env "SECRET_API_KEY"
 ### 3.2 Prompt Mode
 Interactive prompts when permission needed:
 ```
-⚠️  NLPL requests file write access
+⚠️  NexusLang requests file write access
    Path: /home/user/data.txt
    Allow? [y/N/A(always)]
 ```
@@ -390,7 +390,7 @@ nlplc --target wasm script.nlpl
 
 ## 9. Comparison with Other Languages
 
-| Feature | Rust | Python | Node.js | Deno | NLPL (Goal) |
+| Feature | Rust | Python | Node.js | Deno | NexusLang (Goal) |
 |---------|------|--------|---------|------|-------------|
 | Memory Safety | ✅ | ❌ | ❌ | ✅ | ✅ |
 | Permission System | ❌ | ❌ | ❌ | ✅ | ✅ |

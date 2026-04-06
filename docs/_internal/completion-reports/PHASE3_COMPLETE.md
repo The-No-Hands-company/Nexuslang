@@ -1,10 +1,10 @@
-# NLPL Phase 3: Complete Implementation Summary
+# NexusLang Phase 3: Complete Implementation Summary
 
 **Status**: **COMPLETE** - All 5 Features Implemented and Tested (100% Success Rate)
 
 ## Overview
 
-Phase 3 of NLPL development focused on advanced language features: comprehensions, decorators, type inference, generics infrastructure, and macros. All features have been successfully implemented with comprehensive test coverage.
+Phase 3 of NexusLang development focused on advanced language features: comprehensions, decorators, type inference, generics infrastructure, and macros. All features have been successfully implemented with comprehensive test coverage.
 
 ## Implemented Features
 
@@ -298,17 +298,17 @@ NLPL now supports advanced language features comparable to Python, Ruby, and mod
 ### Run All Tests
 ```bash
 # Comprehensions
-python -m nlpl.main test_programs/integration/test_comprehensions_simple.nlpl --no-type-check
-python -m nlpl.main test_programs/integration/test_dict_comprehensions.nlpl --no-type-check
+python -m nexuslang.main test_programs/integration/test_comprehensions_simple.nlpl --no-type-check
+python -m nexuslang.main test_programs/integration/test_dict_comprehensions.nlpl --no-type-check
 
 # Decorators
-python -m nlpl.main test_programs/integration/test_decorators.nlpl --no-type-check
+python -m nexuslang.main test_programs/integration/test_decorators.nlpl --no-type-check
 
 # Macros
-python -m nlpl.main test_programs/integration/test_macros.nlpl --no-type-check
+python -m nexuslang.main test_programs/integration/test_macros.nlpl --no-type-check
 
 # Complete Showcase
-python -m nlpl.main test_programs/integration/phase3_complete_showcase.nlpl --no-type-check
+python -m nexuslang.main test_programs/integration/phase3_complete_showcase.nlpl --no-type-check
 ```
 
 ### Example Usage

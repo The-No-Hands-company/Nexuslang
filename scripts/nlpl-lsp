@@ -3,7 +3,7 @@
 NLPL Language Server - Standalone Entry Point
 ==============================================
 
-Standalone script to run the NLPL Language Server.
+Standalone script to run the NexusLang Language Server.
 
 Usage:
     nlpl-lsp
@@ -21,7 +21,7 @@ src_dir = os.path.join(project_root, 'src')
 sys.path.insert(0, src_dir)
 
 # Import and run the LSP server
-from nlpl.lsp.__main__ import main
+from nexuslang.lsp.__main__ import main
 
 if __name__ == '__main__':
     main()

@@ -7,7 +7,7 @@ import sys
 import time
 from pathlib import Path
 
-from nlpl.lsp.server import NLPLLanguageServer, Position
+from nexuslang.lsp.server import NLPLLanguageServer, Position
 
 
 def find_symbol_position(text: str, symbol: str) -> Position | None:
@@ -20,8 +20,8 @@ def find_symbol_position(text: str, symbol: str) -> Position | None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run NLPL LSP smoke checks")
-    parser.add_argument("--sample", default="examples/01_basic_concepts.nlpl", help="Sample NLPL file to load")
+    parser = argparse.ArgumentParser(description="Run NexusLang LSP smoke checks")
+    parser.add_argument("--sample", default="examples/01_basic_concepts.nxl", help="Sample NexusLang file to load")
     parser.add_argument("--symbol", default="calculate_average", help="Symbol to query for nav features")
     parser.add_argument("--max-latency-ms", type=float, default=500.0, help="Maximum allowed latency per check in ms")
     parser.add_argument("--output", default="lsp-smoke.json", help="Path to write JSON report")

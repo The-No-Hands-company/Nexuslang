@@ -76,19 +76,19 @@ def main():
     
     test_cases = [
         # Basic FFI
-        ('test_programs/ffi/test_ffi_basic.nlpl', ['Hello from NLPL']),
+        ('test_programs/ffi/test_ffi_basic.nxl', ['Hello from NLPL']),
         
         # Structs
-        ('test_programs/ffi/test_ffi_struct.nlpl', ['Point:', 'Sum:', 'Distance:']),
+        ('test_programs/ffi/test_ffi_struct.nxl', ['Point:', 'Sum:', 'Distance:']),
         
         # Math
-        ('test_programs/ffi/test_ffi_math.nlpl', None),
+        ('test_programs/ffi/test_ffi_math.nxl', None),
         
         # Callbacks
-        ('test_programs/ffi/test_ffi_callback_working.nlpl', ['Testing callback', 'Callback called']),
+        ('test_programs/ffi/test_ffi_callback_working.nxl', ['Testing callback', 'Callback called']),
         
         # Variadic
-        ('test_programs/ffi/test_variadic_printf.nlpl', None),
+        ('test_programs/ffi/test_variadic_printf.nxl', None),
     ]
     
     passed = 0

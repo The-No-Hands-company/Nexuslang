@@ -17,12 +17,12 @@ import os
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from nlpl.lsp.server import NLPLLanguageServer, Position
-from nlpl.lsp.references import ReferencesProvider
-from nlpl.lsp.definitions import DefinitionProvider
-from nlpl.lsp.hover import HoverProvider
-from nlpl.lsp.completions import CompletionProvider
-from nlpl.lsp.symbols import SymbolProvider
+from nexuslang.lsp.server import NLPLLanguageServer, Position
+from nexuslang.lsp.references import ReferencesProvider
+from nexuslang.lsp.definitions import DefinitionProvider
+from nexuslang.lsp.hover import HoverProvider
+from nexuslang.lsp.completions import CompletionProvider
+from nexuslang.lsp.symbols import SymbolProvider
 
 
 class TestReferencesProvider:
@@ -41,11 +41,11 @@ set result to calculate with 5
 set another to calculate with 10
 """
         
-        server.documents["test.nlpl"] = code
+        server.documents["test.nxl"] = code
         
         # Find references to "calculate" at line 1
         position = Position(1, 10)  # on "calculate"
-        refs = provider.find_references(code, position, "test.nlpl", include_declaration=True)
+        refs = provider.find_references(code, position, "test.nxl", include_declaration=True)
         
         # Should find: 1 definition + 2 calls = 3 references
         assert len(refs) >= 2, f"Expected at least 2 references, got {len(refs)}"
@@ -65,11 +65,11 @@ set counter to counter plus 1
 set doubled to counter times 2
 """
         
-        server.documents["test.nlpl"] = code
+        server.documents["test.nxl"] = code
         
         # Find references to "counter" at line 1
         position = Position(1, 5)  # on "counter"
-        refs = provider.find_references(code, position, "test.nlpl", include_declaration=True)
+        refs = provider.find_references(code, position, "test.nxl", include_declaration=True)
         
         # Should find: 1 assignment + 2 usages = 3 references
         assert len(refs) >= 2, f"Expected at least 2 references, got {len(refs)}"
@@ -87,11 +87,11 @@ set p1 to new Person
 set p2 as Person to new Person
 """
         
-        server.documents["test.nlpl"] = code
+        server.documents["test.nxl"] = code
         
         # Find references to "Person" at line 1
         position = Position(1, 7)  # on "Person"
-        refs = provider.find_references(code, position, "test.nlpl", include_declaration=True)
+        refs = provider.find_references(code, position, "test.nxl", include_declaration=True)
         
         # Should find: 1 definition + 2+ instantiations
         assert len(refs) >= 2, f"Expected at least 2 references, got {len(refs)}"
@@ -112,11 +112,11 @@ function helper that takes x as Integer returns Integer
 set result to helper with 5
 """
         
-        server.documents["test.nlpl"] = code
+        server.documents["test.nxl"] = code
         
         # Go to definition of "helper" at line 4
         position = Position(4, 15)  # on "helper"
-        location = provider.get_definition(code, position, "test.nlpl")
+        location = provider.get_definition(code, position, "test.nxl")
         
         assert location is not None, "Should find function definition"
         assert location.range.start.line == 1, "Should point to function definition line"
@@ -135,11 +135,11 @@ set calc to new Calculator
 set sum to call add on calc with 1, 2
 """
         
-        server.documents["test.nlpl"] = code
+        server.documents["test.nxl"] = code
         
         # Go to definition of "add" at line 6
         position = Position(6, 18)  # on "add"
-        location = provider.get_definition(code, position, "test.nlpl")
+        location = provider.get_definition(code, position, "test.nxl")
         
         assert location is not None, "Should find method definition"
         assert location.range.start.line == 2, "Should point to method definition line"
@@ -155,11 +155,11 @@ set counter to counter plus 1
 set doubled to counter times 2
 """
         
-        server.documents["test.nlpl"] = code
+        server.documents["test.nxl"] = code
         
         # Go to definition of "counter" at line 3
         position = Position(3, 16)  # on "counter" in "counter times 2"
-        location = provider.get_definition(code, position, "test.nlpl")
+        location = provider.get_definition(code, position, "test.nxl")
         
         assert location is not None, "Should find variable definition"
         # Should point to the closest assignment before line 3
@@ -388,7 +388,7 @@ class DataProcessor
     property data as List
 """
         
-        server.documents["test.nlpl"] = code
+        server.documents["test.nxl"] = code
         
         # Search with "ca" should find "calculate_average"
         symbols = provider.find_symbols("ca", server.documents)
@@ -416,7 +416,7 @@ function calibrate that takes val as Float returns Float
     return val
 """
         
-        server.documents["test.nlpl"] = code
+        server.documents["test.nxl"] = code
         
         # Search for "cal" - should find all three
         symbols = provider.find_symbols("cal", server.documents)

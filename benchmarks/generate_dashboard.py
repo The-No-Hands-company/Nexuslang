@@ -3,7 +3,7 @@ NLPL Performance Dashboard Generator
 ======================================
 
 Reads perf-baseline.json and generates a self-contained HTML performance
-dashboard with bar charts comparing NLPL against C, Python, and Rust.
+dashboard with bar charts comparing NexusLang against C, Python, and Rust.
 
 Usage:
     python benchmarks/generate_dashboard.py
@@ -211,7 +211,7 @@ HTML_TEMPLATE = """\
   </table>
 </div>
 
-<!-- NLPL optimization levels chart -->
+<!-- NexusLang optimization levels chart -->
 <h2>NLPL Optimization Levels (O0 -> O3)</h2>
 <div class="card">
   <div class="chart-container">
@@ -221,19 +221,19 @@ HTML_TEMPLATE = """\
 
 <div class="note">
   <strong>Interpreter vs Compiled Languages</strong><br>
-  NLPL currently runs as an interpreted language on top of CPython. The ratios above reflect
+  NexusLang currently runs as an interpreted language on top of CPython. The ratios above reflect
   interpreter overhead versus ahead-of-time compiled code (C, Rust) and Python's highly
   optimized CPython interpreter.<br><br>
   <strong>Dispatch table speedup:</strong> A static class-level dispatch table + per-instance
   bound method cache replaced per-node regex processing, delivering {dispatch_speedup}x faster
   AST node dispatch. This is an interpreter-level optimization, not an algorithmic one.<br><br>
-  <strong>Next steps to reduce NLPL/C ratio:</strong> LLVM native code generation backend
+  <strong>Next steps to reduce NexusLang/C ratio:</strong> LLVM native code generation backend
   (planned — Phase 3 compiler work) will eliminate interpreter overhead entirely, targeting
   &lt;5x C performance for compute-intensive workloads.
 </div>
 
 <footer>
-  NLPL Performance Dashboard &mdash; {date_short} &mdash; commit {git_commit}
+  NexusLang Performance Dashboard &mdash; {date_short} &mdash; commit {git_commit}
 </footer>
 
 <script>
@@ -356,8 +356,8 @@ def generate_dashboard(data: dict) -> str:
     rustc_badge = f'<span>Rustc: <span class="badge">{rustc_ver.split()[1] if rustc_ver and len(rustc_ver.split()) > 1 else rustc_ver[:20]}</span></span>' if rustc_ver and rustc_ver != "skipped" else ""
 
     # Extra stats from benchmark data
-    ratios_c = [r["nlpl_vs_c_ratio"] for r in baseline.values() if r.get("nlpl_vs_c_ratio")]
-    ratios_py = [r["nlpl_vs_python_ratio"] for r in baseline.values() if r.get("nlpl_vs_python_ratio")]
+    ratios_c = [r["nxl_vs_c_ratio"] for r in baseline.values() if r.get("nxl_vs_c_ratio")]
+    ratios_py = [r["nxl_vs_python_ratio"] for r in baseline.values() if r.get("nxl_vs_python_ratio")]
 
     extra_stats_html = ""
     if ratios_c:
@@ -375,28 +375,28 @@ def generate_dashboard(data: dict) -> str:
     bench_cards_html = ""
     chart_js_calls = ""
     bench_names_display = []
-    nlpl_o0_vals = []
-    nlpl_o1_vals = []
-    nlpl_o2_vals = []
-    nlpl_o3_vals = []
+    nxl_o0_vals = []
+    nxl_o1_vals = []
+    nxl_o2_vals = []
+    nxl_o3_vals = []
 
     for i, (bench_name, r) in enumerate(baseline.items()):
         display_name = bench_name.replace("_", " ").title()
         bench_names_display.append(display_name)
         canvas_id = f"chart_{i}"
 
-        o0 = _ms_or_null(r.get("nlpl_O0_ms"))
-        o1 = _ms_or_null(r.get("nlpl_O1_ms"))
-        o2 = _ms_or_null(r.get("nlpl_O2_ms"))
-        o3 = _ms_or_null(r.get("nlpl_O3_ms"))
+        o0 = _ms_or_null(r.get("nxl_O0_ms"))
+        o1 = _ms_or_null(r.get("nxl_O1_ms"))
+        o2 = _ms_or_null(r.get("nxl_O2_ms"))
+        o3 = _ms_or_null(r.get("nxl_O3_ms"))
         c  = _ms_or_null(r.get("c_o3_ms"))
         py = _ms_or_null(r.get("python_ms"))
         rs = _ms_or_null(r.get("rust_release_ms"))
 
-        nlpl_o0_vals.append(o0)
-        nlpl_o1_vals.append(o1)
-        nlpl_o2_vals.append(o2)
-        nlpl_o3_vals.append(o3)
+        nxl_o0_vals.append(o0)
+        nxl_o1_vals.append(o1)
+        nxl_o2_vals.append(o2)
+        nxl_o3_vals.append(o3)
 
         langs_labels = []
         langs_data = []
@@ -448,10 +448,10 @@ makeLogBarChart('{canvas_id}',
     # Optimization level comparison chart (NLPL only, grouped by benchmark)
     opt_datasets_js = ""
     for label, vals, color_key in [
-        ("O0 (no opts)", nlpl_o0_vals, "nlplO0"),
-        ("O1", nlpl_o1_vals, "nlplO1"),
-        ("O2", nlpl_o2_vals, "nlplO2"),
-        ("O3 (aggressive)", nlpl_o3_vals, "nlplO3"),
+        ("O0 (no opts)", nxl_o0_vals, "nlplO0"),
+        ("O1", nxl_o1_vals, "nlplO1"),
+        ("O2", nxl_o2_vals, "nlplO2"),
+        ("O3 (aggressive)", nxl_o3_vals, "nlplO3"),
     ]:
         opt_datasets_js += f"""
   {{
@@ -473,18 +473,18 @@ makeLinearBarChart('optLevelChart',
     ratio_rows_html = ""
     for bench_name, r in baseline.items():
         display = bench_name.replace("_", " ").title()
-        o3 = _ms_or_null(r.get("nlpl_O3_ms"))
+        o3 = _ms_or_null(r.get("nxl_O3_ms"))
         o3_fmt = f"{o3:.3f}" if o3 else "N/A"
-        speedup = r.get("nlpl_O3_vs_O0_speedup")
+        speedup = r.get("nxl_O3_vs_O0_speedup")
         speedup_fmt = f"{speedup:.2f}x" if speedup else "N/A"
 
         ratio_rows_html += f"""
 <tr>
   <td><strong>{display}</strong></td>
   <td style="font-family:monospace">{o3_fmt}</td>
-  {_fmt_ratio(r.get("nlpl_vs_c_ratio"))}
-  {_fmt_ratio(r.get("nlpl_vs_rust_ratio"))}
-  {_fmt_ratio(r.get("nlpl_vs_python_ratio"))}
+  {_fmt_ratio(r.get("nxl_vs_c_ratio"))}
+  {_fmt_ratio(r.get("nxl_vs_rust_ratio"))}
+  {_fmt_ratio(r.get("nxl_vs_python_ratio"))}
   <td style="color:var(--green)">{speedup_fmt}</td>
 </tr>"""
 
@@ -510,7 +510,7 @@ makeLinearBarChart('optLevelChart',
 # ---------------------------------------------------------------------------
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate NLPL performance dashboard HTML")
+    parser = argparse.ArgumentParser(description="Generate NexusLang performance dashboard HTML")
     parser.add_argument("--input", default=str(BENCH_DIR / "perf-baseline.json"),
                         help="Input perf-baseline.json path")
     parser.add_argument("--output", default=str(BENCH_DIR / "perf-dashboard.html"),
@@ -540,10 +540,10 @@ def main():
     print()
     print("Quick summary:")
     for bench_name, r in baseline.items():
-        ratio_c = r.get("nlpl_vs_c_ratio")
-        ratio_py = r.get("nlpl_vs_python_ratio")
-        o3 = r.get("nlpl_O3_ms")
-        parts = [f"  {bench_name}: NLPL O3={o3:.1f}ms" if o3 else f"  {bench_name}:"]
+        ratio_c = r.get("nxl_vs_c_ratio")
+        ratio_py = r.get("nxl_vs_python_ratio")
+        o3 = r.get("nxl_O3_ms")
+        parts = [f"  {bench_name}: NexusLang O3={o3:.1f}ms" if o3 else f"  {bench_name}:"]
         if ratio_c:
             parts.append(f"  C-ratio={ratio_c:,.0f}x")
         if ratio_py:

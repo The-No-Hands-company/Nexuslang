@@ -1,5 +1,5 @@
 """
-Tests for the NLPL stdlib network module - new socket/TLS/UDP additions.
+Tests for the NexusLang stdlib network module - new socket/TLS/UDP additions.
 
 Groups:
 1. Server sockets (socket_bind, socket_listen, socket_accept, socket_set_option)
@@ -28,7 +28,7 @@ _PROJECT_ROOT = os.path.abspath(
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from nlpl.stdlib.network import (
+from nexuslang.stdlib.network import (
     socket_create,
     socket_bind,
     socket_listen,

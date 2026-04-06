@@ -1,6 +1,6 @@
-# Existing Natural Language Programming Language Approaches
+# Existing NexusLang Approaches
 
-## Traditional Natural Language Programming Languages
+## Traditional NexusLangs
 
 ### Inform 7
 - **Developer**: Graham Nelson
@@ -140,7 +140,7 @@
 3. **Ease of learning vs. Power**: Simpler syntax often means limited capabilities
 4. **General purpose vs. Domain-specific**: Most successful natural language programming is domain-constrained
 
-## Lessons for New NLPL Development
+## Lessons for New NexusLang Development
 1. **Balance structure and flexibility**: Some structure is necessary to resolve ambiguities
 2. **Consider domain constraints**: Limiting the domain can make natural language more feasible
 3. **Leverage modern NLP techniques**: Machine learning can help resolve ambiguities

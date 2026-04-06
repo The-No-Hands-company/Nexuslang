@@ -1,15 +1,15 @@
--- NLPL Language Support for Neovim
+-- NexusLang Language Support for Neovim
 -- =================================
 --
 -- Installation (lazy.nvim):
 --   {
---     dir = "/path/to/NLPL/editors/neovim",
---     name = "nlpl.nvim",
+--     dir = "/path/to/NexusLang/editors/neovim",
+--     name = "nexuslang.nvim",
 --     config = function() require("nlpl").setup() end,
 --   }
 --
 -- Installation (packer.nvim):
---   use { "/path/to/NLPL/editors/neovim", config = function()
+--   use { "/path/to/NexusLang/editors/neovim", config = function()
 --     require("nlpl").setup()
 --   end }
 --
@@ -18,7 +18,7 @@
 --
 -- Features:
 --   - Syntax highlighting
---   - LSP integration (uses the NLPL language server)
+--   - LSP integration (uses the NexusLang language server)
 --   - File type detection
 --   - Indentation rules
 --   - Comment string configuration
@@ -28,7 +28,7 @@ local M = {}
 
 -- Default configuration
 M.defaults = {
-  -- Path to the NLPL LSP server script (auto-detected if nil)
+  -- Path to the NexusLang LSP server script (auto-detected if nil)
   lsp_server_path = nil,
 
   -- Python executable to use for running the LSP server
@@ -64,10 +64,10 @@ local function register_filetype()
       nlpl = "nlpl",
     },
     filename = {
-      ["build.nlpl"] = "nlpl",
+      ["build.nxl"] = "nlpl",
     },
     pattern = {
-      [".*%.nlpl"] = "nlpl",
+      [".*%.nxl"] = "nlpl",
     },
   })
 end
@@ -184,13 +184,13 @@ local function find_lsp_server()
     return M.config.lsp_server_path
   end
 
-  -- Look for the NLPL package installed via pip
+  -- Look for the NexusLang package installed via pip
   local handle = io.popen("python3 -c \"import nlpl; import os; print(os.path.dirname(nlpl.__file__))\" 2>/dev/null")
   if handle then
-    local nlpl_dir = handle:read("*l")
+    local nxl_dir = handle:read("*l")
     handle:close()
-    if nlpl_dir and nlpl_dir ~= "" then
-      local main_path = nlpl_dir .. "/lsp/__main__.py"
+    if nxl_dir and nxl_dir ~= "" then
+      local main_path = nxl_dir .. "/lsp/__main__.py"
       if vim.fn.filereadable(main_path) == 1 then
         return main_path
       end
@@ -199,7 +199,7 @@ local function find_lsp_server()
 
   -- Fallback: look in common dev locations
   local candidates = {
-    vim.fn.expand("~/NLPL/src/nlpl/lsp/__main__.py"),
+    vim.fn.expand("~/NexusLang/src/nlpl/lsp/__main__.py"),
     vim.fn.expand("~/.local/lib/nlpl/lsp/__main__.py"),
   }
   for _, path in ipairs(candidates) do
@@ -209,7 +209,7 @@ local function find_lsp_server()
   end
 
   vim.notify(
-    "[nlpl.nvim] Could not find NLPL LSP server. Set lsp_server_path in setup().",
+    "[nlpl.nvim] Could not find NexusLang LSP server. Set lsp_server_path in setup().",
     vim.log.levels.WARN
   )
   return nil
@@ -228,7 +228,7 @@ local function setup_lsp()
   end
 
   local python = M.config.python_cmd or "python3"
-  local cmd = { python, "-m", "nlpl.lsp" }
+  local cmd = { python, "-m", "nexuslang.lsp" }
   -- If server_path points to __main__.py directly, use it
   if server_path:match("%.py$") then
     cmd = { python, server_path }
@@ -241,7 +241,7 @@ local function setup_lsp()
       default_config = {
         cmd = cmd,
         filetypes = { "nlpl" },
-        root_dir = lspconfig.util.root_pattern("nlpl.toml", ".git"),
+        root_dir = lspconfig.util.root_pattern("nexuslang.toml", ".git"),
         single_file_support = true,
         settings = M.config.lsp_settings or {},
       },
@@ -288,32 +288,32 @@ local function register_commands()
     local release = opts.args:find("--release") ~= nil
     local cmd = "nlpl build" .. (release and " --release" or "")
     vim.cmd("terminal " .. cmd)
-  end, { nargs = "?", desc = "Build the NLPL project" })
+  end, { nargs = "?", desc = "Build the NexusLang project" })
 
   vim.api.nvim_create_user_command("NLPLTest", function(opts)
     local coverage = opts.args:find("--coverage") ~= nil
     local cmd = "nlpl test" .. (coverage and " --coverage" or "")
     vim.cmd("terminal " .. cmd)
-  end, { nargs = "?", desc = "Run NLPL tests" })
+  end, { nargs = "?", desc = "Run NexusLang tests" })
 
   vim.api.nvim_create_user_command("NLPLRun", function()
     vim.cmd("terminal nlpl run")
-  end, { desc = "Build and run the NLPL project" })
+  end, { desc = "Build and run the NexusLang project" })
 
   vim.api.nvim_create_user_command("NLPLCoverage", function(opts)
     local file = opts.args ~= "" and opts.args or vim.fn.expand("%")
     vim.cmd("terminal nlpl coverage " .. vim.fn.shellescape(file))
-  end, { nargs = "?", desc = "Run NLPL coverage on a file" })
+  end, { nargs = "?", desc = "Run NexusLang coverage on a file" })
 
   vim.api.nvim_create_user_command("NLPLProfile", function(opts)
     local file = opts.args ~= "" and opts.args or vim.fn.expand("%")
     vim.cmd("terminal nlpl profile " .. vim.fn.shellescape(file))
-  end, { nargs = "?", desc = "Profile an NLPL file" })
+  end, { nargs = "?", desc = "Profile an NexusLang file" })
 
   vim.api.nvim_create_user_command("NLPLDoc", function(opts)
     local dir = opts.args ~= "" and opts.args or "docs/api"
     vim.cmd("terminal nlpl doc --output " .. vim.fn.shellescape(dir))
-  end, { nargs = "?", desc = "Generate NLPL API docs" })
+  end, { nargs = "?", desc = "Generate NexusLang API docs" })
 end
 
 -- ---------------------------------------------------------------------------

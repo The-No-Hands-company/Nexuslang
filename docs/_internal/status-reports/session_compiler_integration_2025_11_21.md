@@ -53,7 +53,7 @@ python src/nlpl/cli.py source.nlpl -o output --target c --link
 #include <string.h>
 
 int main(int argc, char** argv) {
- const char* message = "Hello from NLPL Compiler!";
+ const char* message = "Hello from NexusLang Compiler!";
  printf("%s\n", message);
  int x = 10;
  int y = 20;
@@ -163,7 +163,7 @@ Options:
 **Integration Points**:
 
 - Used by 13 files (tests, dev_tools)
-- Imports: `from nlpl.compiler import Compiler, CompilationTarget`
+- Imports: `from nexuslang.compiler import Compiler, CompilationTarget`
 
 ---
 
@@ -217,7 +217,7 @@ Options:
 
 ```nlpl
 # test_programs/features/test_compiler_backend.nlpl
-set message to "Hello from NLPL Compiler!"
+set message to "Hello from NexusLang Compiler!"
 print text message
 
 set x to 10
@@ -239,13 +239,13 @@ end
 ### C Compilation Results 
 
 ```bash
-$ python src/nlpl/cli.py test_compiler_backend.nlpl -o /tmp/nlpl_compiled --target c --link
- Compilation successful: /tmp/nlpl_compiled.generated.c
- Linking successful: /tmp/nlpl_compiled
- Output: /tmp/nlpl_compiled (12,640 bytes)
+$ python src/nlpl/cli.py test_compiler_backend.nlpl -o /tmp/nxl_compiled --target c --link
+ Compilation successful: /tmp/nxl_compiled.generated.c
+ Linking successful: /tmp/nxl_compiled
+ Output: /tmp/nxl_compiled (12,640 bytes)
 
-$ /tmp/nlpl_compiled
-Hello from NLPL Compiler!
+$ /tmp/nxl_compiled
+Hello from NexusLang Compiler!
 Sum: 
 30
 Sum is large!
@@ -260,8 +260,8 @@ Counter:
 ### C++ Compilation Results 
 
 ```bash
-$ python src/nlpl/cli.py test_compiler_backend.nlpl -o /tmp/nlpl_cpp --target cpp --link
- Compilation successful: /tmp/nlpl_cpp.generated.cpp
+$ python src/nlpl/cli.py test_compiler_backend.nlpl -o /tmp/nxl_cpp --target cpp --link
+ Compilation successful: /tmp/nxl_cpp.generated.cpp
  Linking failed:
 error: use of 'counter' before deduction of 'auto'
  auto counter = (counter + 1); // Line 32

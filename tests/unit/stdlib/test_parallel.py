@@ -25,7 +25,7 @@ class MockRuntime:
 # Import the module under test
 # ---------------------------------------------------------------------------
 
-from nlpl.stdlib.parallel import (
+from nexuslang.stdlib.parallel import (
     parallel_map,
     parallel_filter,
     parallel_reduce,

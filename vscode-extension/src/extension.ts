@@ -15,7 +15,7 @@ let client: LanguageClient;
 // ---------------------------------------------------------------------------
 
 /**
- * Structured data payload attached to NLPL diagnostics by the LSP server.
+ * Structured data payload attached to NexusLang diagnostics by the LSP server.
  * Mirrors diagnostic.data shape defined in diagnostics.py _build_diagnostic().
  */
 interface NLPLDiagnosticData {
@@ -107,7 +107,7 @@ class NLPLDiagnosticHoverProvider implements vscode.HoverProvider {
 // ---------------------------------------------------------------------------
 
 /**
- * Show the explain output for the NLPL error code on the diagnostic under the
+ * Show the explain output for the NexusLang error code on the diagnostic under the
  * cursor, or prompt the user to enter a code manually.
  */
 async function explainErrorCode(context: vscode.ExtensionContext): Promise<void> {
@@ -131,7 +131,7 @@ async function explainErrorCode(context: vscode.ExtensionContext): Promise<void>
 
     if (!code) {
         code = await vscode.window.showInputBox({
-            prompt: 'Enter NLPL error code (e.g. E200)',
+            prompt: 'Enter NexusLang error code (e.g. E200)',
             placeHolder: 'E200',
             validateInput: v => /^E\d{3}$/.test(v.trim()) ? undefined : 'Format must be E followed by 3 digits'
         });
@@ -143,7 +143,7 @@ async function explainErrorCode(context: vscode.ExtensionContext): Promise<void>
 
     code = code.trim().toUpperCase();
 
-    // Run `python -m nlpl --explain <CODE>` from workspace root
+    // Run `python -m nxl --explain <CODE>` from workspace root
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (!workspaceFolder) {
         vscode.window.showErrorMessage('No workspace folder open.');
@@ -159,12 +159,12 @@ async function explainErrorCode(context: vscode.ExtensionContext): Promise<void>
         cwd: workspaceFolder.uri.fsPath,
         env: { ...process.env, PYTHONPATH: srcPath }
     });
-    terminal.sendText(`${pythonPath} -m nlpl --explain ${code}`);
+    terminal.sendText(`${pythonPath} -m nxl --explain ${code}`);
     terminal.show();
 }
 
 export async function activate(context: vscode.ExtensionContext) {
-    console.log('[NLPL] Extension activation started');
+    console.log('[NexusLang] Extension activation started');
     vscode.window.showInformationMessage('NLPL extension is activating...');
 
     // Activate debug support
@@ -180,17 +180,17 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // Register "NLPL: Explain Error Code" command
     context.subscriptions.push(
-        vscode.commands.registerCommand('nlpl.explainErrorCode', () => explainErrorCode(context))
+        vscode.commands.registerCommand('nexuslang.explainErrorCode', () => explainErrorCode(context))
     );
 
     // Get configuration
     const config = vscode.workspace.getConfiguration('nlpl');
     const enabled = config.get<boolean>('languageServer.enabled', true);
     
-    console.log('[NLPL] Language server enabled:', enabled);
+    console.log('[NexusLang] Language server enabled:', enabled);
 
     if (!enabled) {
-        console.log('[NLPL] Language server is disabled');
+        console.log('[NexusLang] Language server is disabled');
         return;
     }
 
@@ -226,14 +226,14 @@ export async function activate(context: vscode.ExtensionContext) {
         args.push('--log-file', logFile);
     }
 
-    console.log('[NLPL] Server command:', serverPath);
-    console.log('[NLPL] Server args:', args);
+    console.log('[NexusLang] Server command:', serverPath);
+    console.log('[NexusLang] Server args:', args);
 
     // Server options with PYTHONPATH for workspace
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     const pythonPath = workspaceFolder ? path.join(workspaceFolder.uri.fsPath, 'src') : process.env.PYTHONPATH;
     
-    console.log('[NLPL] PYTHONPATH:', pythonPath);
+    console.log('[NexusLang] PYTHONPATH:', pythonPath);
     
     const serverOptions: ServerOptions = {
         command: serverPath,
@@ -251,12 +251,12 @@ export async function activate(context: vscode.ExtensionContext) {
     const clientOptions: LanguageClientOptions = {
         documentSelector: [{ scheme: 'file', language: 'nlpl' }],
         synchronize: {
-            fileEvents: vscode.workspace.createFileSystemWatcher('**/*.nlpl')
+            fileEvents: vscode.workspace.createFileSystemWatcher('**/*.nxl')
         }
     };
 
     // Create the language client
-    console.log('[NLPL] Creating language client...');
+    console.log('[NexusLang] Creating language client...');
     
     client = new LanguageClient(
         'nlplLanguageServer',
@@ -266,7 +266,7 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     // Start the client (async)
-    console.log('[NLPL] Starting language client...');
+    console.log('[NexusLang] Starting language client...');
     
     // Add timeout to prevent hanging forever
     const startPromise = client.start();
@@ -276,10 +276,10 @@ export async function activate(context: vscode.ExtensionContext) {
     
     try {
         await Promise.race([startPromise, timeoutPromise]);
-        console.log('[NLPL] Language server started successfully!');
+        console.log('[NexusLang] Language server started successfully!');
         vscode.window.showInformationMessage('NLPL Language Server started successfully!');
     } catch (error) {
-        console.error('[NLPL] Failed to start language server:', error);
+        console.error('[NexusLang] Failed to start language server:', error);
         vscode.window.showErrorMessage(`NLPL Language Server failed to start: ${error}`);
         
         // Show detailed diagnostic

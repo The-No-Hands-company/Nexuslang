@@ -4,7 +4,7 @@ NativeFunctionJIT (Tier-2) tests.
 Tests for the LLVM native code generation path used by the JIT tiered
 compiler at opt_level >= 3.  The pipeline under test is:
 
-    NLPL source -> parse -> AST -> LLVMIRGenerator -> opt -> llc
+    NexusLang source -> parse -> AST -> LLVMIRGenerator -> opt -> llc
                 -> clang -shared -> .so -> ctypes callable
 
 All tests that require the LLVM tool chain (opt, llc, clang) are decorated
@@ -25,8 +25,8 @@ _SRC = str(Path(__file__).resolve().parent.parent.parent.parent / "src")
 if _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
-from nlpl.jit.native_jit import NativeFunctionJIT, NativeCompileError, _tools_available
-from nlpl.jit.jit_compiler import JITCompiler
+from nexuslang.jit.native_jit import NativeFunctionJIT, NativeCompileError, _tools_available
+from nexuslang.jit.jit_compiler import JITCompiler
 
 # ---------------------------------------------------------------------------
 # Skip marker
@@ -42,9 +42,9 @@ skip_no_llvm = pytest.mark.skipif(
 # ---------------------------------------------------------------------------
 
 def _parse_function(source: str):
-    """Parse a single NLPL function definition from *source*."""
-    from nlpl.parser.lexer import Lexer
-    from nlpl.parser.parser import Parser
+    """Parse a single NexusLang function definition from *source*."""
+    from nexuslang.parser.lexer import Lexer
+    from nexuslang.parser.parser import Parser
 
     tokens = Lexer(source).tokenize()
     ast = Parser(tokens).parse()
@@ -113,21 +113,21 @@ class TestNativeFunctionJITIRGeneration:
         assert ir is not None, "_generate_ir returned None"
         return ir
 
-    def test_ir_exports_nlpl_prefixed_symbol_single_param(self):
+    def test_ir_exports_nxl_prefixed_symbol_single_param(self):
         ir = self._ir("""
             function count_down with n as Integer returns Integer
                 return n
             end
         """, "count_down")
-        assert "@nlpl_count_down" in ir
+        assert "@nxl_count_down" in ir
 
-    def test_ir_exports_nlpl_prefixed_symbol_two_params(self):
+    def test_ir_exports_nxl_prefixed_symbol_two_params(self):
         ir = self._ir("""
             function add_integers with a as Integer and b as Integer returns Integer
                 return a plus b
             end
         """, "add_integers")
-        assert "@nlpl_add_integers" in ir
+        assert "@nxl_add_integers" in ir
 
     def test_ir_define_preserves_correct_return_type(self):
         ir = self._ir("""
@@ -138,9 +138,9 @@ class TestNativeFunctionJITIRGeneration:
         # The define line for the renamed function should carry i64 return type
         define_lines = [
             l for l in ir.split("\n")
-            if "define" in l and "nlpl_get_value" in l
+            if "define" in l and "nxl_get_value" in l
         ]
-        assert define_lines, "No define line found for nlpl_get_value"
+        assert define_lines, "No define line found for nxl_get_value"
         assert "i64" in define_lines[0]
 
     def test_ir_no_stale_hardcoded_alias(self):
@@ -160,9 +160,9 @@ class TestNativeFunctionJITIRGeneration:
         """, "add_integers")
         define_lines = [
             l for l in ir.split("\n")
-            if "define" in l and "nlpl_add_integers" in l
+            if "define" in l and "nxl_add_integers" in l
         ]
-        assert define_lines, "No define line for nlpl_add_integers"
+        assert define_lines, "No define line for nxl_add_integers"
         # Both parameters must appear in the define line
         assert "%a" in define_lines[0] and "%b" in define_lines[0]
 
@@ -173,15 +173,15 @@ class TestNativeFunctionJITIRGeneration:
                 return a plus b
             end
         """, "add_integers")
-        # Every occurrence of add_integers must be under nlpl_add_integers
+        # Every occurrence of add_integers must be under nxl_add_integers
         import re
         bare_refs = re.findall(r'@add_integers(?!\s*=)', ir)
-        # All bare refs must contain the nlpl_ prefix
-        assert all("nlpl_add_integers" in r or r == "@add_integers" for r in bare_refs), \
+        # All bare refs must contain the nxl_ prefix
+        assert all("nxl_add_integers" in r or r == "@add_integers" for r in bare_refs), \
             f"Found bare @add_integers references: {bare_refs}"
 
     def test_ir_recursive_function_callsites_renamed(self):
-        """A recursive function's self-call must also use nlpl_ symbol."""
+        """A recursive function's self-call must also use nxl_ symbol."""
         ir = self._ir("""
             function countdown with n as Integer returns Integer
                 if n is less than or equal to 0
@@ -190,8 +190,8 @@ class TestNativeFunctionJITIRGeneration:
                 return n
             end
         """, "countdown")
-        # The define should be @nlpl_countdown
-        assert "@nlpl_countdown" in ir
+        # The define should be @nxl_countdown
+        assert "@nxl_countdown" in ir
 
 
 class TestNativeFunctionJITCompilation:
@@ -326,7 +326,7 @@ class TestNativeFunctionJITCompilation:
     @skip_no_llvm
     def test_unsupported_type_returns_none(self):
         """Functions with Float parameters return None (not yet supported in ctypes wrapper)."""
-        from nlpl.parser.ast import FunctionDefinition, Parameter, ReturnStatement, Identifier
+        from nexuslang.parser.ast import FunctionDefinition, Parameter, ReturnStatement, Identifier
         # Hand-build a func def with Float typing to test unsupported-type path
         param = Parameter("x")
         param.type_annotation = "Float"

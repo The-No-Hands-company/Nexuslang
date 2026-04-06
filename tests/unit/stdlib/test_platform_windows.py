@@ -1,5 +1,5 @@
 """
-Tests for the NLPL platform_windows stdlib module.
+Tests for the NexusLang platform_windows stdlib module.
 
 On Windows these tests execute real Win32 / Registry / Services / COM APIs.
 On all other platforms the entire module is skipped.
@@ -11,7 +11,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from nlpl.stdlib.platform_windows import (
+from nexuslang.stdlib.platform_windows import (
     PlatformError,
     HKEY_LOCAL_MACHINE,
     HKEY_CURRENT_USER,
@@ -147,9 +147,9 @@ class TestRegistryWrite:
     _TEST_SUBKEY = r'Software\_NLPL_TEST_WRITE_'
 
     def test_write_and_read_string_value(self):
-        registry_write(HKEY_CURRENT_USER, self._TEST_SUBKEY, 'TestStr', 'hello_nlpl', 'REG_SZ')
+        registry_write(HKEY_CURRENT_USER, self._TEST_SUBKEY, 'TestStr', 'hello_nxl', 'REG_SZ')
         result = registry_read(HKEY_CURRENT_USER, self._TEST_SUBKEY, 'TestStr')
-        assert result == 'hello_nlpl'
+        assert result == 'hello_nxl'
         registry_delete(HKEY_CURRENT_USER, self._TEST_SUBKEY, 'TestStr')
         registry_delete_key(HKEY_CURRENT_USER, self._TEST_SUBKEY)
 

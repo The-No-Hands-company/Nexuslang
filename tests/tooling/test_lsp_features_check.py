@@ -9,15 +9,15 @@ Manually verify LSP capabilities by inspecting code.
 import sys
 from pathlib import Path
 
-# Add NLPL to path
+# Add NexusLang to path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
-from nlpl.lsp.definitions import DefinitionProvider
-from nlpl.lsp.completions import CompletionProvider
-from nlpl.lsp.hover import HoverProvider
-from nlpl.lsp.diagnostics import DiagnosticsProvider
-from nlpl.parser.parser import Parser
-from nlpl.parser.lexer import Lexer
+from nexuslang.lsp.definitions import DefinitionProvider
+from nexuslang.lsp.completions import CompletionProvider
+from nexuslang.lsp.hover import HoverProvider
+from nexuslang.lsp.diagnostics import DiagnosticsProvider
+from nexuslang.parser.parser import Parser
+from nexuslang.parser.lexer import Lexer
 
 
 def test_definitions_provider():
@@ -58,7 +58,7 @@ def test_completion_provider():
     print("TESTING: Completion Provider")
     print("=" * 70)
     
-    from nlpl.lsp.completions import CompletionProvider
+    from nexuslang.lsp.completions import CompletionProvider
     
     # Mock language server
     class MockServer:
@@ -122,7 +122,7 @@ def check_cross_file_support():
     print("=" * 70)
     
     try:
-        from nlpl.lsp.workspace_index import WorkspaceIndex
+        from nexuslang.lsp.workspace_index import WorkspaceIndex
         
         # Create a workspace index
         test_dir = Path(__file__).parent.parent / "test_programs" / "lsp_tests"

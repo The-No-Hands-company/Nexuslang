@@ -27,7 +27,7 @@ Completed all Week 1 foundation objectives in Day 1:
 
 **Key Findings**:
 - **9,922 lines** of production-ready LLVM IR generation
-- Supports full NLPL language (all AST nodes)
+- Supports full NexusLang language (all AST nodes)
 - Already has basic optimizers (ConstantFolder, DeadCodeEliminator, BoundsCheckOptimizer)
 - Generates valid LLVM IR (no llvmlite dependency - pure Python)
 - Exception handling, async/await, generics, FFI infrastructure
@@ -76,7 +76,7 @@ Os: Size (O2 with minimal inlining)
 
 **Usage**:
 ```python
-from nlpl.compiler.llvm_optimizer import LLVMOptimizer, OptimizationLevel
+from nexuslang.compiler.llvm_optimizer import LLVMOptimizer, OptimizationLevel
 
 optimizer = LLVMOptimizer(OptimizationLevel.O2)
 optimized_ir = optimizer.optimize_module(llvm_ir_string)
@@ -103,8 +103,8 @@ python src/nlpl/compiler/llvm_optimizer.py input.ll output.ll -O3
 - **Memory peak**: (TODO: via /usr/bin/time -v)
 
 **Comparison Modes**:
-1. NLPL Interpreter (baseline)
-2. NLPL Compiled (-O0, -O2, -O3)
+1. NexusLang Interpreter (baseline)
+2. NexusLang Compiled (-O0, -O2, -O3)
 3. C code (gcc -O2)
 
 **Output**:
@@ -124,7 +124,7 @@ python benchmarks/benchmark_framework.py --iterations 20 --output my_report.md
 
 ### 4. Benchmark Programs
 
-**Created 3 NLPL benchmarks + 1 C reference**:
+**Created 3 NexusLang benchmarks + 1 C reference**:
 
 **1. `bench_fibonacci.nlpl`** (Iterative)
 - Tests: Loop performance, integer arithmetic
@@ -142,7 +142,7 @@ python benchmarks/benchmark_framework.py --iterations 20 --output my_report.md
 - Focus: Loop optimization, strength reduction
 
 **4. `bench_fibonacci.c`** (C Reference)
-- Same algorithm as NLPL version
+- Same algorithm as NexusLang version
 - Baseline for performance comparison
 - Compiled with gcc -O2/-O3
 
@@ -287,14 +287,14 @@ speedup = baseline_time / optimized_time
 
 ### Challenge 2: llvmlite Not Installed
 
-**Problem**: NLPL didn't have llvmlite dependency
+**Problem**: NexusLang didn't have llvmlite dependency
 
 **Solution**: 
 - Added installation to workflow
 - Made optimizer lazy-load llvmlite (import only when needed)
 - Graceful fallback with clear error message if missing
 
-### Challenge 3: NLPL Syntax Limitations
+### Challenge 3: NexusLang Syntax Limitations
 
 **Problem**: Benchmarks needed timing functions (not yet in stdlib)
 

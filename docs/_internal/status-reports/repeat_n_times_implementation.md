@@ -2,7 +2,7 @@
 
 ## Summary
 
-Successfully implemented full support for the `repeat N times` loop construct in NLPL across all three components of the language pipeline:
+Successfully implemented full support for the `repeat N times` loop construct in NexusLang across all three components of the language pipeline:
 
 1. **Parser** - Fixed routing logic and parsing
 2. **Interpreter** - Added execution support with full error handling
@@ -204,7 +204,7 @@ def _generate_repeat_n_times_loop(self, node, indent=''):
 
 ### Interpreter Test Results
 ```bash
-$ python3 -m nlpl.main test_programs/unit/control_flow/test_repeat_simple.nlpl --no-type-check
+$ python3 -m nexuslang.main test_programs/unit/control_flow/test_repeat_simple.nlpl --no-type-check
 
 Testing repeat 3 times
 Hello
@@ -232,7 +232,7 @@ Done
 
 ### Generated LLVM IR
 ```llvm
-define void @nlpl_main() {
+define void @nxl_main() {
 entry:
   ; Print "Testing repeat 3 times"
   ; ...
@@ -380,7 +380,7 @@ Currently runs with `--no-type-check` flag. Type checking integration can be add
 
 ```bash
 # Test with interpreter
-python3 -m nlpl.main test_programs/unit/control_flow/test_repeat_simple.nlpl --no-type-check
+python3 -m nexuslang.main test_programs/unit/control_flow/test_repeat_simple.nlpl --no-type-check
 
 # Test with compiler
 ./nlplc test_programs/unit/control_flow/test_repeat_simple.nlpl --run
@@ -392,7 +392,7 @@ cat test_repeat_simple.ll
 
 ## Conclusion
 
-The `repeat N times` loop construct is now fully functional in NLPL:
+The `repeat N times` loop construct is now fully functional in NexusLang:
 
 - ✅ Parser correctly routes and parses the syntax
 - ✅ Interpreter executes with full error handling

@@ -1,14 +1,14 @@
-# NLPL Distribution & Usage - Visual Guide
+# NexusLang Distribution & Usage - Visual Guide
 
 ## Complete Overview
 
 ```
 
- NLPL ECOSYSTEM 
+ NexusLang ECOSYSTEM 
  
  Source LSP 
  Code Server 
- (.nlpl) (nlpl_lsp.py) 
+ (.nxl) (nxl_lsp.py) 
  
  Language Server Protocol 
  
@@ -30,7 +30,7 @@
 ### Current Setup (What You Have Now)
 
 ```
-Your NLPL Repository
+Your NexusLang Repository
  .vscode/
  extensions/nlpl/ VSCode extension (ready!)
  extension.js Language client
@@ -74,8 +74,8 @@ Your NLPL Repository
  
  Step 2: Configure new project (.vscode/settings.json) 
  { 
- "nlpl.languageServer.path": 
- "/path/to/NLPL/src/nlpl_lsp.py" 
+ "nexuslang.languageServer.path": 
+ "/path/to/NexusLang/src/nxl_lsp.py" 
  } 
  
  Step 3: Open .nlpl files extension auto-activates! 
@@ -108,7 +108,7 @@ Your NLPL Repository
  vsce publish 
  
  Step 4: Users install from marketplace 
- Search "NLPL" in VSCode Extensions 
+ Search "NexusLang" in VSCode Extensions 
  Click "Install" 
  
 ```
@@ -144,7 +144,7 @@ Legend:
  Want to use NLPL?
  
  Are you in the Is this a
- NLPL repository? new project?
+ NexusLang repository? new project?
  
  YES YES 
  
@@ -168,7 +168,7 @@ Legend:
 **.vscode/settings.json (in new project):**
 ```json
 {
- "nlpl.languageServer.enabled": true
+ "nexuslang.languageServer.enabled": true
 }
 ```
 *LSP server auto-detected from global installation*
@@ -178,8 +178,8 @@ Legend:
 **.vscode/settings.json:**
 ```json
 {
- "nlpl.languageServer.enabled": true,
- "nlpl.languageServer.path": "/absolute/path/to/NLPL/src/nlpl_lsp.py"
+ "nexuslang.languageServer.enabled": true,
+ "nexuslang.languageServer.path": "/absolute/path/to/NexusLang/src/nxl_lsp.py"
 }
 ```
 *Specify exact LSP server location*
@@ -189,9 +189,9 @@ Legend:
 **.vscode/settings.json:**
 ```json
 {
- "nlpl.languageServer.enabled": true,
- "nlpl.languageServer.path": "${workspaceFolder}/../NLPL/src/nlpl_lsp.py",
- "nlpl.trace.server": "verbose"
+ "nexuslang.languageServer.enabled": true,
+ "nexuslang.languageServer.path": "${workspaceFolder}/../NexusLang/src/nxl_lsp.py",
+ "nexuslang.trace.server": "verbose"
 }
 ```
 *Relative paths and verbose logging*
@@ -206,8 +206,8 @@ Legend:
  {"path": "project2"}
  ],
  "settings": {
- "nlpl.languageServer.enabled": true,
- "nlpl.languageServer.path": "/home/user/NLPL/src/nlpl_lsp.py"
+ "nexuslang.languageServer.enabled": true,
+ "nexuslang.languageServer.path": "/home/user/NexusLang/src/nxl_lsp.py"
  }
 }
 ```
@@ -223,11 +223,11 @@ Extension not working?
  Is file .nlpl? NO Rename: file.nlpl
  YES
 
- Check language mode NOT NLPL Select "NLPL" (bottom-right)
- (bottom-right corner) NLPL 
+ Check language mode NOT NexusLang Select "NexusLang" (bottom-right)
+ (bottom-right corner) NexusLang 
 
  Check Output panel NO LOGS LSP not starting
- View Output NLPL Check Python version
+ View Output NexusLang Check Python version
  LOGS Check settings.json
 
  Python version? < 3.11 Upgrade Python
@@ -237,7 +237,7 @@ Extension not working?
  YES 
 
  Still broken? Report issue:
- github.com/Zajfan/NLPL/issues
+ github.com/Zajfan/NexusLang/issues
 ```
 
 ---
@@ -332,10 +332,10 @@ Examples (examples/)
 # Reload VSCode to activate extension
 Ctrl+Shift+P "Developer: Reload Window"
 
-# Open NLPL file
+# Open NexusLang file
 code examples/01_basic_concepts.nlpl
 
-# Run NLPL program
+# Run NexusLang program
 python3 src/main.py examples/01_basic_concepts.nlpl
 ```
 
@@ -351,7 +351,7 @@ cd /path/to/new-project
 mkdir -p .vscode
 cat > .vscode/settings.json << 'EOF'
 {
- "nlpl.languageServer.path": "/path/to/NLPL/src/nlpl_lsp.py"
+ "nexuslang.languageServer.path": "/path/to/NexusLang/src/nxl_lsp.py"
 }
 EOF
 
@@ -383,7 +383,7 @@ cd .vscode/extensions/nlpl
 vsce package
 vsce publish
 
-# Users search "NLPL" in Extensions marketplace
+# Users search "NexusLang" in Extensions marketplace
 ```
 
 ---
@@ -428,7 +428,7 @@ Try These Features:
 
 ### What You Can Do Right Now
 
- **Use NLPL extension in this project** - Just reload VSCode 
+ **Use NexusLang extension in this project** - Just reload VSCode 
  **Install globally for all projects** - Run `./install_extension_globally.sh` 
  **Create distributable package** - Run `./package_extension.sh` 
  **Share with others** - Distribute .vsix file 
@@ -444,7 +444,7 @@ Try These Features:
 ### Getting Help
 
  **Guides:** QUICK_START.md, DEPLOYMENT_GUIDE.md 
- **Issues:** https://github.com/Zajfan/NLPL/issues 
+ **Issues:** https://github.com/Zajfan/NexusLang/issues 
  **Docs:** `docs/` directory 
  **Examples:** `examples/` directory 
 

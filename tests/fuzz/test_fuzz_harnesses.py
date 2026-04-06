@@ -3,9 +3,9 @@ tests/fuzz/test_fuzz_harnesses.py
 
 Verifies that all five fuzz harnesses:
   1. Accept arbitrary byte sequences without raising unexpected Python exceptions.
-  2. Handle valid NLPL programs without crashing.
+  2. Handle valid NexusLang programs without crashing.
   3. Handle known-bad inputs (intentionally broken syntax, type errors, etc.)
-     without crashing — only the expected NLPLError subclasses may propagate.
+     without crashing — only the expected NxlError subclasses may propagate.
   4. Accept all built-in _SANITY_INPUTS from each harness module.
 
 These tests run in the normal pytest suite (fast, ~seconds).
@@ -94,7 +94,7 @@ class TestFuzzLexer:
     def test_common_inputs(self, fuzz_lexer, data: bytes) -> None:
         _run_no_crash(fuzz_lexer, data)
 
-    def test_valid_nlpl_programs(self, fuzz_lexer) -> None:
+    def test_valid_nxl_programs(self, fuzz_lexer) -> None:
         valid = [
             b'print text "hello, world!"',
             b"set x to 42",
@@ -257,7 +257,7 @@ class TestFuzzTypechecker:
         _run_no_crash(fuzz_typechecker, data)
 
     def test_type_errors(self, fuzz_typechecker) -> None:
-        """Type errors should raise NLPLTypeError, not crash."""
+        """Type errors should raise NxlTypeError, not crash."""
         programs = [
             b'set x as Integer to "hello"',
             b"set x as String to 42",

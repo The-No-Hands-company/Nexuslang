@@ -10,13 +10,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 import unittest
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.typesystem.borrow_checker import BorrowChecker
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.typesystem.borrow_checker import BorrowChecker
 
 
 def _parse(source: str):
-    """Parse NLPL source and return the root AST node."""
+    """Parse NexusLang source and return the root AST node."""
     lexer = Lexer(source)
     tokens = lexer.tokenize()
     parser = Parser(tokens, source=source)
@@ -194,7 +194,7 @@ drop borrow x
     def test_assign_to_borrowed_variable(self):
         """Assigning to a borrowed variable (via VariableDeclaration re-set) is an error.
 
-        Note: NLPL uses 'set x to ...' which creates a new binding in the
+        Note: NexusLang uses 'set x to ...' which creates a new binding in the
         current scope.  The checker intercepts this at the VariableDeclaration
         handler and validates the borrow state.
         """

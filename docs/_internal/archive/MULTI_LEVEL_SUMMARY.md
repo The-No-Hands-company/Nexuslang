@@ -1,4 +1,4 @@
-# NLPL Multi-Level Architecture - Complete Documentation
+# NexusLang Multi-Level Architecture - Complete Documentation
 
 **Generated:** January 2, 2026 
 **Status:** Vision Documents Complete
@@ -46,7 +46,7 @@ NLPL is not just "another programming language." It's a **unified language** tha
 **What it covers:**
 - Detailed syntax for each concurrency level
 - From manual threading to natural language parallelism
-- Why NLPL doesn't follow Zig's "no async" approach
+- Why NexusLang doesn't follow Zig's "no async" approach
 - Complete examples for all levels
 
 **Essential reading** for understanding NLPL's concurrency model.
@@ -188,7 +188,7 @@ process all files in parallel
 
 ## Why This Matters
 
-### The Problem NLPL Solves
+### The Problem NexusLang Solves
 
 **Current situation:**
 - Want to write an OS kernel? Use C/C++ (low-level only)
@@ -204,13 +204,13 @@ process all files in parallel
 
 ### Unique Advantages
 
-| Language | Can Do | NLPL Advantage |
+| Language | Can Do | NexusLang Advantage |
 |----------|--------|----------------|
-| **C/C++** | Low-level systems | NLPL has readable syntax |
-| **Python** | High-level scripts | NLPL compiles to native code |
-| **Go** | Concurrent servers | NLPL also has systems-level control |
-| **Rust** | Safe systems | NLPL has simpler syntax |
-| **Zig** | Ultra low-level | NLPL also has high-level abstractions |
+| **C/C++** | Low-level systems | NexusLang has readable syntax |
+| **Python** | High-level scripts | NexusLang compiles to native code |
+| **Go** | Concurrent servers | NexusLang also has systems-level control |
+| **Rust** | Safe systems | NexusLang has simpler syntax |
+| **Zig** | Ultra low-level | NexusLang also has high-level abstractions |
 
 **NLPL is the only language with ALL these capabilities.**
 
@@ -257,7 +257,7 @@ Q1 2026: Goroutine runtime implementation
 Q2 2026: Channels and concurrency complete
 Q3 2026: Inline assembly integration
 Q4 2026: Structured concurrency, polish
-Dec 2026: NLPL 2.0 release with all 5 levels
+Dec 2026: NexusLang 2.0 release with all 5 levels
 ```
 
 **Progress tracking:** See [`NLPL_PROGRESS_VISUAL_SUMMARY.md`](../NLPL_PROGRESS_VISUAL_SUMMARY.md)
@@ -372,7 +372,7 @@ Level 2: Control loops and drivers
 
 ## Success Metrics
 
-By December 2026, NLPL will be the **only language** where you can:
+By December 2026, NexusLang will be the **only language** where you can:
 
 1. Write an OS kernel in readable syntax
 2. Use inline assembly where needed

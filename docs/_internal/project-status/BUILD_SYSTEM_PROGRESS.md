@@ -1,4 +1,4 @@
-# NLPL Build System - Implementation Progress
+# NexusLang Build System - Implementation Progress
 
 **Started**: February 14, 2026  
 **Status**: Phase 1 Complete (Manifest System)  
@@ -8,7 +8,7 @@
 
 ## Overview
 
-Building a comprehensive build system for NLPL inspired by Cargo (Rust) and npm, providing:
+Building a comprehensive build system for NexusLang inspired by Cargo (Rust) and npm, providing:
 - Project configuration via nlpl.toml manifest
 - Dependency management with version constraints
 - Build profiles (debug/release/custom)
@@ -52,7 +52,7 @@ nlpl-math = "2.0"
 
 [[bin]]
 name = "my-app"
-path = "src/main.nlpl"
+path = "src/main.nxl"
 
 [profile.release]
 opt-level = 3
@@ -136,7 +136,7 @@ if manifest.has_feature("opengl"):
     deps = manifest.get_feature_dependencies("opengl")
 
 # Resolve paths
-src_path = manifest.resolve_path("src/main.nlpl")
+src_path = manifest.resolve_path("src/main.nxl")
 ```
 
 **Key Features**:
@@ -230,7 +230,7 @@ Profiles: ['dev', 'release', 'production']
 ### 🔄 IN PROGRESS: Task 3 - Build Tool CLI
 
 **Next Steps**:
-1. Create `dev_tools/nlpl_build.py`
+1. Create `dev_tools/nxl_build.py`
 2. Implement commands:
    - `nlpl build` - Build project
    - `nlpl clean` - Remove build artifacts
@@ -474,7 +474,7 @@ codegen-units = 1  # Override for maximum optimization
 ## Future Enhancements (Post-MVP)
 
 1. **Cross-Compilation**: Build for different platforms
-2. **Build Scripts**: Pre-build code generation (build.nlpl)
+2. **Build Scripts**: Pre-build code generation (build.nxl)
 3. **Custom Targets**: User-defined build targets
 4. **Build Hooks**: Pre/post build actions
 5. **Watch Mode**: Rebuild on file changes

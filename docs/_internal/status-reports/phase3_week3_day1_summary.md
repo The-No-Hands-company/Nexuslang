@@ -8,7 +8,7 @@
 
 ## Overview
 
-Successfully established the foundation for reference counted smart pointers in NLPL. Completed comprehensive design document and full parser integration for Rc, Weak, and Arc types. The syntax `Rc of Type` is now fully supported throughout the language parser.
+Successfully established the foundation for reference counted smart pointers in NexusLang. Completed comprehensive design document and full parser integration for Rc, Weak, and Arc types. The syntax `Rc of Type` is now fully supported throughout the language parser.
 
 ---
 
@@ -31,7 +31,7 @@ Successfully established the foundation for reference counted smart pointers in 
 - Natural language syntax: `Rc of Type` (not `Rc<T>`)
 - Automatic reference counting via scope-based cleanup
 - Three pointer types: Rc (owned), Weak (cycle-breaking), Arc (thread-safe)
-- Integration with existing NLPL type system
+- Integration with existing NexusLang type system
 - Conditional runtime generation (like coroutines)
 
 ### 2. Lexer Support Implemented
@@ -118,7 +118,7 @@ def parse_rc_type(self):
 
 **Test Results**:
 ```bash
-$ python -m nlpl.main test_programs/unit/rc/test_rc_parse_only.nlpl --no-type-check
+$ python -m nexuslang.main test_programs/unit/rc/test_rc_parse_only.nlpl --no-type-check
 SUCCESS: All Rc type syntax parsed correctly
 ```
 
@@ -469,7 +469,7 @@ inner_type = self.parse_type()  # Recursive parsing
 
 **Week 3 Day 1 Status**: 🟢 **Parser Foundation Complete** (4 of 7 tasks done)
 
-Today's work established a solid foundation for reference counted smart pointers in NLPL. The parser now fully supports `Rc of Type`, `Weak of Type`, and `Arc of Type` syntax throughout the language. All test programs pass successfully, demonstrating that the syntax integration is robust and ready for runtime implementation.
+Today's work established a solid foundation for reference counted smart pointers in NexusLang. The parser now fully supports `Rc of Type`, `Weak of Type`, and `Arc of Type` syntax throughout the language. All test programs pass successfully, demonstrating that the syntax integration is robust and ready for runtime implementation.
 
 **Key Achievement**: From design to working parser in one session - comprehensive 800-line design document + full parser integration + test validation.
 

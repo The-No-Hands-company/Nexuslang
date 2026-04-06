@@ -31,14 +31,14 @@ class _StubRuntime:
 
 
 # Inject stub packages so the relative import resolves
-for pkg in ("nlpl", "nlpl.runtime", "nlpl.runtime.runtime",
-            "nlpl.stdlib", "nlpl.stdlib.audio"):
+for pkg in ("nlpl", "nexuslang.runtime", "nexuslang.runtime.runtime",
+            "nexuslang.stdlib", "nexuslang.stdlib.audio"):
     if pkg not in sys.modules:
         sys.modules[pkg] = types.ModuleType(pkg)
 
-sys.modules["nlpl.runtime.runtime"].Runtime = _StubRuntime
+sys.modules["nexuslang.runtime.runtime"].Runtime = _StubRuntime
 
-spec = importlib.util.spec_from_file_location("nlpl.stdlib.audio", _MOD_PATH)
+spec = importlib.util.spec_from_file_location("nexuslang.stdlib.audio", _MOD_PATH)
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 

@@ -5,8 +5,8 @@ Production-ready test suite - comprehensive coverage.
 """
 
 import pytest
-from nlpl.stdlib.collections import Vec, HashMap, Set
-from nlpl.stdlib.option_result import Some, NoneValue
+from nexuslang.stdlib.collections import Vec, HashMap, Set
+from nexuslang.stdlib.option_result import Some, NoneValue
 
 
 class TestVec:

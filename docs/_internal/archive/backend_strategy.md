@@ -1,4 +1,4 @@
-# NLPL Compiler Backend Strategy
+# NexusLang Compiler Backend Strategy
 
 ## The Multi-Backend Philosophy
 
@@ -7,7 +7,7 @@ NLPL aims to be truly universal - one language from OS kernels to web apps. This
 ## Backend Priorities
 
 ### Phase 1: C Backend (COMPLETE)
-**Status:** Working - compiles NLPL to C, then to native executables
+**Status:** Working - compiles NexusLang to C, then to native executables
 **Use Cases:**
 - Rapid prototyping
 - System utilities
@@ -36,7 +36,7 @@ NLPL C source GCC/Clang Native Executable
 ### Phase 2: C++ Backend (IN PROGRESS)
 **Status:** Skeleton created, needs completion
 **Use Cases:**
-- Object-oriented NLPL programs
+- Object-oriented NexusLang programs
 - Generic programming (templates)
 - RAII memory management
 - STL integration
@@ -55,8 +55,8 @@ NLPL C++ source Clang++ Native Executable
 
 **Implementation:**
 - Extend C generator with class/method generation
-- Map NLPL generics to C++ templates
-- Map NLPL memory management to smart pointers
+- Map NexusLang generics to C++ templates
+- Map NexusLang memory management to smart pointers
 
 ---
 
@@ -74,13 +74,13 @@ NLPL JavaScript/TypeScript Node/Browser
 ```
 
 **Advantages:**
-- Run NLPL in browsers
+- Run NexusLang in browsers
 - Access to npm ecosystem
 - Unified language for frontend + backend
 - No compilation needed (or TypeScript for type safety)
 
 **Implementation:**
-- Map NLPL syntax to JavaScript equivalents
+- Map NexusLang syntax to JavaScript equivalents
 - Convert classes to ES6 classes or prototypes
 - Handle async/await for concurrent programming
 - Optional: Generate TypeScript for type safety
@@ -108,7 +108,7 @@ NLPL WASM Browser/WASI Runtime
 
 **Implementation:**
 - Direct WASM generation or use Emscripten
-- Map NLPL memory model to WASM linear memory
+- Map NexusLang memory model to WASM linear memory
 - Interface with JavaScript for DOM access
 
 ---
@@ -140,8 +140,8 @@ NLPL LLVM IR LLVM Optimizer Native Executable
 - Industry standard (Rust, Swift use it)
 
 **Implementation:**
-- Generate LLVM IR from NLPL AST
-- Map NLPL types to LLVM types
+- Generate LLVM IR from NexusLang AST
+- Map NexusLang types to LLVM types
 - Use LLVM optimization passes
 - Link with LLVM linker
 
@@ -186,17 +186,17 @@ NLPL x86-64/ARM Assembly Assembler Native Executable
 ### Simple Application (Hello World)
 ```
 Option 1 (C Backend):
- NLPL C GCC Executable
+ NexusLang C GCC Executable
  Time: ~100ms
  Binary: ~16 KB
 
 Option 2 (LLVM Backend):
- NLPL LLVM IR Optimized Executable
+ NexusLang LLVM IR Optimized Executable
  Time: ~200ms
  Binary: ~14 KB (better optimization)
 
 Option 3 (Direct Assembly):
- NLPL x86-64 ASM Executable
+ NexusLang x86-64 ASM Executable
  Time: ~50ms
  Binary: ~8 KB (minimal runtime)
 ```
@@ -204,18 +204,18 @@ Option 3 (Direct Assembly):
 ### Web Application
 ```
 Option 1 (JavaScript Backend):
- NLPL JavaScript Browser
+ NexusLang JavaScript Browser
  No compilation, instant deployment
 
 Option 2 (WASM Backend):
- NLPL WASM Browser
+ NexusLang WASM Browser
  Time: ~500ms, faster runtime execution
 ```
 
 ### Operating System Kernel
 ```
 MUST use Assembly Backend:
- NLPL x86-64 ASM Bootloader/Kernel
+ NexusLang x86-64 ASM Bootloader/Kernel
  Direct hardware access required
 ```
 
@@ -225,7 +225,7 @@ MUST use Assembly Backend:
 
 **Q: Why go through C instead of directly to executable?**
 
-**A: Because NLPL has DIFFERENT use cases that need DIFFERENT backends:**
+**A: Because NexusLang has DIFFERENT use cases that need DIFFERENT backends:**
 
 1. **Quick prototyping?** C backend (fast development)
 2. **Production app?** LLVM backend (best optimization)
@@ -269,7 +269,7 @@ nlpl compile myapp.nlpl --target asm-x64 # Direct assembly (OS kernels)
 nlpl compile myapp.nlpl --target asm-arm # ARM assembly (embedded)
 ```
 
-**All from the SAME source code.** That's the power of NLPL.
+**All from the SAME source code.** That's the power of NexusLang.
 
 ---
 

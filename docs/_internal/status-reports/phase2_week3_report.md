@@ -280,12 +280,12 @@ docs/7_development/
 
 ```json
 {
-  "nlpl.languageServer.enabled": true,
-  "nlpl.languageServer.path": "",
-  "nlpl.languageServer.arguments": ["--stdio"],
-  "nlpl.languageServer.debug": false,
-  "nlpl.languageServer.logFile": "/tmp/nlpl-lsp.log",
-  "nlpl.trace.server": "off"
+  "nexuslang.languageServer.enabled": true,
+  "nexuslang.languageServer.path": "",
+  "nexuslang.languageServer.arguments": ["--stdio"],
+  "nexuslang.languageServer.debug": false,
+  "nexuslang.languageServer.logFile": "/tmp/nlpl-lsp.log",
+  "nexuslang.trace.server": "off"
 }
 ```
 
@@ -296,7 +296,7 @@ docs/7_development/
 ### Quick Install:
 
 ```bash
-# 1. Ensure NLPL is installed
+# 1. Ensure NexusLang is installed
 pip install -e /path/to/NLPL
 
 # 2. Install extension
@@ -315,7 +315,7 @@ code --install-extension vscode-extension/nlpl-language-support-0.1.0.vsix
 code --list-extensions | grep nlpl
 
 # Check language server is accessible
-python -m nlpl.lsp --help
+python -m nexuslang.lsp --help
 
 # Test with sample file
 echo 'function test returns Nothing\n    print text "Hello"\nend' > test.nlpl
@@ -459,7 +459,7 @@ We have:
 5. ✅ Comprehensive documentation (1,500+ lines)
 6. ✅ All tests passing (no regressions)
 
-The NLPL IDE experience is **fully implemented** and **ready for release**. The extension can be installed in VS Code right now with:
+The NexusLang IDE experience is **fully implemented** and **ready for release**. The extension can be installed in VS Code right now with:
 
 ```bash
 code --install-extension nlpl-language-support-0.1.0.vsix

@@ -10,7 +10,7 @@ import tempfile
 import pytest
 from pathlib import Path
 
-from nlpl.lsp.workspace_index import WorkspaceIndex, SymbolInfo
+from nexuslang.lsp.workspace_index import WorkspaceIndex, SymbolInfo
 
 
 class TestSymbolInfo:
@@ -21,7 +21,7 @@ class TestSymbolInfo:
         symbol = SymbolInfo(
             name="test_func",
             kind="function",
-            file_uri="file:///test.nlpl",
+            file_uri="file:///test.nxl",
             line=10,
             column=0,
             signature="with x as Integer returns Integer"
@@ -34,17 +34,17 @@ class TestSymbolInfo:
     
     def test_symbol_info_equality(self):
         """Test SymbolInfo equality comparison."""
-        s1 = SymbolInfo("func", "function", "file:///test.nlpl", 10, 0)
-        s2 = SymbolInfo("func", "function", "file:///test.nlpl", 10, 0)
-        s3 = SymbolInfo("func", "function", "file:///other.nlpl", 10, 0)
+        s1 = SymbolInfo("func", "function", "file:///test.nxl", 10, 0)
+        s2 = SymbolInfo("func", "function", "file:///test.nxl", 10, 0)
+        s3 = SymbolInfo("func", "function", "file:///other.nxl", 10, 0)
         
         assert s1 == s2
         assert s1 != s3
     
     def test_symbol_info_hashable(self):
         """Test that SymbolInfo can be used in sets."""
-        s1 = SymbolInfo("func", "function", "file:///test.nlpl", 10, 0)
-        s2 = SymbolInfo("func", "function", "file:///test.nlpl", 10, 0)
+        s1 = SymbolInfo("func", "function", "file:///test.nxl", 10, 0)
+        s2 = SymbolInfo("func", "function", "file:///test.nxl", 10, 0)
         
         symbol_set = {s1, s2}
         assert len(symbol_set) == 1  # Same symbol, only one in set
@@ -65,7 +65,7 @@ class TestWorkspaceIndex:
         """Test extracting function symbols from code."""
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create test file
-            test_file = os.path.join(tmpdir, "test.nlpl")
+            test_file = os.path.join(tmpdir, "test.nxl")
             with open(test_file, 'w') as f:
                 f.write("""
 function greet with name as String returns String
@@ -100,7 +100,7 @@ end
     def test_extract_class_symbols(self):
         """Test extracting class and method symbols."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            test_file = os.path.join(tmpdir, "test.nlpl")
+            test_file = os.path.join(tmpdir, "test.nxl")
             with open(test_file, 'w') as f:
                 f.write("""
 class Person
@@ -139,7 +139,7 @@ end
     def test_extract_struct_symbols(self):
         """Test extracting struct symbols."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            test_file = os.path.join(tmpdir, "test.nlpl")
+            test_file = os.path.join(tmpdir, "test.nxl")
             with open(test_file, 'w') as f:
                 f.write("""
 struct Point
@@ -169,7 +169,7 @@ end
     def test_get_symbol(self):
         """Test getting symbols by name."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            test_file = os.path.join(tmpdir, "test.nlpl")
+            test_file = os.path.join(tmpdir, "test.nxl")
             with open(test_file, 'w') as f:
                 f.write("""
 function greet with name as String returns String
@@ -193,7 +193,7 @@ end
     def test_get_symbols_in_file(self):
         """Test getting all symbols from a file."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            test_file = os.path.join(tmpdir, "test.nlpl")
+            test_file = os.path.join(tmpdir, "test.nxl")
             with open(test_file, 'w') as f:
                 f.write("""
 function func1 returns Integer
@@ -226,18 +226,18 @@ end
         """Test scanning entire workspace."""
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create multiple files
-            file1 = os.path.join(tmpdir, "file1.nlpl")
+            file1 = os.path.join(tmpdir, "file1.nxl")
             with open(file1, 'w') as f:
                 f.write("function func1 returns Integer\n    return 1\nend\n")
             
-            file2 = os.path.join(tmpdir, "file2.nlpl")
+            file2 = os.path.join(tmpdir, "file2.nxl")
             with open(file2, 'w') as f:
                 f.write("function func2 returns Integer\n    return 2\nend\n")
             
             # Create subdirectory with file
             subdir = os.path.join(tmpdir, "subdir")
             os.makedirs(subdir)
-            file3 = os.path.join(subdir, "file3.nlpl")
+            file3 = os.path.join(subdir, "file3.nxl")
             with open(file3, 'w') as f:
                 f.write("function func3 returns Integer\n    return 3\nend\n")
             
@@ -256,15 +256,15 @@ end
     def test_skip_hidden_directories(self):
         """Test that hidden directories are skipped."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            # Create .git directory with NLPL file (should be skipped)
+            # Create .git directory with NexusLang file (should be skipped)
             gitdir = os.path.join(tmpdir, ".git")
             os.makedirs(gitdir)
-            git_file = os.path.join(gitdir, "hidden.nlpl")
+            git_file = os.path.join(gitdir, "hidden.nxl")
             with open(git_file, 'w') as f:
                 f.write("function hidden returns Integer\n    return 0\nend\n")
             
             # Create normal file
-            normal_file = os.path.join(tmpdir, "normal.nlpl")
+            normal_file = os.path.join(tmpdir, "normal.nxl")
             with open(normal_file, 'w') as f:
                 f.write("function visible returns Integer\n    return 1\nend\n")
             
@@ -280,7 +280,7 @@ end
     def test_incremental_reindex(self):
         """Test re-indexing a file after changes."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            test_file = os.path.join(tmpdir, "test.nlpl")
+            test_file = os.path.join(tmpdir, "test.nxl")
             
             # Initial content
             with open(test_file, 'w') as f:
@@ -307,7 +307,7 @@ end
     def test_find_symbols_fuzzy(self):
         """Test fuzzy symbol search."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            test_file = os.path.join(tmpdir, "test.nlpl")
+            test_file = os.path.join(tmpdir, "test.nxl")
             with open(test_file, 'w') as f:
                 f.write("""
 function calculate_total returns Integer
@@ -340,7 +340,7 @@ end
     def test_find_symbols_by_kind(self):
         """Test filtering symbol search by kind."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            test_file = os.path.join(tmpdir, "test.nlpl")
+            test_file = os.path.join(tmpdir, "test.nxl")
             with open(test_file, 'w') as f:
                 f.write("""
 function my_function returns Integer
@@ -374,7 +374,7 @@ end
     def test_get_statistics(self):
         """Test getting indexing statistics."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            test_file = os.path.join(tmpdir, "test.nlpl")
+            test_file = os.path.join(tmpdir, "test.nxl")
             with open(test_file, 'w') as f:
                 f.write("""
 function func1 returns Integer

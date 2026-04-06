@@ -63,7 +63,7 @@ def main():
     scan_dirs = ['src', 'tests', 'dev_tools', 'examples', 'test_programs', 'docs']
     
     # File extensions to process
-    extensions = {'.py', '.nlpl', '.md'}
+    extensions = {'.py', '.nxl', '.md'}
     
     # Directories to skip
     skip_dirs = {'.git', '.venv', '__pycache__', 'node_modules', 'build', '.pytest_cache'}

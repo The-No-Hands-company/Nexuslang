@@ -1,8 +1,8 @@
-# Async/Await Implementation Plan for NLPL
+# Async/Await Implementation Plan for NexusLang
 
 ## Overview
 
-Implementing true async/await in NLPL using LLVM's switched-resume coroutine model.
+Implementing true async/await in NexusLang using LLVM's switched-resume coroutine model.
 
 **Estimated Effort:** 80-120 hours
 **Priority:** P1 - Last remaining CRITICAL blocker
@@ -275,7 +275,7 @@ end
    - Track async context state
 
 2. **runtime support:**
-   - Create `nlpl_async_runtime.c` with scheduler
+   - Create `nxl_async_runtime.c` with scheduler
    - Task queue implementation
    - `run_until_complete()` main driver
 

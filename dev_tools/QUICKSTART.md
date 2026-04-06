@@ -1,16 +1,16 @@
-# NLPL Development Tools - Quick Reference
+# NexusLang Development Tools - Quick Reference
 
 ## Installation
 
 ```bash
-# From NLPL project root
+# From NexusLang project root
 pip install -r requirements.txt
 ```
 
 ## Environment Check
 
 ```bash
-python dev_tools/nlpl_dev.py doctor
+python dev_tools/nxl_dev.py doctor
 ```
 
 ## Common Commands
@@ -19,46 +19,46 @@ python dev_tools/nlpl_dev.py doctor
 
 ```bash
 # Visualize tokens
-python dev_tools/nlpl_dev.py lex myfile.nlpl --visualize
+python dev_tools/nxl_dev.py lex myfile.nlpl --visualize
 
 # Token statistics
-python dev_tools/nlpl_dev.py lex myfile.nlpl --stats
+python dev_tools/nxl_dev.py lex myfile.nlpl --stats
 
 # Dump detailed token info
-python dev_tools/nlpl_dev.py lex myfile.nlpl --dump
+python dev_tools/nxl_dev.py lex myfile.nlpl --dump
 ```
 
 ### Debugging Parser Issues
 
 ```bash
 # Show AST tree
-python dev_tools/nlpl_dev.py parse myfile.nlpl --tree
+python dev_tools/nxl_dev.py parse myfile.nlpl --tree
 
 # Validate syntax
-python dev_tools/nlpl_dev.py parse myfile.nlpl --validate
+python dev_tools/nxl_dev.py parse myfile.nlpl --validate
 
 # Export AST as JSON
-python dev_tools/nlpl_dev.py parse myfile.nlpl --json --output ast.json
+python dev_tools/nxl_dev.py parse myfile.nlpl --json --output ast.json
 ```
 
 ### Debugging Runtime Issues
 
 ```bash
 # Interactive debugger
-python dev_tools/nlpl_dev.py debug myfile.nlpl --interactive
+python dev_tools/nxl_dev.py debug myfile.nlpl --interactive
 
 # Trace execution
-python dev_tools/nlpl_dev.py run myfile.nlpl --trace
+python dev_tools/nxl_dev.py run myfile.nlpl --trace
 
 # Show scope state
-python dev_tools/nlpl_dev.py run myfile.nlpl --scope
+python dev_tools/nxl_dev.py run myfile.nlpl --scope
 ```
 
 ### Full Debugging
 
 ```bash
 # See everything
-python dev_tools/nlpl_dev.py run myfile.nlpl --debug
+python dev_tools/nxl_dev.py run myfile.nlpl --debug
 ```
 
 ## Interactive Debugger Commands
@@ -73,14 +73,14 @@ When in interactive mode (`--interactive`):
 
 ## Typical Workflow
 
-1. **Environment check**: `python dev_tools/nlpl_dev.py doctor`
-2. **Test lexer**: `python dev_tools/nlpl_dev.py lex test.nlpl --visualize`
-3. **Test parser**: `python dev_tools/nlpl_dev.py parse test.nlpl --tree`
-4. **Test execution**: `python dev_tools/nlpl_dev.py run test.nlpl --debug`
+1. **Environment check**: `python dev_tools/nxl_dev.py doctor`
+2. **Test lexer**: `python dev_tools/nxl_dev.py lex test.nlpl --visualize`
+3. **Test parser**: `python dev_tools/nxl_dev.py parse test.nlpl --tree`
+4. **Test execution**: `python dev_tools/nxl_dev.py run test.nlpl --debug`
 
 ## Files
 
-- `nlpl_dev.py` - Main CLI entry point
+- `nxl_dev.py` - Main CLI entry point
 - `lexer_tools/token_debugger.py` - Lexer debugging
 - `parser_tools/ast_debugger.py` - Parser debugging
 - `interpreter_tools/execution_debugger.py` - Execution debugging
@@ -89,7 +89,7 @@ When in interactive mode (`--interactive`):
 ## Getting Help
 
 ```bash
-python dev_tools/nlpl_dev.py help
+python dev_tools/nxl_dev.py help
 ```
 
 For detailed usage, see `dev_tools/README.md`

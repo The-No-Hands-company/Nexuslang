@@ -1,6 +1,6 @@
-# NLPL Benchmarks
+# NexusLang Benchmarks
 
-Performance testing and optimization benchmarks for the NLPL compiler.
+Performance testing and optimization benchmarks for the NexusLang compiler.
 
 ## Files
 

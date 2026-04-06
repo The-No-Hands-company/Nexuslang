@@ -1,6 +1,6 @@
-# NLPL Examples Directory
+# NexusLang Examples Directory
 
-This directory contains example programs demonstrating NLPL language features, organized by topic for progressive learning.
+This directory contains example programs demonstrating NexusLang language features, organized by topic for progressive learning.
 
 ## Organization
 
@@ -94,13 +94,13 @@ Review: 32 (feature showcase)
 
 ```bash
 # Run any example
-python -m nlpl.main examples/01_basic_concepts.nlpl
+python -m nexuslang.main examples/01_basic_concepts.nlpl
 
 # With debug output
-python -m nlpl.main examples/01_basic_concepts.nlpl --debug
+python -m nexuslang.main examples/01_basic_concepts.nlpl --debug
 
 # Without type checking
-python -m nlpl.main examples/01_basic_concepts.nlpl --no-type-check
+python -m nexuslang.main examples/01_basic_concepts.nlpl --no-type-check
 ```
 
 ## Contributing Examples

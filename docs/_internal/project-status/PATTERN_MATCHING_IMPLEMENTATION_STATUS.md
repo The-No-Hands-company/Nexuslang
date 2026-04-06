@@ -1,4 +1,4 @@
-# NLPL Pattern Matching - Implementation Status
+# NexusLang Pattern Matching - Implementation Status
 
 ## Status: **PRODUCTION COMPLETE**
 
@@ -354,7 +354,7 @@ Failed: 0/3
 
 ---
 
-## Integration with NLPL Features
+## Integration with NexusLang Features
 
 ### Works With:
 - Functions (pattern matching in function bodies)
@@ -415,7 +415,7 @@ Failed: 0/3
 
 ## Conclusion
 
-Pattern matching in NLPL is **production-ready** and **feature-complete**. The implementation includes:
+Pattern matching in NexusLang is **production-ready** and **feature-complete**. The implementation includes:
 
  All essential pattern types
  Performance optimizations 
@@ -423,7 +423,7 @@ Pattern matching in NLPL is **production-ready** and **feature-complete**. The i
  Comprehensive testing
  Clean integration with compiler
 
-**No remaining work needed** - pattern matching can be used in production NLPL code today.
+**No remaining work needed** - pattern matching can be used in production NexusLang code today.
 
 ---
 

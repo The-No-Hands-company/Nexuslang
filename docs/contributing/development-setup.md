@@ -1,4 +1,4 @@
-# NLPL Development Setup Guide
+# NexusLang Development Setup Guide
 
 ## Quick Start
 
@@ -15,7 +15,7 @@ source venv/bin/activate
 venv\Scripts\activate
 ```
 
-### 2. Install NLPL in Development Mode
+### 2. Install NexusLang in Development Mode
 
 ```bash
 # Install the package in editable mode
@@ -29,7 +29,7 @@ pip install pytest pytest-cov black isort flake8
 
 ```bash
 # Test the interpreter
-python -m nlpl.main examples/01_basic_concepts.nlpl
+python -m nexuslang.main examples/01_basic_concepts.nlpl
 
 # Or use the shorter command (if installed)
 nlpl examples/01_basic_concepts.nlpl
@@ -43,19 +43,19 @@ isort src/ tests/
 flake8 src/ tests/
 ```
 
-## Running NLPL Programs
+## Running NexusLang Programs
 
 ### Using the Python Module
 
 ```bash
 # Standard execution
-python -m nlpl.main path/to/program.nlpl
+python -m nexuslang.main path/to/program.nlpl
 
 # With debug output (shows tokens and AST)
-python -m nlpl.main path/to/program.nlpl --debug
+python -m nexuslang.main path/to/program.nlpl --debug
 
 # Without type checking
-python -m nlpl.main path/to/program.nlpl --no-type-check
+python -m nexuslang.main path/to/program.nlpl --no-type-check
 ```
 
 ### Quick Test
@@ -66,7 +66,7 @@ echo 'set greeting to "Hello, NLPL!"
 print text greeting' > test.nlpl
 
 # Run it
-python -m nlpl.main test.nlpl
+python -m nexuslang.main test.nlpl
 ```
 
 ## Running Tests
@@ -135,11 +135,11 @@ Edit files in `src/nlpl/`
 # Run relevant tests
 pytest tests/test_parser.py -v
 
-# Or create a test NLPL program
+# Or create a test NexusLang program
 echo 'set x to 42
 print text x' > test_programs/my_test.nlpl
 
-python -m nlpl.main test_programs/my_test.nlpl
+python -m nexuslang.main test_programs/my_test.nlpl
 ```
 
 ### 3. Format and Lint
@@ -159,7 +159,7 @@ pytest tests/ -v
 ## Project Structure
 
 ```
-NLPL/
+NexusLang/
  src/nlpl/ # Main source code
  parser/ # Lexer, parser, AST
  interpreter/ # Interpreter implementation
@@ -169,7 +169,7 @@ NLPL/
  modules/ # Module loading system
  compiler/ # Compiler backends (C, C++, etc.)
  tests/ # Unit and integration tests
- examples/ # Example NLPL programs
+ examples/ # Example NexusLang programs
  test_programs/ # Test programs for validation
  docs/ # Documentation
  dev_tools/ # Development utilities
@@ -196,7 +196,7 @@ venv\Scripts\activate # Windows
 
 **Solution:** Use the module form instead:
 ```bash
-python -m nlpl.main path/to/file.nlpl
+python -m nexuslang.main path/to/file.nlpl
 ```
 
 ## Deactivating Virtual Environment
@@ -218,10 +218,10 @@ pip install pytest pytest-cov black isort flake8
 
 ## Tips
 
-1. **Always activate the venv** before working on NLPL
+1. **Always activate the venv** before working on NexusLang
 2. **Run tests frequently** to catch issues early
 3. **Format code** before committing changes
-4. **Check examples/** for correct NLPL syntax
+4. **Check examples/** for correct NexusLang syntax
 5. **Use --debug flag** when troubleshooting parser issues
 
 ## Next Steps

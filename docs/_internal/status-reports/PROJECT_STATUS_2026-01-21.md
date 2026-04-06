@@ -1,4 +1,4 @@
-# NLPL Project Status Analysis - January 21, 2026
+# NexusLang Project Status Analysis - January 21, 2026
 
 ## Executive Summary
 
@@ -117,7 +117,7 @@ NLPL has successfully evolved from a concept to a **functional programming langu
 
 ### Directory Structure (Post-Cleanup)
 ```
-NLPL/
+NexusLang/
 ├── src/nlpl/              # Source code (interpreter, parser, compiler)
 │   ├── parser/            # Lexer, parser, AST
 │   ├── interpreter/       # Execution engine, scope optimizer
@@ -134,7 +134,7 @@ NLPL/
 │   └── diagnostics/       # Error formatting
 │
 ├── tests/                 # Python pytest test suite
-├── test_programs/         # NLPL test programs
+├── test_programs/         # NexusLang test programs
 │   ├── unit/              # Single feature tests
 │   ├── integration/       # Multi-feature tests
 │   └── regression/        # Bug fix validation
@@ -162,7 +162,7 @@ NLPL/
 
 ### Core Pipeline
 ```
-Source (.nlpl)
+Source (.nxl)
     ↓
 Lexer (tokens)
     ↓
@@ -432,7 +432,7 @@ Compiler → LLVM/C/C++ (code generation)
 ### Technical Risks
 
 1. **Performance Gap** (MEDIUM)
-   - **Risk**: NLPL may be slower than C++ without complete LLVM backend
+   - **Risk**: NexusLang may be slower than C++ without complete LLVM backend
    - **Mitigation**: Prioritize LLVM completion, aggressive optimization
 
 2. **Natural Language Ambiguity** (LOW)
@@ -478,7 +478,7 @@ Compiler → LLVM/C/C++ (code generation)
 - ⏳ Tutorial completion rate
 - ⏳ Forum/Discord activity
 - ⏳ Conference presentations
-- ⏳ Blog posts/articles written about NLPL
+- ⏳ Blog posts/articles written about NexusLang
 
 ---
 

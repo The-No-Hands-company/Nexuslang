@@ -3,7 +3,7 @@
 LSP Server Startup Test
 ========================
 
-Tests that the NLPL LSP server starts correctly and handles basic LSP initialization.
+Tests that the NexusLang LSP server starts correctly and handles basic LSP initialization.
 """
 
 import json
@@ -12,7 +12,7 @@ import sys
 import time
 from pathlib import Path
 
-# Add NLPL to path
+# Add NexusLang to path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 
@@ -55,7 +55,7 @@ def test_lsp_startup():
     # Start LSP server
     print("\n1. Starting LSP server...")
     process = subprocess.Popen(
-        [sys.executable, '-m', 'nlpl.lsp', '--stdio'],
+        [sys.executable, '-m', 'nexuslang.lsp', '--stdio'],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

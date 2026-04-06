@@ -1,7 +1,7 @@
 # FFI (Foreign Function Interface) Implementation Status
 
 ## Overview
-The FFI system enables NLPL to interface with C libraries and external code, allowing seamless integration with existing ecosystems.
+The FFI system enables NexusLang to interface with C libraries and external code, allowing seamless integration with existing ecosystems.
 
 **Last Updated**: 2025-11-26 
 **Status**: **PHASE 2 COMPLETE - Ready for Phase 3**
@@ -47,7 +47,7 @@ The FFI system enables NLPL to interface with C libraries and external code, all
 ```nlpl
 extern function printf with format as Pointer returns Integer from library "c"
 
-set message to "Hello from NLPL FFI!\n"
+set message to "Hello from NexusLang FFI!\n"
 call printf with message
 ```
 
@@ -63,7 +63,7 @@ Linking executable...
 **Execution**: Success 
 ```bash
 $ ./test_ffi
-Hello from NLPL FFI!
+Hello from NexusLang FFI!
 ```
 
 **Generated LLVM IR** (excerpt):
@@ -96,7 +96,7 @@ entry:
 
 **Function Name Flexibility**: FIXED
 - Allow C keywords (malloc, sin, cos, pow, etc.) as extern function names 
-- Parser recognizes common C function names even when they conflict with NLPL keywords
+- Parser recognizes common C function names even when they conflict with NexusLang keywords
 
 **Return Type Inference**: FIXED
 - Extended `_infer_expression_type()` to check extern functions
@@ -108,10 +108,10 @@ entry:
 **Test 1: Basic Printf** (`test_ffi_basic.nlpl`)
 ```nlpl
 extern function printf with format as Pointer returns Integer from library "c"
-set greeting to "Hello from NLPL calling C printf!\n"
+set greeting to "Hello from NexusLang calling C printf!\n"
 call printf with greeting
 ```
- Output: `Hello from NLPL calling C printf!`
+ Output: `Hello from NexusLang calling C printf!`
 
 **Test 2: Math Functions** (`test_ffi_math.nlpl`)
 ```nlpl
@@ -213,19 +213,19 @@ clang test.o -o test -lm # Automatically adds -lm for sqrt/pow/sin
 ### Phase 3: Advanced FFI Features (12-18 hours remaining)
 
 **1. Struct Marshalling** (4-6 hours)
-- Pass NLPL structs to C functions
-- Convert between NLPL and C struct layouts
+- Pass NexusLang structs to C functions
+- Convert between NexusLang and C struct layouts
 - Handle nested structs and pointer members
 - Alignment and padding compatibility
 
 **2. Callback Functions** (6-8 hours)
-- Generate function pointers for NLPL functions
+- Generate function pointers for NexusLang functions
 - Trampoline code for proper calling conventions
 - Support C functions taking callbacks (qsort, signal, pthread_create)
 - Thread-safe callback handling
 
 **3. Variadic Functions from NLPL** (4-5 hours)
-- Allow NLPL functions to accept variable arguments
+- Allow NexusLang functions to accept variable arguments
 - Implement va_list, va_start, va_arg, va_end equivalents
 - Type-safe variadic argument handling
 
@@ -464,7 +464,7 @@ Void void
 extern function printf with format as Pointer returns Integer from library "c"
 
 function main
- set format to "Hello from NLPL using C printf!\n"
+ set format to "Hello from NexusLang using C printf!\n"
  printf(format)
  return 0
 end
@@ -570,7 +570,7 @@ attributes #0 = { "linkage"="external" "calling-convention"="ccc" }
 
 ### 1. Compiler Pipeline Integration
 ```python
-from nlpl.compiler.ffi import FFICodegen
+from nexuslang.compiler.ffi import FFICodegen
 
 # In LLVMCodeGenerator.__init__()
 self.ffi_codegen = FFICodegen(self.module, self.builder)
@@ -600,7 +600,7 @@ os.system(f"clang {obj_file} {' '.join(link_flags)} -o {executable}")
 ### 3. Runtime Integration
 ```python
 # In runtime initialization
-from nlpl.stdlib.ffi import register_ffi_functions
+from nexuslang.stdlib.ffi import register_ffi_functions
 
 register_ffi_functions(runtime)
 
@@ -614,7 +614,7 @@ register_ffi_functions(runtime)
 ## Phase 2: Advanced FFI Features (TODO)
 
 ### 1. Struct Marshalling
-**Goal**: Pass NLPL structs to C functions
+**Goal**: Pass NexusLang structs to C functions
 ```nlpl
 struct Point
  x as Integer
@@ -636,7 +636,7 @@ draw_point(pt) # Convert to C struct layout
 - Padding/alignment handling
 
 ### 2. Callback Functions
-**Goal**: Pass NLPL functions as C callbacks
+**Goal**: Pass NexusLang functions as C callbacks
 ```nlpl
 function my_comparator with a as Integer with b as Integer returns Integer
  if a is less than b
@@ -712,7 +712,7 @@ extern function syscall with number as Integer with arg1 as Integer returns Inte
 ## Phase 3: Safety & Validation (TODO)
 
 ### 1. Type Safety Checks
-- Validate NLPL types match C signatures
+- Validate NexusLang types match C signatures
 - Prevent unsafe pointer casts
 - Null pointer checking
 
@@ -760,7 +760,7 @@ def test_library_resolution():
 
 ### Current Limitations
 1. **No struct marshalling** - Cannot pass complex types to C functions
-2. **No callbacks** - Cannot pass NLPL functions as C callbacks
+2. **No callbacks** - Cannot pass NexusLang functions as C callbacks
 3. **No variadic functions** - Cannot use printf-style variadic arguments
 4. **Static linking only** - No runtime library loading
 5. **Limited type checking** - Relies on programmer correctness

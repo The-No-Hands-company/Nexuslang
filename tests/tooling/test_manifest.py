@@ -1,5 +1,5 @@
 """
-Unit tests for NLPL Build System manifest parser.
+Unit tests for NexusLang Build System manifest parser.
 """
 
 import pytest
@@ -12,7 +12,7 @@ from textwrap import dedent
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
-from nlpl.build.manifest import (
+from nexuslang.build.manifest import (
     Manifest, load_manifest, Dependency, BuildProfile, 
     PanicStrategy, CrateType, PackageMetadata
 )
@@ -28,7 +28,7 @@ def temp_project():
 
 def write_manifest(project_dir: Path, content: str):
     """Write nlpl.toml to project directory."""
-    manifest_path = project_dir / 'nlpl.toml'
+    manifest_path = project_dir / 'nexuslang.toml'
     manifest_path.write_text(dedent(content))
     return manifest_path
 
@@ -216,14 +216,14 @@ class TestBinaryTargets:
             
             [[bin]]
             name = "my-app"
-            path = "src/main.nlpl"
+            path = "src/main.nxl"
         """)
         
         manifest = Manifest(manifest_path)
         assert len(manifest.binary_targets) == 1
         bin_target = manifest.binary_targets[0]
         assert bin_target.name == "my-app"
-        assert bin_target.path == "src/main.nlpl"
+        assert bin_target.path == "src/main.nxl"
     
     def test_multiple_binaries(self, temp_project):
         """Test multiple binary targets."""
@@ -234,11 +234,11 @@ class TestBinaryTargets:
             
             [[bin]]
             name = "server"
-            path = "src/bin/server.nlpl"
+            path = "src/bin/server.nxl"
             
             [[bin]]
             name = "client"
-            path = "src/bin/client.nlpl"
+            path = "src/bin/client.nxl"
         """)
         
         manifest = Manifest(manifest_path)
@@ -260,7 +260,7 @@ class TestLibraryTarget:
             
             [lib]
             name = "my_lib"
-            path = "src/lib.nlpl"
+            path = "src/lib.nxl"
             crate-type = ["lib", "staticlib"]
         """)
         
@@ -268,7 +268,7 @@ class TestLibraryTarget:
         lib = manifest.library_target
         assert lib is not None
         assert lib.name == "my_lib"
-        assert lib.path == "src/lib.nlpl"
+        assert lib.path == "src/lib.nxl"
         assert len(lib.crate_type) == 2
         assert CrateType.LIB in lib.crate_type
         assert CrateType.STATICLIB in lib.crate_type
@@ -439,8 +439,8 @@ class TestManifestUtilities:
         """)
         
         manifest = Manifest(manifest_path)
-        resolved = manifest.resolve_path("src/main.nlpl")
-        assert resolved == temp_project / "src" / "main.nlpl"
+        resolved = manifest.resolve_path("src/main.nxl")
+        assert resolved == temp_project / "src" / "main.nxl"
 
 
 class TestLoadManifest:

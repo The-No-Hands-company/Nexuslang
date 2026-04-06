@@ -11,7 +11,7 @@
 Complete callback infrastructure for FFI operations:
 
 **Core Methods**:
-- `create_callback_wrapper()` - Creates C-callable wrappers for NLPL functions
+- `create_callback_wrapper()` - Creates C-callable wrappers for NexusLang functions
 - `get_callback_pointer()` - Returns function pointers for C interop
 - `create_comparison_callback()` - qsort/bsearch compatible callbacks
 - `create_signal_handler_callback()` - POSIX signal handlers
@@ -21,11 +21,11 @@ Complete callback infrastructure for FFI operations:
 **Architecture**:
 ```python
 class CallbackManager:
- def create_callback_wrapper(self, nlpl_func_name, param_types, return_type):
+ def create_callback_wrapper(self, nxl_func_name, param_types, return_type):
  # Creates wrapper with C calling convention
- # Converts C parameters NLPL
- # Calls NLPL function
- # Converts NLPL result C
+ # Converts C parameters NexusLang
+ # Calls NexusLang function
+ # Converts NexusLang result C
  return wrapper_function
 ```
 
@@ -97,7 +97,7 @@ call qsort with array, count, sizeof Int, callback compare_ints
 
 ### Callback Flow
 ```
-1. NLPL Function Defined
+1. NexusLang Function Defined
  
 2. CallbackManager.create_callback_wrapper()
  - Generates wrapper with C calling convention (cdecl/stdcall)
@@ -105,18 +105,18 @@ call qsort with array, count, sizeof Int, callback compare_ints
  
 3. Wrapper Function Created
  - Entry block
- - Parameter conversion (C NLPL types)
- - Call to original NLPL function
+ - Parameter conversion (C NexusLang types)
+ - Call to original NexusLang function
  - Return value conversion (NLPL C types)
  
 4. Function Pointer (@wrapper_name)
  - Can be passed to C functions
  - C code calls wrapper
- - Wrapper calls NLPL code
+ - Wrapper calls NexusLang code
  
 5. Execution
  - C library invokes callback
- - NLPL code executes
+ - NexusLang code executes
  - Result returned to C
 ```
 
@@ -183,7 +183,7 @@ call pthread_create with thread_ptr, null, callback thread_function, args
 ; Callback wrapper example
 define i32 @__callback_compare_ints(i8* %a, i8* %b) {
 entry:
- ; Call the NLPL function
+ ; Call the NexusLang function
  %result = call i32 @compare_ints(i8* %a, i8* %b)
  ret i32 %result
 }
@@ -195,7 +195,7 @@ call void @qsort(i8* %array, i64 %size, i64 %elem_size,
 
 ### Calling Convention Handling
 - Wrappers use C calling convention (`ccc`)
-- NLPL functions can use any convention internally
+- NexusLang functions can use any convention internally
 - Wrapper bridges the convention gap
 
 ### Memory Safety
@@ -320,7 +320,7 @@ All callback-related code is well-commented with:
 
 ## Conclusion
 
-The callback implementation is **complete and production-ready** for basic use cases. The architecture is clean, extensible, and efficient. NLPL can now integrate with C libraries that require callbacks, enabling:
+The callback implementation is **complete and production-ready** for basic use cases. The architecture is clean, extensible, and efficient. NexusLang can now integrate with C libraries that require callbacks, enabling:
 
 - Standard library functions (qsort, bsearch, signal)
 - GUI event handlers
@@ -346,11 +346,11 @@ FFI_CALLBACK_IMPLEMENTATION_STATUS.md +350 lines (documentation)
 
 ## Related Work
 
-This completes **Phase 3 - FFI & Interop, Component 2** of the NLPL compiler roadmap:
+This completes **Phase 3 - FFI & Interop, Component 2** of the NexusLang compiler roadmap:
 
 - **Basic FFI** - External function declarations
 - **Struct Marshalling** - Data passing
-- **Callback Functions** - C NLPL calls (THIS PHASE)
+- **Callback Functions** - C NexusLang calls (THIS PHASE)
 - **Variadic Functions** - Next
 - **Advanced Types** - Future
 
@@ -358,4 +358,4 @@ Progress: **3 of 5 FFI components complete (60%)**
 
 ---
 
-**Ready to proceed with**: Variadic NLPL functions or continue with testing/integration.
+**Ready to proceed with**: Variadic NexusLang functions or continue with testing/integration.

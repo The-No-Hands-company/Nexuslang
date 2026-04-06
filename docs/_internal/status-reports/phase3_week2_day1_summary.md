@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-Successfully integrated LLVM optimization pipeline and **eliminated critical coroutine overhead**, achieving **major performance breakthrough**. NLPL now compiles to within **1.80-2.52x of C performance**, comfortably meeting the 3x target and approaching the 2x stretch goal.
+Successfully integrated LLVM optimization pipeline and **eliminated critical coroutine overhead**, achieving **major performance breakthrough**. NexusLang now compiles to within **1.80-2.52x of C performance**, comfortably meeting the 3x target and approaching the 2x stretch goal.
 
 ### Key Achievements
 
@@ -24,7 +24,7 @@ Successfully integrated LLVM optimization pipeline and **eliminated critical cor
 
 ### Final Benchmarks (vs C -O2)
 
-| Benchmark | NLPL -O2 | C -O2 | Ratio | Target | Status |
+| Benchmark | NexusLang -O2 | C -O2 | Ratio | Target | Status |
 |-----------|----------|-------|-------|--------|--------|
 | **Fibonacci(1000)** | 0.934ms | 0.518ms | **1.80x slower** | < 3x | ✅ EXCEEDS |
 | **Matrix(200x200)** | 1.191ms | 0.473ms | **2.52x slower** | < 3x | ✅ MEETS |
@@ -131,8 +131,8 @@ else:
 - Pretty-printed tables
 
 **C Reference Implementations:**
-- `bench_fibonacci_iter.c` - Matching NLPL iterative version
-- `bench_matrix.c` - Matching NLPL matrix computation
+- `bench_fibonacci_iter.c` - Matching NexusLang iterative version
+- `bench_matrix.c` - Matching NexusLang matrix computation
 - `bench_sieve.c` - Prime sieve (NLPL version has compilation issues)
 
 ---
@@ -157,7 +157,7 @@ else:
 **Profiling Analysis:**
 
 1. **I/O Overhead**: `printf`/`sprintf` calls dominate small benchmarks
-2. **Function Call Overhead**: NLPL uses more indirect calls than C
+2. **Function Call Overhead**: NexusLang uses more indirect calls than C
 3. **Memory Allocations**: Some unnecessary allocations remain
 4. **Loop Patterns**: C compiler does more aggressive loop unrolling
 
@@ -321,7 +321,7 @@ while.body.4:
 
 **NLPL now compiles to within 1.80x of C performance** on compute-intensive benchmarks, comfortably meeting the 3x target and approaching the 2x stretch goal. The compiler pipeline is robust, the optimizer is working well, and the codebase is clean and maintainable.
 
-**This positions NLPL as a credible alternative to C/C++ for performance-critical applications** while maintaining the natural language syntax that makes it accessible to beginners.
+**This positions NexusLang as a credible alternative to C/C++ for performance-critical applications** while maintaining the natural language syntax that makes it accessible to beginners.
 
 ---
 
@@ -333,11 +333,11 @@ while.body.4:
 3. Explore further performance tuning opportunities
 4. Consider AST-level optimizations
 
-**Target**: Push NLPL closer to the 1.5x stretch goal through incremental improvements.
+**Target**: Push NexusLang closer to the 1.5x stretch goal through incremental improvements.
 
 ---
 
 **Phase 3 Week 2 Day 1: COMPLETE** ✅  
 **Date**: February 5, 2026  
-**Team**: NLPL Compiler Development  
+**Team**: NexusLang Compiler Development  
 **Status**: ON TRACK - EXCEEDING EXPECTATIONS

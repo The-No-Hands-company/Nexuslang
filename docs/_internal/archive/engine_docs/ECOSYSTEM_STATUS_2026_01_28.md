@@ -1,4 +1,4 @@
-# NLPL Ecosystem Development - Status Report
+# NexusLang Ecosystem Development - Status Report
 
 **Date**: January 28, 2026  
 **Phase**: Graphics Foundation (Phase 1, Month 2)  
@@ -39,7 +39,7 @@
    - Matrix conversion
 
 **Integration**:
-- ✅ Registered 60+ functions with NLPL runtime
+- ✅ Registered 60+ functions with NexusLang runtime
 - ✅ Added to stdlib module list
 - ✅ Example demo created: `examples/engine_demos/01_math3d_demo.nlpl`
 - ✅ Documentation: `examples/engine_demos/README.md`
@@ -160,7 +160,7 @@ See `docs/8_planning/ECOSYSTEM_ROADMAP_2026.md` for the full 12-month plan.
 
 The 3D math library is the first building block. It's small (800 lines), foundational (everything depends on it), and complete (all core operations implemented).
 
-Next up: OpenGL rendering and camera systems. By end of February, we'll have a **rotating 3D cube** rendered in NLPL. 🎯
+Next up: OpenGL rendering and camera systems. By end of February, we'll have a **rotating 3D cube** rendered in NexusLang. 🎯
 
 ---
 

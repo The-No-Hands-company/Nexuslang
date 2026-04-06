@@ -1,5 +1,5 @@
 """
-Native NLPL test-framework: lexer tokens, AST nodes, parser, interpreter.
+Native NexusLang test-framework: lexer tokens, AST nodes, parser, interpreter.
 Split from test_session_features.py.
 """
 
@@ -15,42 +15,42 @@ if _SRC not in sys.path:
 
 class TestLexerTestTokens:
     def _lex(self, src):
-        from nlpl.parser.lexer import Lexer
+        from nexuslang.parser.lexer import Lexer
         lexer = Lexer(src)
         return lexer.tokenize()
 
     def test_test_keyword_token(self):
-        from nlpl.parser.lexer import TokenType
+        from nexuslang.parser.lexer import TokenType
         tokens = self._lex('test "my test" do\nend')
         types = [t.type for t in tokens]
         assert TokenType.TEST in types
 
     def test_describe_keyword_token(self):
-        from nlpl.parser.lexer import TokenType
+        from nexuslang.parser.lexer import TokenType
         tokens = self._lex('describe "suite" do\nend')
         types = [t.type for t in tokens]
         assert TokenType.DESCRIBE in types
 
     def test_it_keyword_token(self):
-        from nlpl.parser.lexer import TokenType
+        from nexuslang.parser.lexer import TokenType
         tokens = self._lex('it "does something" do\nend')
         types = [t.type for t in tokens]
         assert TokenType.IT in types
 
     def test_expect_keyword_token(self):
-        from nlpl.parser.lexer import TokenType
+        from nexuslang.parser.lexer import TokenType
         tokens = self._lex("expect x to equal 1")
         types = [t.type for t in tokens]
         assert TokenType.EXPECT in types
 
     def test_before_each_token(self):
-        from nlpl.parser.lexer import TokenType
+        from nexuslang.parser.lexer import TokenType
         tokens = self._lex("before each do\nend")
         types = [t.type for t in tokens]
         assert TokenType.BEFORE_EACH in types
 
     def test_after_each_token(self):
-        from nlpl.parser.lexer import TokenType
+        from nexuslang.parser.lexer import TokenType
         tokens = self._lex("after each do\nend")
         types = [t.type for t in tokens]
         assert TokenType.AFTER_EACH in types
@@ -62,44 +62,44 @@ class TestLexerTestTokens:
 
 class TestASTNodes:
     def test_test_block_node_import(self):
-        from nlpl.parser.ast import TestBlock
+        from nexuslang.parser.ast import TestBlock
         node = TestBlock(name="my test", body=[])
         assert node.node_type == "test_block"
 
     def test_describe_block_node_import(self):
-        from nlpl.parser.ast import DescribeBlock
+        from nexuslang.parser.ast import DescribeBlock
         node = DescribeBlock(name="suite", body=[])
         assert node.node_type == "describe_block"
 
     def test_it_block_node_import(self):
-        from nlpl.parser.ast import ItBlock
+        from nexuslang.parser.ast import ItBlock
         node = ItBlock(name="does x", body=[])
         assert node.node_type == "it_block"
 
     def test_before_each_node_import(self):
-        from nlpl.parser.ast import BeforeEachBlock
+        from nexuslang.parser.ast import BeforeEachBlock
         node = BeforeEachBlock(body=[])
         assert node.node_type == "before_each_block"
 
     def test_after_each_node_import(self):
-        from nlpl.parser.ast import AfterEachBlock
+        from nexuslang.parser.ast import AfterEachBlock
         node = AfterEachBlock(body=[])
         assert node.node_type == "after_each_block"
 
     def test_parameterized_test_block_import(self):
-        from nlpl.parser.ast import ParameterizedTestBlock
+        from nexuslang.parser.ast import ParameterizedTestBlock
         node = ParameterizedTestBlock(name="param test", params=["x"], cases=[[1], [2]], body=[])
         assert node.node_type == "parameterized_test_block"
         assert node.params == ["x"]
         assert len(node.cases) == 2
 
     def test_test_block_stores_name(self):
-        from nlpl.parser.ast import TestBlock
+        from nexuslang.parser.ast import TestBlock
         node = TestBlock(name="hello", body=[])
         assert node.name == "hello"
 
     def test_test_block_stores_body(self):
-        from nlpl.parser.ast import TestBlock
+        from nexuslang.parser.ast import TestBlock
         node = TestBlock(name="t", body=["stmt1", "stmt2"])
         assert len(node.body) == 2
 
@@ -110,44 +110,44 @@ class TestASTNodes:
 
 class TestParserTestFramework:
     def _parse(self, src):
-        from nlpl.parser.parser import Parser
-        from nlpl.parser.lexer import Lexer
+        from nexuslang.parser.parser import Parser
+        from nexuslang.parser.lexer import Lexer
         tokens = Lexer(src).tokenize()
         return Parser(tokens).parse()
 
     def test_parse_test_block(self):
-        from nlpl.parser.ast import TestBlock
+        from nexuslang.parser.ast import TestBlock
         prog = self._parse('test "my test" do\nend')
         assert any(isinstance(s, TestBlock) for s in prog.statements)
 
     def test_parse_describe_block(self):
-        from nlpl.parser.ast import DescribeBlock
+        from nexuslang.parser.ast import DescribeBlock
         prog = self._parse('describe "suite" do\nend')
         assert any(isinstance(s, DescribeBlock) for s in prog.statements)
 
     def test_parse_it_block(self):
-        from nlpl.parser.ast import ItBlock
+        from nexuslang.parser.ast import ItBlock
         prog = self._parse('it "does x" do\nend')
         assert any(isinstance(s, ItBlock) for s in prog.statements)
 
     def test_parse_before_each(self):
-        from nlpl.parser.ast import BeforeEachBlock
+        from nexuslang.parser.ast import BeforeEachBlock
         prog = self._parse("before each do\nend")
         assert any(isinstance(s, BeforeEachBlock) for s in prog.statements)
 
     def test_parse_after_each(self):
-        from nlpl.parser.ast import AfterEachBlock
+        from nexuslang.parser.ast import AfterEachBlock
         prog = self._parse("after each do\nend")
         assert any(isinstance(s, AfterEachBlock) for s in prog.statements)
 
     def test_parse_test_block_name(self):
-        from nlpl.parser.ast import TestBlock
+        from nexuslang.parser.ast import TestBlock
         prog = self._parse('test "addition works" do\nend')
         node = next(s for s in prog.statements if isinstance(s, TestBlock))
         assert node.name == "addition works"
 
     def test_parse_describe_with_it(self):
-        from nlpl.parser.ast import DescribeBlock, ItBlock
+        from nexuslang.parser.ast import DescribeBlock, ItBlock
         src = 'describe "math" do\n  it "adds" do\n  end\nend'
         prog = self._parse(src)
         desc = next(s for s in prog.statements if isinstance(s, DescribeBlock))
@@ -160,11 +160,11 @@ class TestParserTestFramework:
 
 class TestInterpreterTestFramework:
     def _interp(self, src):
-        from nlpl.interpreter.interpreter import Interpreter
-        from nlpl.runtime.runtime import Runtime
-        from nlpl.stdlib import register_stdlib
-        from nlpl.parser.parser import Parser
-        from nlpl.parser.lexer import Lexer
+        from nexuslang.interpreter.interpreter import Interpreter
+        from nexuslang.runtime.runtime import Runtime
+        from nexuslang.stdlib import register_stdlib
+        from nexuslang.parser.parser import Parser
+        from nexuslang.parser.lexer import Lexer
         rt = Runtime()
         register_stdlib(rt)
         tokens = Lexer(src).tokenize()

@@ -2,8 +2,8 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../src'))
 
-from nlpl.parser.lexer import Lexer, TokenType
-from nlpl.parser.parser import Parser
+from nexuslang.parser.lexer import Lexer, TokenType
+from nexuslang.parser.parser import Parser
 
 # Just parse the if statement part
 code = "not c"

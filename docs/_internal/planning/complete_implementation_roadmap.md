@@ -1,10 +1,10 @@
-# NLPL Complete Implementation Roadmap
+# NexusLang Complete Implementation Roadmap
 
 ## Overview
 
 **Goal**: Deliver all planned features across 10 phases (~9 months)
 
-This roadmap takes NLPL from v1.1 (production polish) to v3.2 (mature ecosystem) with clear milestones, deliverables, and success metrics.
+This roadmap takes NexusLang from v1.1 (production polish) to v3.2 (mature ecosystem) with clear milestones, deliverables, and success metrics.
 
 ---
 
@@ -106,7 +106,7 @@ Total: 38 weeks to complete vision
 ### Deliverables
 
 - OS kernel examples working
-- C stdlib callable from NLPL
+- C stdlib callable from NexusLang
 - 15+ struct/union tests passing
 
 ---
@@ -139,7 +139,7 @@ Total: 38 weeks to complete vision
 
 ### Goals
 
-- Run NLPL in browsers
+- Run NexusLang in browsers
 - JavaScript/TypeScript generation
 - Python interoperability
 
@@ -153,7 +153,7 @@ Total: 38 weeks to complete vision
 
 ### Deliverables
 
-- NLPL runs in browser
+- NexusLang runs in browser
 - Node.js runtime bindings
 - NumPy/pandas callable
 

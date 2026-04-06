@@ -1,8 +1,8 @@
-# NLPL Type System Design
+# NexusLang Type System Design
 
 ## Overview
 
-The NLPL type system provides static type checking to catch type errors at compile time rather than runtime. It supports both explicit type annotations and type inference.
+The NexusLang type system provides static type checking to catch type errors at compile time rather than runtime. It supports both explicit type annotations and type inference.
 
 ## Type Annotation Syntax
 

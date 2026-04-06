@@ -40,13 +40,13 @@ _RU_INIT = os.path.join(
 def ru():
     """Return the result_utils module, loaded in isolation."""
     _pkgs = (
-        "nlpl", "nlpl.runtime", "nlpl.runtime.runtime",
-        "nlpl.stdlib", "nlpl.stdlib.result_utils",
+        "nlpl", "nexuslang.runtime", "nexuslang.runtime.runtime",
+        "nexuslang.stdlib", "nexuslang.stdlib.result_utils",
     )
     # Save originals so we can restore after tests
     _originals = {pkg: sys.modules.get(pkg) for pkg in _pkgs}
-    _had_runtime_cls = hasattr(sys.modules.get("nlpl.runtime.runtime", object()), "Runtime")
-    _orig_runtime_cls = getattr(sys.modules.get("nlpl.runtime.runtime"), "Runtime", None) if _had_runtime_cls else None
+    _had_runtime_cls = hasattr(sys.modules.get("nexuslang.runtime.runtime", object()), "Runtime")
+    _orig_runtime_cls = getattr(sys.modules.get("nexuslang.runtime.runtime"), "Runtime", None) if _had_runtime_cls else None
 
     class _StubRuntime:
         def register_function(self, name, fn):
@@ -58,10 +58,10 @@ def ru():
         if pkg not in sys.modules:
             sys.modules[pkg] = types.ModuleType(pkg)
 
-    sys.modules["nlpl.runtime.runtime"].Runtime = _StubRuntime
+    sys.modules["nexuslang.runtime.runtime"].Runtime = _StubRuntime
 
     spec = importlib.util.spec_from_file_location(
-        "nlpl.stdlib.result_utils", os.path.abspath(_RU_INIT)
+        "nexuslang.stdlib.result_utils", os.path.abspath(_RU_INIT)
     )
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -73,8 +73,8 @@ def ru():
             sys.modules.pop(pkg, None)
         else:
             sys.modules[pkg] = _originals[pkg]
-    if _had_runtime_cls and "nlpl.runtime.runtime" in sys.modules:
-        sys.modules["nlpl.runtime.runtime"].Runtime = _orig_runtime_cls
+    if _had_runtime_cls and "nexuslang.runtime.runtime" in sys.modules:
+        sys.modules["nexuslang.runtime.runtime"].Runtime = _orig_runtime_cls
 
 
 # ---------------------------------------------------------------------------

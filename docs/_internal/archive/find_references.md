@@ -38,7 +38,7 @@ The Find References feature allows you to find all usages of a symbol (function,
 ### Programmatic API
 
 ```python
-from nlpl.lsp.references import ReferencesProvider
+from nexuslang.lsp.references import ReferencesProvider
 
 # Initialize
 provider = ReferencesProvider(server)
@@ -47,7 +47,7 @@ provider = ReferencesProvider(server)
 references = provider.find_references(
     text=source_code,
     position=Position(line=10, character=5),
-    uri="file:///path/to/file.nlpl",
+    uri="file:///path/to/file.nxl",
     include_declaration=True  # Include the definition
 )
 
@@ -331,7 +331,7 @@ class ReferencesProvider:
             List of location dictionaries:
             [
                 {
-                    "uri": "file:///path/to/file.nlpl",
+                    "uri": "file:///path/to/file.nxl",
                     "range": {
                         "start": {"line": 10, "character": 5},
                         "end": {"line": 10, "character": 15}

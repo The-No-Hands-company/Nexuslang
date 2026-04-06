@@ -20,7 +20,7 @@ import tempfile
 
 import pytest
 
-from nlpl.stdlib.validation import (
+from nexuslang.stdlib.validation import (
     json_schema_validate,
     json_schema_is_valid,
     json_schema_errors,

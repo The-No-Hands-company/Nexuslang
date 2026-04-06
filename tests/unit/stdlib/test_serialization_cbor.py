@@ -5,7 +5,7 @@ import math
 import tempfile
 import pytest
 
-from nlpl.stdlib.serialization import (
+from nexuslang.stdlib.serialization import (
     cbor_dumps,
     cbor_loads,
     cbor_dump_file,
@@ -86,13 +86,13 @@ class TestCborDumpsLoads:
         )
 
     def test_dumps_error_on_missing_cbor2(self, monkeypatch):
-        import nlpl.stdlib.serialization as mod
+        import nexuslang.stdlib.serialization as mod
         monkeypatch.setattr(mod, "HAS_CBOR", False)
         with pytest.raises(ImportError, match="cbor2"):
             mod.cbor_dumps({"a": 1})
 
     def test_loads_error_on_missing_cbor2(self, monkeypatch):
-        import nlpl.stdlib.serialization as mod
+        import nexuslang.stdlib.serialization as mod
         monkeypatch.setattr(mod, "HAS_CBOR", False)
         with pytest.raises(ImportError, match="cbor2"):
             mod.cbor_loads(b"\xa1")
@@ -110,7 +110,7 @@ class TestCborDumpsLoads:
 
 class TestCborFileIO:
     def test_dump_and_load_dict(self, tmp_path):
-        obj = {"project": "NLPL", "version": 1}
+        obj = {"project": "NexusLang", "version": 1}
         path = str(tmp_path / "test.cbor")
         assert cbor_dump_file(obj, path) is True
         assert cbor_load_file(path) == obj
@@ -147,13 +147,13 @@ class TestCborFileIO:
             cbor_load_file("/nonexistent/path/file.cbor")
 
     def test_dump_error_on_missing_cbor2(self, tmp_path, monkeypatch):
-        import nlpl.stdlib.serialization as mod
+        import nexuslang.stdlib.serialization as mod
         monkeypatch.setattr(mod, "HAS_CBOR", False)
         with pytest.raises(ImportError, match="cbor2"):
             mod.cbor_dump_file({"a": 1}, str(tmp_path / "f.cbor"))
 
     def test_load_error_on_missing_cbor2(self, tmp_path, monkeypatch):
-        import nlpl.stdlib.serialization as mod
+        import nexuslang.stdlib.serialization as mod
         # Write a real file first so missing-library is the only issue
         path = str(tmp_path / "f.cbor")
         cbor_dump_file({"a": 1}, path)
@@ -168,8 +168,8 @@ class TestCborFileIO:
 
 class TestCborRegistration:
     def test_functions_registered_in_runtime(self):
-        from nlpl.runtime.runtime import Runtime
-        from nlpl.stdlib.serialization import register_serialization_functions
+        from nexuslang.runtime.runtime import Runtime
+        from nexuslang.stdlib.serialization import register_serialization_functions
 
         rt = Runtime()
         register_serialization_functions(rt)

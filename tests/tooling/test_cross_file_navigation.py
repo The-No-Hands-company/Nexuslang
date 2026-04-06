@@ -6,8 +6,8 @@ import os
 import tempfile
 import pytest
 
-from nlpl.lsp.workspace_index import WorkspaceIndex
-from nlpl.lsp.server import NLPLLanguageServer
+from nexuslang.lsp.workspace_index import WorkspaceIndex
+from nexuslang.lsp.server import NLPLLanguageServer
 
 
 class TestCrossFileNavigation:
@@ -17,7 +17,7 @@ class TestCrossFileNavigation:
         """Test finding definitions across multiple files."""
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create module A with a function
-            module_a = os.path.join(tmpdir, "module_a.nlpl")
+            module_a = os.path.join(tmpdir, "module_a.nxl")
             with open(module_a, 'w') as f:
                 f.write("""
 function calculate with x as Integer and y as Integer returns Integer
@@ -32,7 +32,7 @@ end
 """)
             
             # Create module B that uses module A
-            module_b = os.path.join(tmpdir, "module_b.nlpl")
+            module_b = os.path.join(tmpdir, "module_b.nxl")
             with open(module_b, 'w') as f:
                 f.write("""
 import module_a
@@ -52,7 +52,7 @@ end
             assert len(symbols) >= 1
             calc_symbol = [s for s in symbols if s.kind == 'function'][0]
             assert calc_symbol.name == "calculate"
-            assert "module_a.nlpl" in calc_symbol.file_uri
+            assert "module_a.nxl" in calc_symbol.file_uri
             assert calc_symbol.line == 1  # 0-indexed: line 0 is blank, function is on line 1
             
             # Test: Find "Calculator" class
@@ -73,7 +73,7 @@ end
         """Test fuzzy symbol search across workspace."""
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create multiple files with various symbols
-            file1 = os.path.join(tmpdir, "math_utils.nlpl")
+            file1 = os.path.join(tmpdir, "math_utils.nxl")
             with open(file1, 'w') as f:
                 f.write("""
 function calculate_sum with numbers as List of Integer returns Integer
@@ -90,7 +90,7 @@ function calculate_average with numbers as List of Integer returns Float
 end
 """)
             
-            file2 = os.path.join(tmpdir, "string_utils.nlpl")
+            file2 = os.path.join(tmpdir, "string_utils.nxl")
             with open(file2, 'w') as f:
                 f.write("""
 function join_strings with strings as List of String returns String
@@ -121,7 +121,7 @@ end
     def test_incremental_reindexing(self):
         """Test that file changes are reflected in the index."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            test_file = os.path.join(tmpdir, "test.nlpl")
+            test_file = os.path.join(tmpdir, "test.nxl")
             
             # Write initial content
             with open(test_file, 'w') as f:
@@ -172,7 +172,7 @@ end
         """Test workspace indexing statistics."""
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create a file with various symbol types
-            test_file = os.path.join(tmpdir, "test.nlpl")
+            test_file = os.path.join(tmpdir, "test.nxl")
             with open(test_file, 'w') as f:
                 f.write("""
 function my_function returns Integer

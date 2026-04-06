@@ -1,4 +1,4 @@
-# NLPL Feature Support Matrix
+# NexusLang Feature Support Matrix
 
 Updated: 2026-04-02
 

@@ -1,4 +1,4 @@
-# NLPL Compiler - Optimization System Complete 
+# NexusLang Compiler - Optimization System Complete 
 
 **Date**: January 9, 2026 
 **Status**: Production Ready 
@@ -8,7 +8,7 @@
 
 ## Summary
 
-Successfully implemented comprehensive LLVM optimization support in the NLPL compiler with 5 optimization levels: O0, O1, O2, O3, and Os.
+Successfully implemented comprehensive LLVM optimization support in the NexusLang compiler with 5 optimization levels: O0, O1, O2, O3, and Os.
 
 ## Results
 
@@ -136,7 +136,7 @@ Optimization system is complete. Possible future enhancements:
 
 ## Conclusion
 
-The NLPL compiler now has a **production-ready optimization system** that:
+The NexusLang compiler now has a **production-ready optimization system** that:
 
 - Reduces binary size by 23%
 - Improves performance by 4x

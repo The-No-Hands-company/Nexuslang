@@ -7,7 +7,7 @@ import threading
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from nlpl.stdlib.asyncio_utils.async_runtime import (
+from nexuslang.stdlib.asyncio_utils.async_runtime import (
     NLPLFuture,
     NLPLTask,
     spawn_async,

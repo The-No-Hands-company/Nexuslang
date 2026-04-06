@@ -8,7 +8,7 @@
 
 ## Problem Identified
 
-User identified critical issue: NLPL documentation and examples heavily biased toward OS development and graphics/game development, creating false impression that NLPL is specialized for these domains rather than being a truly universal general-purpose language.
+User identified critical issue: NexusLang documentation and examples heavily biased toward OS development and graphics/game development, creating false impression that NexusLang is specialized for these domains rather than being a truly universal general-purpose language.
 
 **User's Directive**: "NLPL is not to be used for these things specifically because it is a truly general purpose language not unlike any other general purpose language"
 
@@ -96,7 +96,7 @@ Created 4 new example directories with complete working programs:
 
 #### **examples/business/inventory_system.nlpl** (140+ lines)
 
-**Purpose**: Demonstrate NLPL for business/enterprise applications
+**Purpose**: Demonstrate NexusLang for business/enterprise applications
 
 **Features**:
 - Product struct with id, name, quantity, price, category
@@ -123,7 +123,7 @@ function generate_low_stock_report with threshold
 
 #### **examples/data_science/csv_analysis.nlpl** (155+ lines)
 
-**Purpose**: Demonstrate NLPL for data processing and analytics
+**Purpose**: Demonstrate NexusLang for data processing and analytics
 
 **Features**:
 - Load and parse CSV data (sample sales data)
@@ -144,7 +144,7 @@ function generate_summary with data, column, column_name
 
 #### **examples/scientific/projectile_simulation.nlpl** (135+ lines)
 
-**Purpose**: Demonstrate NLPL for scientific computing
+**Purpose**: Demonstrate NexusLang for scientific computing
 
 **Features**:
 - Physics simulation: projectile motion with gravity
@@ -170,7 +170,7 @@ function calculate_required_velocity with distance
 
 #### **examples/web_backend/rest_api_users.nlpl** (200+ lines)
 
-**Purpose**: Demonstrate NLPL for web services and APIs
+**Purpose**: Demonstrate NexusLang for web services and APIs
 
 **Features**:
 - User struct with id, username, email, timestamps, is_active
@@ -318,7 +318,7 @@ Changed from game-focused to data-processing focused:
 **Before**:
 ```toml
 name = "example-game"
-description = "An example game using NLPL graphics libraries"
+description = "An example game using NexusLang graphics libraries"
 keywords = ["game", "graphics", "3d"]
 
 [dependencies]
@@ -339,7 +339,7 @@ editor-mode = ["editor-support"]
 **After**:
 ```toml
 name = "data-processor"
-description = "A data processing application demonstrating NLPL capabilities"
+description = "A data processing application demonstrating NexusLang capabilities"
 keywords = ["data", "processing", "analytics"]
 
 [dependencies]
@@ -364,7 +364,7 @@ database-support = ["nlpl-database"]
 
 ### Files Modified
 - **Documentation**: 30+ files updated
-- **Examples**: 4 new directories, 4 new NLPL programs (630+ lines)
+- **Examples**: 4 new directories, 4 new NexusLang programs (630+ lines)
 - **Standard Library**: 3 new modules (270+ lines)
 - **Build System**: 1 example file neutralized
 - **AI Guidelines**: 1 critical file updated with enforcement rules
@@ -378,7 +378,7 @@ database-support = ["nlpl-database"]
 ### Code Added
 - **Example Programs**: 630+ lines (business: 140, data: 155, scientific: 135, web: 200)
 - **Standard Library**: 270+ lines (business: 70, data: 90, scientific: 110)
-- **Total New Code**: 900+ lines of production-ready NLPL and Python
+- **Total New Code**: 900+ lines of production-ready NexusLang and Python
 
 ### Commits
 1. `d3c56ef`: "refactor: Remove domain-specific bias, emphasize universal capability"
@@ -463,7 +463,7 @@ NLPL now demonstrates equal capability across:
 `.github/copilot-instructions.md` now contains:
 
 1. **Explicit FORBIDDEN patterns** - AI assistants know what NOT to say
-2. **Required neutral language** - AI assistants know HOW to describe NLPL
+2. **Required neutral language** - AI assistants know HOW to describe NexusLang
 3. **Domain balance requirements** - Examples must represent all 10 domains
 4. **Test criteria** - "If you write something that could be read as 'NLPL is specialized for X', rewrite it"
 
@@ -493,7 +493,7 @@ Future work can add:
 
 ## Next Steps
 
-**Domain neutralization is complete.** NLPL is now demonstrably a universal general-purpose language with:
+**Domain neutralization is complete.** NexusLang is now demonstrably a universal general-purpose language with:
 - Balanced documentation
 - Balanced examples across 10 domains
 - Balanced standard library

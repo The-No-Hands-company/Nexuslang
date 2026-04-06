@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-NLPL Compiler - Compile NLPL code to native executables.
+NLPL Compiler - Compile NexusLang code to native executables.
 
 Usage:
     nlplc <source.nlpl>              # Compile to executable
@@ -18,18 +18,18 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.compiler.backends.llvm_ir_generator import LLVMIRGenerator
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.compiler.backends.llvm_ir_generator import LLVMIRGenerator
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="NLPL Compiler - Compile NLPL to native executables",
+        description="NLPL Compiler - Compile NexusLang to native executables",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__
     )
-    parser.add_argument("source", help="NLPL source file (.nlpl)")
+    parser.add_argument("source", help="NLPL source file (.nxl)")
     parser.add_argument("-o", "--output", help="Output file name (default: source name without extension)")
     parser.add_argument("--emit-llvm", action="store_true", help="Generate LLVM IR (.ll) only")
     parser.add_argument("--emit-bc", action="store_true", help="Generate LLVM bitcode (.bc)")

@@ -1,8 +1,8 @@
-# NLPL Language Server Protocol (LSP)
+# NexusLang Language Server Protocol (LSP)
 
 ## Overview
 
-The NLPL Language Server provides IDE-level features for NLPL development through the Language Server Protocol (LSP). It enables powerful development tools like intelligent code completion, go-to-definition, find references, hover documentation, and workspace-wide symbol search.
+The NexusLang Language Server provides IDE-level features for NexusLang development through the Language Server Protocol (LSP). It enables powerful development tools like intelligent code completion, go-to-definition, find references, hover documentation, and workspace-wide symbol search.
 
 ## Features
 
@@ -95,7 +95,7 @@ set result to sqrt with 16
 Context-aware intelligent code completion.
 
 **Completion Types**:
-1. **Keywords**: NLPL language keywords (function, class, set, if, for, etc.)
+1. **Keywords**: NexusLang language keywords (function, class, set, if, for, etc.)
 2. **Context-aware suggestions**:
  - After `set X to`: Suggests values (true, false, null, create, new)
  - After `as`: Suggests types (Integer, Float, String, List, etc.)
@@ -171,13 +171,13 @@ Real-time syntax and semantic error detection.
 
 ### Visual Studio Code
 
-1. **Install NLPL Extension** (when available) or configure manually:
+1. **Install NexusLang Extension** (when available) or configure manually:
 
 2. **Manual Setup** (`.vscode/settings.json`):
 ```json
 {
- "nlpl.lsp.enabled": true,
- "nlpl.lsp.serverPath": "/path/to/nlpl/src/nlpl_lsp.py"
+ "nexuslang.lsp.enabled": true,
+ "nexuslang.lsp.serverPath": "/path/to/nlpl/src/nxl_lsp.py"
 }
 ```
 
@@ -197,11 +197,11 @@ Real-time syntax and semantic error detection.
 local lspconfig = require('lspconfig')
 local configs = require('lspconfig.configs')
 
--- Define NLPL LSP
+-- Define NexusLang LSP
 if not configs.nlpl then
  configs.nlpl = {
  default_config = {
- cmd = {'python', '/path/to/nlpl/src/nlpl_lsp.py'},
+ cmd = {'python', '/path/to/nlpl/src/nxl_lsp.py'},
  filetypes = {'nlpl'},
  root_dir = lspconfig.util.root_pattern('.git', '.nlplroot'),
  settings = {},
@@ -209,7 +209,7 @@ if not configs.nlpl then
  }
 end
 
--- Setup NLPL LSP
+-- Setup NexusLang LSP
 lspconfig.nlpl.setup{}
 ```
 
@@ -222,7 +222,7 @@ lspconfig.nlpl.setup{}
 
 (lsp-register-client
  (make-lsp-client
- :new-connection (lsp-stdio-connection '("python" "/path/to/nlpl/src/nlpl_lsp.py"))
+ :new-connection (lsp-stdio-connection '("python" "/path/to/nlpl/src/nxl_lsp.py"))
  :major-modes '(nlpl-mode)
  :server-id 'nlpl-lsp))
 
@@ -237,8 +237,8 @@ lspconfig.nlpl.setup{}
  "clients": {
  "nlpl": {
  "enabled": true,
- "command": ["python", "/path/to/nlpl/src/nlpl_lsp.py"],
- "selector": "source.nlpl"
+ "command": ["python", "/path/to/nlpl/src/nxl_lsp.py"],
+ "selector": "source.nxl"
  }
  }
 }
@@ -251,7 +251,7 @@ lspconfig.nlpl.setup{}
 Most editors use stdio communication:
 
 ```bash
-python src/nlpl_lsp.py
+python src/nxl_lsp.py
 ```
 
 The server reads JSON-RPC messages from stdin and writes responses to stdout.
@@ -283,7 +283,7 @@ tail -f /tmp/nlpl-lsp.log
 ### LSP Protocol Flow
 
 ```
-Editor LSP Server NLPL Parser
+Editor LSP Server NexusLang Parser
  | | |
  |-- initialize ------------>| |
  |<- capabilities ---------- | |
@@ -398,12 +398,12 @@ set processor to new utils.DataProcessor
 
 **Check**:
 - Python path is correct
-- `src/nlpl_lsp.py` exists and is executable
+- `src/nxl_lsp.py` exists and is executable
 - No syntax errors in LSP code
 
 **Debug**:
 ```bash
-python src/nlpl_lsp.py
+python src/nxl_lsp.py
 # Should start and wait for stdin input
 ```
 
@@ -424,7 +424,7 @@ tail -f /tmp/nlpl-lsp.log
 **Verify**:
 - File is saved (some editors don't send unsaved content)
 - Cursor position is correct
-- LSP client is configured for NLPL file type
+- LSP client is configured for NexusLang file type
 
 ## Future Enhancements
 
@@ -460,7 +460,7 @@ The LSP is implemented in pure Python and follows LSP specification 3.17.
 
 - [LSP Specification](https://microsoft.github.io/language-server-protocol/)
 - [LSP Implementations](https://langserver.org/)
-- NLPL Documentation: `docs/`
+- NexusLang Documentation: `docs/`
 
 ## Status
 

@@ -1,4 +1,4 @@
-# Foreign Function Interface (FFI) in NLPL
+# Foreign Function Interface (FFI) in NexusLang
 
 **Status:** ✅ Fully implemented with variadic support (February 2, 2026)  
 **Complexity:** Advanced
@@ -7,13 +7,13 @@
 
 ## Overview
 
-The Foreign Function Interface (FFI) allows NLPL programs to call functions from C libraries and other native code. This enables:
+The Foreign Function Interface (FFI) allows NexusLang programs to call functions from C libraries and other native code. This enables:
 
 - **Library integration:** Use existing C/C++ libraries
 - **System programming:** Access OS APIs directly
 - **Performance:** Call optimized native code
 - **Hardware access:** Interface with device drivers
-- **Interoperability:** Bridge between NLPL and other languages
+- **Interoperability:** Bridge between NexusLang and other languages
 
 NLPL's FFI features:
 - C function declarations with `extern` keyword
@@ -70,9 +70,9 @@ call free with ptr
 
 ## Type Mapping
 
-### NLPL to C Type Conversion
+### NexusLang to C Type Conversion
 
-| NLPL Type | C Type | Size | Notes |
+| NexusLang Type | C Type | Size | Notes |
 |-----------|--------|------|-------|
 | `Integer` | `int` or `long` | 4 or 8 bytes | Platform-dependent |
 | `Float` | `double` | 8 bytes | Double precision |
@@ -178,7 +178,7 @@ end
 
 ## Variadic Functions NEW!
 
-**Added February 2, 2026!** NLPL now supports calling variadic C functions.
+**Added February 2, 2026!** NexusLang now supports calling variadic C functions.
 
 ### What are Variadic Functions?
 
@@ -248,7 +248,7 @@ call printf with "%10.2f\n", 3.14159 # Width 10, 2 decimals
 
 ### Type Safety Warning
 
-**Critical:** NLPL cannot verify variadic argument types at compile time!
+**Critical:** NexusLang cannot verify variadic argument types at compile time!
 
 ```nlpl
 # Dangerous - wrong type!
@@ -464,16 +464,16 @@ function with_buffer with size as Integer, callback as Function
 end
 ```
 
-3. **Prefer NLPL types over raw C:**
+3. **Prefer NexusLang types over raw C:**
 ```nlpl
 # Instead of C strings (char*)
-set name to "Alice"  # NLPL String (automatic memory management)
+set name to "Alice"  # NexusLang String (automatic memory management)
 
 # Instead of malloc/free
-set numbers to [1, 2, 3, 4, 5]  # NLPL List (automatic)
+set numbers to [1, 2, 3, 4, 5]  # NexusLang List (automatic)
 ```
 
-4. **Wrap C functions in NLPL:**
+4. **Wrap C functions in NexusLang:**
 ```nlpl
 function safe_read_file with path as String returns String
   extern function fopen with path as String, mode as String returns Pointer
@@ -488,7 +488,7 @@ function safe_read_file with path as String returns String
   set buffer to malloc with 4096
   try
     set bytes_read to fread with buffer, 1, 4096, file
-    # Convert to NLPL String
+    # Convert to NexusLang String
     return Ok(buffer as String)
   finally
     call fclose with file
@@ -541,7 +541,7 @@ call dlclose with lib_handle
 ```nlpl
 # C function: void process_array(int *arr, int len, void (*callback)(int));
 
-# Define callback in NLPL
+# Define callback in NexusLang
 function my_callback with value as Integer
   print text "Processing: " plus (value to_string)
 end
@@ -555,7 +555,7 @@ call process_array with (address of numbers[0]), 5, my_callback
 ### Variable Argument Parsing
 
 ```nlpl
-# For implementing variadic functions in NLPL (using va_list)
+# For implementing variadic functions in NexusLang (using va_list)
 extern function va_start with ap as Pointer, last as Pointer
 extern function va_arg with ap as Pointer, type as Integer returns Pointer
 extern function va_end with ap as Pointer
@@ -626,7 +626,7 @@ const OPEN_EXISTING to 3
    - Use after free
 
 2. **Unexpected Return Values:**
-   - Type mismatch between NLPL and C
+   - Type mismatch between NexusLang and C
    - Wrong parameter order
    - Endianness issues (rare)
 
@@ -777,7 +777,7 @@ end
 - Free all allocated memory
 - Match C types exactly
 - Use bounded string functions (strncpy, not strcpy)
-- Wrap C functions in safe NLPL functions
+- Wrap C functions in safe NexusLang functions
 - Test FFI code thoroughly
 - Document C function signatures
 - Use try/finally for cleanup
@@ -812,7 +812,7 @@ NLPL's FFI provides:
 
 ✅ **C library integration** - Call any C function  
 ✅ **Variadic functions** - printf, fprintf, scanf support  
-✅ **Type conversion** - Automatic NLPL ↔ C type mapping  
+✅ **Type conversion** - Automatic NexusLang ↔ C type mapping  
 ✅ **Struct marshalling** - Pass structs to/from C  
 ✅ **Pointer handling** - Full pointer operations  
 ✅ **Memory management** - malloc/free integration  
@@ -824,7 +824,7 @@ NLPL's FFI provides:
 - You're doing system programming
 
 **Avoid FFI when:**
-- NLPL stdlib provides the functionality
+- NexusLang stdlib provides the functionality
 - You don't need raw performance
 - You want memory safety guarantees
 - Cross-platform portability is critical

@@ -1,4 +1,4 @@
-# Python Version Requirements for NLPL
+# Python Version Requirements for NexusLang
 
 ## Supported Python Versions
 
@@ -18,7 +18,7 @@ sudo pacman -S python313
 # Verify installation
 python3.13 --version
 
-# Use for NLPL
+# Use for NexusLang
 python3.13 nlplc_llvm.py program.nlpl -o output
 ```
 
@@ -32,7 +32,7 @@ sudo apt update
 # Install Python 3.13
 sudo apt install python3.13 python3.13-venv python3.13-dev
 
-# Use for NLPL
+# Use for NexusLang
 python3.13 nlplc_llvm.py program.nlpl -o output
 ```
 
@@ -42,7 +42,7 @@ python3.13 nlplc_llvm.py program.nlpl -o output
 # Install Python 3.13
 sudo dnf install python3.13
 
-# Use for NLPL
+# Use for NexusLang
 python3.13 nlplc_llvm.py program.nlpl -o output
 ```
 
@@ -52,7 +52,7 @@ python3.13 nlplc_llvm.py program.nlpl -o output
 # Using Homebrew
 brew install python@3.13
 
-# Use for NLPL
+# Use for NexusLang
 python3.13 nlplc_llvm.py program.nlpl -o output
 ```
 
@@ -92,9 +92,9 @@ Python 3.14.0 (released 2024) has a regression in the import system that causes
 infinite hangs when loading certain module patterns, including NLPL's lexer module.
 
 **Symptoms**:
-- Scripts hang on `from nlpl.parser.lexer import Lexer` 
+- Scripts hang on `from nexuslang.parser.lexer import Lexer` 
 - No error message, just infinite loop
-- Affects all NLPL tools (compiler, tests, etc.)
+- Affects all NexusLang tools (compiler, tests, etc.)
 
 **Status**: Bug reported to Python project, waiting for fix
 
@@ -112,7 +112,7 @@ python3.13 --version
 # 3. Create alias (optional, add to ~/.bashrc)
 alias nlpl-python=python3.13
 
-# 4. Compile NLPL programs
+# 4. Compile NexusLang programs
 python3.13 nlplc_llvm.py examples/01_basic_concepts.nlpl -o test
 ./test
 
@@ -148,4 +148,4 @@ These work with Python 3.11-3.13.
 ---
 
 **Last Updated**: 2025-11-26 
-**Issue**: Python 3.14 import regression blocking NLPL development
+**Issue**: Python 3.14 import regression blocking NexusLang development

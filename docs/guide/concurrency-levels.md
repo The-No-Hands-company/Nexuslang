@@ -1,4 +1,4 @@
-# NLPL Concurrency: Syntax Design for All Levels
+# NexusLang Concurrency: Syntax Design for All Levels
 
 **Date:** January 2, 2026 
 **Status:** Design Specification
@@ -666,7 +666,7 @@ end
 
 ## Future: AI-Assisted Level Selection
 
-Future NLPL IDE will **automatically suggest** the right level:
+Future NexusLang IDE will **automatically suggest** the right level:
 
 ```nlpl
 # You write:

@@ -1,4 +1,4 @@
-# NLPL Whitepaper Readiness Analysis
+# NexusLang Whitepaper Readiness Analysis
 
 **Date:** November 20, 2025 
 **Status:** READY FOR TECHNICAL REPORT - Need Quantitative Data for Full Whitepaper
@@ -7,9 +7,9 @@
 
 ## Executive Summary
 
-After comprehensive analysis of **46+ documentation files**, **15,394 lines of implementation code**, **30 example programs**, and **28 test files** (320 tests, 67% passing), NLPL has a **SUBSTANTIAL foundation** for a whitepaper but is missing **critical quantitative data** and **formal proofs** needed for academic/technical credibility.
+After comprehensive analysis of **46+ documentation files**, **15,394 lines of implementation code**, **30 example programs**, and **28 test files** (320 tests, 67% passing), NexusLang has a **SUBSTANTIAL foundation** for a whitepaper but is missing **critical quantitative data** and **formal proofs** needed for academic/technical credibility.
 
-**Verdict:** YES, NLPL should have a whitepaper. The vision is compelling, architecture is sound, and working implementation proves feasibility. However, current state supports a **Technical Report** now, with full whitepaper requiring 1-2 months of additional benchmarking and formal analysis.
+**Verdict:** YES, NexusLang should have a whitepaper. The vision is compelling, architecture is sound, and working implementation proves feasibility. However, current state supports a **Technical Report** now, with full whitepaper requiring 1-2 months of additional benchmarking and formal analysis.
 
 ---
 
@@ -22,7 +22,7 @@ After comprehensive analysis of **46+ documentation files**, **15,394 lines of i
 - Clear problem statement: "As natural as English, as low-level as Assembly, as comprehensive as C++"
 - Well-defined design goals (accessibility without compromising power)
 - Differentiation from existing approaches (Inform 7, COBOL, AppleScript, AI Codex)
-- Comprehensive comparison with similar approaches (`docs/nlpl_vs_engpp.md`)
+- Comprehensive comparison with similar approaches (`docs/nxl_vs_engpp.md`)
 - Development philosophy: "NO SHORTCUTS. NO COMPROMISES."
 
 ### 2. Language Specification (Complete)
@@ -84,10 +84,10 @@ After comprehensive analysis of **46+ documentation files**, **15,394 lines of i
 
 **Missing Data:**
 
-- Execution time comparisons (NLPL interpreted vs NLPL compiled vs C++ vs Python)
+- Execution time comparisons (NLPL interpreted vs NexusLang compiled vs C++ vs Python)
 - Compilation time measurements (source executable time)
 - Memory footprint analysis (runtime overhead)
-- Binary size comparisons (compiled NLPL vs equivalent C++)
+- Binary size comparisons (compiled NexusLang vs equivalent C++)
 
 **Needed Benchmark Suite:**
 
@@ -100,7 +100,7 @@ Test Cases:
 5. Startup time - interpreter initialization cost
 
 Expected Table:
-| Benchmark | NLPL (interp) | NLPL (C) | C++ -O2 | Python 3.11 |
+| Benchmark | NexusLang (interp) | NexusLang (C) | C++ -O2 | Python 3.11 |
 |------------------|---------------|----------|---------|-------------|
 | Fibonacci(40) | ???ms | ???ms | 50ms | 1200ms |
 | Matrix 1000x1000 | ???ms | ???ms | 80ms | 350ms |
@@ -207,7 +207,7 @@ Safety Properties:
 **Missing:**
 
 - BNF grammar file (`src/parser/bnf_grammar.txt` is empty)
-- Coverage analysis (what % of C++ features does NLPL support?)
+- Coverage analysis (what % of C++ features does NexusLang support?)
 - Ambiguity analysis (is grammar LR(k)? LL(k)? Requires backtracking?)
 - Parsing complexity class
 
@@ -241,8 +241,8 @@ Parsing Properties:
 
 **Missing:**
 
-- No programs >500 lines written in NLPL
-- No side-by-side comparison: NLPL vs C++ vs Python (same program, lines of code, readability)
+- No programs >500 lines written in NexusLang
+- No side-by-side comparison: NexusLang vs C++ vs Python (same program, lines of code, readability)
 - No user study (non-programmers attempting to write NLPL)
 
 **What We Have:** 30 small examples (avg ~50-100 lines, tutorial-style)
@@ -251,25 +251,25 @@ Parsing Properties:
 
 ```
 Case Study 1: HTTP Web Server (500+ lines)
-- NLPL: 250 lines (estimated)
+- NexusLang: 250 lines (estimated)
 - C++: 800 lines
 - Python (Flask): 150 lines
 - Metrics: Lines of code, readability score (non-programmer comprehension)
 
 Case Study 2: Game Physics Engine Loop (400+ lines)
-- NLPL: 400 lines (estimated)
+- NexusLang: 400 lines (estimated)
 - C++: 600 lines
-- Performance: NLPL compiled 95% of C++ speed, NLPL interpreted 40%
+- Performance: NexusLang compiled 95% of C++ speed, NexusLang interpreted 40%
 
 Case Study 3: Data Processing Pipeline (300+ lines)
-- NLPL: 300 lines
+- NexusLang: 300 lines
 - Python (pandas): 200 lines
 - C++: 700 lines
 
 User Study (Optional but Strong):
-- 10 non-programmers taught NLPL vs Python (1 hour each)
+- 10 non-programmers taught NexusLang vs Python (1 hour each)
 - Task: Build simple calculator
-- Results: NLPL 75% success, Python 60% success; NLPL 12% error rate, Python 18%
+- Results: NexusLang 75% success, Python 60% success; NexusLang 12% error rate, Python 18%
 ```
 
 **Estimated Work:** 2-3 days (write case studies) OR 2-3 weeks (include user study)
@@ -316,7 +316,7 @@ Benchmark After Optimization:
 
 - Injection vulnerability analysis (can malicious input "trick" parser?)
 - Bounds checking strategy (buffer overflows?)
-- Sandboxing for untrusted NLPL code
+- Sandboxing for untrusted NexusLang code
 
 **Needed:**
 
@@ -328,7 +328,7 @@ Security Considerations:
  - Mitigation: Bounds checking in stdlib, type system prevents out-of-bounds
 3. Type Confusion: Can natural phrasing bypass type system?
  - Mitigation: Type soundness proof (see #2)
-4. Sandboxing: Can untrusted NLPL code escape?
+4. Sandboxing: Can untrusted NexusLang code escape?
  - Current: No sandboxing (trust model: source code reviewed)
  - Future: WASM backend provides sandboxing
 ```
@@ -366,7 +366,7 @@ Security Considerations:
 ### 1. Abstract (200 words)
 
 - Problem: Programming requires specialized syntax, creating accessibility barrier
-- Solution: NLPL with natural English syntax + multi-backend compilation (C, LLVM, ASM, JS, WASM)
+- Solution: NexusLang with natural English syntax + multi-backend compilation (C, LLVM, ASM, JS, WASM)
 - Key Innovation: Structured natural language that's both human-readable and unambiguous
 - Results: [NEED BENCHMARKS] X% of C++ performance, Y% reduction in learning curve
 
@@ -447,7 +447,7 @@ Security Considerations:
 
 - **Performance benchmarks** (NLPL vs C++ vs Python)
 - **Case studies** (web server, game engine, data processing)
-- **User study** (non-programmers learning NLPL vs Python)
+- **User study** (non-programmers learning NexusLang vs Python)
 - **Grammar coverage** (what % of C++ features supported)
 - **Compilation time** analysis
 
@@ -457,9 +457,9 @@ Security Considerations:
 
 - Traditional natural language PLs (Inform 7, COBOL, AppleScript, HyperTalk)
 - Modern AI-based approaches (OpenAI Codex, CodexDB)
-- Comparison: NLPL as structured NL (vs domain-specific or AI-based)
+- Comparison: NexusLang as structured NL (vs domain-specific or AI-based)
 
-**Sources:** `docs/existing_approaches.md`, `docs/nlpl_vs_engpp.md`
+**Sources:** `docs/existing_approaches.md`, `docs/nxl_vs_engpp.md`
 
 ### 10. Future Work (1 page)
 
@@ -517,12 +517,12 @@ Security Considerations:
  - **Estimated: 3-5 days**
 
 7. **User study** (even small: 5-10 participants)
- - Non-programmers learning NLPL vs Python
+ - Non-programmers learning NexusLang vs Python
  - Task completion, error rates, subjective feedback
  - **Estimated: 2-3 weeks** (recruit, teach, test, analyze)
 
 8. **Compilation time analysis**
- - NLPL source C executable (time breakdown)
+ - NexusLang source C executable (time breakdown)
  - Compare with C++ direct compilation
  - **Estimated: 1 day**
 
@@ -579,7 +579,7 @@ Security Considerations:
 
 ## Recommendation
 
-**YES, NLPL SHOULD HAVE A WHITEPAPER.**
+**YES, NexusLang SHOULD HAVE A WHITEPAPER.**
 
 The vision is compelling, architecture is sound, and working implementation proves feasibility. However:
 
@@ -611,7 +611,7 @@ The vision is compelling, architecture is sound, and working implementation prov
 - Incorporate quantitative results
 - Add formal proofs or rigorous test-based arguments
 - Target PL conferences or journals
-- Position NLPL as research contribution to programming language design
+- Position NexusLang as research contribution to programming language design
 
 ### This Mirrors Successful PL Launches
 
@@ -652,7 +652,7 @@ The vision is compelling, architecture is sound, and working implementation prov
 25. `docs/style_guide.md`
 26. `docs/requirements_analysis.md`
 27. `docs/existing_approaches.md` (150 lines)
-28. `docs/nlpl_vs_engpp.md`
+28. `docs/nxl_vs_engpp.md`
 29. `docs/examples_and_comparisons.md`
 30. `docs/comprehensive_development_plan.md`
 31. `docs/implementation_roadmap.md`
@@ -665,12 +665,12 @@ The vision is compelling, architecture is sound, and working implementation prov
 38. `docs/SESSION_RESULTS.md`
 39. `docs/project_reorganization_summary.md`
 40. `docs/reorganization_status.md`
-41-46. Duplicate files in `docs/Creating a Truly Natural Language Programming Language/`
+41-46. Duplicate files in `docs/Creating a Truly NexusLang/`
 
 ### Implementation
 
 - `src/` - 15,394 lines of Python code
-- `examples/` - 30 NLPL programs
+- `examples/` - 30 NexusLang programs
 - `tests/` - 28 test files (320 tests, 67% passing)
 
 ### Grammar

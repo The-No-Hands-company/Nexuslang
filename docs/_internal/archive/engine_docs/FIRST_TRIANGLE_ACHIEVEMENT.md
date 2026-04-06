@@ -1,6 +1,6 @@
 # First Triangle Achievement - January 28, 2026
 
-## Milestone: First Rendered 3D Object in NLPL ✅
+## Milestone: First Rendered 3D Object in NexusLang ✅
 
 **Date**: January 28, 2026  
 **Time**: Session 2  
@@ -28,7 +28,7 @@ A rotating, colored triangle rendered using modern OpenGL 3.3 Core Profile:
 
 ## Key Discovery: Multi-Line Strings Work!
 
-Initially thought NLPL didn't support multi-line strings. **This was wrong!**
+Initially thought NexusLang didn't support multi-line strings. **This was wrong!**
 
 ### Investigation Results:
 - ✅ Lexer handles newlines in strings (line 884-887 in `lexer.py`)
@@ -52,7 +52,7 @@ This is **critical** for:
 - Documentation strings
 - Configuration files
 
-**Conclusion**: NLPL is more complete than we thought. Multi-line string support is production-ready.
+**Conclusion**: NexusLang is more complete than we thought. Multi-line string support is production-ready.
 
 ---
 
@@ -71,7 +71,7 @@ This is **critical** for:
 
 **Output**:
 ```
-=== NLPL Triangle Demo ===
+=== NexusLang Triangle Demo ===
 
 Creating 800x600 window...
 Compiling shaders...
@@ -167,7 +167,7 @@ All measurements in Python interpreter mode (LLVM would be faster):
 
 ## Lessons Learned
 
-### 1. NLPL is More Complete Than Expected
+### 1. NexusLang is More Complete Than Expected
 - Multi-line strings work (just not documented)
 - Function call syntax is consistent
 - Natural language syntax is quite readable

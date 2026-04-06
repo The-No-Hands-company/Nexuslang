@@ -10,21 +10,21 @@ This shows all console output in real-time:
 
 1. **Open the extension project in a NEW VS Code window:**
    ```bash
-   code /run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NLPL/vscode-extension
+   code /run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NexusLang/vscode-extension
    ```
 
 2. **Press F5** (or Run → Start Debugging)
    - This launches "Extension Development Host" - a new VS Code window with your extension loaded
 
 3. **In the Extension Development Host window:**
-   - Open the NLPL workspace folder
+   - Open the NexusLang workspace folder
    - Open a `.nlpl` file
-   - Watch the DEBUG CONSOLE in the original window for `[NLPL]` log messages
+   - Watch the DEBUG CONSOLE in the original window for `[NexusLang]` log messages
 
 4. **Check the debug console for:**
-   - `[NLPL] Extension activation started`
-   - `[NLPL] Server command: python3`
-   - `[NLPL] Server args: ['-m', 'nlpl.lsp', '--stdio']`
+   - `[NexusLang] Extension activation started`
+   - `[NexusLang] Server command: python3`
+   - `[NexusLang] Server args: ['-m', 'nexuslang.lsp', '--stdio']`
    - Any error messages
 
 ## Option 2: Check Extension Host Log
@@ -33,8 +33,8 @@ If development mode doesn't work:
 
 1. **Help → Toggle Developer Tools** (Ctrl+Shift+I)
 2. **Console tab**
-3. Filter by "NLPL" or "Extension Host"
-4. Look for `[NLPL]` prefixed messages or errors
+3. Filter by "NexusLang" or "Extension Host"
+4. Look for `[NexusLang]` prefixed messages or errors
 
 ## Option 3: Manual LSP Server Test
 
@@ -42,7 +42,7 @@ Test if the LSP server itself works:
 
 ```bash
 cd /run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NLPL
-PYTHONPATH=src python3 -m nlpl.lsp --stdio
+PYTHONPATH=src python3 -m nexuslang.lsp --stdio
 ```
 
 Then type this JSON-RPC initialize message:
@@ -75,8 +75,8 @@ Should respond with server capabilities. Press Ctrl+C to exit.
 1. ✅ Fixed .vscodeignore to include vscode-languageclient
 2. ✅ Made activate() async and await client.start()
 3. ✅ Added PYTHONPATH to server environment
-4. ✅ Changed server launch to use `python3 -m nlpl.lsp --stdio`
-5. ✅ Added extensive console logging with [NLPL] prefix
+4. ✅ Changed server launch to use `python3 -m nexuslang.lsp --stdio`
+5. ✅ Added extensive console logging with [NexusLang] prefix
 6. ⏳ Still stuck on "Activating..." - need to see logs
 
 ## Next Step

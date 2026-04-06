@@ -3,7 +3,7 @@
 NLPL LLVM Compiler
 ==================
 
-Compile NLPL source code to native executables using LLVM backend.
+Compile NexusLang source code to native executables using LLVM backend.
 
 Usage:
     python nlplc_llvm.py input.nlpl -o output         # Compile to executable
@@ -50,41 +50,41 @@ if sys.version_info >= (3, 14):
     
     # Create a minimal stub for nlpl package that doesn't trigger __init__.py
     if 'nlpl' not in sys.modules:
-        nlpl_pkg = importlib.machinery.ModuleSpec('nlpl', None, is_package=True)
-        nlpl_module = importlib.util.module_from_spec(nlpl_pkg)
-        nlpl_module.__path__ = [os.path.join(src_dir, 'nlpl')]
-        sys.modules['nlpl'] = nlpl_module
+        nxl_pkg = importlib.machinery.ModuleSpec('nlpl', None, is_package=True)
+        nxl_module = importlib.util.module_from_spec(nxl_pkg)
+        nxl_module.__path__ = [os.path.join(src_dir, 'nlpl')]
+        sys.modules['nlpl'] = nxl_module
     
     # Load errors module first (needed by parser)
     errors_mod = load_module_py314(
         os.path.join(src_dir, 'nlpl', 'errors.py'),
-        'nlpl.errors'
+        'nexuslang.errors'
     )
     
     # Load AST module (needed by parser)
     ast_mod = load_module_py314(
         os.path.join(src_dir, 'nlpl', 'parser', 'ast.py'),
-        'nlpl.parser.ast'
+        'nexuslang.parser.ast'
     )
     
     # Load lexer
     lexer_mod = load_module_py314(
         os.path.join(src_dir, 'nlpl', 'parser', 'lexer.py'),
-        'nlpl.parser.lexer'
+        'nexuslang.parser.lexer'
     )
     Lexer = lexer_mod.Lexer
     
     # Load parser
     parser_mod = load_module_py314(
         os.path.join(src_dir, 'nlpl', 'parser', 'parser.py'),
-        'nlpl.parser.parser'
+        'nexuslang.parser.parser'
     )
     Parser = parser_mod.Parser
     
     # Load compiler backend
     llvm_gen_mod = load_module_py314(
         os.path.join(src_dir, 'nlpl', 'compiler', 'backends', 'llvm_ir_generator.py'),
-        'nlpl.compiler.backends.llvm_ir_generator'
+        'nexuslang.compiler.backends.llvm_ir_generator'
     )
     LLVMIRGenerator = llvm_gen_mod.LLVMIRGenerator
     LLVM_AVAILABLE = llvm_gen_mod.LLVM_AVAILABLE
@@ -92,7 +92,7 @@ if sys.version_info >= (3, 14):
     # Load optimizer
     opt_mod = load_module_py314(
         os.path.join(src_dir, 'nlpl', 'optimizer', '__init__.py'),
-        'nlpl.optimizer'
+        'nexuslang.optimizer'
     )
     OptimizationLevel = opt_mod.OptimizationLevel
     create_optimization_pipeline = opt_mod.create_optimization_pipeline
@@ -100,22 +100,22 @@ if sys.version_info >= (3, 14):
     # Load LLVM optimizer
     llvm_opt_mod = load_module_py314(
         os.path.join(src_dir, 'nlpl', 'compiler', 'llvm_optimizer.py'),
-        'nlpl.compiler.llvm_optimizer'
+        'nexuslang.compiler.llvm_optimizer'
     )
     LLVMOptimizer = llvm_opt_mod.LLVMOptimizer
     LLVMOptLevel = llvm_opt_mod.OptimizationLevel
 else:
     # Normal imports for Python < 3.14
-    from nlpl.parser.lexer import Lexer
-    from nlpl.parser.parser import Parser
-    from nlpl.compiler.backends.llvm_ir_generator import LLVMIRGenerator, LLVM_AVAILABLE
-    from nlpl.optimizer import OptimizationLevel, create_optimization_pipeline
-    from nlpl.compiler.llvm_optimizer import LLVMOptimizer, OptimizationLevel as LLVMOptLevel
+    from nexuslang.parser.lexer import Lexer
+    from nexuslang.parser.parser import Parser
+    from nexuslang.compiler.backends.llvm_ir_generator import LLVMIRGenerator, LLVM_AVAILABLE
+    from nexuslang.optimizer import OptimizationLevel, create_optimization_pipeline
+    from nexuslang.compiler.llvm_optimizer import LLVMOptimizer, OptimizationLevel as LLVMOptLevel
 
 
 def main():
     parser = argparse.ArgumentParser(description='NLPL LLVM Compiler')
-    parser.add_argument('input', help='Input NLPL source file')
+    parser.add_argument('input', help='Input NexusLang source file')
     parser.add_argument('-o', '--output', help='Output executable file')
     parser.add_argument('--ir', action='store_true', help='Show LLVM IR only (unoptimized)')
     parser.add_argument('--ir-opt', action='store_true', help='Show optimized LLVM IR')
@@ -170,13 +170,13 @@ def main():
             # Load pattern analysis for Python 3.14
             pattern_mod = load_module_py314(
                 os.path.join(project_root, 'src', 'nlpl', 'compiler', 'pattern_analysis.py'),
-                'nlpl.compiler.pattern_analysis'
+                'nexuslang.compiler.pattern_analysis'
             )
             analyze_pattern_match = pattern_mod.analyze_pattern_match
         else:
-            from nlpl.compiler.pattern_analysis import analyze_pattern_match
+            from nexuslang.compiler.pattern_analysis import analyze_pattern_match
         
-        from nlpl.parser.ast import MatchExpression
+        from nexuslang.parser.ast import MatchExpression
     except (ImportError, FileNotFoundError):
         # Pattern analysis not available
         analyze_pattern_match = None

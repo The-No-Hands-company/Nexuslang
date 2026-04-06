@@ -1,10 +1,10 @@
 {
-    "name": "NLPL",
-    "selector": "source.nlpl",
+    "name": "NexusLang",
+    "selector": "source.nxl",
     "variants": [
         {
             "name": "Run",
-            "shell_cmd": "python3 -m nlpl.main \"$file\""
+            "shell_cmd": "python3 -m nexuslang.main \"$file\""
         },
         {
             "name": "Build",
@@ -35,7 +35,7 @@
             "shell_cmd": "nlpl doc"
         }
     ],
-    "shell_cmd": "python3 -m nlpl.main \"$file\"",
+    "shell_cmd": "python3 -m nexuslang.main \"$file\"",
     "file_regex": "^(.+):([0-9]+):([0-9]+): error: (.*)$",
     "working_dir": "$project_path",
     "encoding": "utf-8"

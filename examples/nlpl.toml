@@ -1,4 +1,4 @@
-# Example NLPL Project Manifest
+# Example NexusLang Project Manifest
 # This demonstrates a complete nlpl.toml configuration
 
 [package]
@@ -6,11 +6,11 @@ name = "data-processor"
 version = "0.1.0"
 authors = ["Developer <dev@example.com>"]
 license = "MIT"
-description = "A data processing application demonstrating NLPL capabilities"
+description = "A data processing application demonstrating NexusLang capabilities"
 repository = "https://github.com/user/data-processor"
 keywords = ["data", "processing", "analytics"]
 edition = "2026"
-build = "build.nlpl"  # Custom build script
+build = "build.nxl"  # Custom build script
 
 # Runtime dependencies
 [dependencies]
@@ -30,17 +30,17 @@ nlpl-build-tools = "0.2"
 # Binary targets
 [[bin]]
 name = "processor"
-path = "src/main.nlpl"
+path = "src/main.nxl"
 
 [[bin]]
 name = "analyzer"
-path = "src/bin/analyzer.nlpl"
+path = "src/bin/analyzer.nxl"
 required-features = ["data-analytics"]
 
 # Library target (if this package is also a library)
 [lib]
 name = "data_processor_lib"
-path = "src/lib.nlpl"
+path = "src/lib.nxl"
 crate-type = ["lib"]
 
 # Build profiles

@@ -8,7 +8,7 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from nlpl.stdlib.math3d import Vector2, Vector3, Matrix4, Quaternion
+from nexuslang.stdlib.math3d import Vector2, Vector3, Matrix4, Quaternion
 import math
 
 def test_vector2():

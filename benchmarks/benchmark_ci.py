@@ -209,7 +209,7 @@ class BenchmarkReport:
     def markdown(self, baseline_path: Optional[str] = None) -> str:
         bmap = self._baseline_map(baseline_path) if baseline_path else {}
         lines: List[str] = []
-        lines.append(f"# NLPL Benchmark Report")
+        lines.append(f"# NexusLang Benchmark Report")
         lines.append(f"")
         lines.append(f"Generated: {self.run_at.isoformat()}  ")
         lines.append(f"Commit: `{self.git_commit}`  ")

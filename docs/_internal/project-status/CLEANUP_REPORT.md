@@ -3,7 +3,7 @@
 ## Cleanup Date: December 10, 2025
 
 ### Summary
-Successfully reorganized the NLPL project structure to follow proper file organization rules. Removed temporary files, moved misplaced files to correct locations, and updated `.gitignore` to prevent future clutter.
+Successfully reorganized the NexusLang project structure to follow proper file organization rules. Removed temporary files, moved misplaced files to correct locations, and updated `.gitignore` to prevent future clutter.
 
 ## Actions Taken
 
@@ -70,7 +70,7 @@ Enhanced to prevent future accumulation of:
 ## Final Project Structure
 
 ```
-NLPL/
+NexusLang/
  .github/ # GitHub configuration
  dev_tools/ # Development scripts and utilities
  build_scripts/ # Build system scripts
@@ -85,7 +85,7 @@ NLPL/
  examples/ # Tutorial/demonstration programs
  grammar/ # ANTLR grammar files
  src/ # Source code
- nlpl/ # NLPL implementation
+ nlpl/ # NexusLang implementation
  test_programs/ # Test programs organized by category
  compiler/ # Compiler tests
  ffi/ # FFI tests

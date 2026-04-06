@@ -2,7 +2,7 @@
 
 ## Overview
 
-Successfully implemented comprehensive LSP (Language Server Protocol) enhancements for NLPL, completing the final developer tool for version 0.1. This brings NLPL to IDE-level development experience with intelligent code navigation, completion, and documentation.
+Successfully implemented comprehensive LSP (Language Server Protocol) enhancements for NexusLang, completing the final developer tool for version 0.1. This brings NexusLang to IDE-level development experience with intelligent code navigation, completion, and documentation.
 
 ## Completed Features
 
@@ -162,7 +162,7 @@ Successfully implemented comprehensive LSP (Language Server Protocol) enhancemen
 
 ## Developer Tools Status
 
-All 3 core developer tools for NLPL v0.1 are now complete:
+All 3 core developer tools for NexusLang v0.1 are now complete:
 
 ### 1. REPL (Interactive Shell)
 - Commit: `53149c5`
@@ -205,9 +205,9 @@ All 3 core developer tools for NLPL v0.1 are now complete:
 - Natural language syntax patterns (e.g., `function_name with args`)
 - NLPL-specific keywords and operators
 - Natural language type annotations (`as Type`, `returns Type`)
-- NLPL stdlib integration
+- NexusLang stdlib integration
 
-## Impact on NLPL Development
+## Impact on NexusLang Development
 
 ### Before LSP Enhancements
 - Basic syntax highlighting only
@@ -284,12 +284,12 @@ All 3 core developer tools for NLPL v0.1 are now complete:
 
 ## Conclusion
 
-The LSP enhancements bring NLPL to professional IDE standards. Developers can now:
+The LSP enhancements bring NexusLang to professional IDE standards. Developers can now:
 - Navigate code effortlessly (go-to-definition, find-references)
 - Get instant documentation (hover)
 - Write code faster (intelligent completion)
 - Find symbols quickly (fuzzy search)
 
-All three core developer tools (REPL, Debugger, LSP) are now complete and production-ready for NLPL v0.1 release.
+All three core developer tools (REPL, Debugger, LSP) are now complete and production-ready for NexusLang v0.1 release.
 
 **Session Status**: **Complete - All Objectives Achieved**

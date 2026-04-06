@@ -6,7 +6,7 @@
 
 ## Overview
 
-The `nlpl.toml` manifest file is the heart of every NLPL project. It defines project metadata, dependencies, build configuration, and targets. Inspired by Cargo.toml but adapted for NLPL's unique requirements.
+The `nlpl.toml` manifest file is the heart of every NexusLang project. It defines project metadata, dependencies, build configuration, and targets. Inspired by Cargo.toml but adapted for NLPL's unique requirements.
 
 ---
 
@@ -33,7 +33,7 @@ documentation = "https://docs.my-project.io"
 readme = "README.md"
 keywords = ["graphics", "3d", "rendering"]
 categories = ["graphics", "game-engines"]
-edition = "2026"  # NLPL language edition
+edition = "2026"  # NexusLang language edition
 
 # Dependencies
 [dependencies]
@@ -54,12 +54,12 @@ parallel = true
 # Binary targets
 [[bin]]
 name = "my-app"
-path = "src/main.nlpl"
+path = "src/main.nxl"
 
 # Library target
 [lib]
 name = "my-lib"
-path = "src/lib.nlpl"
+path = "src/lib.nxl"
 crate-type = ["lib", "staticlib", "dylib"]
 
 # Build profiles
@@ -115,8 +115,8 @@ nlpl-build-utils = "0.1"
 
 # Package metadata
 [package.metadata.nlpl-build]
-pre-build = "scripts/pre_build.nlpl"
-post-build = "scripts/post_build.nlpl"
+pre-build = "scripts/pre_build.nxl"
+post-build = "scripts/post_build.nxl"
 
 # Documentation configuration
 [package.metadata.docs]
@@ -152,8 +152,8 @@ Defines core project metadata.
 | `readme` | String | README file path | `"README.md"` |
 | `keywords` | Array[String] | Search keywords (max 5) | `["graphics", "3d"]` |
 | `categories` | Array[String] | Package categories | `["graphics", "game-engines"]` |
-| `edition` | String | NLPL language edition | `"2026"` |
-| `build` | String | Build script path | `"build.nlpl"` |
+| `edition` | String | NexusLang language edition | `"2026"` |
+| `build` | String | Build script path | `"build.nxl"` |
 
 #### Name Constraints
 
@@ -277,7 +277,7 @@ Defines executable binary targets.
 ```toml
 [[bin]]
 name = "my-app"              # Binary name
-path = "src/main.nlpl"       # Entry point
+path = "src/main.nxl"       # Entry point
 required-features = ["cli"]   # Features needed to build
 ```
 
@@ -285,15 +285,15 @@ required-features = ["cli"]   # Features needed to build
 ```toml
 [[bin]]
 name = "server"
-path = "src/bin/server.nlpl"
+path = "src/bin/server.nxl"
 
 [[bin]]
 name = "client"
-path = "src/bin/client.nlpl"
+path = "src/bin/client.nxl"
 
 [[bin]]
 name = "admin-tool"
-path = "src/bin/admin.nlpl"
+path = "src/bin/admin.nxl"
 ```
 
 **Auto-Discovery**: If `src/bin/*.nlpl` exists, automatically creates binary targets.
@@ -307,7 +307,7 @@ Defines library target.
 ```toml
 [lib]
 name = "my_lib"                              # Library name
-path = "src/lib.nlpl"                         # Entry point
+path = "src/lib.nxl"                         # Entry point
 crate-type = ["lib", "staticlib", "dylib"]   # Output types
 ```
 
@@ -315,7 +315,7 @@ crate-type = ["lib", "staticlib", "dylib"]   # Output types
 
 | Type | Description | Output |
 |------|-------------|--------|
-| `lib` | NLPL library | `.nlpllib` (NLPL IR) |
+| `lib` | NexusLang library | `.nlpllib` (NLPL IR) |
 | `staticlib` | Static C library | `.a` (Unix), `.lib` (Windows) |
 | `dylib` | Dynamic C library | `.so` (Unix), `.dll` (Windows) |
 | `cdylib` | C-compatible dynamic lib | `.so`/`.dll` with C ABI |
@@ -473,8 +473,8 @@ Custom metadata for tools.
 
 ```toml
 [package.metadata.nlpl-build]
-pre-build = "scripts/generate_code.nlpl"
-post-build = "scripts/package_assets.nlpl"
+pre-build = "scripts/generate_code.nxl"
+post-build = "scripts/package_assets.nxl"
 
 [package.metadata.docs]
 all-features = true
@@ -518,16 +518,16 @@ nlpl-benchmark = "0.2"
 
 [[bin]]
 name = "phoenix-editor"
-path = "src/bin/editor.nlpl"
+path = "src/bin/editor.nxl"
 required-features = ["editor"]
 
 [[bin]]
 name = "phoenix-runtime"
-path = "src/bin/runtime.nlpl"
+path = "src/bin/runtime.nxl"
 
 [lib]
 name = "phoenix_engine"
-path = "src/lib.nlpl"
+path = "src/lib.nxl"
 crate-type = ["lib", "dylib"]
 
 [features]

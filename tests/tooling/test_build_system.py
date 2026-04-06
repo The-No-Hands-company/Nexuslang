@@ -22,8 +22,8 @@ import pytest
 # the project root or from within src/.
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from nlpl.tooling.builder import _BuildCache, BuildResult, BuildSystem
-from nlpl.tooling.build_script import (
+from nexuslang.tooling.builder import _BuildCache, BuildResult, BuildSystem
+from nexuslang.tooling.build_script import (
     BuildScriptCache,
     BuildScriptDirectives,
     BuildScriptResult,
@@ -31,7 +31,7 @@ from nlpl.tooling.build_script import (
     _file_sha256,
     run_build_script,
 )
-from nlpl.tooling.config import (
+from nexuslang.tooling.config import (
     ConfigLoader,
     FeaturesConfig,
     ProfileConfig,
@@ -41,14 +41,14 @@ from nlpl.tooling.config import (
     _PROFILE_DEV,
     _PROFILE_RELEASE,
 )
-from nlpl.tooling.lockfile import (
+from nexuslang.tooling.lockfile import (
     LockFile,
     LockedPackage,
     LOCKFILE_VERSION,
     compute_file_checksum,
     compute_directory_checksum,
 )
-from nlpl.tooling.dependency_manager import (
+from nexuslang.tooling.dependency_manager import (
     _parse_package_spec,
     add_dependency,
     remove_dependency,
@@ -115,7 +115,7 @@ lto = true
 
 
 def _write_toml(tmp: Path, content: str) -> Path:
-    p = tmp / "nlpl.toml"
+    p = tmp / "nexuslang.toml"
     p.write_text(content)
     return p
 
@@ -142,18 +142,18 @@ class TestBuildCache:
 
     def test_new_file_always_needs_rebuild(self, tmp_path):
         cache = _BuildCache(tmp_path / ".build_cache.json")
-        src = _make_source_file(tmp_path / "a.nlpl", "set x to 1\n")
+        src = _make_source_file(tmp_path / "a.nxl", "set x to 1\n")
         assert cache.needs_rebuild(str(src)) is True
 
     def test_after_mark_built_no_rebuild(self, tmp_path):
         cache = _BuildCache(tmp_path / ".build_cache.json")
-        src = _make_source_file(tmp_path / "a.nlpl")
+        src = _make_source_file(tmp_path / "a.nxl")
         cache.mark_built(str(src))
         assert cache.needs_rebuild(str(src)) is False
 
     def test_rebuild_after_content_change(self, tmp_path):
         cache = _BuildCache(tmp_path / ".build_cache.json")
-        src = _make_source_file(tmp_path / "a.nlpl", "set x to 1\n")
+        src = _make_source_file(tmp_path / "a.nxl", "set x to 1\n")
         cache.mark_built(str(src))
 
         # Overwrite with different content, ensure mtime actually differs
@@ -165,7 +165,7 @@ class TestBuildCache:
     def test_save_and_reload(self, tmp_path):
         cache_path = tmp_path / ".build_cache.json"
         cache = _BuildCache(cache_path)
-        src = _make_source_file(tmp_path / "b.nlpl")
+        src = _make_source_file(tmp_path / "b.nxl")
         cache.mark_built(str(src))
         cache.save()
 
@@ -175,7 +175,7 @@ class TestBuildCache:
     def test_save_creates_parent_dir(self, tmp_path):
         subdir = tmp_path / "nested" / "build"
         cache = _BuildCache(subdir / ".build_cache.json")
-        src = _make_source_file(tmp_path / "c.nlpl")
+        src = _make_source_file(tmp_path / "c.nxl")
         cache.mark_built(str(src))
         cache.save()
         assert (subdir / ".build_cache.json").exists()
@@ -183,7 +183,7 @@ class TestBuildCache:
     def test_clear_removes_all_entries(self, tmp_path):
         cache_path = tmp_path / ".build_cache.json"
         cache = _BuildCache(cache_path)
-        src = _make_source_file(tmp_path / "d.nlpl")
+        src = _make_source_file(tmp_path / "d.nxl")
         cache.mark_built(str(src))
         cache.save()
 
@@ -193,13 +193,13 @@ class TestBuildCache:
 
     def test_missing_source_file_needs_rebuild(self, tmp_path):
         cache = _BuildCache(tmp_path / ".build_cache.json")
-        assert cache.needs_rebuild(str(tmp_path / "nonexistent.nlpl")) is True
+        assert cache.needs_rebuild(str(tmp_path / "nonexistent.nxl")) is True
 
     def test_corrupt_cache_file_recovered_gracefully(self, tmp_path):
         cache_path = tmp_path / ".build_cache.json"
         cache_path.write_text("{{{INVALID JSON}}}")
         cache = _BuildCache(cache_path)
-        src = _make_source_file(tmp_path / "e.nlpl")
+        src = _make_source_file(tmp_path / "e.nxl")
         assert cache.needs_rebuild(str(src)) is True  # no crash
 
 
@@ -248,7 +248,7 @@ class TestConfigLoader:
         orig = Path.cwd()
         os.chdir(tmp_path)
         try:
-            config = ConfigLoader.load("nlpl.toml")
+            config = ConfigLoader.load("nexuslang.toml")
         finally:
             os.chdir(orig)
         assert config.package.name == "myproject"
@@ -262,7 +262,7 @@ class TestConfigLoader:
         orig = Path.cwd()
         os.chdir(tmp_path)
         try:
-            config = ConfigLoader.load("nlpl.toml")
+            config = ConfigLoader.load("nexuslang.toml")
         finally:
             os.chdir(orig)
         assert config.package.name == "full"
@@ -275,7 +275,7 @@ class TestConfigLoader:
         orig = Path.cwd()
         os.chdir(tmp_path)
         try:
-            config = ConfigLoader.load("nlpl.toml")
+            config = ConfigLoader.load("nexuslang.toml")
         finally:
             os.chdir(orig)
         prof = config.get_profile("dev")
@@ -289,7 +289,7 @@ class TestConfigLoader:
         orig = Path.cwd()
         os.chdir(tmp_path)
         try:
-            config = ConfigLoader.load("nlpl.toml")
+            config = ConfigLoader.load("nexuslang.toml")
         finally:
             os.chdir(orig)
         prof = config.get_profile("release")
@@ -303,7 +303,7 @@ class TestConfigLoader:
         orig = Path.cwd()
         os.chdir(tmp_path)
         try:
-            config = ConfigLoader.load("nlpl.toml")
+            config = ConfigLoader.load("nexuslang.toml")
         finally:
             os.chdir(orig)
         fast = config.get_profile("fast")
@@ -315,7 +315,7 @@ class TestConfigLoader:
         orig = Path.cwd()
         os.chdir(tmp_path)
         try:
-            config = ConfigLoader.load("nlpl.toml")
+            config = ConfigLoader.load("nexuslang.toml")
         finally:
             os.chdir(orig)
         bench = config.get_profile("bench")
@@ -327,7 +327,7 @@ class TestConfigLoader:
         orig = Path.cwd()
         os.chdir(tmp_path)
         try:
-            config = ConfigLoader.load("nlpl.toml")
+            config = ConfigLoader.load("nexuslang.toml")
         finally:
             os.chdir(orig)
         feats = config.effective_features()
@@ -344,7 +344,7 @@ b = []
         orig = Path.cwd()
         os.chdir(tmp_path)
         try:
-            config = ConfigLoader.load("nlpl.toml")
+            config = ConfigLoader.load("nexuslang.toml")
         finally:
             os.chdir(orig)
         feats = config.effective_features()
@@ -361,7 +361,7 @@ net = ["dep:libnet"]
         orig = Path.cwd()
         os.chdir(tmp_path)
         try:
-            config = ConfigLoader.load("nlpl.toml")
+            config = ConfigLoader.load("nexuslang.toml")
         finally:
             os.chdir(orig)
         feats = config.effective_features()
@@ -371,7 +371,7 @@ net = ["dep:libnet"]
 
     def test_missing_file_raises(self):
         with pytest.raises(FileNotFoundError):
-            ConfigLoader.load("/tmp/does_not_exist_nlpl.toml")
+            ConfigLoader.load("/tmp/does_not_exist_nxl.toml")
 
 
 # ---------------------------------------------------------------------------
@@ -424,7 +424,7 @@ class TestLockFile:
             resolved_path="/tmp/roundtrip",
         )
         lf.add_package(pkg)
-        lock_path = tmp_path / "nlpl.lock"
+        lock_path = tmp_path / "nexuslang.lock"
         lf.save(lock_path)
 
         lf2 = LockFile.load(lock_path)
@@ -438,14 +438,14 @@ class TestLockFile:
     def test_save_is_atomic(self, tmp_path):
         """The lock file should be written atomically (no partial writes visible)."""
         lf = LockFile.empty()
-        lock_path = tmp_path / "nlpl.lock"
+        lock_path = tmp_path / "nexuslang.lock"
         lf.save(lock_path)
         # After save, no .tmp file should remain
-        assert not (tmp_path / "nlpl.lock.tmp").exists()
+        assert not (tmp_path / "nexuslang.lock.tmp").exists()
         assert lock_path.exists()
 
     def test_load_wrong_version_raises(self, tmp_path):
-        lock_path = tmp_path / "nlpl.lock"
+        lock_path = tmp_path / "nexuslang.lock"
         lock_path.write_text(json.dumps({"version": 999, "package": []}))
         with pytest.raises(ValueError, match="Unsupported lock file version"):
             LockFile.load(lock_path)
@@ -476,7 +476,7 @@ class TestLockFile:
             version="0.1.0",
             source="path",
             checksum="sha256:00",
-            resolved_path="/tmp/__this_does_not_exist_nlpl__",
+            resolved_path="/tmp/__this_does_not_exist_nxl__",
         )
         lf.add_package(pkg)
         errors = lf.verify_paths()
@@ -511,21 +511,21 @@ class TestChecksums:
         c2 = compute_file_checksum(f)
         assert c1 != c2
 
-    def test_directory_checksum_only_nlpl_files(self, tmp_path):
-        (tmp_path / "a.nlpl").write_text("set x to 1\n")
-        (tmp_path / "b.nlpl").write_text("set y to 2\n")
+    def test_directory_checksum_only_nxl_files(self, tmp_path):
+        (tmp_path / "a.nxl").write_text("set x to 1\n")
+        (tmp_path / "b.nxl").write_text("set y to 2\n")
         (tmp_path / "readme.txt").write_text("ignore me\n")
         chk = compute_directory_checksum(tmp_path)
         assert chk.startswith("sha256:")
 
     def test_directory_checksum_stable(self, tmp_path):
-        (tmp_path / "a.nlpl").write_text("set x to 1\n")
+        (tmp_path / "a.nxl").write_text("set x to 1\n")
         c1 = compute_directory_checksum(tmp_path)
         c2 = compute_directory_checksum(tmp_path)
         assert c1 == c2
 
     def test_directory_checksum_changes_on_edit(self, tmp_path):
-        f = tmp_path / "a.nlpl"
+        f = tmp_path / "a.nxl"
         f.write_text("set x to 1\n")
         c1 = compute_directory_checksum(tmp_path)
         f.write_text("set x to 99\n")
@@ -590,7 +590,7 @@ def _minimal_project_dir(tmp_path: Path, name: str = "testproj") -> Path:
         f'[build]\nsource_dir = "src"\noutput_dir = "build"\ntarget = "c"\n\n'
         f'[dependencies]\n\n[dev-dependencies]\n'
     )
-    (tmp_path / "nlpl.toml").write_text(toml)
+    (tmp_path / "nexuslang.toml").write_text(toml)
     (tmp_path / "src").mkdir(exist_ok=True)
     return tmp_path
 
@@ -600,22 +600,22 @@ class TestAddDependency:
     def test_add_registry_dependency(self, tmp_path):
         project = _minimal_project_dir(tmp_path)
         add_dependency(project, "mylib@^1.0")
-        content = (project / "nlpl.toml").read_text()
+        content = (project / "nexuslang.toml").read_text()
         assert "mylib" in content
 
     def test_add_dev_dependency(self, tmp_path):
         project = _minimal_project_dir(tmp_path)
         add_dependency(project, "testkit@^2.0", dev=True)
-        content = (project / "nlpl.toml").read_text()
+        content = (project / "nexuslang.toml").read_text()
         assert "testkit" in content
 
     def test_add_path_dependency(self, tmp_path):
         project = _minimal_project_dir(tmp_path)
         lib_dir = tmp_path / "mylib"
         lib_dir.mkdir()
-        (lib_dir / "nlpl.toml").write_text("[package]\nname = \"mylib\"\nversion = \"0.1.0\"\n\n[build]\nsource_dir = \"src\"\noutput_dir = \"build\"\ntarget = \"c\"\n")
+        (lib_dir / "nexuslang.toml").write_text("[package]\nname = \"mylib\"\nversion = \"0.1.0\"\n\n[build]\nsource_dir = \"src\"\noutput_dir = \"build\"\ntarget = \"c\"\n")
         add_dependency(project, "mylib", path=str(lib_dir))
-        content = (project / "nlpl.toml").read_text()
+        content = (project / "nexuslang.toml").read_text()
         assert "mylib" in content
         assert "path" in content
 
@@ -625,7 +625,7 @@ class TestAddDependency:
         add_dependency(project, "alpha@^1.0")
         # Second add with different version should update, not raise
         add_dependency(project, "alpha@^2.0")
-        content = (project / "nlpl.toml").read_text()
+        content = (project / "nexuslang.toml").read_text()
         assert "alpha" in content
         assert "^2.0" in content
 
@@ -641,7 +641,7 @@ class TestRemoveDependency:
         project = _minimal_project_dir(tmp_path)
         add_dependency(project, "removeme@^1.0")
         remove_dependency(project, "removeme")
-        content = (project / "nlpl.toml").read_text()
+        content = (project / "nexuslang.toml").read_text()
         assert "removeme" not in content
 
     def test_remove_nonexistent_raises(self, tmp_path):
@@ -653,7 +653,7 @@ class TestRemoveDependency:
         project = _minimal_project_dir(tmp_path)
         add_dependency(project, "devonly@^1.0", dev=True)
         remove_dependency(project, "devonly", dev=True)
-        content = (project / "nlpl.toml").read_text()
+        content = (project / "nexuslang.toml").read_text()
         assert "devonly" not in content
 
 
@@ -668,7 +668,7 @@ class TestBuildSystemClean:
         out_dir = tmp_path / "build"
         src_dir.mkdir()
         out_dir.mkdir()
-        (src_dir / "main.nlpl").write_text("function main\n    print text \"hi\"\nend\n")
+        (src_dir / "main.nxl").write_text("function main\n    print text \"hi\"\nend\n")
         artefact = out_dir / "main.o"
         artefact.write_bytes(b"\x00fake")
         config = _minimal_project_config(
@@ -820,10 +820,10 @@ class TestBuildScriptCache:
     def test_needs_rerun_true_when_no_cache_file(self, tmp_path):
         cache = BuildScriptCache(tmp_path / "state.json")
         # Any path — cache is empty so always returns True
-        assert cache.needs_rerun("/nonexistent/script.nlpl") is True
+        assert cache.needs_rerun("/nonexistent/script.nxl") is True
 
     def test_needs_rerun_true_when_script_hash_changes(self, tmp_path):
-        script = tmp_path / "build.nlpl"
+        script = tmp_path / "build.nxl"
         script.write_text("print text \"v1\"\n")
         cache_path = tmp_path / "state.json"
         cache = BuildScriptCache(cache_path)
@@ -838,7 +838,7 @@ class TestBuildScriptCache:
         assert cache2.needs_rerun(str(script)) is True
 
     def test_needs_rerun_false_when_unchanged(self, tmp_path):
-        script = tmp_path / "build.nlpl"
+        script = tmp_path / "build.nxl"
         script.write_text("print text \"v1\"\n")
         cache_path = tmp_path / "state.json"
         cache = BuildScriptCache(cache_path)
@@ -849,7 +849,7 @@ class TestBuildScriptCache:
         assert cache2.needs_rerun(str(script)) is False
 
     def test_needs_rerun_true_when_watched_file_changes(self, tmp_path):
-        script = tmp_path / "build.nlpl"
+        script = tmp_path / "build.nxl"
         script.write_text("print text \"ok\"\n")
         watched = tmp_path / "config.h"
         watched.write_text("#define VERSION 1\n")
@@ -865,7 +865,7 @@ class TestBuildScriptCache:
         assert cache2.needs_rerun(str(script)) is True
 
     def test_needs_rerun_true_when_env_var_changes(self, tmp_path, monkeypatch):
-        script = tmp_path / "build.nlpl"
+        script = tmp_path / "build.nxl"
         script.write_text("print text \"ok\"\n")
 
         monkeypatch.setenv("TEST_CC", "gcc")
@@ -880,7 +880,7 @@ class TestBuildScriptCache:
         assert cache2.needs_rerun(str(script)) is True
 
     def test_needs_rerun_false_when_env_var_unchanged(self, tmp_path, monkeypatch):
-        script = tmp_path / "build.nlpl"
+        script = tmp_path / "build.nxl"
         script.write_text("print text \"ok\"\n")
 
         monkeypatch.setenv("TEST_CC", "gcc")
@@ -893,7 +893,7 @@ class TestBuildScriptCache:
         assert cache2.needs_rerun(str(script)) is False
 
     def test_clear_removes_cache_file(self, tmp_path):
-        script = tmp_path / "build.nlpl"
+        script = tmp_path / "build.nxl"
         script.write_text("x\n")
         cache_path = tmp_path / "state.json"
         cache = BuildScriptCache(cache_path)
@@ -909,19 +909,19 @@ class TestBuildScriptCache:
     def test_corrupted_cache_treated_as_missing(self, tmp_path):
         cache_path = tmp_path / "state.json"
         cache_path.write_text("not json {{{")
-        script = tmp_path / "build.nlpl"
+        script = tmp_path / "build.nxl"
         script.write_text("x\n")
         cache = BuildScriptCache(cache_path)
         assert cache.needs_rerun(str(script)) is True
 
 
 class TestBuildScriptRunnerUnit:
-    """Unit tests for run_build_script() that do NOT require the NLPL interpreter."""
+    """Unit tests for run_build_script() that do NOT require the NexusLang interpreter."""
 
     def test_returns_success_false_on_timeout(self, tmp_path, monkeypatch):
         """A TimeoutExpired from subprocess is turned into a failed result."""
         import subprocess
-        script = tmp_path / "build.nlpl"
+        script = tmp_path / "build.nxl"
         script.write_text("print text \"x\"\n")
 
         def _fake_run(*args, **kwargs):
@@ -945,7 +945,7 @@ class TestBuildScriptRunnerUnit:
 
     def test_returns_success_false_on_oserror(self, tmp_path, monkeypatch):
         import subprocess
-        script = tmp_path / "build.nlpl"
+        script = tmp_path / "build.nxl"
         script.write_text("print text \"x\"\n")
 
         def _fake_run(*args, **kwargs):
@@ -969,7 +969,7 @@ class TestBuildScriptRunnerUnit:
 
     def test_nonzero_exit_becomes_error(self, tmp_path, monkeypatch):
         import subprocess
-        script = tmp_path / "build.nlpl"
+        script = tmp_path / "build.nxl"
         script.write_text("print text \"x\"\n")
 
         class _FakeProc:
@@ -996,7 +996,7 @@ class TestBuildScriptRunnerUnit:
     def test_error_directive_overrides_rc_zero(self, tmp_path, monkeypatch):
         """nlpl:error= in stdout must fail the build even if the process exits 0."""
         import subprocess
-        script = tmp_path / "build.nlpl"
+        script = tmp_path / "build.nxl"
         script.write_text("print text \"x\"\n")
 
         class _FakeProc:
@@ -1022,7 +1022,7 @@ class TestBuildScriptRunnerUnit:
 
     def test_cfg_directive_in_result(self, tmp_path, monkeypatch):
         import subprocess
-        script = tmp_path / "build.nlpl"
+        script = tmp_path / "build.nxl"
         script.write_text("x\n")
 
         class _FakeProc:
@@ -1050,7 +1050,7 @@ class TestBuildScriptRunnerUnit:
     def test_cache_skip_when_unchanged(self, tmp_path, monkeypatch):
         """run_build_script returns cached success without calling subprocess."""
         import subprocess
-        script = tmp_path / "build.nlpl"
+        script = tmp_path / "build.nxl"
         script.write_text("x\n")
         out_dir = tmp_path / "build"
         out_dir.mkdir()
@@ -1101,7 +1101,7 @@ class TestBuildScriptRunnerUnit:
 
     def test_plain_output_lines_captured(self, tmp_path, monkeypatch):
         import subprocess
-        script = tmp_path / "build.nlpl"
+        script = tmp_path / "build.nxl"
         script.write_text("x\n")
 
         class _FakeProc:
@@ -1134,13 +1134,13 @@ class TestBuildScriptBuilderIntegration:
     def _make_project(self, tmp_path, build_script_content=None, build_script_cfg=None):
         src_dir = tmp_path / "src"
         src_dir.mkdir()
-        (src_dir / "main.nlpl").write_text(
+        (src_dir / "main.nxl").write_text(
             'function main\n    print text "hello"\nend\n'
         )
         out_dir = tmp_path / "build"
 
         if build_script_content is not None:
-            (tmp_path / "build.nlpl").write_text(build_script_content)
+            (tmp_path / "build.nxl").write_text(build_script_content)
 
         config = _minimal_project_config(
             src_dir=str(src_dir), out_dir=str(out_dir)
@@ -1154,7 +1154,7 @@ class TestBuildScriptBuilderIntegration:
         """When build.nlpl is absent, _run_build_script_if_present returns None."""
         config = self._make_project(tmp_path)  # no build.nlpl
         bs = BuildSystem(config)
-        from nlpl.tooling.config import _PROFILE_DEV
+        from nexuslang.tooling.config import _PROFILE_DEV
         result = bs._run_build_script_if_present(
             _PROFILE_DEV, "dev", str(tmp_path / "build"), 1, False
         )
@@ -1168,7 +1168,7 @@ class TestBuildScriptBuilderIntegration:
             build_script_cfg="",  # disabled
         )
         bs = BuildSystem(config)
-        from nlpl.tooling.config import _PROFILE_DEV
+        from nexuslang.tooling.config import _PROFILE_DEV
         result = bs._run_build_script_if_present(
             _PROFILE_DEV, "dev", str(tmp_path / "build"), 1, False
         )
@@ -1178,10 +1178,10 @@ class TestBuildScriptBuilderIntegration:
         """When build_script points to a non-existent file, result.success is False."""
         config = self._make_project(
             tmp_path,
-            build_script_cfg="nonexistent_script.nlpl",
+            build_script_cfg="nonexistent_script.nxl",
         )
         bs = BuildSystem(config)
-        from nlpl.tooling.config import _PROFILE_DEV
+        from nexuslang.tooling.config import _PROFILE_DEV
         (tmp_path / "build").mkdir(exist_ok=True)
         result = bs._run_build_script_if_present(
             _PROFILE_DEV, "dev", str(tmp_path / "build"), 1, False
@@ -1208,7 +1208,7 @@ class TestBuildScriptBuilderIntegration:
 
         active = ["existing_flag"]
         # Simulate what _build_internal does after receiving script_result
-        from nlpl.tooling.config import _PROFILE_DEV
+        from nexuslang.tooling.config import _PROFILE_DEV
         result = bs._run_build_script_if_present(
             _PROFILE_DEV, "dev", str(tmp_path / "build"), 1, True
         )
@@ -1240,18 +1240,18 @@ class TestBuildScriptBuilderIntegration:
         """build_script setting in [build] is parsed by ConfigLoader."""
         toml = (
             '[package]\nname = "mypkg"\nversion = "1.0.0"\n'
-            '[build]\nbuild_script = "scripts/prebuild.nlpl"\n'
+            '[build]\nbuild_script = "scripts/prebuild.nxl"\n'
         )
-        toml_path = tmp_path / "nlpl.toml"
+        toml_path = tmp_path / "nexuslang.toml"
         toml_path.write_text(toml)
         config = ConfigLoader.load(str(toml_path))
-        assert config.build.build_script == "scripts/prebuild.nlpl"
+        assert config.build.build_script == "scripts/prebuild.nxl"
         assert config.manifest_dir == str(tmp_path)
 
     def test_config_build_script_absent_defaults_none(self, tmp_path):
         """When build_script is not in toml, it defaults to None (auto-detect)."""
         toml = '[package]\nname = "x"\nversion = "0.1.0"\n'
-        toml_path = tmp_path / "nlpl.toml"
+        toml_path = tmp_path / "nexuslang.toml"
         toml_path.write_text(toml)
         config = ConfigLoader.load(str(toml_path))
         assert config.build.build_script is None
@@ -1262,14 +1262,14 @@ class TestBuildScriptBuilderIntegration:
             '[package]\nname = "x"\nversion = "0.1.0"\n'
             '[build]\nbuild_script = ""\n'
         )
-        toml_path = tmp_path / "nlpl.toml"
+        toml_path = tmp_path / "nexuslang.toml"
         toml_path.write_text(toml)
         config = ConfigLoader.load(str(toml_path))
         assert config.build.build_script == ""
 
     def test_manifest_dir_set_by_config_loader(self, tmp_path):
         toml = '[package]\nname = "x"\nversion = "0.1.0"\n'
-        toml_path = tmp_path / "nlpl.toml"
+        toml_path = tmp_path / "nexuslang.toml"
         toml_path.write_text(toml)
         config = ConfigLoader.load(str(toml_path))
         assert config.manifest_dir == str(tmp_path)
@@ -1290,7 +1290,7 @@ def _make_test_runner_project(tmp_path: Path, test_filenames=None) -> tuple:
     tests_dir = tmp_path / "tests"
     src_dir.mkdir(parents=True, exist_ok=True)
     out_dir.mkdir(parents=True, exist_ok=True)
-    (src_dir / "main.nlpl").write_text("function main\n    print text \"hi\"\nend\n")
+    (src_dir / "main.nxl").write_text("function main\n    print text \"hi\"\nend\n")
     if test_filenames is not None:
         tests_dir.mkdir(parents=True, exist_ok=True)
         for fname in test_filenames:
@@ -1320,7 +1320,7 @@ class TestBuildSystemTestRunner:
 
     def test_all_pass_returns_0(self, tmp_path):
         bs, _ = _make_test_runner_project(
-            tmp_path, test_filenames=["test_alpha.nlpl", "test_beta.nlpl"]
+            tmp_path, test_filenames=["test_alpha.nxl", "test_beta.nxl"]
         )
         with patch.object(bs, "_run_single_test", return_value=True):
             result = bs.test(parallel=False)
@@ -1328,7 +1328,7 @@ class TestBuildSystemTestRunner:
 
     def test_one_fail_returns_1(self, tmp_path):
         bs, _ = _make_test_runner_project(
-            tmp_path, test_filenames=["test_pass.nlpl", "test_fail.nlpl"]
+            tmp_path, test_filenames=["test_pass.nxl", "test_fail.nxl"]
         )
 
         def _side_effect(test_file, release, features):
@@ -1340,7 +1340,7 @@ class TestBuildSystemTestRunner:
 
     def test_all_fail_returns_1(self, tmp_path):
         bs, _ = _make_test_runner_project(
-            tmp_path, test_filenames=["test_x.nlpl", "test_y.nlpl"]
+            tmp_path, test_filenames=["test_x.nxl", "test_y.nxl"]
         )
         with patch.object(bs, "_run_single_test", return_value=False):
             result = bs.test(parallel=False)
@@ -1349,7 +1349,7 @@ class TestBuildSystemTestRunner:
     def test_filter_names_selects_matching(self, tmp_path):
         bs, _ = _make_test_runner_project(
             tmp_path,
-            test_filenames=["test_math.nlpl", "test_string.nlpl", "test_io.nlpl"],
+            test_filenames=["test_math.nxl", "test_string.nxl", "test_io.nxl"],
         )
         calls = []
 
@@ -1361,11 +1361,11 @@ class TestBuildSystemTestRunner:
             result = bs.test(filter_names=["math"], parallel=False)
 
         assert result == 0
-        assert calls == ["test_math.nlpl"]
+        assert calls == ["test_math.nxl"]
 
     def test_filter_names_no_match_returns_0(self, tmp_path, capsys):
         bs, _ = _make_test_runner_project(
-            tmp_path, test_filenames=["test_alpha.nlpl"]
+            tmp_path, test_filenames=["test_alpha.nxl"]
         )
         with patch.object(bs, "_run_single_test", return_value=True) as mock_run:
             result = bs.test(filter_names=["nonexistent"], parallel=False)
@@ -1376,7 +1376,7 @@ class TestBuildSystemTestRunner:
 
     def test_output_shows_ok_for_passing_test(self, tmp_path, capsys):
         bs, _ = _make_test_runner_project(
-            tmp_path, test_filenames=["test_example.nlpl"]
+            tmp_path, test_filenames=["test_example.nxl"]
         )
         with patch.object(bs, "_run_single_test", return_value=True):
             bs.test(parallel=False)
@@ -1386,7 +1386,7 @@ class TestBuildSystemTestRunner:
 
     def test_output_shows_failed_for_failing_test(self, tmp_path, capsys):
         bs, _ = _make_test_runner_project(
-            tmp_path, test_filenames=["test_broken.nlpl"]
+            tmp_path, test_filenames=["test_broken.nxl"]
         )
         with patch.object(bs, "_run_single_test", return_value=False):
             bs.test(parallel=False)
@@ -1397,7 +1397,7 @@ class TestBuildSystemTestRunner:
     def test_failed_names_listed_in_summary(self, tmp_path, capsys):
         bs, _ = _make_test_runner_project(
             tmp_path,
-            test_filenames=["test_good.nlpl", "test_bad.nlpl"],
+            test_filenames=["test_good.nxl", "test_bad.nxl"],
         )
 
         def _side_effect(test_file, release, features):
@@ -1412,7 +1412,7 @@ class TestBuildSystemTestRunner:
     def test_parallel_and_serial_agree_on_pass(self, tmp_path):
         bs, _ = _make_test_runner_project(
             tmp_path,
-            test_filenames=["test_a.nlpl", "test_b.nlpl", "test_c.nlpl"],
+            test_filenames=["test_a.nxl", "test_b.nxl", "test_c.nxl"],
         )
         with patch.object(bs, "_run_single_test", return_value=True):
             serial_result = bs.test(parallel=False)
@@ -1423,7 +1423,7 @@ class TestBuildSystemTestRunner:
     def test_parallel_and_serial_agree_on_fail(self, tmp_path):
         bs, _ = _make_test_runner_project(
             tmp_path,
-            test_filenames=["test_a.nlpl", "test_b.nlpl", "test_c.nlpl"],
+            test_filenames=["test_a.nxl", "test_b.nxl", "test_c.nxl"],
         )
         with patch.object(bs, "_run_single_test", return_value=False):
             serial_result = bs.test(parallel=False)
@@ -1433,7 +1433,7 @@ class TestBuildSystemTestRunner:
 
     def test_coverage_activates_collector(self, tmp_path):
         bs, _ = _make_test_runner_project(
-            tmp_path, test_filenames=["test_cov.nlpl"]
+            tmp_path, test_filenames=["test_cov.nxl"]
         )
 
         mock_collector = MagicMock()
@@ -1443,7 +1443,7 @@ class TestBuildSystemTestRunner:
 
         with patch.object(bs, "_run_single_test", return_value=True):
             with patch(
-                "nlpl.tooling.coverage.CoverageCollector",
+                "nexuslang.tooling.coverage.CoverageCollector",
                 return_value=mock_collector,
             ):
                 bs.test(parallel=False, coverage=True, coverage_output=str(tmp_path / "cov"))
@@ -1454,7 +1454,7 @@ class TestBuildSystemTestRunner:
 
     def test_result_summary_line_printed(self, tmp_path, capsys):
         bs, _ = _make_test_runner_project(
-            tmp_path, test_filenames=["test_one.nlpl"]
+            tmp_path, test_filenames=["test_one.nxl"]
         )
         with patch.object(bs, "_run_single_test", return_value=True):
             bs.test(parallel=False)

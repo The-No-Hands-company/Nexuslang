@@ -14,7 +14,7 @@
 
 **To install in VS Code:**
 ```bash
-code --install-extension /run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NLPL/vscode-extension/nlpl-language-support-0.1.0.vsix
+code --install-extension /run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NexusLang/vscode-extension/nlpl-language-support-0.1.0.vsix
 ```
 
 ---
@@ -23,7 +23,7 @@ code --install-extension /run/media/zajferx/Data/dev/The-No-hands-Company/projec
 
 ### Language Configuration (language-configuration.json)
 
-Check if file exists and contains proper NLPL syntax rules...
+Check if file exists and contains proper NexusLang syntax rules...
 
 ### Extension Manifest (package.json) - Key Settings
 
@@ -53,7 +53,7 @@ Check if file exists and contains proper NLPL syntax rules...
 ### Before Testing:
 1. Install extension: `code --install-extension nlpl-language-support-0.1.0.vsix`
 2. Reload VS Code: `Ctrl+Shift+P` → "Reload Window"
-3. Open NLPL workspace: `/run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NLPL`
+3. Open NexusLang workspace: `/run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NLPL`
 4. Open test file: `examples/01_basic_concepts.nlpl`
 
 ---
@@ -346,4 +346,4 @@ end
 
 - LSP server logs: `/tmp/nlpl-lsp.log`
 - Check logs if features not working
-- Extension output channel: View → Output → NLPL Language Server
+- Extension output channel: View → Output → NexusLang Language Server

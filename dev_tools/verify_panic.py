@@ -1,7 +1,7 @@
 import textwrap
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.compiler import create_compiler, CompilationTarget
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.compiler import create_compiler, CompilationTarget
 
 def test_panic_compilation():
     source = textwrap.dedent("""
@@ -39,7 +39,7 @@ def test_panic_compilation():
         print("\nGenerated IR Code:")
         print(ir_code)
         
-        if 'call void @nlpl_panic' in ir_code and 'unreachable' in ir_code:
+        if 'call void @nxl_panic' in ir_code and 'unreachable' in ir_code:
             print("\nVerification SUCCESS: Panic code generated correctly")
             return True
         else:

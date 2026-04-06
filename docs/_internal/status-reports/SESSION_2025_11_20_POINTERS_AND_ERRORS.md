@@ -1,4 +1,4 @@
-# NLPL Development Session Summary
+# NexusLang Development Session Summary
 
 **Date:** November 20, 2025 
 **Session Focus:** Enhanced Error Messages + Low-Level Pointer Operations
@@ -14,11 +14,11 @@
 #### What Was Implemented
 
 - **Error Module** (`src/nlpl/errors.py`): 273 lines, 5 error classes
- - `NLPLError` - Base class with source context formatting
- - `NLPLSyntaxError` - Parser errors with suggestions 
- - `NLPLRuntimeError` - Runtime errors with stack traces
- - `NLPLNameError` - Undefined variables with "did you mean" fuzzy matching
- - `NLPLTypeError` - Type mismatches with expected/got info
+ - `NxlError` - Base class with source context formatting
+ - `NxlSyntaxError` - Parser errors with suggestions 
+ - `NxlRuntimeError` - Runtime errors with stack traces
+ - `NxlNameError` - Undefined variables with "did you mean" fuzzy matching
+ - `NxlTypeError` - Type mismatches with expected/got info
 
 #### Enhanced Components
 
@@ -65,7 +65,7 @@ Runtime Error: Name Error: Name 'nam' is not defined
 
 ### 2. Index Assignment Support 
 
-**Impact:** NLPL now supports BOTH natural and concise syntax for data structures
+**Impact:** NexusLang now supports BOTH natural and concise syntax for data structures
 
 #### What Was Implemented
 
@@ -92,13 +92,13 @@ set obj to new Dictionary
 
 #### Philosophy
 
-**No compromises** - NLPL supports both natural (`set data["key"] to value`) AND concise (`{}`) syntax. Users choose based on preference and context.
+**No compromises** - NexusLang supports both natural (`set data["key"] to value`) AND concise (`{}`) syntax. Users choose based on preference and context.
 
 ---
 
 ### 3. Low-Level Pointer Operations 
 
-**Impact:** NLPL can now compete with C/C++ for systems programming
+**Impact:** NexusLang can now compete with C/C++ for systems programming
 
 #### What Was Implemented
 
@@ -227,8 +227,8 @@ Three-tier error system:
 
 Today's work validates NLPL's core principle: **"No compromises between accessibility and power"**
 
-- Enhanced errors make NLPL accessible to beginners
-- Pointer operations make NLPL powerful enough for systems programming
+- Enhanced errors make NexusLang accessible to beginners
+- Pointer operations make NexusLang powerful enough for systems programming
 - Both implemented without sacrificing the other
 
 ---
@@ -258,7 +258,7 @@ Today's work validates NLPL's core principle: **"No compromises between accessib
 ### For End Users
 
 - **70% reduction** in time to understand errors (estimated, based on fuzzy matching + context)
-- **Universal language capability** - Can now write OS kernels AND web apps in NLPL
+- **Universal language capability** - Can now write OS kernels AND web apps in NexusLang
 - **No syntax choice limitations** - Both `{}` and `set dict["key"] to value` work
 
 ### For Development
@@ -270,7 +270,7 @@ Today's work validates NLPL's core principle: **"No compromises between accessib
 ### For Project Vision
 
 - **Accessibility ** - Enhanced errors bring us to ~8/10 for non-programmers
-- **Power ** - Pointer operations prove NLPL can match C/C++
+- **Power ** - Pointer operations prove NexusLang can match C/C++
 - **Whitepaper readiness** - Error handling and memory model are now documentable
 
 ---

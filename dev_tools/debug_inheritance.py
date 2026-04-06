@@ -3,9 +3,9 @@
 
 import sys
 sys.path.insert(0, 'src')
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.compiler.backends.llvm_ir_generator import LLVMIRGenerator
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.compiler.backends.llvm_ir_generator import LLVMIRGenerator
 
 print("Starting debug...", flush=True)
 

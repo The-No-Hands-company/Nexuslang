@@ -1,13 +1,13 @@
-# NLPL Debugger - Quick Start Guide
+# NexusLang Debugger - Quick Start Guide
 
-**5-Minute Guide to Debugging NLPL Programs**
+**5-Minute Guide to Debugging NexusLang Programs**
 
 ---
 
 ## Prerequisites
 
 - VS Code installed
-- NLPL workspace open in VS Code
+- NexusLang workspace open in VS Code
 - Extension compiled: `cd vscode-extension && npm run compile`
 
 ---
@@ -28,7 +28,7 @@ code examples/debug_test.nlpl
 
 ### Step 3: Start Debugging
 
-- Press **F5** (or click "Run and Debug" → "Debug NLPL Program")
+- Press **F5** (or click "Run and Debug" → "Debug NexusLang Program")
 - Program executes and pauses at breakpoint
 
 ### Step 4: Use Debug Controls
@@ -69,10 +69,10 @@ code examples/debug_test.nlpl
 
 ```bash
 # Debug a program
-python -m nlpl.debugger.debugger examples/debug_test.nlpl
+python -m nexuslang.debugger.debugger examples/debug_test.nlpl
 
 # With preset breakpoints
-python -m nlpl.debugger.debugger examples/debug_test.nlpl --break 22 --break 28
+python -m nexuslang.debugger.debugger examples/debug_test.nlpl --break 22 --break 28
 ```
 
 ### Commands When Paused
@@ -94,7 +94,7 @@ q              - Quit
 ### Example Session
 
 ```
-$ python -m nlpl.debugger.debugger examples/debug_test.nlpl --break 22
+$ python -m nexuslang.debugger.debugger examples/debug_test.nlpl --break 22
 
 Debugging: examples/debug_test.nlpl
 Breakpoints: 1
@@ -191,7 +191,7 @@ tail -f /tmp/nlpl-dap.log
 which python3
 
 # Update VS Code setting
-"nlpl.debugger.pythonPath": "/usr/bin/python3"
+"nexuslang.debugger.pythonPath": "/usr/bin/python3"
 
 # Verify DAP server exists
 ls src/nlpl/debugger/dap_server.py

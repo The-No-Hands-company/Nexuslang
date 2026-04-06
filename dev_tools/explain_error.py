@@ -3,16 +3,16 @@
 NLPL Error Code Explainer
 ==========================
 
-Explains NLPL error codes in detail, similar to `rustc --explain`.
+Explains NexusLang error codes in detail, similar to `rustc --explain`.
 
 Usage:
     python explain_error.py E001
     python explain_error.py E100
-    nlpl --explain E001
+    nxl --explain E001
 """
 
 import sys
-from nlpl.error_codes import get_error_info, list_all_error_codes, search_errors
+from nexuslang.error_codes import get_error_info, list_all_error_codes, search_errors
 
 
 def explain_error(code: str) -> None:
@@ -33,7 +33,7 @@ def list_errors() -> None:
     print("=" * 80)
     print()
     
-    from nlpl.error_codes import ERROR_CODES
+    from nexuslang.error_codes import ERROR_CODES
     
     categories = {}
     for code, info in ERROR_CODES.items():

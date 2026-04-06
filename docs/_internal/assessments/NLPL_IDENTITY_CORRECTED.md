@@ -1,12 +1,12 @@
-# NLPL: The Universal Programming Language
+# NexusLang: The Universal Programming Language
 
 **Primary Identity:** Universal Language - ONE language for ALL programming needs 
 **Key Differentiator:** 5 abstraction levels (Assembly Natural Language) 
-**Philosophy:** Write scripts like Python, build systems like C, embed like Lua - all in NLPL
+**Philosophy:** Write scripts like Python, build systems like C, embed like Lua - all in NexusLang
 
 ---
 
-## What NLPL Actually Is
+## What NexusLang Actually Is
 
 ### Core Mission
 Build THE universal programming language that can:
@@ -123,7 +123,7 @@ end
 
 ---
 
-## NLPL vs Everything Else
+## NexusLang vs Everything Else
 
 **The Problem with Current Languages:**
 - Python: Easy but slow, can't do systems programming
@@ -155,7 +155,7 @@ end
 - **Better:** Modern features (generics, pattern matching)
 
 ### vs Rust (Safety)
-- **Different approach:** NLPL = optional safety by level; Rust = safety by default
+- **Different approach:** NexusLang = optional safety by level; Rust = safety by default
 - **Better:** Easier to learn (natural syntax)
 - **Better:** More flexible (choose your level)
 - **Trade-off:** Rust prevents more bugs at compile-time
@@ -274,7 +274,7 @@ end
 - 90% designing/writing code
 - 10% debugging (when needed)
 
-### How NLPL Achieves This
+### How NexusLang Achieves This
 
 **1. Prevent bugs before runtime** (Static Analyzer - nlpllint)
  - Memory safety analysis (catch leaks, use-after-free)
@@ -314,7 +314,7 @@ end
 
 ## Use Cases (Reality Check)
 
-### What NLPL Is For
+### What NexusLang Is For
 
 ** Operating System Kernel**
 ```nlpl
@@ -399,7 +399,7 @@ class Entity
 end
 ```
 
-### What NLPL Enables (Unique)
+### What NexusLang Enables (Unique)
 
 **Multi-level in ONE project:**
 ```nlpl
@@ -526,7 +526,7 @@ end
 
 ## Competition Analysis (Realistic)
 
-### What NLPL Offers vs C/C++/Zig
+### What NexusLang Offers vs C/C++/Zig
 
 **Core value:** Multiple abstraction levels 
 **Not:** "Easier debugging" (that's a feature, not the value)
@@ -561,7 +561,7 @@ end
 
 ---
 
-## Summary: What We Built vs What NLPL Needs
+## Summary: What We Built vs What NexusLang Needs
 
 ### What We Built Today
 
@@ -571,7 +571,7 @@ end
 
 **Value:** These tools serve the "90% development, 10% debugging" goal for ALL users.
 
-### What NLPL Needs (All Equal Priority)
+### What NexusLang Needs (All Equal Priority)
 
 **1. Level 5 (Natural Language)** DONE
 
@@ -604,7 +604,7 @@ end
  - Build system 
  - LSP integration 
 
-**Priority:** ALL are equal - NLPL must excel at everything to be universal.
+**Priority:** ALL are equal - NexusLang must excel at everything to be universal.
 
 ---
 
@@ -619,7 +619,7 @@ end
 
 ### This Month
 
-- [ ] Prove NLPL can write real OS code
+- [ ] Prove NexusLang can write real OS code
 - [ ] Complete all Level 1 features
 - [ ] Compiler optimizations
 - [ ] Cross-platform support
@@ -665,7 +665,7 @@ end
 
 **With ONE language:**
 
-- NLPL for everything
+- NexusLang for everything
 - Choose your abstraction level
 - Seamlessly mix levels in one project
 
@@ -693,6 +693,6 @@ end
 4. **Level 5 (Natural)** - Refine syntax, improve errors
 5. **Tooling** - Finish nlpllint, build system, debugger, LSP
 
-**Goal:** NLPL becomes the ONLY language developers need to learn.
+**Goal:** NexusLang becomes the ONLY language developers need to learn.
 
 **Timeline:** Production-ready universal language by end of 2026.

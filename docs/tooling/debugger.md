@@ -1,8 +1,8 @@
-# NLPL Debugger Documentation
+# NexusLang Debugger Documentation
 
 ## Overview
 
-The NLPL Debugger provides interactive source-level debugging for NLPL programs. Set breakpoints, step through code, inspect variables, and analyze call stacks.
+The NexusLang Debugger provides interactive source-level debugging for NexusLang programs. Set breakpoints, step through code, inspect variables, and analyze call stacks.
 
 ## Features
 
@@ -27,17 +27,17 @@ The NLPL Debugger provides interactive source-level debugging for NLPL programs.
 
 **Start debugger with file:**
 ```bash
-python -m nlpl.main program.nlpl --debugger
+python -m nexuslang.main program.nlpl --debugger
 ```
 
 **Set breakpoints from command line:**
 ```bash
-python -m nlpl.main program.nlpl --debugger --break 10 --break 25
+python -m nexuslang.main program.nlpl --debugger --break 10 --break 25
 ```
 
 **Or use standalone debugger:**
 ```bash
-python nlpl_debug.py program.nlpl --break 10
+python nxl_debug.py program.nlpl --break 10
 ```
 
 ### Interactive Debugging
@@ -123,7 +123,7 @@ print text "Result: " plus value
 
 **Debug session:**
 ```bash
-$ python -m nlpl.main test_debug.nlpl --debugger --break 2
+$ python -m nexuslang.main test_debug.nlpl --debugger --break 2
 
 Debugging: test_debug.nlpl
 Breakpoints: 1
@@ -158,7 +158,7 @@ Call Stack:
 
 ```python
 # In Python code or debugger script:
-debugger.add_breakpoint("program.nlpl", 10, condition="x > 100")
+debugger.add_breakpoint("program.nxl", 10, condition="x > 100")
 ```
 
 This breakpoint only triggers when variable `x` is greater than 100.
@@ -203,10 +203,10 @@ Variables (in helper):
 ### Creating a Debugger
 
 ```python
-from nlpl.debugger.debugger import Debugger
-from nlpl.interpreter.interpreter import Interpreter
-from nlpl.runtime.runtime import Runtime
-from nlpl.stdlib import register_stdlib
+from nexuslang.debugger.debugger import Debugger
+from nexuslang.interpreter.interpreter import Interpreter
+from nexuslang.runtime.runtime import Runtime
+from nexuslang.stdlib import register_stdlib
 
 # Setup
 runtime = Runtime()
@@ -222,13 +222,13 @@ interpreter.debugger = debugger
 
 ```python
 # Line breakpoint
-bp1 = debugger.add_breakpoint("program.nlpl", 10)
+bp1 = debugger.add_breakpoint("program.nxl", 10)
 
 # Conditional breakpoint
-bp2 = debugger.add_breakpoint("program.nlpl", 25, condition="x > 100")
+bp2 = debugger.add_breakpoint("program.nxl", 25, condition="x > 100")
 
 # Temporary breakpoint (auto-remove after hit)
-bp3 = debugger.add_breakpoint("program.nlpl", 50, temp=True)
+bp3 = debugger.add_breakpoint("program.nxl", 50, temp=True)
 ```
 
 ### Managing Breakpoints
@@ -239,16 +239,16 @@ for bp in debugger.list_breakpoints():
  print(bp)
 
 # Remove breakpoint
-debugger.remove_breakpoint("program.nlpl", 10)
+debugger.remove_breakpoint("program.nxl", 10)
 
 # Toggle enabled/disabled
-debugger.toggle_breakpoint("program.nlpl", 25)
+debugger.toggle_breakpoint("program.nxl", 25)
 
 # Clear all breakpoints
 debugger.clear_breakpoints()
 
 # Clear breakpoints in specific file
-debugger.clear_breakpoints("program.nlpl")
+debugger.clear_breakpoints("program.nxl")
 ```
 
 ### Inspecting Variables
@@ -326,7 +326,7 @@ The debugger can be integrated with the REPL for interactive debugging:
 
 ```python
 # Future enhancement: REPL with debugger
-from nlpl.repl.repl import REPL
+from nexuslang.repl.repl import REPL
 
 repl = REPL(debug=True)
 repl.interpreter.debugger = debugger
@@ -387,10 +387,10 @@ Set breakpoints at:
 Instead of breaking every iteration:
 ```python
 # Bad: Break every loop iteration
-debugger.add_breakpoint("prog.nlpl", 15)
+debugger.add_breakpoint("prog.nxl", 15)
 
 # Good: Break only when condition met
-debugger.add_breakpoint("prog.nlpl", 15, condition="i > 100")
+debugger.add_breakpoint("prog.nxl", 15, condition="i > 100")
 ```
 
 ### 3. Inspect Variables at Breakpoints
@@ -461,7 +461,7 @@ Use `stack` to understand:
 
 ### Python pdb
 
-| Feature | NLPL Debugger | Python pdb |
+| Feature | NexusLang Debugger | Python pdb |
 |---------|---------------|------------|
 | Line breakpoints | | |
 | Conditional breakpoints | | |
@@ -473,7 +473,7 @@ Use `stack` to understand:
 
 ### GDB
 
-| Feature | NLPL Debugger | GDB |
+| Feature | NexusLang Debugger | GDB |
 |---------|---------------|-----|
 | Source-level debugging | | |
 | Breakpoints | | |
@@ -523,10 +523,10 @@ To contribute to the debugger:
 
 ## License
 
-The NLPL Debugger is part of the NLPL project.
+The NexusLang Debugger is part of the NexusLang project.
 
 ---
 
 **Version**: 0.1.0 
 **Last Updated**: January 6, 2026 
-**Maintainer**: NLPL Development Team
+**Maintainer**: NexusLang Development Team

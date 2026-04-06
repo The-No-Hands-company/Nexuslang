@@ -10,7 +10,7 @@ All tests run without a real graphical display.  The approach is:
     façade via unittest.mock, and verify that the module calls the right tkinter
     primitives with the right arguments.
 
-No tests import tkinter directly; they only interact with the NLPL GUI module API.
+No tests import tkinter directly; they only interact with the NexusLang GUI module API.
 """
 
 import sys
@@ -145,7 +145,7 @@ def _make_font_mock():
 # Base helper: reset module-level storage between tests
 # ---------------------------------------------------------------------------
 
-import nlpl.stdlib.gui as _gui_mod
+import nexuslang.stdlib.gui as _gui_mod
 
 
 def _reset():
@@ -511,7 +511,7 @@ class TestCanvasFunctionsAvailable(unittest.TestCase):
 
     def test_canvas_draw_text_returns_int(self):
         cid = _gui_mod.canvas_create(self._win_id, 400, 300)
-        item = _gui_mod.canvas_draw_text(cid, 200, 150, "NLPL", "#ffffff", "Arial", 24)
+        item = _gui_mod.canvas_draw_text(cid, 200, 150, "NexusLang", "#ffffff", "Arial", 24)
         self.assertIsNotNone(item)
 
     def test_canvas_draw_text_bold_italic(self):

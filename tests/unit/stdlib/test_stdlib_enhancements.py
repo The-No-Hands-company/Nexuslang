@@ -4,8 +4,8 @@ import os
 import tempfile
 import pytest
 import math as py_math
-from nlpl.runtime.runtime import Runtime
-from nlpl.stdlib import register_stdlib
+from nexuslang.runtime.runtime import Runtime
+from nexuslang.stdlib import register_stdlib
 
 
 class TestStringEnhancements:

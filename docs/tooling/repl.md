@@ -1,14 +1,14 @@
-# NLPL REPL Documentation
+# NexusLang REPL Documentation
 
 ## Overview
 
-The NLPL REPL (Read-Eval-Print Loop) is an interactive shell for Natural Language Programming Language. It provides an immediate feedback environment for testing code, learning the language, and rapid prototyping.
+The NexusLang REPL (Read-Eval-Print Loop) is an interactive shell for NexusLang. It provides an immediate feedback environment for testing code, learning the language, and rapid prototyping.
 
 ## Features
 
 ### Core Capabilities
 
-- **Interactive Execution**: Evaluate NLPL code immediately and see results
+- **Interactive Execution**: Evaluate NexusLang code immediately and see results
 - **Multi-line Input**: Automatically detects incomplete statements (functions, classes, control flow)
 - **Command History**: Navigate previous commands with arrow keys, persistent across sessions
 - **Auto-completion**: Tab completion for keywords, variables, and functions
@@ -37,28 +37,28 @@ The REPL provides special commands prefixed with `:` for controlling the environ
 
 **Method 1: Via main module (no file argument)**
 ```bash
-python -m nlpl.main
+python -m nexuslang.main
 ```
 
 **Method 2: Explicit REPL flag**
 ```bash
-python -m nlpl.main --repl
+python -m nexuslang.main --repl
 ```
 
 **Method 3: Convenience script**
 ```bash
-python nlpl_repl.py
+python nxl_repl.py
 ```
 
 **Method 4: After running a file**
 ```bash
-python -m nlpl.main examples/01_basic_concepts.nlpl --repl
+python -m nexuslang.main examples/01_basic_concepts.nlpl --repl
 ```
 
 ### Command-line Options
 
 ```bash
-python -m nlpl.main [--debug] [--no-type-check] [--repl]
+python -m nexuslang.main [--debug] [--no-type-check] [--repl]
 ```
 
 - `--debug`: Enable debug mode (show tokens and AST for each command)
@@ -72,17 +72,17 @@ python -m nlpl.main [--debug] [--no-type-check] [--repl]
 ```
 >>> set x to 42
 => 42
->>> set name to "NLPL"
-=> NLPL
+>>> set name to "NexusLang"
+=> NexusLang
 >>> print text name
 NLPL
-=> NLPL
+=> NexusLang
 >>> :vars
 
 Variables:
  Scope 1:
  x = 42
- name = NLPL
+ name = NexusLang
 ```
 
 ### Example 2: Multi-line Function Definition
@@ -183,7 +183,7 @@ Navigate history with arrow keys:
 - **Up Arrow**: Previous command
 - **Down Arrow**: Next command
 
-History is persistent across sessions, stored in `~/.nlpl_history`.
+History is persistent across sessions, stored in `~/.nxl_history`.
 
 ### Multi-line Input Modes
 
@@ -243,7 +243,7 @@ After running code, use `:vars` to see what variables are defined:
 Variables:
  Scope 1:
  x = 42
- name = NLPL
+ name = NexusLang
  numbers = [1, 2, 3, 4, 5]
 ```
 
@@ -294,7 +294,7 @@ Press Up Arrow to recall previous commands instead of retyping:
 
 ### 6. Combine with Debug for Learning
 
-Enable debug mode to understand how NLPL parses your code:
+Enable debug mode to understand how NexusLang parses your code:
 
 ```
 >>> :debug
@@ -303,7 +303,7 @@ Debug mode: enabled
 [Shows tokens and AST]
 ```
 
-This is great for learning NLPL syntax and troubleshooting issues.
+This is great for learning NexusLang syntax and troubleshooting issues.
 
 ## Keyboard Shortcuts
 
@@ -318,7 +318,7 @@ This is great for learning NLPL syntax and troubleshooting issues.
 
 ## Persistent History
 
-The REPL saves your command history to `~/.nlpl_history`. This file persists across sessions, so you can access previous commands even after restarting the REPL.
+The REPL saves your command history to `~/.nxl_history`. This file persists across sessions, so you can access previous commands even after restarting the REPL.
 
 To view history:
 ```
@@ -336,7 +336,7 @@ History:
 You can run a file and then drop into the REPL to continue working:
 
 ```bash
-python -m nlpl.main examples/01_basic_concepts.nlpl --repl
+python -m nexuslang.main examples/01_basic_concepts.nlpl --repl
 ```
 
 This executes the file first, then starts the REPL with the file's context loaded (variables, functions, etc.).
@@ -367,11 +367,11 @@ pip install pyreadline3
 
 ### History Not Saving
 
-Check permissions on `~/.nlpl_history`:
+Check permissions on `~/.nxl_history`:
 
 ```bash
-ls -la ~/.nlpl_history
-chmod 644 ~/.nlpl_history # If needed
+ls -la ~/.nxl_history
+chmod 644 ~/.nxl_history # If needed
 ```
 
 ### Errors Not Showing Details
@@ -387,7 +387,7 @@ Debug mode: enabled
 
 ### Python REPL
 
-| Feature | NLPL REPL | Python REPL |
+| Feature | NexusLang REPL | Python REPL |
 |---------|-----------|-------------|
 | Natural syntax | (English-like) | (Technical) |
 | Multi-line detection | Automatic | Manual `...` |
@@ -398,7 +398,7 @@ Debug mode: enabled
 
 ### Node.js REPL
 
-| Feature | NLPL REPL | Node.js REPL |
+| Feature | NexusLang REPL | Node.js REPL |
 |---------|-----------|-------------|
 | Variable inspection | `:vars` | Manual |
 | Function listing | `:funcs` | Manual |
@@ -454,7 +454,7 @@ Once you've tested code in the REPL, save it to a file:
 1. Use `:history` to see your commands
 2. Copy working code
 3. Save to a `.nlpl` file
-4. Run with `python -m nlpl.main yourfile.nlpl`
+4. Run with `python -m nexuslang.main yourfile.nlpl`
 
 ## Future Enhancements
 
@@ -465,7 +465,7 @@ Planned features for future versions:
 - **Breakpoint integration**: Set breakpoints for debugging
 - **Variable watching**: Monitor variable changes in real-time
 - **Export session**: Save REPL session to a file
-- **Import modules**: Load NLPL modules interactively
+- **Import modules**: Load NexusLang modules interactively
 - **Inline help**: `:help <topic>` for specific help
 
 ## See Also
@@ -486,10 +486,10 @@ To contribute to the REPL:
 
 ## License
 
-The NLPL REPL is part of the NLPL project and follows the same license.
+The NexusLang REPL is part of the NexusLang project and follows the same license.
 
 ---
 
 **Version**: 0.1.0 
 **Last Updated**: 2024 
-**Maintainer**: NLPL Development Team
+**Maintainer**: NexusLang Development Team

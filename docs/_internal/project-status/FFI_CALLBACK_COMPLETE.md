@@ -31,7 +31,7 @@ call qsort with data_ptr, array_size, element_size, callback compare_ints
 #### 3. Runtime Verification 
 ```bash
 $ ./test_qsort_callback
-Testing qsort with NLPL callback
+Testing qsort with NexusLang callback
 Qsort completed successfully
 Test complete
 ```
@@ -86,7 +86,7 @@ NLPL function executes
 
 ### Next Steps: Variadic Functions
 
-With callbacks complete, the next FFI feature is **variadic NLPL functions**:
+With callbacks complete, the next FFI feature is **variadic NexusLang functions**:
 
 ```nlpl
 # Define variadic function

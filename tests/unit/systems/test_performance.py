@@ -1,5 +1,5 @@
 """
-Performance regression tests for the NLPL interpreter.
+Performance regression tests for the NexusLang interpreter.
 
 These tests verify that:
 1. The dispatch table provides adequate speedup over naive regex dispatch.
@@ -21,11 +21,11 @@ import pytest
 # Ensure src/ is on the path when running from project root
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from nlpl.interpreter.interpreter import Interpreter, _camel_to_snake
-from nlpl.runtime.runtime import Runtime
-from nlpl.stdlib import register_stdlib
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
+from nexuslang.interpreter.interpreter import Interpreter, _camel_to_snake
+from nexuslang.runtime.runtime import Runtime
+from nexuslang.stdlib import register_stdlib
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
 
 
 # ---------------------------------------------------------------------------
@@ -39,9 +39,9 @@ def _make_interpreter(source: str = "") -> Interpreter:
     return Interpreter(rt, source=source)
 
 
-def _run_nlpl(source: str, optimization_level: int = 0) -> float:
+def _run_nxl(source: str, optimization_level: int = 0) -> float:
     """
-    Run an NLPL program and return wall-clock execution time in milliseconds.
+    Run an NexusLang program and return wall-clock execution time in milliseconds.
     Parse time is excluded; only interpretation time is measured.
     """
     lexer = Lexer(source)
@@ -198,7 +198,7 @@ set b to 200
 set c to a plus b times 3
 print text convert c to string
 '''
-        elapsed = _run_nlpl(src)
+        elapsed = _run_nxl(src)
         assert elapsed < 100.0, f"Simple arithmetic took {elapsed:.1f}ms (expected < 100ms)"
 
     def test_iterative_fibonacci_baseline(self):
@@ -226,7 +226,7 @@ end
 set result to fib_iter with 100
 print text convert result to string
 '''
-        elapsed = _run_nlpl(src)
+        elapsed = _run_nxl(src)
         # Observed: ~0.5ms. Threshold: 50ms (100x headroom for slow CI)
         assert elapsed < 50.0, (
             f"fib_iter(100) took {elapsed:.1f}ms (expected < 50ms)"
@@ -243,7 +243,7 @@ while i is less than 1000
 end
 print text convert count to string
 '''
-        elapsed = _run_nlpl(src)
+        elapsed = _run_nxl(src)
         # Observed: ~5ms. Threshold: 2000ms (generous to avoid flakiness under load)
         assert elapsed < 2000.0, (
             f"1000-iteration while loop took {elapsed:.1f}ms (expected < 2000ms)"
@@ -260,7 +260,7 @@ while i is less than 100
 end
 print text convert i to string
 '''
-        elapsed = _run_nlpl(src)
+        elapsed = _run_nxl(src)
         assert elapsed < 100.0, (
             f"100-append loop took {elapsed:.1f}ms (expected < 100ms)"
         )
@@ -279,7 +279,7 @@ while i is less than 100
 end
 print text convert result to string
 '''
-        elapsed = _run_nlpl(src)
+        elapsed = _run_nxl(src)
         assert elapsed < 100.0, (
             f"100 function calls took {elapsed:.1f}ms (expected < 100ms)"
         )
@@ -313,7 +313,7 @@ print text convert result to string
         """Return median of 3 runs at the given optimization level (ms)."""
         times = []
         for _ in range(3):
-            elapsed = _run_nlpl(self.NLPL_SRC, optimization_level=opt_level)
+            elapsed = _run_nxl(self.NLPL_SRC, optimization_level=opt_level)
             times.append(elapsed)
         return statistics.median(times)
 
@@ -366,35 +366,35 @@ print text convert result to string
 
 class TestErrorHandlingPerformance:
     """
-    Verify that NLPLNameError with large available_names does not hang.
+    Verify that NxlNameError with large available_names does not hang.
     Regression test for the difflib O(n^2) hang with 1000+ stdlib names.
     """
 
     def test_name_error_with_large_scope_is_fast(self):
         """
-        NLPLNameError with 1500 available names should resolve in < 100ms
+        NxlNameError with 1500 available names should resolve in < 100ms
         (was hanging for seconds before the 256-cap update in errors.py).
         """
-        from nlpl.errors import NLPLNameError, get_close_matches
+        from nexuslang.errors import NxlNameError, get_close_matches
 
         many_names = ["func_" + str(i) for i in range(1500)]
         many_names += ["i", "j", "k", "result", "value", "count"]
 
         t0 = time.perf_counter()
         try:
-            raise NLPLNameError("list_append", available_names=many_names)
-        except NLPLNameError:
+            raise NxlNameError("list_append", available_names=many_names)
+        except NxlNameError:
             pass
         elapsed_ms = (time.perf_counter() - t0) * 1000
 
         assert elapsed_ms < 100.0, (
-            f"NLPLNameError with 1500 names took {elapsed_ms:.1f}ms "
+            f"NxlNameError with 1500 names took {elapsed_ms:.1f}ms "
             "(expected < 100ms - difflib cap not working?)"
         )
 
     def test_get_close_matches_with_large_list(self):
         """get_close_matches should cap at 256 candidates and return quickly."""
-        from nlpl.errors import get_close_matches
+        from nexuslang.errors import get_close_matches
 
         many = ["name_" + str(i) for i in range(2000)]
         t0 = time.perf_counter()

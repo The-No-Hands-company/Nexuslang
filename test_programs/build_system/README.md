@@ -1,6 +1,6 @@
 # Build System Test Programs
 
-This directory contains test programs for validating the NLPL build system's incremental compilation capabilities.
+This directory contains test programs for validating the NexusLang build system's incremental compilation capabilities.
 
 ## Contents
 
@@ -27,34 +27,34 @@ This directory contains test programs for validating the NLPL build system's inc
 
 ### Initial Build
 ```bash
-python3 ../../dev_tools/nlpl_build.py clean
-python3 ../../dev_tools/nlpl_build.py --verbose build
+python3 ../../dev_tools/nxl_build.py clean
+python3 ../../dev_tools/nxl_build.py --verbose build
 ```
 Expected output: "1 compiled, 0 up-to-date"
 
 ### Rebuild Without Changes
 ```bash
-python3 ../../dev_tools/nlpl_build.py --verbose build
+python3 ../../dev_tools/nxl_build.py --verbose build
 ```
 Expected output: "0 compiled, 1 up-to-date"
 
 ### Modify Source File
 ```bash
 echo '# Comment' >> calculator.nlpl
-python3 ../../dev_tools/nlpl_build.py --verbose build
+python3 ../../dev_tools/nxl_build.py --verbose build
 ```
 Expected output: "Rebuild reason: Source file calculator.nlpl changed"
 
 ### Modify Dependency
 ```bash
 echo '# Comment' >> math_utils.nlpl
-python3 ../../dev_tools/nlpl_build.py --verbose build
+python3 ../../dev_tools/nxl_build.py --verbose build
 ```
 Expected output: "Rebuild reason: Dependency math_utils.nlpl changed"
 
 ### Force Full Rebuild
 ```bash
-python3 ../../dev_tools/nlpl_build.py --no-incremental build
+python3 ../../dev_tools/nxl_build.py --no-incremental build
 ```
 Expected: Always rebuilds regardless of cache
 
@@ -91,15 +91,15 @@ The cache contains:
     "version": "1.0",
     "timestamp": "2026-02-15T04:01:02.679361",
     "file_metadata": {
-        "/path/to/calculator.nlpl": {
-            "path": "/path/to/calculator.nlpl",
+        "/path/to/calculator.nxl": {
+            "path": "/path/to/calculator.nxl",
             "mtime": 1771124456.018715,
             "size": 128,
             "hash": "25339fcf910...",
-            "imports": ["/path/to/math_utils.nlpl"]
+            "imports": ["/path/to/math_utils.nxl"]
         },
-        "/path/to/math_utils.nlpl": {
-            "path": "/path/to/math_utils.nlpl",
+        "/path/to/math_utils.nxl": {
+            "path": "/path/to/math_utils.nxl",
             "mtime": 1771124456.018715,
             "size": 200,
             "hash": "bda91e2917...",
@@ -108,15 +108,15 @@ The cache contains:
     },
     "dependency_graph": {
         "dependencies": {
-            "/path/to/calculator.nlpl": ["/path/to/math_utils.nlpl"]
+            "/path/to/calculator.nxl": ["/path/to/math_utils.nxl"]
         },
         "reverse_deps": {
-            "/path/to/math_utils.nlpl": ["/path/to/calculator.nlpl"]
+            "/path/to/math_utils.nxl": ["/path/to/calculator.nxl"]
         }
     },
     "build_artifacts": {
         "/path/to/calculator.nlpl:dev:": {
-            "source_file": "/path/to/calculator.nlpl",
+            "source_file": "/path/to/calculator.nxl",
             "output_file": "/path/to/build/dev/calculator",
             "build_time": 1771124462.679344,
             "profile": "dev",
@@ -130,7 +130,7 @@ The cache contains:
 
 Remove all build artifacts:
 ```bash
-python3 ../../dev_tools/nlpl_build.py clean
+python3 ../../dev_tools/nxl_build.py clean
 ```
 
 This removes:

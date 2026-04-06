@@ -7,14 +7,14 @@ import shutil
 sys.path.append(os.path.abspath("src"))
 
 try:
-    from nlpl.compiler import Compiler, CompilationTarget
-    from nlpl.parser.parser import Parser
-    from nlpl.parser.lexer import Lexer
+    from nexuslang.compiler import Compiler, CompilationTarget
+    from nexuslang.parser.parser import Parser
+    from nexuslang.parser.lexer import Lexer
     
     print("Verifying Header Generation...")
     
     # 1. Read source
-    source_file = "test_export.nlpl"
+    source_file = "test_export.nxl"
     with open(source_file, 'r') as f:
         source_code = f.read()
         

@@ -1,11 +1,11 @@
-# NLPL Development Session Summary
+# NexusLang Development Session Summary
 ## November 26, 2024
 
 ---
 
 ## Session Overview
 
-Continued NLPL compiler development with implementation of **Pattern Matching** system - a critical advanced language feature.
+Continued NexusLang compiler development with implementation of **Pattern Matching** system - a critical advanced language feature.
 
 ---
 
@@ -198,7 +198,7 @@ Native Code
 
 ## Comparison with Other Languages
 
-| Feature | NLPL | Rust | Python | Kotlin |
+| Feature | NexusLang | Rust | Python | Kotlin |
 |---------|------|------|--------|--------|
 | Syntax | Natural English | match | match (3.10+) | when |
 | Readability | | | | |
@@ -211,7 +211,7 @@ Native Code
 
 ---
 
-## Current NLPL Compiler Status
+## Current NexusLang Compiler Status
 
 ### Completed Systems (100%)
 - Core Language (variables, functions, classes, control flow)

@@ -15,7 +15,7 @@ if _SRC not in sys.path:
 
 class TestBTreeMap:
     def _get(self):
-        from nlpl.stdlib.collections import BTreeMap
+        from nexuslang.stdlib.collections import BTreeMap
         return BTreeMap()
 
     def test_insert_and_get(self):
@@ -64,7 +64,7 @@ class TestBTreeMap:
 
 class TestBTreeSet:
     def _get(self):
-        from nlpl.stdlib.collections import BTreeSet
+        from nexuslang.stdlib.collections import BTreeSet
         return BTreeSet()
 
     def test_insert_and_contains(self):
@@ -109,7 +109,7 @@ class TestBTreeSet:
 
 class TestLinkedList:
     def _get(self):
-        from nlpl.stdlib.collections import LinkedList
+        from nexuslang.stdlib.collections import LinkedList
         return LinkedList()
 
     def test_push_and_len(self):
@@ -143,7 +143,7 @@ class TestLinkedList:
 
 class TestVecDeque:
     def _get(self):
-        from nlpl.stdlib.collections import VecDeque
+        from nexuslang.stdlib.collections import VecDeque
         return VecDeque()
 
     def test_push_back_pop_front(self):
@@ -171,7 +171,7 @@ class TestVecDeque:
 
 class TestMinHeap:
     def _get(self):
-        from nlpl.stdlib.collections import MinHeap
+        from nexuslang.stdlib.collections import MinHeap
         return MinHeap()
 
     def test_push_and_pop(self):
@@ -202,7 +202,7 @@ class TestMinHeap:
 
 class TestMaxHeap:
     def _get(self):
-        from nlpl.stdlib.collections import MaxHeap
+        from nexuslang.stdlib.collections import MaxHeap
         return MaxHeap()
 
     def test_push_and_pop(self):

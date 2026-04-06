@@ -4,7 +4,7 @@
 
 ### Implementation Summary
 
-Variadic function support allows NLPL functions and extern C functions to accept variable numbers of arguments using the `...` syntax.
+Variadic function support allows NexusLang functions and extern C functions to accept variable numbers of arguments using the `...` syntax.
 
 ### Components Implemented
 
@@ -87,7 +87,7 @@ call printf with "Hello %s\n", name
 call printf with "Numbers: %d %d %d\n", a, b, c
 ```
 
-#### NLPL Variadic Functions
+#### NexusLang Variadic Functions
 ```nlpl
 # Define variadic function
 function my_variadic that takes first as Integer, ... returns Integer
@@ -141,7 +141,7 @@ Variadic test complete!
 
 **Variadic argument types**:
 - Fixed parameters: Type-checked and converted as needed
-- Variable arguments: Preserve original NLPL types
+- Variable arguments: Preserve original NexusLang types
 - LLVM handles type promotion automatically for varargs
 
 **Example**:
@@ -154,7 +154,7 @@ call printf with "%d %f %s\n", 42, 3.14, "text"
 ### Architecture
 
 ```
-NLPL Source Code
+NexusLang Source Code
  
 Lexer: Tokenize ...
  
@@ -176,7 +176,7 @@ Compiled Binary
  scanf, fscanf, sscanf
  Custom variadic C functions via FFI
 
-#### Future: NLPL Variadic Functions
+#### Future: NexusLang Variadic Functions
  Parser/AST ready
  Runtime support needed:
  - va_list handling
@@ -262,7 +262,7 @@ Compiled Binary
 
 **Status**: **COMPLETE AND WORKING**
 
-Variadic function support is production-ready for FFI extern functions. NLPL programs can now call any C variadic function with full type support and correct calling conventions.
+Variadic function support is production-ready for FFI extern functions. NexusLang programs can now call any C variadic function with full type support and correct calling conventions.
 
 **Time Spent**: ~3 hours (design, implementation, testing)
 **Complexity**: Medium (LLVM varargs syntax, tuple unpacking changes)

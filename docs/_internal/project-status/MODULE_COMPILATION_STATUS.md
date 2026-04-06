@@ -56,7 +56,7 @@ set result to math_ops.sum with 10, 5
 Import math_ops
 Import helpers
 set r1 to math_ops.product with 5, 10
-set r2 to helpers.greet with "NLPL"
+set r2 to helpers.greet with "NexusLang"
 # Both modules compile, link, and execute correctly
 ```
 

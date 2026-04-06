@@ -18,8 +18,8 @@ _MOD_PATH = os.path.join(
 )
 _MOD_PATH = os.path.abspath(_MOD_PATH)
 
-for _pkg in ("nlpl", "nlpl.runtime", "nlpl.runtime.runtime",
-             "nlpl.stdlib", "nlpl.stdlib.result_utils"):
+for _pkg in ("nlpl", "nexuslang.runtime", "nexuslang.runtime.runtime",
+             "nexuslang.stdlib", "nexuslang.stdlib.result_utils"):
     if _pkg not in sys.modules:
         sys.modules[_pkg] = types.ModuleType(_pkg)
 
@@ -31,9 +31,9 @@ class _StubRuntime:
         pass
 
 
-sys.modules["nlpl.runtime.runtime"].Runtime = _StubRuntime
+sys.modules["nexuslang.runtime.runtime"].Runtime = _StubRuntime
 
-spec = importlib.util.spec_from_file_location("nlpl.stdlib.result_utils", _MOD_PATH)
+spec = importlib.util.spec_from_file_location("nexuslang.stdlib.result_utils", _MOD_PATH)
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 

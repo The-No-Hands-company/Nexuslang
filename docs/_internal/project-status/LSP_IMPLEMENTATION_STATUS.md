@@ -1,10 +1,10 @@
-# NLPL Language Server Protocol (LSP) Implementation
+# NexusLang Language Server Protocol (LSP) Implementation
 
 ## Status: COMPLETE
 
 ### Mission Accomplished
 
-A fully-functional Language Server Protocol implementation has been successfully built for NLPL, enabling professional IDE integration!
+A fully-functional Language Server Protocol implementation has been successfully built for NexusLang, enabling professional IDE integration!
 
 ---
 
@@ -73,7 +73,7 @@ Integer [type]
 - Markdown-formatted help
 
 **Documentation Database:**
-- NLPL keywords
+- NexusLang keywords
 - Standard library functions
 - Type information
 - Examples and usage
@@ -135,12 +135,12 @@ Integer [type]
 
  VS Code / IDE 
  
- NLPL Extension 
+ NexusLang Extension 
  (TypeScript) 
  
  JSON-RPC (stdio)
 
- NLPL Language Server 
+ NexusLang Language Server 
  
  NLPLLanguageServer 
  - Message routing 
@@ -284,8 +284,8 @@ npx vsce package
 
 ```json
 {
- "nlpl.languageServer.enabled": true,
- "nlpl.languageServer.path": "/path/to/nlpl-lsp"
+ "nexuslang.languageServer.enabled": true,
+ "nexuslang.languageServer.path": "/path/to/nlpl-lsp"
 }
 ```
 
@@ -369,7 +369,7 @@ npm test
 4. **Formatting:** Not yet implemented
 
 ### Planned Improvements
-1. Integrate with NLPL parser for accurate AST analysis
+1. Integrate with NexusLang parser for accurate AST analysis
 2. Connect to type checker for precise type information
 3. Add cross-file symbol resolution
 4. Implement code formatter
@@ -381,7 +381,7 @@ npm test
 
 ### 1. Parser Integration
 ```python
-from nlpl.parser import Parser
+from nexuslang.parser import Parser
 
 def get_ast(text):
  parser = Parser()
@@ -390,7 +390,7 @@ def get_ast(text):
 
 ### 2. Type System Integration
 ```python
-from nlpl.typesystem import TypeChecker
+from nexuslang.typesystem import TypeChecker
 
 def get_type_info(ast, position):
  checker = TypeChecker()
@@ -399,7 +399,7 @@ def get_type_info(ast, position):
 
 ### 3. Diagnostics Integration
 ```python
-from nlpl.diagnostics import ErrorFormatter
+from nexuslang.diagnostics import ErrorFormatter
 
 def format_diagnostic(error):
  formatter = ErrorFormatter()

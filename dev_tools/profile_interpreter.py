@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Profile the NLPL interpreter to identify performance bottlenecks.
+Profile the NexusLang interpreter to identify performance bottlenecks.
 """
 
 import cProfile
@@ -13,15 +13,15 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.interpreter.interpreter import Interpreter
-from nlpl.runtime.runtime import Runtime
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.interpreter.interpreter import Interpreter
+from nexuslang.runtime.runtime import Runtime
 
 
 def profile_interpreter(source_file: str):
     """Profile interpreter execution of a source file."""
-    print(f"=== Profiling NLPL Interpreter: {source_file} ===\n")
+    print(f"=== Profiling NexusLang Interpreter: {source_file} ===\n")
     
     # Read source code
     with open(source_file, 'r') as f:
@@ -68,7 +68,7 @@ def profile_interpreter(source_file: str):
     interpreter = Interpreter(runtime)
     
     # Register stdlib
-    from nlpl.stdlib import register_stdlib
+    from nexuslang.stdlib import register_stdlib
     register_stdlib(runtime)
     
     profiler.enable()
@@ -103,7 +103,7 @@ def profile_interpreter(source_file: str):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python profile_interpreter.py <nlpl_file>")
+        print("Usage: python profile_interpreter.py <nxl_file>")
         sys.exit(1)
     
     source_file = sys.argv[1]

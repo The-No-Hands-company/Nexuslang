@@ -1,5 +1,5 @@
 """
-Tests for the NLPL stdlib compression module.
+Tests for the NexusLang stdlib compression module.
 
 All compression algorithms use Python stdlib only (gzip, zlib, bz2,
 tarfile, zipfile) — no external dependencies, so every test runs
@@ -19,7 +19,7 @@ _PROJECT_ROOT = os.path.abspath(
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from nlpl.stdlib.compression import (
+from nexuslang.stdlib.compression import (
     gzip_compress,
     gzip_decompress,
     gzip_compress_file,

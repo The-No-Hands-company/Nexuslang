@@ -7,7 +7,7 @@
 
 ## Overview
 
-Successfully completed the Interrupt and Exception Handling implementation, adding 22 new functions, 3 classes, and a comprehensive InterruptVector enum to the hardware stdlib module. This completes the **hardware access trilogy**: Port I/O ✅ + MMIO ✅ + Interrupts ✅, providing NLPL with full low-level hardware control capabilities essential for OS development.
+Successfully completed the Interrupt and Exception Handling implementation, adding 22 new functions, 3 classes, and a comprehensive InterruptVector enum to the hardware stdlib module. This completes the **hardware access trilogy**: Port I/O ✅ + MMIO ✅ + Interrupts ✅, providing NexusLang with full low-level hardware control capabilities essential for OS development.
 
 ---
 
@@ -245,7 +245,7 @@ class IDTEntry:
 - 16 general-purpose registers
 - Control registers (RIP, RFLAGS, CS, SS)
 - Exception metadata (error_code, vector)
-- `to_dict()` method for NLPL access
+- `to_dict()` method for NexusLang access
 
 **InterruptError Exception:**
 - Raised for invalid interrupt operations
@@ -268,15 +268,15 @@ class IDTEntry:
 6. **Handler executes** with saved CPU state
 7. **IRET instruction** restores context and resumes
 
-### NLPL Implementation
+### NexusLang Implementation
 
-Since NLPL runs in userspace (ring 3), we provide:
+Since NexusLang runs in userspace (ring 3), we provide:
 - **Simulated IDT structure** (Python dict)
 - **Handler registration** (function pointer storage)
 - **Frame simulation** (ExceptionFrame object)
 - **Privilege checking** (root/admin detection)
 
-In a real NLPL OS kernel:
+In a real NexusLang OS kernel:
 - Would run in ring 0
 - Would configure actual CPU IDT
 - Handlers would be compiled to machine code
@@ -339,7 +339,7 @@ Hardware access requires root/administrator privileges...
 
 **Test Results:**
 ```bash
-$ python -m nlpl.main test_programs/unit/hardware/test_interrupt_errors.nlpl
+$ python -m nexuslang.main test_programs/unit/hardware/test_interrupt_errors.nlpl
 Testing interrupt error handling...
 Test 1: Invalid vector number (negative)
 Correctly rejected invalid vector: SUCCESS
@@ -482,7 +482,7 @@ Cleanup - Unregister Handlers
 
 ## Hardware Access Trilogy Complete
 
-With this implementation, NLPL now has complete low-level hardware access:
+With this implementation, NexusLang now has complete low-level hardware access:
 
 1. **Port I/O** ✅ (Feb 2026)
    - read_port_byte/word/dword
@@ -501,7 +501,7 @@ With this implementation, NLPL now has complete low-level hardware access:
    - Interrupt control (CLI/STI)
    - Exception frame access
 
-**This completes the foundation for NLPL low-level system programming.**
+**This completes the foundation for NexusLang low-level system programming.**
 
 ---
 
@@ -635,6 +635,6 @@ Completes hardware access trilogy: Port I/O + MMIO + Interrupts
 **Documentation:** Updated roadmap, complete docstrings, example program  
 **Commitment Quality:** Production-ready code following all development rules  
 
-**Hardware access trilogy complete. NLPL is now capable of system programming and direct hardware control.**
+**Hardware access trilogy complete. NexusLang is now capable of system programming and direct hardware control.**
 
 Ready for next feature per user direction.

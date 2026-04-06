@@ -1,9 +1,9 @@
-# NLPL Missing Features - Path to C/C++/Rust/ASM Parity
+# NexusLang Missing Features - Path to C/C++/Rust/ASM Parity
 
-**Document Purpose:** Comprehensive analysis of what NLPL needs to achieve feature parity with industrial-strength general-purpose languages.
+**Document Purpose:** Comprehensive analysis of what NexusLang needs to achieve feature parity with industrial-strength general-purpose languages.
 
 **Last Updated:** February 25, 2026  
-**Current NLPL Version:** v1.4-dev (Development build - NOT production-ready)  
+**Current NexusLang Version:** v1.4-dev (Development build - NOT production-ready)  
 **Target v1.0.0 Release:** Q3 2026 (when 100% feature-complete + production-ready)  
 **Versioning Note:** See [docs/reference/VERSIONING_STRATEGY.md](../reference/VERSIONING_STRATEGY.md) for details
 
@@ -41,7 +41,7 @@ NLPL has achieved impressive maturity with:
 - ✅ **Server socket operations** (`socket_bind`, `socket_listen`, `socket_accept`, `socket_set_option`) (February 25, 2026)
 - ✅ **Unix domain sockets** (convenience helpers via `socket_create family: unix`) (February 25, 2026)
 
-**However**, to match C/C++/Rust/ASM as a **truly universal general-purpose language**, NLPL needs:
+**However**, to match C/C++/Rust/ASM as a **truly universal general-purpose language**, NexusLang needs:
 
 1. **Maturity & Production Readiness** (NEW PRIORITY - polish existing features)
 2. **Infrastructure for Ecosystem Growth** (Package Manager as foundation)
@@ -95,7 +95,7 @@ While a package manager is essential for long-term ecosystem growth, rushing to 
 
 **This document now tracks BOTH paths:**
 
-- ✅ Part 0-7: Feature parity (the "what NLPL needs" analysis)
+- ✅ Part 0-7: Feature parity (the "what NexusLang needs" analysis)
 - 🆕 Part 8: Maturity & production readiness (the "how to get there" guide)
 
 ---
@@ -113,7 +113,7 @@ While a package manager is essential for long-term ecosystem growth, rushing to 
 - Keyword-only parameters
 - Trailing blocks/closures
 
-**What NLPL Has:**
+**What NexusLang Has:**
 
 - ✅ **Named Parameters** (COMPLETE - Feb 9, 2026)
   - Syntax: `function_name with param1: value1 and param2: value2`
@@ -187,11 +187,11 @@ While a package manager is essential for long-term ecosystem growth, rushing to 
 - ✅ Complete C library calling (interpreter mode via ctypes)
 - ✅ Full LLVM compiled mode FFI
 - ✅ Automatic C header parsing (nlpl-bindgen tool)
-- ✅ Complete type marshalling (bidirectional NLPL ↔ C)
+- ✅ Complete type marshalling (bidirectional NexusLang ↔ C)
 - ✅ Struct/union marshalling and ABI compatibility
 - ✅ Function pointer support
-- ✅ Callback support (C → NLPL trampolines)
-- ✅ String handling (automatic NLPL String ↔ C char*)
+- ✅ Callback support (C → NexusLang trampolines)
+- ✅ String handling (automatic NexusLang String ↔ C char*)
 - ✅ Memory ownership tracking
 
 **What C/C++/Rust Enable:**
@@ -200,7 +200,7 @@ While a package manager is essential for long-term ecosystem growth, rushing to 
 - **Rust**: `extern "C"` blocks, bindgen for automatic bindings
 - **Python**: ctypes, cffi for C library access
 
-**Why This is Critical for NLPL:**
+**Why This is Critical for NexusLang:**
 
 FFI lets users leverage **existing ecosystems** without reimplementation:
 
@@ -210,7 +210,7 @@ FFI lets users leverage **existing ecosystems** without reimplementation:
 - **Networking**: libcurl, OpenSSL
 - **Any domain**: Call existing battle-tested C/C++ code
 
-**What NLPL Needs:**
+**What NexusLang Needs:**
 
 ✅ **Complete FFI Implementation** (February 14, 2026)
 
@@ -229,7 +229,7 @@ FFI lets users leverage **existing ecosystems** without reimplementation:
 - ✅ Best practices documentation (memory management, cleanup) - 900+ line guide
 - ✅ Unsafe FFI blocks (explicit marking) - `unsafe do ... end` syntax, lexer/parser/interpreter/c_generator
 - ✅ Automatic buffer overflow protection - `_FORTIFY_SOURCE 2`, `NLPL_NONNULL` attributes, `buffer_size_annotations` on `ExternFunctionDeclaration`
-- ✅ Runtime pointer validation - `nlpl_ffi_check_ptr` runtime function (ASan + Valgrind), `sanitize_address`/`sanitize_undefined`/`enable_valgrind` CompilerOptions flags
+- ✅ Runtime pointer validation - `nxl_ffi_check_ptr` runtime function (ASan + Valgrind), `sanitize_address`/`sanitize_undefined`/`enable_valgrind` CompilerOptions flags
 
 **FFI Tools** (100% Complete - 10/10 features) - COMPLETE (February 22, 2026)
 
@@ -261,7 +261,7 @@ FFI lets users leverage **existing ecosystems** without reimplementation:
 
 - `src/nlpl/compiler/header_parser.py` - 900+ lines
 - `src/nlpl/compiler/ffi_advanced.py` - 700+ lines  
-- `dev_tools/nlpl_bindgen.py` - CLI tool
+- `dev_tools/nxl_bindgen.py` - CLI tool
 - `test_programs/integration/ffi/test_ffi_basic_types.nlpl` - Integer, float, char tests
 - `test_programs/integration/ffi/test_ffi_strings.nlpl` - String conversion tests
 - `test_programs/integration/ffi/test_ffi_structs.nlpl` - Struct marshalling tests
@@ -296,7 +296,7 @@ FFI lets users leverage **existing ecosystems** without reimplementation:
 - ✅ **Build configuration files** (`nlpl.toml` manifest)
 - ✅ **Incremental compilation** (smart rebuilds with dependency tracking)
 - ✅ **Build caching** (persistent JSON cache with file metadata)
-- ✅ **Build tool** (`nlpl_build.py` / `nlpl.cli` with 11 subcommands)
+- ✅ **Build tool** (`nxl_build.py` / `nlpl.cli` with 11 subcommands)
 - ✅ **Dependency management** (lock file, version constraints, dev-deps, profiles)
 - ✅ Advanced features (parallel compilation, LTO, cross-compilation) - COMPLETE (February 22, 2026)
 
@@ -318,7 +318,7 @@ Cargo doesn't care if you're building:
 - Documentation generation
 - Package distribution
 
-**What NLPL Has:**
+**What NexusLang Has:**
 
 - ✅ **Build Configuration** (COMPLETE - Feb 15, 2026)
   - ✅ `nlpl.toml` manifest file (TOML-based, Cargo-inspired)
@@ -331,16 +331,16 @@ Cargo doesn't care if you're building:
   - ✅ Implementation: `src/nlpl/build/manifest.py` (500+ lines, 24/24 tests passing)
 
 - ✅ **Build Tool** (COMPLETE - Feb 15, 2026)
-  - ✅ `nlpl_build.py build` - Compile all targets
-  - ✅ `nlpl_build.py clean` - Remove build artifacts and cache
-  - ✅ `nlpl_build.py check` - Fast syntax checking without compilation
-  - ✅ `nlpl_build.py run` - Build and execute binary
-  - ✅ `nlpl_build.py test` - Run test suite
+  - ✅ `nxl_build.py build` - Compile all targets
+  - ✅ `nxl_build.py clean` - Remove build artifacts and cache
+  - ✅ `nxl_build.py check` - Fast syntax checking without compilation
+  - ✅ `nxl_build.py run` - Build and execute binary
+  - ✅ `nxl_build.py test` - Run test suite
   - ✅ Build profiles (--release, --profile custom)
   - ✅ Feature flags (--features f1,f2 with transitive resolution)
   - ✅ Verbose output (--verbose shows rebuild reasons)
   - ✅ Documentation: `docs/build_system/BUILD_TOOL_GUIDE.md` (730+ lines)
-  - ✅ Implementation: `dev_tools/nlpl_build.py` (720+ lines)
+  - ✅ Implementation: `dev_tools/nxl_build.py` (720+ lines)
 
 - ✅ **Incremental Compilation** (COMPLETE - Feb 15, 2026)
   - ✅ File change detection (mtime, size, SHA-256 content hash)
@@ -356,7 +356,7 @@ Cargo doesn't care if you're building:
   - ✅ Implementation: `src/nlpl/build/incremental.py` (463 lines)
   - ✅ Test coverage: `test_programs/build_system/` with working examples
 
-**What NLPL Still Needs:**
+**What NexusLang Still Needs:**
 
 - ✅ **Dependency Management** (COMPLETE - February 22, 2026)
   - ✅ Dependency resolution algorithm (version conflict resolution)
@@ -482,7 +482,7 @@ Cargo doesn't care if you're building:
 
 - ✅ **HTML Generator** (`html_writer.py`) — standalone self-contained HTML file with embedded CSS (dark/light theme toggle); function/class/struct/union/module sections; parameter tables; `@example` code blocks with syntax highlighting; `@see` cross-reference links; module hierarchy sidebar navigation; search box (JavaScript, client-side); `generate_html(entries, title)` → HTML string; `write_docs(entries, output_path, title)` writes to file
 
-- ✅ **Documentation Tests** (`doc_tester.py`) — `DocTestResult` dataclass; `DocTester` class; runs `@example` blocks through the NLPL interpreter; captures pass/fail/error/skip per example; `test_file(path)` and `test_directory(path)` for batch runs; `DocTestSummary` with total/passed/failed/skipped/errors; integration with `nlpl doc --test` flag
+- ✅ **Documentation Tests** (`doc_tester.py`) — `DocTestResult` dataclass; `DocTester` class; runs `@example` blocks through the NexusLang interpreter; captures pass/fail/error/skip per example; `test_file(path)` and `test_directory(path)` for batch runs; `DocTestSummary` with total/passed/failed/skipped/errors; integration with `nlpl doc --test` flag
 
 - ✅ **Orchestrator** (`__init__.py`) — `DocGenerator` facade: `generate(source_paths, output_dir, title, run_tests)` → `DocGenResult`; `DocGenResult` carries HTML path, entry count, test summary, warnings; `generate_for_project(project_root, output_dir)` auto-discovers all `.nlpl` sources
 
@@ -501,7 +501,7 @@ Cargo doesn't care if you're building:
 - ✅ Interpreter execution (all operations working)
 - ✅ Tested and verified (February 13, 2026)
 
-**What NLPL Has:**
+**What NexusLang Has:**
 
 - ✅ **Bitwise AND** (`a bitwise and b` or `a & b`)
   - Binary AND operation
@@ -585,7 +585,7 @@ Cargo doesn't care if you're building:
 - CPU control registers (CR0, CR3, etc.)
 - Model-specific registers (MSRs)
 
-**What NLPL Has:**
+**What NexusLang Has:**
 
 - ✅ **Port I/O Operations** (COMPLETE - Feb 2026)
   - `read_port_byte/word/dword with port as Integer returns Integer`
@@ -790,7 +790,7 @@ Cargo doesn't care if you're building:
 - Memory barriers and ordering
 - Architecture-specific instruction access
 
-**What NLPL Has:**
+**What NexusLang Has:**
 
 - ✅ **Lexer Tokens** (COMPLETE)
   - `ASM` - Short form keyword
@@ -995,7 +995,7 @@ Cargo doesn't care if you're building:
 - Smart pointer customization
 - Reference counting
 
-**What NLPL Needs:**
+**What NexusLang Needs:**
 
 - ✅ **Ownership System** (COMPLETE)
   - Value ownership tracking
@@ -1064,7 +1064,7 @@ Cargo doesn't care if you're building:
 - Per-type allocators
 - Allocator API (#[global_allocator])
 
-**What NLPL Has:**
+**What NexusLang Has:**
 
 - ✅ **Custom Allocator API**
   - Abstract `Allocator` base class with `allocate`, `deallocate`, `reallocate`, `reset`
@@ -1106,7 +1106,7 @@ Cargo doesn't care if you're building:
 - Compare-and-swap (CAS)
 - Lock-free data structures
 
-**What NLPL Has:**
+**What NexusLang Has:**
 
 - ✅ **Atomic Types** (COMPLETE - Feb 2026)
   - `AtomicInteger`, `AtomicBoolean`, `AtomicPointer`
@@ -1147,7 +1147,7 @@ Cargo doesn't care if you're building:
 - ✅ Thread joining, joining with timeout
 - ✅ Basic async/await (parser support)
 
-**What NLPL Has:**
+**What NexusLang Has:**
 
 - ✅ **Native Threading API** (COMPLETE - Feb 2026)
   - `create_thread with function: worker and thread_id: 1`
@@ -1188,7 +1188,7 @@ Cargo doesn't care if you're building:
 - ✅ Read-write locks (Feb 2026)
 - ✅ Once initialization (Feb 2026)
 
-**What NLPL Has:**
+**What NexusLang Has:**
 
 - ✅ **Mutexes** (COMPLETE)
   - `create_mutex`
@@ -1325,7 +1325,7 @@ end
 
 **Completed:**
 
-- ✅ Direct syscall invocation: `syscall` NLPL function with variadic args
+- ✅ Direct syscall invocation: `syscall` NexusLang function with variadic args
 - ✅ Linux syscall number table: 50+ named constants (`LINUX_SYSCALLS` dict)
 - ✅ errno access and error-code-to-string conversion
 - ✅ High-level wrappers: open, read, write, close, fork, exec, waitpid
@@ -1459,7 +1459,7 @@ end
 - requirements.txt, setup.py
 - Virtual environments
 
-**What NLPL Needs:**
+**What NexusLang Needs:**
 
 - ✅ **Package Registry** — ✅ `registry.py`: `RegistryClient` with search/download/publish/cache; `RegistryConfig` merges project + global + env vars
   - Full semver resolution: `*`, `^`, `~`, `=`, `>=`, `>`, `<=`, `<`, bare version
@@ -1512,7 +1512,7 @@ end
 - IntelliJ IDEA plugins
 - Vim/Emacs modes
 
-**What NLPL Has:**
+**What NexusLang Has:**
 
 - ✅ **Enhanced LSP Features**
   - ✅ Go to definition (same-file and cross-file ✅ Feb 19)
@@ -1540,7 +1540,7 @@ end
   - ✅ Expression evaluation (✅)
 
 - ✅ **Testing Integration**
-  - ✅ Test discovery (builder.test() auto-discovers test_*.nlpl)
+  - ✅ Test discovery (builder.test() auto-discovers test_*.nxl)
   - ✅ Test runner (parallel, per-test timing -- Feb 23, 2026)
   - ✅ Coverage reporting (CoverageCollector + HTML/JSON output -- Feb 23, 2026)
   - ✅ Test debugging (DAP already integrated)
@@ -1575,7 +1575,7 @@ end
 - Example code in docs
 - Documentation tests
 
-**What NLPL Has:**
+**What NexusLang Has:**
 
 - ✅ **Documentation Comments**
   - ✅ Doc comment syntax (## doc comments)
@@ -1623,7 +1623,7 @@ end
 - Heaptrack, Massif
 - Criterion (Rust benchmarking)
 
-**What NLPL Has:**
+**What NexusLang Has:**
 
 - ✅ **CPU Profiler** (`src/nlpl/tooling/profiler.py` -- CPUProfiler)
   - ✅ Tracing profiler (on_call/on_return hooks on interpreter)
@@ -1644,7 +1644,7 @@ end
   - ✅ Comparison with baselines (compare_to_baseline)
   - ✅ Regression detection (configurable threshold)
   - ✅ save_baseline / load_baseline JSON
-  - ✅ NLPL stdlib registration (benchmark, benchmark_range, timeit functions)
+  - ✅ NexusLang stdlib registration (benchmark, benchmark_range, timeit functions)
 
 - ✅ **CLI Integration**
   - ✅ `nlpl profile <file>` -- runs program with CPU+memory profiler, outputs HTML
@@ -1686,7 +1686,7 @@ end
 - Loop optimizations
 - Constant folding/propagation
 
-**What NLPL Needs:**
+**What NexusLang Needs:**
 
 - [x] **Optimization Levels**
   - `-O0` (no optimization, fast compile)
@@ -1725,7 +1725,7 @@ end
 - ✅ Tiered compilation implemented (`TieredCompiler`, `ExecutionTier`: INTERPRETER / BASELINE_JIT / OPTIMIZING_JIT)
 - ✅ Runtime type feedback implemented (`FunctionFeedback`, `TypeFeedbackCollector`, `Polymorphism`)
 - ✅ Deoptimization support (`deoptimize()` method)
-- ✅ Full runtime code generation (`src/nlpl/jit/code_gen.py`): `NLPLCodeGenerator` emits Python source from NLPL AST, compiles with `compile()`, returns real callables; `JITGuardFailed` for type-guard deoptimization; `JITCompiler.compile_function()` wires `TieredCompiler` to the code generator (122 tests) (February 27, 2026)
+- ✅ Full runtime code generation (`src/nlpl/jit/code_gen.py`): `NLPLCodeGenerator` emits Python source from NexusLang AST, compiles with `compile()`, returns real callables; `JITGuardFailed` for type-guard deoptimization; `JITCompiler.compile_function()` wires `TieredCompiler` to the code generator (122 tests) (February 27, 2026)
 
 **What Java/JavaScript/C# Have:**
 
@@ -1734,7 +1734,7 @@ end
 - Tiered compilation
 - Deoptimization
 
-**What NLPL Needs:**
+**What NexusLang Needs:**
 
 - [x] **Complete JIT Integration**
   - Hot function detection
@@ -1772,7 +1772,7 @@ end
 - Concurrent GC
 - Low-latency GC
 
-**What NLPL Could Have (Optional):**
+**What NexusLang Could Have (Optional):**
 
 - [x] **Optional GC Mode** — `src/nlpl/runtime/gc.py` (`TricolorMarkSweepGC`, `GenerationalGC`, `IncrementalGC`, `GarbageCollector` facade; `GCConfig`, `GCStats`, `NLPLObject`, `GCColor` enum; `GarbageCollector.from_flag()` parses `--enable-gc` / `--enable-gc=<mode>` / `--disable-gc` — 125 tests) (February 27, 2026)
   - `--enable-gc` compiler flag
@@ -1820,7 +1820,7 @@ end
 - Static analyzers (Coverity, PVS-Studio)
 - Undefined behavior detection
 
-**What NLPL Needs:**
+**What NexusLang Needs:**
 
 - [x] **Enhanced Linter**
   - 100+ lint rules
@@ -1858,7 +1858,7 @@ end
 
 - ✅ 409+ test programs
 - ✅ 44+ Python test files
-- ✅ Native NLPL test framework implemented:
+- ✅ Native NexusLang test framework implemented:
   - Lexer tokens: `TEST`, `DESCRIBE`, `IT`, `EXPECT`, `BEFORE_EACH`, `AFTER_EACH`
   - AST nodes: `TestBlock`, `DescribeBlock`, `ItBlock`, `ParameterizedTestBlock`, `BeforeEachBlock`, `AfterEachBlock`
   - Parser: statement dispatch + 6 parse methods
@@ -1880,7 +1880,7 @@ end
 - Documentation tests
 - Benchmark tests (#[bench])
 
-**What NLPL Needs:**
+**What NexusLang Needs:**
 
 - [x] **Native Test Framework**
   - Test function declarations (`test`, `it`, `describe`)
@@ -1929,7 +1929,7 @@ end
 - [x] **Formal Specification**
   - `spec` blocks with `requires`/`ensure`/`invariant`/`decreases` annotations
   - `SpecBlock` / `SpecAnnotation` AST nodes (runtime no-op; consumed by verifier)
-  - `ConstraintCollector` AST walker extracts all VCs from any NLPL program
+  - `ConstraintCollector` AST walker extracts all VCs from any NexusLang program
   - `FormalSpec` / `VerificationCondition` data structures with `.by_function()`, `.summary()`, `.to_dict()`
 
 - [x] **Theorem Prover Integration**
@@ -1958,7 +1958,7 @@ end
 - ✅ Hygienic macros — define/expand with full hygiene (no caller-scope leakage)
 - ✅ Compile-time evaluation (`comptime eval`) and constants (`comptime const`)
 - ✅ Compile-time assertions (`comptime assert`)
-- ✅ Decorator system — built-in (`@memoize`, `@trace`, `@timer`, `@deprecated`, `@validate_args`) and user-defined NLPL function decorators
+- ✅ Decorator system — built-in (`@memoize`, `@trace`, `@timer`, `@deprecated`, `@validate_args`) and user-defined NexusLang function decorators
 - ✅ `@derive` code generation decorator (DebugPrint, Equality, Clone, Hash, Default traits)
 - ✅ Metaprogramming stdlib introspection functions (`meta_macro_names`, `meta_macro_exists`, `meta_macro_arg_count`, `meta_comptime_const_names`, `meta_comptime_const_value`, `meta_comptime_const_exists`)
 - ✅ `@name(arg)` parenthesis-style decorator arguments
@@ -2058,7 +2058,7 @@ end
 
 **Tests:** 62 new tests (test_hkt.py, test_associated_types.py, test_constrained_aliases.py) + 82 passing from related type system tests = 241 total type system tests
 
-**Note:** HKT user-facing NLPL parser syntax implemented (March 2026):
+**Note:** HKT user-facing NexusLang parser syntax implemented (March 2026):
   - `DOUBLE_COLON` (`::`) token added to lexer for kind annotations
   - `KindAnnotation`, `StarKindAnnotation`, `ArrowKindAnnotation` AST nodes
   - `parse_kind_annotation()` recursive descent parser method (right-associative)
@@ -2186,7 +2186,7 @@ end
 
 ## PART 8: Maturity & Production Readiness 🆕
 
-**Philosophy:** This section addresses the gap between "feature complete" and "production ready." NLPL has implemented impressive features, but many need depth, polish, and real-world validation before they can support a thriving ecosystem.
+**Philosophy:** This section addresses the gap between "feature complete" and "production ready." NexusLang has implemented impressive features, but many need depth, polish, and real-world validation before they can support a thriving ecosystem.
 
 **Status:** ✅ COMPLETE (February 28, 2026)  
 **Priority:** ✅ SATISFIED  
@@ -2211,7 +2211,7 @@ end
 - **Rust**: cargo (build, test, doc, publish), rustfmt, clippy, rust-analyzer (LSP), rls
 - **Go**: go tool (build, test, fmt, vet), delve (debugger), pprof (profiler)
 
-**What NLPL Needs for Production Use:**
+**What NexusLang Needs for Production Use:**
 
 #### 8.1.1 Language Server Protocol (LSP) ✅ SUBSTANTIALLY COMPLETE (February 19, 2026)
 
@@ -2274,7 +2274,7 @@ end
 - ✅ Automated test suite (109 tests across 3 files)
 - ✅ Manual end-to-end testing verified via integration tests
 
-**What NLPL Has:**
+**What NexusLang Has:**
 
 - ✅ **Core Debugging Features** (COMPLETE)
   - Breakpoint support (line, conditional, temporary)
@@ -2534,7 +2534,7 @@ end
 - **Rust**: std + crates.io (150K+ packages) covering all domains
 - **Go**: Comprehensive stdlib (HTTP servers, crypto, reflection, testing)
 
-**What NLPL Needs:**
+**What NexusLang Needs:**
 
 #### 8.3.1 Critical Missing Modules ✅ SUBSTANTIALLY COMPLETE
 
@@ -2603,7 +2603,7 @@ end
 
 **Priority:** 🟡 MEDIUM (remaining gaps are non-critical)
 **Estimated Effort:** 1-2 months for remaining gaps  
-**Approach:** Mix of pure NLPL + FFI bindings
+**Approach:** Mix of pure NexusLang + FFI bindings
 
 ---
 
@@ -2711,7 +2711,7 @@ end
 
 - Harnesses work without Atheris (degrade to `--sanity` mode) so CI never breaks on
   environments where Atheris is unavailable
-- Interpreter harness uses SIGALRM (5 s) to kill runaway NLPL programs
+- Interpreter harness uses SIGALRM (5 s) to kill runaway NexusLang programs
 - FFI harness tests marshalling only; never loads real C libraries (safe on all platforms)
 - All imports use `nlpl.*` (not `src.nlpl.*`) to avoid Python module-identity mismatches
 
@@ -2750,7 +2750,7 @@ end
 
 **Priority:** COMPLETE  
 **Estimated Effort:** 2-3 months  
-**Value:** Enable NLPL for security-sensitive domains
+**Value:** Enable NexusLang for security-sensitive domains
 
 ---
 
@@ -2869,7 +2869,7 @@ end
 
 #### 8.6.2 Showcase Projects -- IN PROGRESS (March 2026)
 
-**Purpose:** Demonstrate NLPL viability with real-world applications
+**Purpose:** Demonstrate NexusLang viability with real-world applications
 
 - [x] **Flagship Applications (first)**
   - **Source Code Analyzer** (`showcase/source_analyzer/analyze.nlpl`, 590 lines)
@@ -2892,7 +2892,7 @@ end
 
 - [ ] **Success Stories**
   - Case studies (even if internal)
-  - Blog posts about building with NLPL
+  - Blog posts about building with NexusLang
   - Video tutorials/demos
 
 **Priority:** 🔴 CRITICAL  
@@ -2944,9 +2944,9 @@ end
 **What's Needed:**
 
 - [ ] **Bootstrap Compiler**
-  - Rewrite compiler in NLPL
-  - Compile NLPL compiler with Python compiler
-  - Compile NLPL compiler with NLPL compiler (bootstrapped!)
+  - Rewrite compiler in NexusLang
+  - Compile NexusLang compiler with Python compiler
+  - Compile NexusLang compiler with NexusLang compiler (bootstrapped!)
 
 **Why This Matters:**
 
@@ -3026,7 +3026,7 @@ end
 - ARM, RISC-V, WASM
 - Embedded targets (bare metal)
 
-**What NLPL Needs:**
+**What NexusLang Needs:**
 
 - [ ] **Tier 1 Targets** (full support)
   - x86_64-linux-gnu ✅
@@ -3063,7 +3063,7 @@ end
 - wasm-bindgen (JS interop)
 - wasm-pack (packaging tool)
 
-**What NLPL Needs:**
+**What NexusLang Needs:**
 
 - [ ] **WASM Compilation**
   - Compile to WASM bytecode
@@ -3072,8 +3072,8 @@ end
   - Import/export functions
 
 - [ ] **JavaScript Interop**
-  - Call JavaScript from NLPL
-  - Call NLPL from JavaScript
+  - Call JavaScript from NexusLang
+  - Call NexusLang from JavaScript
   - DOM manipulation
   - Web APIs access
 
@@ -3180,7 +3180,7 @@ NLPL has achieved impressive **feature completeness** (95%+ of v1.0 scope) but n
 
 **Critical Insight (February 2026 External Analysis):**
 
-> **Feature-complete ≠ Production-ready.** NLPL has implemented the "what" but needs to polish the "how" before building an ecosystem.
+> **Feature-complete ≠ Production-ready.** NexusLang has implemented the "what" but needs to polish the "how" before building an ecosystem.
 
 **Revised Roadmap Philosophy:**
 
@@ -3242,9 +3242,9 @@ NLPL has achieved impressive **feature completeness** (95%+ of v1.0 scope) but n
 
 **The Bottom Line:**
 
-NLPL is **closer to v1.0 than it appears** - not because features are missing, but because **existing features need depth, polish, and validation**. With 6 months of focused maturity work (now 4-5 months remaining after debugger completion), NLPL can demonstrate production readiness and build momentum for ecosystem growth. The package manager comes AFTER this foundation is solid.
+NLPL is **closer to v1.0 than it appears** - not because features are missing, but because **existing features need depth, polish, and validation**. With 6 months of focused maturity work (now 4-5 months remaining after debugger completion), NexusLang can demonstrate production readiness and build momentum for ecosystem growth. The package manager comes AFTER this foundation is solid.
 
-**This approach transforms NLPL from "feature-complete toy" to "production-ready universal language."**
+**This approach transforms NexusLang from "feature-complete toy" to "production-ready universal language."**
 
 ---
 
@@ -3267,7 +3267,7 @@ NLPL is **closer to v1.0 than it appears** - not because features are missing, b
 
 **Status:** 100% complete. All 109 tests passing.
 
-**Impact:** Eliminates critical blocker for professional development workflows. Developers can now debug NLPL programs with full breakpoint, stepping, and variable inspection support in VS Code and any DAP-compatible IDE.
+**Impact:** Eliminates critical blocker for professional development workflows. Developers can now debug NexusLang programs with full breakpoint, stepping, and variable inspection support in VS Code and any DAP-compatible IDE.
 
 **Next Steps:**
 
@@ -3279,7 +3279,7 @@ NLPL is **closer to v1.0 than it appears** - not because features are missing, b
 
 **Status:** ❌ Not implemented (Post-v1.0 priority)
 
-**Philosophy:** NLPL's core vision is to be "as natural as English." While the current deterministic parser works well for clear syntax, **AI integration can handle ambiguous or unclear natural language**, making NLPL truly revolutionary.
+**Philosophy:** NLPL's core vision is to be "as natural as English." While the current deterministic parser works well for clear syntax, **AI integration can handle ambiguous or unclear natural language**, making NexusLang truly revolutionary.
 
 **Timeline:** Post-v1.0.0 (after production-ready release ~Q3 2026), estimated Year 2 (2027-2028)
 
@@ -3337,7 +3337,7 @@ when user clicks button show popup with message
    - Ask user to confirm AI interpretation
 
 2. **Phase 2: Intent Recognition** (2-3 months)
-   - Train on NLPL corpus
+   - Train on NexusLang corpus
    - Pattern matching for common ambiguities
    - Confidence scoring
 
@@ -3348,7 +3348,7 @@ when user clicks button show popup with message
 
 **Why This Is Unique:**
 
-**NO OTHER PROGRAMMING LANGUAGE HAS AI-ASSISTED PARSING**. This would make NLPL:
+**NO OTHER PROGRAMMING LANGUAGE HAS AI-ASSISTED PARSING**. This would make NexusLang:
 
 - **Most natural** language for beginners
 - **Most productive** for experienced developers (write intent, AI handles syntax)
@@ -3410,7 +3410,7 @@ Please clarify or press 1/2/3 to accept suggestion."
 - Query struct fields, methods, properties
 - Generate code based on types
 
-**What NLPL Needs:**
+**What NexusLang Needs:**
 
 ```nlpl
 # Natural syntax for reflection
@@ -3478,7 +3478,7 @@ end
 - Compile-time computation
 - Domain-specific languages
 
-**Natural NLPL Syntax:**
+**Natural NexusLang Syntax:**
 
 ```nlpl
 # Define a macro
@@ -3509,7 +3509,7 @@ create_builder for User
 - Postconditions: `[[post: result > 0]]`
 - Runtime contract checking
 
-**Natural NLPL Syntax:**
+**Natural NexusLang Syntax:**
 
 ```nlpl
 function square_root with value as Float returns Float
@@ -3580,7 +3580,7 @@ end
 - Lifetime annotations
 - Compile-time memory safety
 
-**What NLPL Could Add:**
+**What NexusLang Could Add:**
 
 ```nlpl
 # Automatic lifetime tracking
@@ -3621,7 +3621,7 @@ end  # data still valid after function
 - Fault tolerance (supervisor trees)
 - Location transparency (distributed by default)
 
-**Natural NLPL Syntax:**
+**Natural NexusLang Syntax:**
 
 ```nlpl
 # Define an actor

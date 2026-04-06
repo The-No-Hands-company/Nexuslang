@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 import pytest
-from nlpl.lsp.dead_code import DeadCodeProvider
+from nexuslang.lsp.dead_code import DeadCodeProvider
 
 
 class MockServer:
@@ -44,13 +44,13 @@ end
 
 
 def test_unreachable_after_return_detected(provider):
-    diags = provider.get_diagnostics("file:///t.nlpl", UNREACHABLE_RETURN)
+    diags = provider.get_diagnostics("file:///t.nxl", UNREACHABLE_RETURN)
     dead = [d for d in diags if d["code"] == "dead-unreachable"]
     assert len(dead) >= 2  # 'set y to 1' and 'print text y' are unreachable
 
 
 def test_unreachable_after_return_line_numbers(provider):
-    diags = provider.get_diagnostics("file:///t.nlpl", UNREACHABLE_RETURN)
+    diags = provider.get_diagnostics("file:///t.nxl", UNREACHABLE_RETURN)
     dead = [d for d in diags if d["code"] == "dead-unreachable"]
     lines = {d["range"]["start"]["line"] for d in dead}
     # 'set y to 1' is line 3, 'print text y' is line 4
@@ -59,14 +59,14 @@ def test_unreachable_after_return_line_numbers(provider):
 
 
 def test_unreachable_after_return_severity_is_warning(provider):
-    diags = provider.get_diagnostics("file:///t.nlpl", UNREACHABLE_RETURN)
+    diags = provider.get_diagnostics("file:///t.nxl", UNREACHABLE_RETURN)
     dead = [d for d in diags if d["code"] == "dead-unreachable"]
     for d in dead:
         assert d["severity"] == 2  # WARNING
 
 
 def test_unreachable_after_return_has_suggestion(provider):
-    diags = provider.get_diagnostics("file:///t.nlpl", UNREACHABLE_RETURN)
+    diags = provider.get_diagnostics("file:///t.nxl", UNREACHABLE_RETURN)
     dead = [d for d in diags if d["code"] == "dead-unreachable"]
     for d in dead:
         assert d["data"]["fixes"]
@@ -82,7 +82,7 @@ end
 
 
 def test_unreachable_after_break(provider):
-    diags = provider.get_diagnostics("file:///t.nlpl", UNREACHABLE_BREAK)
+    diags = provider.get_diagnostics("file:///t.nxl", UNREACHABLE_BREAK)
     dead = [d for d in diags if d["code"] == "dead-unreachable"]
     assert len(dead) >= 1
     lines = {d["range"]["start"]["line"] for d in dead}
@@ -98,7 +98,7 @@ end
 
 
 def test_unreachable_after_continue(provider):
-    diags = provider.get_diagnostics("file:///t.nlpl", UNREACHABLE_CONTINUE)
+    diags = provider.get_diagnostics("file:///t.nxl", UNREACHABLE_CONTINUE)
     dead = [d for d in diags if d["code"] == "dead-unreachable"]
     assert any(d["range"]["start"]["line"] == 2 for d in dead)
 
@@ -113,7 +113,7 @@ function check with x as Integer returns Integer
     return 0
 end
 """
-    diags = provider.get_diagnostics("file:///t.nlpl", src)
+    diags = provider.get_diagnostics("file:///t.nxl", src)
     dead = [d for d in diags if d["code"] == "dead-unreachable"]
     # `return 0` should NOT be flagged — the `end` resets the dead zone
     assert len(dead) == 0
@@ -135,19 +135,19 @@ end
 
 
 def test_empty_function_detected(provider):
-    diags = provider.get_diagnostics("file:///t.nlpl", EMPTY_FUNC)
+    diags = provider.get_diagnostics("file:///t.nxl", EMPTY_FUNC)
     empty = [d for d in diags if d["code"] == "dead-empty-function"]
     assert len(empty) == 1
 
 
 def test_empty_function_line_number(provider):
-    diags = provider.get_diagnostics("file:///t.nlpl", EMPTY_FUNC)
+    diags = provider.get_diagnostics("file:///t.nxl", EMPTY_FUNC)
     empty = [d for d in diags if d["code"] == "dead-empty-function"]
     assert empty[0]["range"]["start"]["line"] == 0
 
 
 def test_empty_function_severity_is_hint(provider):
-    diags = provider.get_diagnostics("file:///t.nlpl", EMPTY_FUNC)
+    diags = provider.get_diagnostics("file:///t.nxl", EMPTY_FUNC)
     empty = [d for d in diags if d["code"] == "dead-empty-function"]
     assert empty[0]["severity"] == 4  # HINT
 
@@ -158,7 +158,7 @@ function add with a as Integer and b as Integer returns Integer
     return a plus b
 end
 """
-    diags = provider.get_diagnostics("file:///t.nlpl", src)
+    diags = provider.get_diagnostics("file:///t.nxl", src)
     empty = [d for d in diags if d["code"] == "dead-empty-function"]
     assert len(empty) == 0
 
@@ -169,7 +169,7 @@ function stub with x as Integer returns Integer
     # TODO implement
 end
 """
-    diags = provider.get_diagnostics("file:///t.nlpl", src)
+    diags = provider.get_diagnostics("file:///t.nxl", src)
     empty = [d for d in diags if d["code"] == "dead-empty-function"]
     assert len(empty) == 1
 
@@ -181,7 +181,7 @@ end
 
 def test_constant_true_condition(provider):
     src = "if true\n    print text \"always\"\nend\n"
-    diags = provider.get_diagnostics("file:///t.nlpl", src)
+    diags = provider.get_diagnostics("file:///t.nxl", src)
     cc = [d for d in diags if d["code"] == "dead-constant-condition"]
     assert len(cc) == 1
     assert "always taken" in cc[0]["message"]
@@ -189,7 +189,7 @@ def test_constant_true_condition(provider):
 
 def test_constant_false_condition(provider):
     src = "if false\n    print text \"never\"\nend\n"
-    diags = provider.get_diagnostics("file:///t.nlpl", src)
+    diags = provider.get_diagnostics("file:///t.nxl", src)
     cc = [d for d in diags if d["code"] == "dead-constant-condition"]
     assert len(cc) == 1
     assert "never taken" in cc[0]["message"]
@@ -197,21 +197,21 @@ def test_constant_false_condition(provider):
 
 def test_constant_zero_condition(provider):
     src = "if 0\n    print text \"dead\"\nend\n"
-    diags = provider.get_diagnostics("file:///t.nlpl", src)
+    diags = provider.get_diagnostics("file:///t.nxl", src)
     cc = [d for d in diags if d["code"] == "dead-constant-condition"]
     assert len(cc) == 1
 
 
 def test_constant_one_condition(provider):
     src = "if 1\n    print text \"always\"\nend\n"
-    diags = provider.get_diagnostics("file:///t.nlpl", src)
+    diags = provider.get_diagnostics("file:///t.nxl", src)
     cc = [d for d in diags if d["code"] == "dead-constant-condition"]
     assert len(cc) == 1
 
 
 def test_normal_condition_not_flagged(provider):
     src = "if count is greater than 5\n    print text \"big\"\nend\n"
-    diags = provider.get_diagnostics("file:///t.nlpl", src)
+    diags = provider.get_diagnostics("file:///t.nxl", src)
     cc = [d for d in diags if d["code"] == "dead-constant-condition"]
     assert len(cc) == 0
 
@@ -222,16 +222,16 @@ def test_normal_condition_not_flagged(provider):
 
 
 def test_empty_document_returns_empty_list(provider):
-    assert provider.get_diagnostics("file:///empty.nlpl", "") == []
+    assert provider.get_diagnostics("file:///empty.nxl", "") == []
 
 
 def test_comment_only_document_returns_empty_list(provider):
-    assert provider.get_diagnostics("file:///c.nlpl", "# just a comment\n") == []
+    assert provider.get_diagnostics("file:///c.nxl", "# just a comment\n") == []
 
 
 def test_diagnostic_has_required_lsp_fields(provider):
     src = "if true\n    print text \"x\"\nend\n"
-    diags = provider.get_diagnostics("file:///t.nlpl", src)
+    diags = provider.get_diagnostics("file:///t.nxl", src)
     for d in diags:
         assert "range" in d
         assert "start" in d["range"]
@@ -245,7 +245,7 @@ def test_diagnostic_has_required_lsp_fields(provider):
 
 def test_diagnostic_has_suggestions_in_data(provider):
     src = "if false\n    print text \"x\"\nend\n"
-    diags = provider.get_diagnostics("file:///t.nlpl", src)
+    diags = provider.get_diagnostics("file:///t.nxl", src)
     for d in diags:
         assert "data" in d
         assert "fixes" in d["data"]

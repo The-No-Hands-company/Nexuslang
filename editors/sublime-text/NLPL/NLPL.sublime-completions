@@ -1,5 +1,5 @@
 {
-    "scope": "source.nlpl",
+    "scope": "source.nxl",
     "completions": [
         // Control flow
         {"trigger": "function\tfunction definition",

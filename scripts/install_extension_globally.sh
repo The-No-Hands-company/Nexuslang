@@ -1,10 +1,10 @@
 #!/bin/bash
-# Install NLPL VSCode Extension Globally
+# Install NexusLang VSCode Extension Globally
 # This makes the extension available in ALL VSCode projects
 
 set -e
 
-echo "🚀 Installing NLPL Extension Globally..."
+echo "🚀 Installing NexusLang Extension Globally..."
 
 # Determine VSCode extensions directory
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
@@ -41,6 +41,6 @@ echo ""
 echo "⚙️  Configuration:"
 echo "To use in a new project, create .vscode/settings.json:"
 echo '{'
-echo '  "nlpl.languageServer.enabled": true,'
-echo '  "nlpl.languageServer.path": "/path/to/nlpl/src/nlpl_lsp.py"'
+echo '  "nexuslang.languageServer.enabled": true,'
+echo '  "nexuslang.languageServer.path": "/path/to/nlpl/src/nxl_lsp.py"'
 echo '}'

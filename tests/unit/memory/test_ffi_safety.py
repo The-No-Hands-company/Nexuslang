@@ -2,14 +2,14 @@
 Tests for FFI Safety Features:
 - Unsafe FFI blocks (explicit marking with 'unsafe do ... end')
 - Buffer overflow protection (_FORTIFY_SOURCE, buffer_size_annotations)
-- Runtime pointer validation (ASAN / Valgrind / nlpl_ffi_check_ptr)
+- Runtime pointer validation (ASAN / Valgrind / nxl_ffi_check_ptr)
 
 Covers lexer, AST, parser, interpreter, CompilerOptions, and C generator.
 """
 
 import pytest
-from nlpl.parser.lexer import Lexer, TokenType
-from nlpl.parser.ast import (
+from nexuslang.parser.lexer import Lexer, TokenType
+from nexuslang.parser.ast import (
     UnsafeBlock,
     ExternFunctionDeclaration,
     VariableDeclaration,
@@ -17,11 +17,11 @@ from nlpl.parser.ast import (
     PrintStatement,
     Identifier,
 )
-from nlpl.parser.parser import Parser
-from nlpl.interpreter.interpreter import Interpreter
-from nlpl.runtime.runtime import Runtime
-from nlpl.compiler import CompilerOptions
-from nlpl.compiler.backends.c_generator import CCodeGenerator
+from nexuslang.parser.parser import Parser
+from nexuslang.interpreter.interpreter import Interpreter
+from nexuslang.runtime.runtime import Runtime
+from nexuslang.compiler import CompilerOptions
+from nexuslang.compiler.backends.c_generator import CCodeGenerator
 
 
 # ---------------------------------------------------------------------------
@@ -40,7 +40,7 @@ def _parse(source: str):
 
 
 def _run(source: str):
-    """Parse and execute an NLPL program; return interpreter instance."""
+    """Parse and execute an NexusLang program; return interpreter instance."""
     ast = _parse(source)
     runtime = Runtime()
     interp = Interpreter(runtime)
@@ -336,7 +336,7 @@ class TestCGeneratorFFISafetyMacros:
         assert "((void)0)" in macros
 
     def test_generated_c_includes_fortify(self):
-        from nlpl.parser.ast import Program
+        from nexuslang.parser.ast import Program
         gen = self._gen()
         ast = Program(statements=[])
         c_code = gen.generate(ast)
@@ -344,7 +344,7 @@ class TestCGeneratorFFISafetyMacros:
 
 
 # ===========================================================================
-# 8. C GENERATOR: nlpl_ffi_check_ptr runtime function
+# 8. C GENERATOR: nxl_ffi_check_ptr runtime function
 # ===========================================================================
 
 class TestCGeneratorFFICheckPtr:
@@ -355,29 +355,29 @@ class TestCGeneratorFFICheckPtr:
         gen = self._gen()
         code = gen._generate_runtime_functions()
         # Should be absent when not requested
-        assert "nlpl_ffi_check_ptr" not in code
+        assert "nxl_ffi_check_ptr" not in code
 
     def test_emitted_when_requested(self):
         gen = self._gen()
-        gen.needed_runtime_functions.add("nlpl_ffi_check_ptr")
+        gen.needed_runtime_functions.add("nxl_ffi_check_ptr")
         code = gen._generate_runtime_functions()
-        assert "nlpl_ffi_check_ptr" in code
+        assert "nxl_ffi_check_ptr" in code
 
     def test_checks_null(self):
         gen = self._gen()
-        gen.needed_runtime_functions.add("nlpl_ffi_check_ptr")
+        gen.needed_runtime_functions.add("nxl_ffi_check_ptr")
         code = gen._generate_runtime_functions()
         assert "NULL" in code or "!ptr" in code
 
     def test_exits_on_null(self):
         gen = self._gen()
-        gen.needed_runtime_functions.add("nlpl_ffi_check_ptr")
+        gen.needed_runtime_functions.add("nxl_ffi_check_ptr")
         code = gen._generate_runtime_functions()
         assert "exit(1)" in code
 
     def test_references_valgrind_macro(self):
         gen = self._gen()
-        gen.needed_runtime_functions.add("nlpl_ffi_check_ptr")
+        gen.needed_runtime_functions.add("nxl_ffi_check_ptr")
         code = gen._generate_runtime_functions()
         assert "NLPL_VALGRIND_CHECK" in code
 
@@ -401,7 +401,7 @@ class TestCGeneratorUnsafeBlock:
         assert "unsafe block end" in joined
 
     def test_unsafe_block_body_is_generated(self):
-        from nlpl.parser.ast import Program
+        from nexuslang.parser.ast import Program
         gen = self._gen()
         ast = Program(statements=[
             UnsafeBlock(body=[
@@ -412,7 +412,7 @@ class TestCGeneratorUnsafeBlock:
         assert "danger" in c_code
 
     def test_empty_unsafe_block_roundtrip(self):
-        from nlpl.parser.ast import Program
+        from nexuslang.parser.ast import Program
         gen = self._gen()
         ast = Program(statements=[UnsafeBlock(body=[])])
         c_code = gen.generate(ast)

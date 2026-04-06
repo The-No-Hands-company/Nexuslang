@@ -1,4 +1,4 @@
-# NLPL Bug Fix Session - Results
+# NexusLang Bug Fix Session - Results
 
 **Date**: November 20, 2025 
 **Focus**: Critical lexer, parser, and interpreter bugs

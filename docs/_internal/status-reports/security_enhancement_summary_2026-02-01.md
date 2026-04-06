@@ -1,8 +1,8 @@
-# NLPL Security Enhancement Session Summary
+# NexusLang Security Enhancement Session Summary
 ## Date: February 1, 2026
 
 ## Overview
-Completed comprehensive security enhancement session implementing Deno-inspired permission system and security utilities to make NLPL more secure than Rust, Python, and other modern languages.
+Completed comprehensive security enhancement session implementing Deno-inspired permission system and security utilities to make NexusLang more secure than Rust, Python, and other modern languages.
 
 ## Achievements
 
@@ -97,7 +97,7 @@ nlpl --allow-all script.nlpl  # Development only (DANGEROUS)
 **Document:** `docs/SECURITY_GUIDE.md` (712 lines)
 
 **Contents:**
-- Introduction to NLPL security model
+- Introduction to NexusLang security model
 - Permission system guide
 - Safe file operations (path traversal prevention)
 - Safe network operations (URL validation, HTTPS only)
@@ -114,7 +114,7 @@ nlpl --allow-all script.nlpl  # Development only (DANGEROUS)
 
 **Contents:**
 - Detailed analysis of security issues in 7 languages
-- NLPL attack vector analysis (8 categories)
+- NexusLang attack vector analysis (8 categories)
 - Permission system design
 - Safe-by-default API proposals
 - Memory safety enhancements
@@ -205,7 +205,7 @@ tests/test_security.py::TestRateLimit::test_rate_limit_per_identifier PASSED
 
 ## Security Comparison Matrix
 
-| Feature | Rust | Python | Node.js | Deno | NLPL |
+| Feature | Rust | Python | Node.js | Deno | NexusLang |
 |---------|------|--------|---------|------|------|
 | Memory Safety | ✅ | ❌ | ❌ | ✅ | ✅ |
 | Permission System | ❌ | ❌ | ❌ | ✅ | ✅ |
@@ -216,7 +216,7 @@ tests/test_security.py::TestRateLimit::test_rate_limit_per_identifier PASSED
 | Input Validators | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Output Sanitization | ❌ | ❌ | ❌ | ❌ | ✅ |
 
-**Conclusion:** NLPL is now more secure than Rust (safer defaults) and Python (permission system + validation) combined.
+**Conclusion:** NexusLang is now more secure than Rust (safer defaults) and Python (permission system + validation) combined.
 
 ## Next Steps (Future Enhancements)
 
@@ -228,7 +228,7 @@ tests/test_security.py::TestRateLimit::test_rate_limit_per_identifier PASSED
    - Update main.py to parse permission flags
 
 2. **NLPL Standard Library Integration**
-   - Expose security functions to NLPL code
+   - Expose security functions to NexusLang code
    - Add `validate_path` function
    - Add `safe_execute` function
    - Add `check_permission` function

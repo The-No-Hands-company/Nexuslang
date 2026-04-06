@@ -1,10 +1,10 @@
-# NLPL Compiler Optimization System
+# NexusLang Compiler Optimization System
 
 ## Status: FULLY IMPLEMENTED
 
 ### Mission Accomplished
 
-A complete, production-ready optimization system has been successfully implemented for the NLPL compiler!
+A complete, production-ready optimization system has been successfully implemented for the NexusLang compiler!
 
 ## What Was Built
 
@@ -203,7 +203,7 @@ python nlplc_llvm.py myprogram.nlpl -o myprogram -O 3
 
 ## Performance Improvements
 
-Based on typical NLPL programs:
+Based on typical NexusLang programs:
 
 | Metric | O0 | O1 | O2 | O3 |
 |--------|----|----|----|----|

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Successfully implemented comprehensive FFI (Foreign Function Interface) struct marshalling for the NLPL compiler, enabling seamless interoperability between NLPL structs and C library functions.
+Successfully implemented comprehensive FFI (Foreign Function Interface) struct marshalling for the NexusLang compiler, enabling seamless interoperability between NexusLang structs and C library functions.
 
 ## Components Implemented
 
@@ -13,14 +13,14 @@ Successfully implemented comprehensive FFI (Foreign Function Interface) struct m
 def register_struct_type(self, name: str, fields: List[Tuple[str, str]]):
  """Register a struct type for FFI marshalling."""
 ```
-- Tracks NLPL struct definitions for marshalling
+- Tracks NexusLang struct definitions for marshalling
 - Maps field names to LLVM types
 - Supports nested struct types
 
 #### Type Mapping System
 ```python
 def map_type(self, type_name: str) -> ir.Type:
- """Map NLPL type name to LLVM type."""
+ """Map NexusLang type name to LLVM type."""
 ```
 - Extended to handle struct types
 - Supports pointer types (`StructName*`)
@@ -31,8 +31,8 @@ def map_type(self, type_name: str) -> ir.Type:
 Comprehensive struct marshalling utilities:
 
 #### Core Marshalling Functions
-- `marshal_struct_to_c()` - Convert NLPL struct to C representation
-- `unmarshal_struct_from_c()` - Convert C struct to NLPL representation
+- `marshal_struct_to_c()` - Convert NexusLang struct to C representation
+- `unmarshal_struct_from_c()` - Convert C struct to NexusLang representation
 - `pass_struct_by_value()` - Prepare struct for value passing
 - `pass_struct_by_reference()` - Prepare struct for reference passing
 
@@ -207,12 +207,12 @@ Example for `p.x` access in expression:
 The remaining FFI Phase 3 components are:
 
 1. **Callback Functions** (6-8 hours)
- - Function pointers from NLPL to C
+ - Function pointers from NexusLang to C
  - Trampoline generation
  - Type safety for callbacks
 
-2. **Variadic NLPL Functions** (4-5 hours)
- - Accept variable arguments in NLPL
+2. **Variadic NexusLang Functions** (4-5 hours)
+ - Accept variable arguments in NexusLang
  - va_list handling
  - Type-safe variadic calls
 
@@ -233,7 +233,7 @@ The remaining FFI Phase 3 components are:
 
 ## Impact
 
-This implementation completes the foundation for C library interoperability. NLPL programs can now:
+This implementation completes the foundation for C library interoperability. NexusLang programs can now:
 - Define structs compatible with C
 - Pass struct data to C libraries
 - Call standard C functions with proper type marshalling

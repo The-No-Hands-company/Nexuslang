@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-Phase 3 focuses on **compiler optimization** to make NLPL competitive with C/C++ in performance. We'll implement LLVM-based optimization passes, constant folding, dead code elimination, and function inlining to achieve near-native execution speed.
+Phase 3 focuses on **compiler optimization** to make NexusLang competitive with C/C++ in performance. We'll implement LLVM-based optimization passes, constant folding, dead code elimination, and function inlining to achieve near-native execution speed.
 
 **Key Objectives**:
 1. LLVM IR optimization pipeline integration
@@ -224,7 +224,7 @@ Executable
    - Matrix multiplication
    - String processing
    - Sorting algorithms
-   - Compare: Python, NLPL -O0, NLPL -O2, NLPL -O3, C
+   - Compare: Python, NexusLang -O0, NexusLang -O2, NexusLang -O3, C
    - Generate performance report
 
 2. **Optimization documentation** (Day 2-3)
@@ -247,7 +247,7 @@ Executable
 
 **Deliverables**:
 - Comprehensive benchmark suite (10+ programs)
-- Performance report: NLPL vs Python vs C
+- Performance report: NexusLang vs Python vs C
 - Optimization guide (200+ lines)
 - CI testing both interpreter and compiler
 - v1.3 release ready
@@ -761,13 +761,13 @@ gcc -O3 fib.c -o fib_c && time ./fib_c
 
 ## Conclusion
 
-Phase 3 will transform NLPL from an interpreted language into a **high-performance compiled language** competitive with C, Rust, and Go. By integrating LLVM's world-class optimization infrastructure, we'll achieve:
+Phase 3 will transform NexusLang from an interpreted language into a **high-performance compiled language** competitive with C, Rust, and Go. By integrating LLVM's world-class optimization infrastructure, we'll achieve:
 
 - **10-20x speedup** over current interpreter
 - **2-5x of C performance** with -O3
 - **Production-ready compiler** with comprehensive testing
 - **Professional benchmarking** showing real-world performance
 
-This sets the foundation for Phase 4 (systems programming) and beyond, making NLPL suitable for performance-critical applications like OS kernels, game engines, and high-frequency trading systems.
+This sets the foundation for Phase 4 (systems programming) and beyond, making NexusLang suitable for performance-critical applications like OS kernels, game engines, and high-frequency trading systems.
 
 **Let's build the fastest natural language programming language in the world!** 🚀

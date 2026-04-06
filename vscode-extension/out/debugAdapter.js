@@ -1,8 +1,8 @@
 "use strict";
 /**
- * NLPL Debug Adapter for VS Code
+ * NexusLang Debug Adapter for VS Code
  *
- * Bridges VS Code's Debug Adapter Protocol to the NLPL Python DAP server.
+ * Bridges VS Code's Debug Adapter Protocol to the NexusLang Python DAP server.
  * Acts as a proxy that spawns the Python debugger and forwards messages.
  */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
@@ -49,19 +49,19 @@ class NLPLDebugAdapterServerDescriptorFactory {
         const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
         // Get Python path from config or use default
         const pythonPath = config.pythonPath ||
-            vscode.workspace.getConfiguration('nlpl.debugger').get('pythonPath', 'python3');
+            vscode.workspace.getConfiguration('nexuslang.debugger').get('pythonPath', 'python3');
         // Get debug server path
         let debugServerPath = config.debugServerPath ||
-            vscode.workspace.getConfiguration('nlpl.debugger').get('debugServerPath', '');
+            vscode.workspace.getConfiguration('nexuslang.debugger').get('debugServerPath', '');
         // Auto-detect server path if not specified
         if (!debugServerPath && workspaceFolder) {
             debugServerPath = path.join(workspaceFolder.uri.fsPath, 'src', 'nlpl', 'debugger', 'dap_server.py');
         }
         // Get log file path
-        const logFile = vscode.workspace.getConfiguration('nlpl.debugger').get('logFile', '/tmp/nlpl-dap.log');
+        const logFile = vscode.workspace.getConfiguration('nexuslang.debugger').get('logFile', '/tmp/nlpl-dap.log');
         // Build command arguments
-        const args = ['-m', 'nlpl.debugger', '--debug', '--log-file', logFile];
-        console.log(`Starting NLPL debugger: ${pythonPath} ${args.join(' ')}`);
+        const args = ['-m', 'nexuslang.debugger', '--debug', '--log-file', logFile];
+        console.log(`Starting NexusLang debugger: ${pythonPath} ${args.join(' ')}`);
         // Return server descriptor that spawns Python DAP server
         return new vscode.DebugAdapterServer(0, '127.0.0.1'); // Will use stdio instead
         // Alternative: Use executable descriptor for stdio communication
@@ -75,12 +75,12 @@ class NLPLDebugAdapterExecutableFactory {
         const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
         // Get Python path from config
         const pythonPath = config.pythonPath ||
-            vscode.workspace.getConfiguration('nlpl.debugger').get('pythonPath', 'python3');
+            vscode.workspace.getConfiguration('nexuslang.debugger').get('pythonPath', 'python3');
         // Get log file path
-        const logFile = vscode.workspace.getConfiguration('nlpl.debugger').get('logFile', '/tmp/nlpl-dap.log');
+        const logFile = vscode.workspace.getConfiguration('nexuslang.debugger').get('logFile', '/tmp/nlpl-dap.log');
         // Build arguments
-        const args = ['-m', 'nlpl.debugger', '--debug', '--log-file', logFile];
-        console.log(`Launching NLPL debugger: ${pythonPath} ${args.join(' ')}`);
+        const args = ['-m', 'nexuslang.debugger', '--debug', '--log-file', logFile];
+        console.log(`Launching NexusLang debugger: ${pythonPath} ${args.join(' ')}`);
         // Return executable that runs Python DAP server via stdio
         return new vscode.DebugAdapterExecutable(pythonPath, args, {
             cwd: workspaceFolder?.uri.fsPath || process.cwd()
@@ -89,7 +89,7 @@ class NLPLDebugAdapterExecutableFactory {
 }
 exports.NLPLDebugAdapterExecutableFactory = NLPLDebugAdapterExecutableFactory;
 /**
- * Configuration provider for NLPL debug sessions.
+ * Configuration provider for NexusLang debug sessions.
  * Resolves launch configurations and provides initial setup.
  */
 class NLPLDebugConfigurationProvider {
@@ -102,13 +102,13 @@ class NLPLDebugConfigurationProvider {
             const editor = vscode.window.activeTextEditor;
             if (editor && editor.document.languageId === 'nlpl') {
                 config.type = 'nlpl';
-                config.name = 'Debug NLPL Program';
+                config.name = 'Debug NexusLang Program';
                 config.request = 'launch';
                 config.program = editor.document.uri.fsPath;
                 config.stopOnEntry = false;
             }
             else {
-                vscode.window.showErrorMessage('No NLPL program to debug. Open a .nlpl file first.');
+                vscode.window.showErrorMessage('No NexusLang program to debug. Open a .nlpl file first.');
                 return undefined;
             }
         }
@@ -126,7 +126,7 @@ class NLPLDebugConfigurationProvider {
                 config.program = editor.document.uri.fsPath;
             }
             else {
-                vscode.window.showErrorMessage('No active editor with NLPL file.');
+                vscode.window.showErrorMessage('No active editor with NexusLang file.');
                 return undefined;
             }
         }
@@ -143,7 +143,7 @@ class NLPLDebugConfigurationProvider {
         }
         // Get Python path from settings if not in config
         if (!config.pythonPath) {
-            config.pythonPath = vscode.workspace.getConfiguration('nlpl.debugger').get('pythonPath', 'python3');
+            config.pythonPath = vscode.workspace.getConfiguration('nexuslang.debugger').get('pythonPath', 'python3');
         }
         console.log('Resolved debug configuration:', config);
         return config;
@@ -156,14 +156,14 @@ class NLPLDebugConfigurationProvider {
             {
                 type: 'nlpl',
                 request: 'launch',
-                name: 'Debug NLPL Program',
+                name: 'Debug NexusLang Program',
                 program: '${file}',
                 stopOnEntry: false
             },
             {
                 type: 'nlpl',
                 request: 'launch',
-                name: 'Debug NLPL Program (Stop on Entry)',
+                name: 'Debug NexusLang Program (Stop on Entry)',
                 program: '${file}',
                 stopOnEntry: true
             }
@@ -172,7 +172,7 @@ class NLPLDebugConfigurationProvider {
 }
 exports.NLPLDebugConfigurationProvider = NLPLDebugConfigurationProvider;
 /**
- * Register debug support for NLPL.
+ * Register debug support for NexusLang.
  */
 function activateDebugSupport(context) {
     // Register debug adapter factory
@@ -180,19 +180,19 @@ function activateDebugSupport(context) {
     // Register debug configuration provider
     context.subscriptions.push(vscode.debug.registerDebugConfigurationProvider('nlpl', new NLPLDebugConfigurationProvider()));
     // Register command to run current file with debugger
-    context.subscriptions.push(vscode.commands.registerCommand('nlpl.debug', () => {
+    context.subscriptions.push(vscode.commands.registerCommand('nexuslang.debug', () => {
         const editor = vscode.window.activeTextEditor;
         if (editor && editor.document.languageId === 'nlpl') {
             vscode.debug.startDebugging(undefined, {
                 type: 'nlpl',
-                name: 'Debug NLPL Program',
+                name: 'Debug NexusLang Program',
                 request: 'launch',
                 program: editor.document.uri.fsPath,
                 stopOnEntry: false
             });
         }
         else {
-            vscode.window.showErrorMessage('No active NLPL file to debug.');
+            vscode.window.showErrorMessage('No active NexusLang file to debug.');
         }
     }));
     console.log('NLPL debug support activated');

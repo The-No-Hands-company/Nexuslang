@@ -1,4 +1,4 @@
-name: NLPL Fuzzing
+name: NexusLang Fuzzing
 
 # Runs on a schedule (weekly) and can be triggered manually.
 # Does NOT block normal CI — fuzzing crashes are tracked separately.

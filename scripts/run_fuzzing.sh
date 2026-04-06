@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # scripts/run_fuzzing.sh
 #
-# Convenience script to run NLPL fuzz targets locally.
+# Convenience script to run NexusLang fuzz targets locally.
 #
 # Usage:
 #   ./scripts/run_fuzzing.sh                       # Sanity-check all targets (no Atheris)

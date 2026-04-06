@@ -1,4 +1,4 @@
-# NLPL Error Handling & Safety System
+# NexusLang Error Handling & Safety System
 
 ## Status: PHASE 1 COMPLETE
 
@@ -59,7 +59,7 @@ collect_results(list) # Collect list of Results
 - Stack unwinding
 - Custom panic handlers
 - Panic recovery boundaries
-- Helper macros (`assert_nlpl`, `todo`, `unreachable`)
+- Helper macros (`assert_nxl`, `todo`, `unreachable`)
 
 **API:**
 ```python
@@ -68,7 +68,7 @@ panic("Something went wrong")
 panic("Error", location="file.nlpl:42")
 
 # Assertions
-assert_nlpl(x > 0, "x must be positive")
+assert_nxl(x > 0, "x must be positive")
 
 # Mark unimplemented code
 todo("Implement this feature")
@@ -183,7 +183,7 @@ tracker.exit_scope()
 
 ---
 
-## NLPL Language Integration
+## NexusLang Language Integration
 
 ### Result<T, E> Syntax
 ```nlpl
@@ -292,7 +292,7 @@ set copied_data to data.clone
 ### 1. Type Checker Integration
 ```python
 # In typechecker.py
-from nlpl.safety import NullSafetyChecker, OwnershipTracker
+from nexuslang.safety import NullSafetyChecker, OwnershipTracker
 
 class TypeChecker:
  def __init__(self):
@@ -318,7 +318,7 @@ function parse_result_type(self):
 ### 3. Runtime Integration
 ```python
 # In runtime.py
-from nlpl.safety import panic, PanicBoundary
+from nexuslang.safety import panic, PanicBoundary
 
 # Use panic for runtime errors
 if index >= len(array):

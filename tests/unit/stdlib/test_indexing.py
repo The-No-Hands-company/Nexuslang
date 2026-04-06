@@ -4,11 +4,11 @@ Test array indexing feature.
 """
 
 import sys
-sys.path.insert(0, '/run/media/zajferx/Data/dev/The-No-hands-Company/projects/NLPL/src')
+sys.path.insert(0, '/run/media/zajferx/Data/dev/The-No-hands-Company/projects/NexusLang/src')
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.parser.ast import IndexExpression, VariableDeclaration
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.parser.ast import IndexExpression, VariableDeclaration
 
 def test_array_indexing():
     """Test parsing array indexing expressions."""

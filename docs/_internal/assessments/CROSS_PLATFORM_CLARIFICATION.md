@@ -1,4 +1,4 @@
-# NLPL Cross-Platform Clarification
+# NexusLang Cross-Platform Clarification
 
 ## TL;DR
 
@@ -18,7 +18,7 @@ The confusion arose because NLPLDev field testing examples used Windows API (Mes
 ### Test Execution
 ```bash
 $ python dev_tools/verify_cross_platform.py
- NLPL is FULLY cross-platform!
+ NexusLang is FULLY cross-platform!
  Interpreter: Python-based (runs on any Python 3.8+ platform)
  Platform Detection: Built-in via stdlib/system module
  FFI: ctypes library (cross-platform by design)
@@ -69,16 +69,16 @@ def get_platform():
 import ctypes # Python's cross-platform FFI library
 import platform
 
-def _nlpl_type_to_ctype(self, nlpl_type):
- """Convert NLPL type string to ctypes type."""
- # Maps NLPL types to ctypes (works on all platforms)
+def _nxl_type_to_ctype(self, nxl_type):
+ """Convert NexusLang type string to ctypes type."""
+ # Maps NexusLang types to ctypes (works on all platforms)
  type_map = {
  'integer': ctypes.c_long,
  'float': ctypes.c_double,
  'string': ctypes.c_char_p,
  'pointer': ctypes.c_void_p,
  }
- return type_map.get(nlpl_type.lower(), ctypes.c_void_p)
+ return type_map.get(nxl_type.lower(), ctypes.c_void_p)
 ```
 
 **How FFI Works Cross-Platform**:
@@ -97,7 +97,7 @@ import struct # Cross-platform
 import sys # Cross-platform
 import platform # Cross-platform
 from typing import ...
-from nlpl.errors import ...
+from nexuslang.errors import ...
 # NO Windows-specific imports!
 ```
 
@@ -205,7 +205,7 @@ End
 ### 2. Verification Tool
 **File**: `dev_tools/verify_cross_platform.py`
 - Detects current platform
-- Shows NLPL capabilities on that platform
+- Shows NexusLang capabilities on that platform
 - Demonstrates platform detection APIs
 - Provides FFI library format info
 
@@ -218,14 +218,14 @@ End
 
 ## Key Takeaways
 
-### NLPL IS Cross-Platform
+### NexusLang IS Cross-Platform
 1. **Interpreter**: Python-based, runs on any Python 3.8+ platform
 2. **Platform Detection**: Built-in via `stdlib/system` module
 3. **FFI**: ctypes library (cross-platform by design)
 4. **Memory Management**: Platform-agnostic implementation
 5. **Concurrency**: Standard library ThreadPoolExecutor
 
-### NLPL is NOT Windows-Only
+### NexusLang is NOT Windows-Only
 1. No Windows-specific dependencies in core interpreter
 2. FFI works with `.dll` (Windows), `.so` (Linux), `.dylib` (macOS)
 3. Examples using Windows API were for testing convenience
@@ -291,4 +291,4 @@ The misconception of "Windows-only" came from NLPLDev testing using Windows API 
 - **Platform Detection**: `src/nlpl/stdlib/system/__init__.py`
 - **FFI Implementation**: `src/nlpl/interpreter/interpreter.py` (lines 1100-1300)
 
-**Questions?** Open an issue on GitHub: https://github.com/your-org/NLPL/issues
+**Questions?** Open an issue on GitHub: https://github.com/your-org/NexusLang/issues

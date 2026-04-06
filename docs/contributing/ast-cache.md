@@ -3,13 +3,13 @@
 ## Quick Start
 
 ```python
-from nlpl.parser.cached_parser import parse_with_cache
+from nexuslang.parser.cached_parser import parse_with_cache
 
 # Parse with automatic caching
-ast = parse_with_cache('file.nlpl', source_code)
+ast = parse_with_cache('file.nxl', source_code)
 
 # Second call with same content - instant (cache hit)
-ast = parse_with_cache('file.nlpl', source_code)  # ~10x faster
+ast = parse_with_cache('file.nxl', source_code)  # ~10x faster
 ```
 
 ## Common Use Cases
@@ -21,16 +21,16 @@ Already integrated in `src/nlpl/lsp/diagnostics.py`. No changes needed.
 ### 2. Custom Parser
 
 ```python
-from nlpl.parser.cached_parser import CachedParser
+from nexuslang.parser.cached_parser import CachedParser
 
 parser = CachedParser()
-ast = parser.parse('file.nlpl', source_code)
+ast = parser.parse('file.nxl', source_code)
 ```
 
 ### 3. Configure Cache Limits
 
 ```python
-from nlpl.parser.ast_cache import set_cache_limits
+from nexuslang.parser.ast_cache import set_cache_limits
 
 # Before first use
 set_cache_limits(max_entries=200, max_memory_mb=100)
@@ -39,7 +39,7 @@ set_cache_limits(max_entries=200, max_memory_mb=100)
 ### 4. Check Cache Statistics
 
 ```python
-from nlpl.parser.ast_cache import get_global_cache
+from nexuslang.parser.ast_cache import get_global_cache
 
 cache = get_global_cache()
 cache.print_stats()
@@ -59,7 +59,7 @@ AST Cache Statistics:
 ### 5. Manually Invalidate Cache
 
 ```python
-cache.invalidate('file.nlpl')  # Force reparse next time
+cache.invalidate('file.nxl')  # Force reparse next time
 ```
 
 ### 6. Clear All Cache

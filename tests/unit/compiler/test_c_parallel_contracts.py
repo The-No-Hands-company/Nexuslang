@@ -6,8 +6,8 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from nlpl.compiler.backends.c_generator import CCodeGenerator
-from nlpl.parser.ast import (
+from nexuslang.compiler.backends.c_generator import CCodeGenerator
+from nexuslang.parser.ast import (
     Program,
     ParallelForLoop,
     ListExpression,

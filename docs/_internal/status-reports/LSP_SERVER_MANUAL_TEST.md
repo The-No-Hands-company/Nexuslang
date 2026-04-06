@@ -7,7 +7,7 @@
 
 ## ✅ Test Result: SUCCESS
 
-The NLPL LSP server is working correctly!
+The NexusLang LSP server is working correctly!
 
 ---
 
@@ -15,7 +15,7 @@ The NLPL LSP server is working correctly!
 
 ```bash
 # Started the LSP server with debug logging
-python3 -m nlpl.lsp --debug
+python3 -m nexuslang.lsp --debug
 ```
 
 ---
@@ -24,7 +24,7 @@ python3 -m nlpl.lsp --debug
 
 ### 1. Server Started Successfully ✅
 ```
-2026-02-16 14:18:31 - Starting NLPL Language Server (debug mode)
+2026-02-16 14:18:31 - Starting NexusLang Language Server (debug mode)
 ```
 
 ### 2. Workspace Indexing Started ✅
@@ -75,7 +75,7 @@ Based on the successful indexing, these features are ready:
 
 ```bash
 # 1. Start server in background with debug logging
-python3 -m nlpl.lsp --debug &
+python3 -m nexuslang.lsp --debug &
 
 # 2. Wait a moment for server to initialize
 sleep 2
@@ -85,7 +85,7 @@ tail -50 /tmp/nlpl-lsp.log
 ```
 
 **What to look for:**
-- ✅ "Starting NLPL Language Server" 
+- ✅ "Starting NexusLang Language Server" 
 - ✅ "Indexing file..." messages
 - ✅ "Workspace indexing complete: X files, Y symbols"
 - ❌ Any ERROR or WARNING messages
@@ -103,7 +103,7 @@ code vscode-extension/
 # 2. Press F5 to launch Extension Development Host
 #    This will:
 #    - Start a new VS Code window
-#    - Automatically run: python3 -m nlpl.lsp
+#    - Automatically run: python3 -m nexuslang.lsp
 #    - Connect VS Code to the LSP server
 
 # 3. Open Output panel (Ctrl+Shift+U)
@@ -131,7 +131,7 @@ Content-Length: 150
 EOF
 
 # Send to server
-cat /tmp/lsp_init.json | python3 -m nlpl.lsp --debug
+cat /tmp/lsp_init.json | python3 -m nexuslang.lsp --debug
 
 # Then check the log
 tail /tmp/nlpl-lsp.log
@@ -205,7 +205,7 @@ This doesn't affect LSP functionality - just one file couldn't be parsed.
 python3 --version
 
 # Try running directly
-python3 -m nlpl.lsp --debug
+python3 -m nexuslang.lsp --debug
 
 # Check log for errors
 cat /tmp/nlpl-lsp.log
@@ -214,7 +214,7 @@ cat /tmp/nlpl-lsp.log
 **No output in log?**
 ```bash
 # Make sure debug flag is set
-python3 -m nlpl.lsp --debug
+python3 -m nexuslang.lsp --debug
 
 # Check log file exists
 ls -lh /tmp/nlpl-lsp.log
@@ -226,7 +226,7 @@ chmod 666 /tmp/nlpl-lsp.log
 **Server crashes?**
 ```bash
 # Check for Python errors
-python3 -m nlpl.lsp 2>&1 | tee /tmp/lsp-error.log
+python3 -m nexuslang.lsp 2>&1 | tee /tmp/lsp-error.log
 
 # Look at end of log file
 tail -100 /tmp/nlpl-lsp.log

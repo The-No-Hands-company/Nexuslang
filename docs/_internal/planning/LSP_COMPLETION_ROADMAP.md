@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-The NLPL LSP server has **strong foundational implementation** (12 modules, basic features working) but needs:
+The NexusLang LSP server has **strong foundational implementation** (12 modules, basic features working) but needs:
 - **Missing core features** (workspace symbols, cross-file navigation)
 - **Performance optimization** (incremental parsing, caching, background analysis)
 - **Editor integration testing** (VS Code working, need Neovim/Emacs validation)
@@ -331,7 +331,7 @@ A data processing pipeline that:
 - Tests file I/O at scale
 - Validates numeric computing (stdlib/math, stdlib/data)
 - Tests collection operations (stdlib/collections)
-- Demonstrates NLPL for data science
+- Demonstrates NexusLang for data science
 - Performance comparison vs Python pandas
 
 **Implementation:**
@@ -401,7 +401,7 @@ export_json with data: revenue_by_month and path: "monthly_revenue.json"
   - Publish to VS Code marketplace (or prepare for v1.0)
 
 - [ ] Neovim Integration
-  - Create nvim-lspconfig entry for NLPL
+  - Create nvim-lspconfig entry for NexusLang
   - Test with nvim-cmp (completion plugin)
   - Test with telescope.nvim (symbol search)
   - Verify all features work (go-to-def, hover, rename)
@@ -424,7 +424,7 @@ export_json with data: revenue_by_month and path: "monthly_revenue.json"
 - Setup guides for each editor
 
 **Testing:**
-- Test each editor with same NLPL project
+- Test each editor with same NexusLang project
 - Verify feature parity (all features work in all editors)
 - Measure performance (ensure no editor-specific slowdowns)
 - User acceptance testing (ask contributors to test)
@@ -485,8 +485,8 @@ export_json with data: revenue_by_month and path: "monthly_revenue.json"
   - Add contribution guide for new features
 
 - [ ] User Documentation
-  - "Setting Up NLPL in Your Editor" (VS Code, Neovim, Emacs)
-  - "Using NLPL LSP Features" (guide to go-to-def, hover, refactoring)
+  - "Setting Up NexusLang in Your Editor" (VS Code, Neovim, Emacs)
+  - "Using NexusLang LSP Features" (guide to go-to-def, hover, refactoring)
   - "Troubleshooting LSP Issues" (common problems, solutions)
   - Video tutorials (screencast of LSP in action)
 
@@ -519,7 +519,7 @@ A scientific computing toolkit with:
 **Why This Project:**
 - Validates numeric computing (stdlib/math, stdlib/scientific)
 - Performance-critical (benchmark vs NumPy/SciPy)
-- Demonstrates NLPL for STEM applications
+- Demonstrates NexusLang for STEM applications
 - Tests FFI with BLAS/LAPACK (if needed)
 
 **Implementation:**
@@ -603,7 +603,7 @@ plot_trajectory with data: trajectory and output: "orbit.png"
 - [ ] Community outreach
   - Post to r/ProgrammingLanguages
   - Post to Hacker News / Lobsters
-  - Tweet from NLPL account
+  - Tweet from NexusLang account
   - Email language design mailing lists
   - Update README with LSP section
 
@@ -789,6 +789,6 @@ This 3-month roadmap transforms NLPL's LSP from "working prototype" to "producti
 3. **Create marketing materials** (demos, benchmarks, blog posts)
 4. **Build momentum** toward v1.0 release
 
-**Success means**: By May 15, 2026, developers can use NLPL productively in their favorite editor, with fast IDE support, comprehensive features, and confidence that NLPL is ready for real work.
+**Success means**: By May 15, 2026, developers can use NexusLang productively in their favorite editor, with fast IDE support, comprehensive features, and confidence that NexusLang is ready for real work.
 
 **Let's build it! 🚀**

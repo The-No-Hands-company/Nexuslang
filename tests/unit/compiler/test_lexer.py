@@ -1,5 +1,5 @@
 """
-Test cases for the NLPL lexer.
+Test cases for the NexusLang lexer.
 Tests token recognition, error handling, and edge cases.
 """
 
@@ -8,10 +8,10 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 import unittest
-from nlpl.parser.lexer import Lexer, TokenType
+from nexuslang.parser.lexer import Lexer, TokenType
 
 class TestLexer(unittest.TestCase):
-    """Test cases for the NLPL lexer."""
+    """Test cases for the NexusLang lexer."""
 
     def setUp(self):
         """Set up test fixtures before each test method."""
@@ -165,7 +165,7 @@ class TestLexer(unittest.TestCase):
         self.assertEqual(token.line, 3)
 
     def test_complex_program(self):
-        """Test lexing a NLPL program produces expected core token types."""
+        """Test lexing a NexusLang program produces expected core token types."""
         source = """
 set x to 42
 set greeting to "Hello"

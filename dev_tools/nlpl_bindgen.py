@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-nlpl-bindgen - NLPL FFI Binding Generator
+nlpl-bindgen - NexusLang FFI Binding Generator
 
-Automatically generates NLPL extern declarations from C header files.
+Automatically generates NexusLang extern declarations from C header files.
 Supports functions, structs, unions, enums, typedefs, and macros.
 
 Usage:
@@ -23,7 +23,7 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from nlpl.compiler.header_parser import CHeaderParser, TypeMapper
+from nexuslang.compiler.header_parser import CHeaderParser, TypeMapper
 
 
 def load_config(config_path: str) -> dict:
@@ -41,9 +41,9 @@ def apply_config(parser: CHeaderParser, config: dict):
     """Apply configuration settings to parser."""
     # Add custom type mappings
     if 'type_mappings' in config:
-        for c_type, nlpl_type in config['type_mappings'].items():
-            parser.type_mapper.add_custom_mapping(c_type, nlpl_type)
-            print(f"  Custom mapping: {c_type} -> {nlpl_type}")
+        for c_type, nxl_type in config['type_mappings'].items():
+            parser.type_mapper.add_custom_mapping(c_type, nxl_type)
+            print(f"  Custom mapping: {c_type} -> {nxl_type}")
     
     # Add opaque types
     if 'opaque_types' in config:
@@ -76,7 +76,7 @@ def find_system_headers() -> list:
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Generate NLPL FFI bindings from C header files',
+        description='Generate NexusLang FFI bindings from C header files',
         epilog='Examples:\n'
                '  %(prog)s /usr/include/math.h -l m -o math.nlpl\n'
                '  %(prog)s sqlite3.h -l sqlite3 -o sqlite3.nlpl\n'
@@ -86,7 +86,7 @@ def main():
     
     parser.add_argument('header', help='C header file to parse')
     parser.add_argument('-l', '--library', help='Library name for extern declarations (e.g., "c", "m", "pthread")')
-    parser.add_argument('-o', '--output', help='Output NLPL file (default: <header_name>_bindings.nlpl)')
+    parser.add_argument('-o', '--output', help='Output NexusLang file (default: <header_name>_bindings.nxl)')
     parser.add_argument('-c', '--config', help='JSON configuration file with custom type mappings')
     parser.add_argument('-I', '--include', action='append', help='Additional include directories')
     parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output')
@@ -134,7 +134,7 @@ def main():
     else:
         # Default: <header_name>_bindings.nlpl
         header_name = Path(header_path).stem
-        output_path = f"{header_name}_bindings.nlpl"
+        output_path = f"{header_name}_bindings.nxl"
     
     if args.verbose:
         print(f"Parsing header: {header_path}")
@@ -176,16 +176,16 @@ def main():
     
     # Generate bindings
     if args.verbose:
-        print("\nGenerating NLPL bindings...")
+        print("\nGenerating NexusLang bindings...")
     
     if args.print_only:
         # Print to stdout
-        output = c_parser.generate_nlpl_module(output_path=None)
+        output = c_parser.generate_nxl_module(output_path=None)
         print("\n" + "="*70)
         print(output)
     else:
         # Write to file
-        c_parser.generate_nlpl_module(output_path=output_path)
+        c_parser.generate_nxl_module(output_path=output_path)
         print(f"\nSuccess! Generated {output_path}")
         print(f"  {summary['functions']} functions")
         print(f"  {summary['structs']} structs/unions")

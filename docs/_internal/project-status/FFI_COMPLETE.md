@@ -1,15 +1,15 @@
-# NLPL FFI Implementation - Complete
+# NexusLang FFI Implementation - Complete
 
 ## Overview
 
-The Foreign Function Interface (FFI) for NLPL is now **100% complete** with full support for:
+The Foreign Function Interface (FFI) for NexusLang is now **100% complete** with full support for:
 
 ✅ **C Header Parsing** - Automatic binding generation from .h files  
-✅ **Type Marshalling** - Bidirectional conversion between NLPL and C types  
+✅ **Type Marshalling** - Bidirectional conversion between NexusLang and C types  
 ✅ **Struct/Union Support** - By-value and by-pointer passing with ABI compatibility  
 ✅ **Function Pointers** - First-class function pointer types and calling  
-✅ **Callbacks** - C code can call NLPL functions via trampolines  
-✅ **String Handling** - Automatic conversion between NLPL strings and C char*  
+✅ **Callbacks** - C code can call NexusLang functions via trampolines  
+✅ **String Handling** - Automatic conversion between NexusLang strings and C char*  
 ✅ **Memory Ownership** - Tracking and management of allocated memory  
 ✅ **LLVM Compiled Mode** - Full integration with LLVM backend  
 ✅ **Interpreter Mode** - Runtime FFI via ctypes  
@@ -20,7 +20,7 @@ The Foreign Function Interface (FFI) for NLPL is now **100% complete** with full
 
 ### 1. C Header Parser (`src/nlpl/compiler/header_parser.py`)
 
-**Purpose**: Automatically generate NLPL extern declarations from C header files.
+**Purpose**: Automatically generate NexusLang extern declarations from C header files.
 
 **Features**:
 - Parses function declarations, structs, unions, enums, typedefs
@@ -28,21 +28,21 @@ The Foreign Function Interface (FFI) for NLPL is now **100% complete** with full
 - Handles complex C types (pointers, arrays, function pointers)
 - Removes comments and preprocessor directives
 - Supports custom type mappings
-- Generates complete NLPL modules
+- Generates complete NexusLang modules
 
 **Classes**:
 - `CHeaderParser` - Main parser class
-- `TypeMapper` - C ↔ NLPL type conversion
+- `TypeMapper` - C ↔ NexusLang type conversion
 - `CFunctionDeclaration` - Represents parsed functions
 - `CStructDeclaration` - Represents parsed structs
 - `CEnumDeclaration` - Represents parsed enums
 
 **Example Usage**:
 ```python
-from nlpl.compiler.header_parser import parse_c_header
+from nexuslang.compiler.header_parser import parse_c_header
 
 # Parse math.h and generate bindings
-parser = parse_c_header('/usr/include/math.h', 'm', 'math_bindings.nlpl')
+parser = parse_c_header('/usr/include/math.h', 'm', 'math_bindings.nxl')
 
 # Result: math_bindings.nlpl with all math.h declarations
 ```
@@ -53,7 +53,7 @@ parser = parse_c_header('/usr/include/math.h', 'm', 'math_bindings.nlpl')
 
 **Features**:
 - Declare external C functions in LLVM IR
-- Map NLPL types to LLVM types
+- Map NexusLang types to LLVM types
 - Handle struct marshalling and layout
 - Support multiple calling conventions (cdecl, stdcall)
 - Generate linker flags for required libraries
@@ -75,7 +75,7 @@ parser = parse_c_header('/usr/include/math.h', 'm', 'math_bindings.nlpl')
 
 **Features**:
 - Automatic string conversion (NLPL ↔ C null-terminated)
-- Callback trampolines (C → NLPL function calls)
+- Callback trampolines (C → NexusLang function calls)
 - Memory ownership tracking and management
 - Function pointer support
 - UTF-8 handling
@@ -87,9 +87,9 @@ parser = parse_c_header('/usr/include/math.h', 'm', 'math_bindings.nlpl')
 - `FunctionPointerManager` - Function pointer handling
 
 **Memory Ownership Modes**:
-- `OWNED` - NLPL owns memory (must free)
+- `OWNED` - NexusLang owns memory (must free)
 - `BORROWED` - C owns memory (don't free)
-- `TRANSFER` - Ownership transferred C → NLPL
+- `TRANSFER` - Ownership transferred C → NexusLang
 - `SHARED` - Reference-counted shared ownership
 
 ### 4. Runtime FFI Support (`src/nlpl/stdlib/ffi/__init__.py`)
@@ -116,9 +116,9 @@ parser = parse_c_header('/usr/include/math.h', 'm', 'math_bindings.nlpl')
 
 ## CLI Tool: nlpl-bindgen
 
-**Location**: `dev_tools/nlpl_bindgen.py`
+**Location**: `dev_tools/nxl_bindgen.py`
 
-**Purpose**: Command-line tool for generating NLPL bindings from C headers.
+**Purpose**: Command-line tool for generating NexusLang bindings from C headers.
 
 **Usage**:
 ```bash
@@ -210,7 +210,7 @@ nlpl-bindgen pthread.h -l pthread -o pthread.nlpl -v
 
 ### Fundamental Types
 
-| C Type | NLPL Type | LLVM Type | Notes |
+| C Type | NexusLang Type | LLVM Type | Notes |
 |--------|-----------|-----------|-------|
 | `int` | `Integer` | `i64` | Platform-dependent size |
 | `long` | `Integer` | `i64` | |
@@ -223,7 +223,7 @@ nlpl-bindgen pthread.h -l pthread -o pthread.nlpl -v
 
 ### Fixed-Width Types (stdint.h)
 
-| C Type | NLPL Type | LLVM Type |
+| C Type | NexusLang Type | LLVM Type |
 |--------|-----------|-----------|
 | `int8_t` | `Int8` | `i8` |
 | `int16_t` | `Int16` | `i16` |
@@ -237,7 +237,7 @@ nlpl-bindgen pthread.h -l pthread -o pthread.nlpl -v
 
 ### Pointer Types
 
-| C Type | NLPL Type | LLVM Type | Notes |
+| C Type | NexusLang Type | LLVM Type | Notes |
 |--------|-----------|-----------|-------|
 | `void*` | `Pointer` | `i8*` | Generic pointer |
 | `char*` | `String` | `i8*` | Null-terminated string |
@@ -246,7 +246,7 @@ nlpl-bindgen pthread.h -l pthread -o pthread.nlpl -v
 
 ### Composite Types
 
-| C Type | NLPL Type | Notes |
+| C Type | NexusLang Type | Notes |
 |--------|-----------|-------|
 | `struct Foo` | `Struct_Foo` | Struct by value |
 | `struct Foo*` | `Pointer` | Pointer to struct |
@@ -272,7 +272,7 @@ nlpl-bindgen pthread.h -l pthread -o pthread.nlpl -v
    - Used by Win32 API
    - LLVM: `x86_stdcallcc`
 
-### Usage in NLPL
+### Usage in NexusLang
 
 ```nlpl
 # Default cdecl
@@ -344,14 +344,14 @@ end
 
 ### Automatic Conversion
 
-NLPL automatically converts between NLPL strings and C null-terminated strings:
+NLPL automatically converts between NexusLang strings and C null-terminated strings:
 
 ```nlpl
 extern function strlen with str as String returns Integer from library "c"
 
 set message to "Hello, World!"
 set length to strlen(message)  # Automatic conversion
-# NLPL string -> C char* -> back to Integer
+# NexusLang string -> C char* -> back to Integer
 ```
 
 ### Manual Conversion (Advanced)
@@ -359,24 +359,24 @@ set length to strlen(message)  # Automatic conversion
 For explicit control:
 
 ```nlpl
-# Convert NLPL string to C string
-set nlpl_str to "Hello"
-set c_str to to_c_string(nlpl_str)
+# Convert NexusLang string to C string
+set nxl_str to "Hello"
+set c_str to to_c_string(nxl_str)
 
 # Pass to C function
 call some_c_function with c_str
 
-# Convert C string to NLPL string
+# Convert C string to NexusLang string
 set result_c_str to some_c_function_returning_string()
-set nlpl_result to from_c_string(result_c_str)
+set nxl_result to from_c_string(result_c_str)
 
-# Free C strings allocated by NLPL
+# Free C strings allocated by NexusLang
 call free with c_str
 ```
 
 ### UTF-8 Considerations
 
-- NLPL strings are UTF-8 encoded
+- NexusLang strings are UTF-8 encoded
 - C `strlen()` counts bytes, not characters
 - Multi-byte characters: "Hello 世界" = 12 bytes, but fewer characters
 - Use UTF-8 aware functions when needed
@@ -385,7 +385,7 @@ call free with c_str
 
 ## Struct Marshalling
 
-### Define NLPL Struct Matching C Layout
+### Define NexusLang Struct Matching C Layout
 
 C code:
 ```c
@@ -437,10 +437,10 @@ set time_ptr to get_current_time()
 
 ## Callback Support
 
-### Registering NLPL Function as C Callback
+### Registering NexusLang Function as C Callback
 
 ```nlpl
-# Define NLPL function to be called from C
+# Define NexusLang function to be called from C
 function my_callback with value as Integer returns Integer
     print text "Callback called with value: "
     print integer value
@@ -565,7 +565,7 @@ extern function func from library "/usr/lib/libxyz.so"
 export LD_LIBRARY_PATH=/path/to/libs:$LD_LIBRARY_PATH
 
 # 3. Use library finder
-from nlpl.stdlib.system import find_library
+from nexuslang.stdlib.system import find_library
 set lib_path to find_library("xyz")
 ```
 

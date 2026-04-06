@@ -1,4 +1,4 @@
-# NLPL Language Server Protocol (LSP) Features
+# NexusLang Language Server Protocol (LSP) Features
 
 **Status:** Production-ready  
 **Coverage:** 13 LSP features fully implemented
@@ -376,13 +376,13 @@ Coverage:                      100%
 
 ### Setup
 
-1. Install NLPL VS Code extension (if available)
+1. Install NexusLang VS Code extension (if available)
 2. Or configure generic LSP client:
 
 ```json
 {
-  "nlpl.lsp.serverPath": "/path/to/nlpl/src/main.py",
-  "nlpl.lsp.args": ["--lsp"]
+  "nexuslang.lsp.serverPath": "/path/to/nlpl/src/main.py",
+  "nexuslang.lsp.args": ["--lsp"]
 }
 ```
 
@@ -412,7 +412,7 @@ Coverage:                      100%
 local lspconfig = require('lspconfig')
 local configs = require('lspconfig.configs')
 
--- Define NLPL LSP
+-- Define NexusLang LSP
 if not configs.nlpl then
   configs.nlpl = {
     default_config = {
@@ -424,7 +424,7 @@ if not configs.nlpl then
   }
 end
 
--- Enable NLPL LSP
+-- Enable NexusLang LSP
 lspconfig.nlpl.setup{}
 ```
 

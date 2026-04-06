@@ -1,5 +1,5 @@
 """
-Tests for the NLPL platform_macos stdlib module.
+Tests for the NexusLang platform_macos stdlib module.
 
 On macOS these tests execute real Foundation / CoreGraphics / Keychain /
 NSUserDefaults / Clipboard / Notification Centre APIs.
@@ -12,7 +12,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from nlpl.stdlib.platform_macos import (
+from nexuslang.stdlib.platform_macos import (
     PlatformError,
     # System info
     macos_version,
@@ -288,9 +288,9 @@ class TestMacosDisplayInfo:
 # Keychain
 # ============================================================================
 
-_KC_SERVICE = '_nlpl_test_service_'
-_KC_ACCOUNT = '_nlpl_test_account_'
-_KC_PASSWORD = '_nlpl_test_password_secret_'
+_KC_SERVICE = '_nxl_test_service_'
+_KC_ACCOUNT = '_nxl_test_account_'
+_KC_PASSWORD = '_nxl_test_password_secret_'
 
 
 class TestMacosKeychainSetGetDelete:
@@ -306,7 +306,7 @@ class TestMacosKeychainSetGetDelete:
         assert result == _KC_PASSWORD or isinstance(result, dict)
 
     def test_get_missing_returns_none_or_error(self):
-        result = macos_keychain_get('_nlpl_missing_service_xyz_', '_nlpl_missing_acct_')
+        result = macos_keychain_get('_nxl_missing_service_xyz_', '_nxl_missing_acct_')
         assert result is None or isinstance(result, dict)
 
     def test_delete_returns_none_or_dict(self):
@@ -315,7 +315,7 @@ class TestMacosKeychainSetGetDelete:
         assert result is None or isinstance(result, dict)
 
     def test_delete_nonexistent_returns_error(self):
-        result = macos_keychain_delete('_nlpl_no_svc_', '_nlpl_no_acct_')
+        result = macos_keychain_delete('_nxl_no_svc_', '_nxl_no_acct_')
         assert isinstance(result, dict)
         assert 'error' in result
 
@@ -329,7 +329,7 @@ class TestMacosKeychainSetGetDelete:
 class TestMacosKeychainFindInternet:
     def test_nonexistent_returns_none_or_error(self):
         result = macos_keychain_find_internet(
-            '_nlpl_fake_server_xyz.local', '_nlpl_user_', 80
+            '_nxl_fake_server_xyz.local', '_nxl_user_', 80
         )
         assert result is None or isinstance(result, dict)
 
@@ -339,7 +339,7 @@ class TestMacosKeychainFindInternet:
 # ============================================================================
 
 _DEFAULTS_DOMAIN = 'com.nlpl.test'
-_DEFAULTS_KEY = '_nlpl_test_key_'
+_DEFAULTS_KEY = '_nxl_test_key_'
 
 
 class TestMacosDefaultsReadWrite:
@@ -350,19 +350,19 @@ class TestMacosDefaultsReadWrite:
         assert result == 'test_value' or isinstance(result, dict)
 
     def test_write_integer_and_read(self):
-        macos_defaults_write(_DEFAULTS_DOMAIN, '_nlpl_int_key_', 42, 'integer')
-        result = macos_defaults_read(_DEFAULTS_DOMAIN, '_nlpl_int_key_')
-        macos_defaults_delete(_DEFAULTS_DOMAIN, '_nlpl_int_key_')
+        macos_defaults_write(_DEFAULTS_DOMAIN, '_nxl_int_key_', 42, 'integer')
+        result = macos_defaults_read(_DEFAULTS_DOMAIN, '_nxl_int_key_')
+        macos_defaults_delete(_DEFAULTS_DOMAIN, '_nxl_int_key_')
         assert result == 42 or isinstance(result, (str, dict))
 
     def test_write_bool_and_read(self):
-        macos_defaults_write(_DEFAULTS_DOMAIN, '_nlpl_bool_key_', True, 'bool')
-        result = macos_defaults_read(_DEFAULTS_DOMAIN, '_nlpl_bool_key_')
-        macos_defaults_delete(_DEFAULTS_DOMAIN, '_nlpl_bool_key_')
+        macos_defaults_write(_DEFAULTS_DOMAIN, '_nxl_bool_key_', True, 'bool')
+        result = macos_defaults_read(_DEFAULTS_DOMAIN, '_nxl_bool_key_')
+        macos_defaults_delete(_DEFAULTS_DOMAIN, '_nxl_bool_key_')
         assert result in (True, 1, 'YES', 'true') or isinstance(result, dict)
 
     def test_read_missing_key_returns_none_or_error(self):
-        result = macos_defaults_read(_DEFAULTS_DOMAIN, '_nlpl_nonexistent_key_9999_')
+        result = macos_defaults_read(_DEFAULTS_DOMAIN, '_nxl_nonexistent_key_9999_')
         assert result is None or isinstance(result, dict)
 
     def test_read_full_domain_returns_dict_or_none(self):
@@ -407,7 +407,7 @@ class TestMacosDefaultsFind:
         assert isinstance(result, list)
 
     def test_unknown_key_returns_empty_list_or_dict(self):
-        result = macos_defaults_find('_nlpl_totally_unknown_defaults_key_xyz_')
+        result = macos_defaults_find('_nxl_totally_unknown_defaults_key_xyz_')
         assert isinstance(result, (list, dict))
 
 
@@ -437,9 +437,9 @@ class TestMacosPostNotification:
 
 class TestMacosClipboard:
     def test_set_and_get_round_trip(self):
-        macos_clipboard_set('nlpl_clipboard_test_string')
+        macos_clipboard_set('nxl_clipboard_test_string')
         result = macos_clipboard_get()
-        assert result == 'nlpl_clipboard_test_string' or isinstance(result, dict)
+        assert result == 'nxl_clipboard_test_string' or isinstance(result, dict)
 
     def test_clipboard_get_returns_string_or_dict(self):
         result = macos_clipboard_get()
@@ -507,5 +507,5 @@ class TestMacosScreencapture:
             assert os.path.exists(output_path)
 
     def test_invalid_path_returns_error(self):
-        result = macos_screencapture('/no_such_dir_nlpl_/screenshot.png')
+        result = macos_screencapture('/no_such_dir_nxl_/screenshot.png')
         assert result is None or isinstance(result, dict)

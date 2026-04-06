@@ -26,14 +26,14 @@ def load_module_exec(module_path, module_name):
     return module
 
 
-def setup_nlpl_workaround():
-    """Setup NLPL modules with workaround."""
-    base_path = '/run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NLPL/src'
+def setup_nxl_workaround():
+    """Setup NexusLang modules with workaround."""
+    base_path = '/run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NexusLang/src'
     
     # Load lexer
     lexer = load_module_exec(
         os.path.join(base_path, 'nlpl/parser/lexer.py'),
-        'nlpl.parser.lexer'
+        'nexuslang.parser.lexer'
     )
     
     # Make it available
@@ -41,7 +41,7 @@ def setup_nlpl_workaround():
 
 
 if __name__ == '__main__':
-    lexer_module = setup_nlpl_workaround()
+    lexer_module = setup_nxl_workaround()
     print(f" Loaded lexer: {lexer_module.Lexer}")
     print(f" TokenType enum: {len(list(lexer_module.TokenType))} tokens")
     

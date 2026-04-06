@@ -1,5 +1,5 @@
 """
-Tests for the NLPL stdlib crypto module.
+Tests for the NexusLang stdlib crypto module.
 
 Covers:
 - Always-available: MD5, SHA-1/256/512/SHA3/BLAKE2, HMAC, Base64,
@@ -19,7 +19,7 @@ _PROJECT_ROOT = os.path.abspath(
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from nlpl.stdlib.crypto import (
+from nexuslang.stdlib.crypto import (
     HAS_CRYPTOGRAPHY,
     hash_md5,
     hash_sha1,
@@ -45,7 +45,7 @@ from nlpl.stdlib.crypto import (
 
 # Optional heavy imports guarded by HAS_CRYPTOGRAPHY
 if HAS_CRYPTOGRAPHY:
-    from nlpl.stdlib.crypto import (
+    from nexuslang.stdlib.crypto import (
         aes_generate_key,
         aes_encrypt,
         aes_decrypt,

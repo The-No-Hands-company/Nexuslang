@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 _IS_LINUX = platform.system() == "Linux"
 _IS_POSIX = os.name == "posix"
 
-from nlpl.stdlib.kernel import (
+from nexuslang.stdlib.kernel import (
     get_process_id,
     get_page_size,
     kernel_version,
@@ -52,7 +52,7 @@ class TestProcessManagement:
     def test_get_parent_process_id(self):
         if not _IS_POSIX:
             pytest.skip("POSIX only")
-        from nlpl.stdlib.kernel import get_parent_process_id
+        from nexuslang.stdlib.kernel import get_parent_process_id
         ppid = get_parent_process_id(None)
         assert ppid == os.getppid()
 
@@ -73,7 +73,7 @@ class TestProcessManagement:
         assert 'hello' in out
 
     def test_process_exit_code(self):
-        from nlpl.stdlib.kernel import process_exit_code
+        from nexuslang.stdlib.kernel import process_exit_code
         rt = MockRuntime()
         proc = create_process(rt, sys.executable, ['-c', 'import sys; sys.exit(42)'])
         wait_process(rt, proc)
@@ -81,7 +81,7 @@ class TestProcessManagement:
         assert code == 42
 
     def test_process_pid(self):
-        from nlpl.stdlib.kernel import process_pid
+        from nexuslang.stdlib.kernel import process_pid
         rt = MockRuntime()
         proc = create_process(rt, sys.executable, ['-c', 'import time; time.sleep(0.5)'])
         pid = process_pid(rt, proc)
@@ -97,7 +97,7 @@ class TestProcessManagement:
 class TestPipes:
     @pytest.mark.skipif(not _IS_POSIX, reason="POSIX only")
     def test_create_and_use_pipe(self):
-        from nlpl.stdlib.kernel import create_pipe, pipe_read, pipe_write, close_fd
+        from nexuslang.stdlib.kernel import create_pipe, pipe_read, pipe_write, close_fd
         rt = MockRuntime()
         r, w = create_pipe(rt)
         pipe_write(rt, w, b'hello')
@@ -194,7 +194,7 @@ class TestSyscallNumbers:
 
     @pytest.mark.skipif(not _IS_LINUX, reason="Linux only")
     def test_syscall_getpid(self):
-        from nlpl.stdlib.kernel import syscall
+        from nexuslang.stdlib.kernel import syscall
         rt = MockRuntime()
         result = syscall(rt, 'getpid')
         assert result == os.getpid()
@@ -213,7 +213,7 @@ class TestUIDGID:
 
     @pytest.mark.skipif(not _IS_POSIX, reason="POSIX only")
     def test_gid(self):
-        from nlpl.stdlib.kernel import get_gid
+        from nexuslang.stdlib.kernel import get_gid
         rt = MockRuntime()
         gid = get_gid(rt)
         assert gid == os.getgid()
@@ -231,7 +231,7 @@ class TestScheduler:
 
     @pytest.mark.skipif(not _IS_LINUX, reason="Linux only")
     def test_get_scheduling_policy(self):
-        from nlpl.stdlib.kernel import get_scheduling_policy
+        from nexuslang.stdlib.kernel import get_scheduling_policy
         rt = MockRuntime()
         policy = get_scheduling_policy(rt, 0)
         assert isinstance(policy, int)
@@ -239,7 +239,7 @@ class TestScheduler:
 
     @pytest.mark.skipif(not _IS_LINUX, reason="Linux only")
     def test_get_cpu_affinity(self):
-        from nlpl.stdlib.kernel import get_cpu_affinity
+        from nexuslang.stdlib.kernel import get_cpu_affinity
         rt = MockRuntime()
         mask = get_cpu_affinity(rt, 0)
         assert isinstance(mask, int)
@@ -247,7 +247,7 @@ class TestScheduler:
 
     @pytest.mark.skipif(not _IS_LINUX, reason="Linux only")
     def test_priority_min_max(self):
-        from nlpl.stdlib.kernel import get_scheduler_priority_min, get_scheduler_priority_max
+        from nexuslang.stdlib.kernel import get_scheduler_priority_min, get_scheduler_priority_max
         rt = MockRuntime()
         mn = get_scheduler_priority_min(rt, SCHED_OTHER)
         mx = get_scheduler_priority_max(rt, SCHED_OTHER)
@@ -268,7 +268,7 @@ class TestKernelInfo:
 
     @pytest.mark.skipif(not _IS_LINUX, reason="Linux only")
     def test_system_uptime(self):
-        from nlpl.stdlib.kernel import get_system_uptime
+        from nexuslang.stdlib.kernel import get_system_uptime
         rt = MockRuntime()
         uptime = get_system_uptime(rt)
         assert isinstance(uptime, float)
@@ -276,7 +276,7 @@ class TestKernelInfo:
 
     @pytest.mark.skipif(not _IS_LINUX, reason="Linux only")
     def test_memory_info(self):
-        from nlpl.stdlib.kernel import get_memory_info
+        from nexuslang.stdlib.kernel import get_memory_info
         rt = MockRuntime()
         info = get_memory_info(rt)
         assert isinstance(info, dict)
@@ -285,7 +285,7 @@ class TestKernelInfo:
 
     @pytest.mark.skipif(not _IS_LINUX, reason="Linux only")
     def test_cpu_info(self):
-        from nlpl.stdlib.kernel import get_cpu_info
+        from nexuslang.stdlib.kernel import get_cpu_info
         rt = MockRuntime()
         info = get_cpu_info(rt)
         assert isinstance(info, dict)

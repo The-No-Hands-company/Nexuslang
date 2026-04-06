@@ -1,8 +1,8 @@
-# NLPL Style Guide
+# NexusLang Style Guide
 
 ## Introduction
 
-This style guide provides guidelines for writing clean, readable, and maintainable code in the Natural Language Programming Language (NLPL). The goal is to make code that reads like natural English while maintaining programming precision and clarity.
+This style guide provides guidelines for writing clean, readable, and maintainable code in the NexusLang (NexusLang). The goal is to make code that reads like natural English while maintaining programming precision and clarity.
 
 ## General Principles
 
@@ -290,4 +290,4 @@ class EventEmitter
 
 ## Conclusion
 
-This style guide provides a foundation for writing clean, readable, and maintainable NLPL code. Remember that the goal is to make code that reads like natural English while maintaining programming precision and clarity. Follow these guidelines consistently, but also use common sense and adapt when necessary for specific situations.
+This style guide provides a foundation for writing clean, readable, and maintainable NexusLang code. Remember that the goal is to make code that reads like natural English while maintaining programming precision and clarity. Follow these guidelines consistently, but also use common sense and adapt when necessary for specific situations.

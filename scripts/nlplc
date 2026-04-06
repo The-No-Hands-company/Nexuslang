@@ -12,12 +12,12 @@ from pathlib import Path
 
 sys.path.insert(0, 'src')
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.compiler.backends.llvm_ir_generator import LLVMIRGenerator
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.compiler.backends.llvm_ir_generator import LLVMIRGenerator
 
 def compile_to_ir(source_file: str, output_file: str, verbose: bool = False) -> tuple:
-    """Compile NLPL source to LLVM IR. Returns (success, imported_modules)."""
+    """Compile NexusLang source to LLVM IR. Returns (success, imported_modules)."""
     try:
         # Read source
         with open(source_file, 'r') as f:

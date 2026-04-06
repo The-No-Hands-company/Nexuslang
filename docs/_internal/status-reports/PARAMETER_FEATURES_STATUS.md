@@ -1,4 +1,4 @@
-# NLPL Parameter Features - Implementation Status
+# NexusLang Parameter Features - Implementation Status
 
 **Date:** February 10, 2026  
 **Status:** Named, Default, and Variadic Parameters COMPLETE ✅

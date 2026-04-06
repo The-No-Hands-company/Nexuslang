@@ -1,6 +1,6 @@
-# NLPL Business Application Examples
+# NexusLang Business Application Examples
 
-This directory contains examples demonstrating NLPL for business and enterprise applications.
+This directory contains examples demonstrating NexusLang for business and enterprise applications.
 
 ## Examples
 

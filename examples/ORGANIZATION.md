@@ -1,6 +1,6 @@
 # Examples Organization
 
-This directory contains comprehensive NLPL examples organized by topic.
+This directory contains comprehensive NexusLang examples organized by topic.
 
 ## Directory Structure
 

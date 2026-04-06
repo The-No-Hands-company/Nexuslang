@@ -1,6 +1,6 @@
 """
-Test cases for NLPL error handling.
-Tests various error conditions using valid NLPL syntax.
+Test cases for NexusLang error handling.
+Tests various error conditions using valid NexusLang syntax.
 """
 
 import sys
@@ -8,16 +8,16 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 import unittest
-from nlpl.interpreter.interpreter import Interpreter
-from nlpl.runtime.runtime import Runtime
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.stdlib import register_stdlib
-from nlpl.errors import NLPLSyntaxError, NLPLRuntimeError, NLPLNameError
+from nexuslang.interpreter.interpreter import Interpreter
+from nexuslang.runtime.runtime import Runtime
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.stdlib import register_stdlib
+from nexuslang.errors import NxlSyntaxError, NxlRuntimeError, NxlNameError
 
 
 class TestErrorHandling(unittest.TestCase):
-    """Test cases for NLPL error handling."""
+    """Test cases for NexusLang error handling."""
 
     def setUp(self):
         """Set up test fixtures before each test method."""
@@ -33,8 +33,8 @@ class TestErrorHandling(unittest.TestCase):
     # ------------------------------------------------------------------
     def test_lexer_errors(self):
         """Test that the lexer raises errors for invalid input."""
-        # Unclosed string literal should raise NLPLSyntaxError
-        with self.assertRaises(NLPLSyntaxError):
+        # Unclosed string literal should raise NxlSyntaxError
+        with self.assertRaises(NxlSyntaxError):
             Lexer('"unclosed string').tokenize()
 
         # Normal identifier-like token should not raise
@@ -62,7 +62,7 @@ class TestErrorHandling(unittest.TestCase):
     def test_type_errors(self):
         """Test type-related runtime errors."""
         # Index out of bounds on a list
-        with self.assertRaises(NLPLRuntimeError):
+        with self.assertRaises(NxlRuntimeError):
             self.interpreter.interpret(
                 'set nums to [1, 2, 3]\nset bad to nums[100]'
             )
@@ -86,7 +86,7 @@ class TestErrorHandling(unittest.TestCase):
 
         # Index out of range on list
         self.setUp()
-        with self.assertRaises(NLPLRuntimeError):
+        with self.assertRaises(NxlRuntimeError):
             self.interpreter.interpret(
                 'set lst to [1, 2, 3]\nset y to lst[99]'
             )
@@ -102,12 +102,12 @@ class TestErrorHandling(unittest.TestCase):
     # Scope errors
     # ------------------------------------------------------------------
     def test_scope_errors(self):
-        """Test scope error handling - undefined variables raise NLPLNameError."""
-        with self.assertRaises(NLPLNameError):
+        """Test scope error handling - undefined variables raise NxlNameError."""
+        with self.assertRaises(NxlNameError):
             self.interpreter.interpret('print text undefined_var_xyz')
 
         self.setUp()
-        with self.assertRaises(NLPLNameError):
+        with self.assertRaises(NxlNameError):
             self.interpreter.interpret('print text another_undefined_xyz_variable')
 
     # ------------------------------------------------------------------

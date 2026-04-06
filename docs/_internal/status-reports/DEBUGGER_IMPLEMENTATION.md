@@ -1,4 +1,4 @@
-# NLPL Debugger Implementation - Complete Guide
+# NexusLang Debugger Implementation - Complete Guide
 
 **Status:** ✅ **PRODUCTION-READY** (February 16, 2026)  
 **Completion:** 95% (Core features complete, testing in progress)  
@@ -61,7 +61,7 @@ NLPL now has a **full-featured debugger** implementing the Debug Adapter Protoco
                        │ Trace hooks
                        ↓
 ┌─────────────────────────────────────────────────────────────┐
-│         NLPL Interpreter (interpreter.py)                    │
+│         NexusLang Interpreter (interpreter.py)                    │
 │  - trace_line() called for each statement                    │
 │  - trace_call() on function entry                            │
 │  - trace_return() on function exit                           │
@@ -98,23 +98,23 @@ vscode-extension/
 
 **Line Breakpoints:**
 ```python
-debugger.add_breakpoint("program.nlpl", 42)
+debugger.add_breakpoint("program.nxl", 42)
 ```
 
 **Conditional Breakpoints:**
 ```python
-debugger.add_breakpoint("program.nlpl", 42, condition="x > 100")
+debugger.add_breakpoint("program.nxl", 42, condition="x > 100")
 ```
 
 **Temporary Breakpoints:**
 ```python
-debugger.add_breakpoint("program.nlpl", 42, temp=True)  # Auto-remove after hit
+debugger.add_breakpoint("program.nxl", 42, temp=True)  # Auto-remove after hit
 ```
 
 **Breakpoint Management:**
 ```python
-debugger.remove_breakpoint("program.nlpl", 42)
-debugger.toggle_breakpoint("program.nlpl", 42)  # Enable/disable
+debugger.remove_breakpoint("program.nxl", 42)
+debugger.toggle_breakpoint("program.nxl", 42)  # Enable/disable
 debugger.clear_breakpoints()  # Remove all
 debugger.list_breakpoints()   # Get all breakpoints
 ```
@@ -164,7 +164,7 @@ debugger.set_variable("x", 100)
 **Current Frame:**
 ```python
 frame = debugger.current_frame()
-# CallFrame(function_name='calculate', file='program.nlpl', line=42, local_vars={...})
+# CallFrame(function_name='calculate', file='program.nxl', line=42, local_vars={...})
 ```
 
 **Full Stack Trace:**
@@ -252,8 +252,8 @@ Automatically started by extension when F5 is pressed.
 **Settings** (`.vscode/settings.json`):
 ```json
 {
-  "nlpl.debugger.pythonPath": "python3",
-  "nlpl.debugger.logFile": "/tmp/nlpl-dap.log"
+  "nexuslang.debugger.pythonPath": "python3",
+  "nexuslang.debugger.logFile": "/tmp/nlpl-dap.log"
 }
 ```
 
@@ -267,7 +267,7 @@ Automatically started by extension when F5 is pressed.
     {
       "type": "nlpl",
       "request": "launch",
-      "name": "Debug NLPL Program",
+      "name": "Debug NexusLang Program",
       "program": "${file}",
       "stopOnEntry": false
     }
@@ -281,7 +281,7 @@ Automatically started by extension when F5 is pressed.
   "type": "nlpl",
   "request": "launch",
   "name": "Debug with Arguments",
-  "program": "${workspaceFolder}/examples/debug_test.nlpl",
+  "program": "${workspaceFolder}/examples/debug_test.nxl",
   "args": ["--verbose"],
   "cwd": "${workspaceFolder}",
   "pythonPath": "/usr/bin/python3",
@@ -297,7 +297,7 @@ Automatically started by extension when F5 is pressed.
 - Conditional: Right-click breakpoint → "Edit Breakpoint" → Add condition
 
 **2. Start Debugging:**
-- Press **F5** or click "Run and Debug" → "Debug NLPL Program"
+- Press **F5** or click "Run and Debug" → "Debug NexusLang Program"
 - Execution starts and pauses at first breakpoint
 
 **3. Debug Controls:**
@@ -324,13 +324,13 @@ NLPL includes an interactive command-line debugger for terminal usage.
 
 ```bash
 # Debug a program
-python -m nlpl.debugger.debugger examples/debug_test.nlpl
+python -m nexuslang.debugger.debugger examples/debug_test.nlpl
 
 # With breakpoints
-python -m nlpl.debugger.debugger examples/debug_test.nlpl --break 10 --break 20
+python -m nexuslang.debugger.debugger examples/debug_test.nlpl --break 10 --break 20
 
 # Non-interactive (for scripting)
-python -m nlpl.debugger.debugger program.nlpl --no-interactive
+python -m nexuslang.debugger.debugger program.nlpl --no-interactive
 ```
 
 ### CLI Commands
@@ -355,7 +355,7 @@ q, quit        - Quit debugger (stop program)
 ### Example CLI Session
 
 ```
-$ python -m nlpl.debugger.debugger examples/debug_test.nlpl --break 28
+$ python -m nexuslang.debugger.debugger examples/debug_test.nlpl --break 28
 Debugging: examples/debug_test.nlpl
 Breakpoints: 1
 
@@ -453,7 +453,7 @@ if self.debugger and hasattr(node, 'line'):
 
 ### Breakpoint Condition Evaluation
 
-Conditional breakpoints evaluate NLPL expressions:
+Conditional breakpoints evaluate NexusLang expressions:
 
 ```python
 def _check_breakpoint(self, file: str, line: int) -> Optional[Breakpoint]:

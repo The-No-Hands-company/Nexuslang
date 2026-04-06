@@ -11,7 +11,7 @@
 ### Run LSP Server
 ```bash
 # Start LSP server (stdio mode)
-python3 -m nlpl.lsp
+python3 -m nexuslang.lsp
 
 # Test LSP with sample project
 cd test_programs/
@@ -33,7 +33,7 @@ python3 dev_tools/test_lsp_server.py
 ### Profile Performance
 ```bash
 # Profile LSP server
-python3 -m cProfile -o lsp_profile.stats -m nlpl.lsp
+python3 -m cProfile -o lsp_profile.stats -m nexuslang.lsp
 
 # View profile results
 python3 -c "import pstats; p = pstats.Stats('lsp_profile.stats'); p.sort_stats('cumulative'); p.print_stats(20)"
@@ -77,7 +77,7 @@ less /tmp/nlpl-lsp.log
 - **LSP README**: `src/nlpl/lsp/README.md`
 
 ### Test Projects (For Manual Testing)
-- **Examples**: `examples/` (existing NLPL examples)
+- **Examples**: `examples/` (existing NexusLang examples)
 - **Test Programs**: `test_programs/` (unit tests)
 - **Multi-file test**: Create in `test_programs/lsp_workspace_test/`
 
@@ -91,7 +91,7 @@ less /tmp/nlpl-lsp.log
 class SymbolInfo:
     name: str           # Symbol name (e.g., "greet")
     kind: str          # 'function', 'class', 'variable', 'struct', 'method'
-    file_uri: str      # File path (e.g., "file:///path/to/file.nlpl")
+    file_uri: str      # File path (e.g., "file:///path/to/file.nxl")
     line: int          # 0-indexed line number
     column: int        # 0-indexed column number
     scope: Optional[str]       # Module or class name
@@ -199,7 +199,7 @@ class ImportStatement:
 - [ ] Incremental updates - only changed file re-indexed
 
 ### Manual Tests in VS Code
-- [ ] Open multi-file NLPL project
+- [ ] Open multi-file NexusLang project
 - [ ] Ctrl+Click on imported function → jumps to definition
 - [ ] Open outline view → shows file structure
 - [ ] Right-click function → "Find All References"
@@ -224,9 +224,9 @@ class ImportStatement:
 
 ### LSP Not Responding
 1. Check `/tmp/nlpl-lsp.log` for errors
-2. Verify LSP server process is running: `ps aux | grep nlpl.lsp`
+2. Verify LSP server process is running: `ps aux | grep nexuslang.lsp`
 3. Restart VS Code and LSP server
-4. Test with minimal NLPL file (hello world)
+4. Test with minimal NexusLang file (hello world)
 
 ### Symbol Not Found
 1. Verify file is indexed: Check `workspace_index.files` dictionary
@@ -305,7 +305,7 @@ Examples:
 
 **Remember Why:**
 - LSP completion unlocks developer adoption
-- Real-world showcase projects prove NLPL viability
+- Real-world showcase projects prove NexusLang viability
 - 3 months = production-ready v1.0 foundation
 - This work directly enables Phase 2 (Package Manager)
 

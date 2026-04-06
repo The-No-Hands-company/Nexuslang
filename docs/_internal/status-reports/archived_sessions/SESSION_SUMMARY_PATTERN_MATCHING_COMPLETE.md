@@ -4,7 +4,7 @@
 
 ## Summary
 
-Successfully completed **production-ready pattern matching** for the NLPL compiler. This feature is now fully functional, optimized, and thoroughly tested.
+Successfully completed **production-ready pattern matching** for the NexusLang compiler. This feature is now fully functional, optimized, and thoroughly tested.
 
 ---
 
@@ -153,7 +153,7 @@ Warning: Non-exhaustive pattern match at line 16.
 
 ---
 
-## Integration with NLPL
+## Integration with NexusLang
 
 Pattern matching integrates seamlessly with:
 
@@ -219,7 +219,7 @@ match list with
 
 ## Comparison with Other Languages
 
-| Feature | Rust | OCaml | Python | NLPL |
+| Feature | Rust | OCaml | Python | NexusLang |
 |---------|------|-------|--------|------|
 | Literal patterns | | | | |
 | Guards | | | | |
@@ -267,7 +267,7 @@ Pattern matching is **complete**. Recommended next areas:
 
 ## Conclusion
 
-Pattern matching in NLPL is **production-ready** and represents a significant advancement in the language's capabilities. The implementation is:
+Pattern matching in NexusLang is **production-ready** and represents a significant advancement in the language's capabilities. The implementation is:
 
  **Complete** - All essential features implemented
  **Optimized** - Automatic performance improvements

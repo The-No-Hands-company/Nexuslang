@@ -5,8 +5,8 @@ Production-ready test suite - comprehensive coverage.
 """
 
 import pytest
-from nlpl.parser.ast import OptionPattern, ResultPattern, WildcardPattern
-from nlpl.stdlib.option_result import Some, NoneValue, Ok, Err
+from nexuslang.parser.ast import OptionPattern, ResultPattern, WildcardPattern
+from nexuslang.stdlib.option_result import Some, NoneValue, Ok, Err
 
 
 class TestPatternAST:

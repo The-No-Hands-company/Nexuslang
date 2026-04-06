@@ -1,4 +1,4 @@
-# NLPL: Interpreter vs Compiler Gap Analysis
+# NexusLang: Interpreter vs Compiler Gap Analysis
 
 **Date:** December 15, 2025 
 **Last Updated:** December 17, 2025 (HONEST REASSESSMENT - Shortcuts Audit) 
@@ -20,7 +20,7 @@ Systematic audit revealed 79 instances of shortcuts, placeholders, and "simplifi
 
 ## Executive Summary
 
-The NLPL **interpreter is significantly more mature** than the compiler. Recent audit revealed the compiler has extensive technical debt from shortcuts and placeholders that inflate feature parity numbers.
+The NexusLang **interpreter is significantly more mature** than the compiler. Recent audit revealed the compiler has extensive technical debt from shortcuts and placeholders that inflate feature parity numbers.
 
 ### Critical Finding
 - **Interpreter:** 48 `execute_*` methods (nearly complete language)

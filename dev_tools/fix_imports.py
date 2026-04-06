@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Fix absolute imports to relative imports throughout the NLPL codebase.
+Fix absolute imports to relative imports throughout the NexusLang codebase.
 
-This converts all 'from nlpl.X import Y' to 'from .X import Y' or 'from ..X import Y'
+This converts all 'from nexuslang.X import Y' to 'from .X import Y' or 'from ..X import Y'
 based on the module's depth in the package hierarchy.
 """
 
@@ -15,32 +15,32 @@ def calculate_relative_import(file_path: Path, root_path: Path) -> dict[str, str
     """
     Calculate how to convert nlpl.X imports to relative imports.
     
-    Returns a mapping from 'nlpl.module' to relative import path.
+    Returns a mapping from 'nexuslang.module' to relative import path.
     """
     # Get the file's package depth (how many levels down from src/nlpl/)
-    relative_to_nlpl = file_path.relative_to(root_path / 'src' / 'nlpl')
-    depth = len(relative_to_nlpl.parts) - 1  # Subtract 1 for the file itself
+    relative_to_nxl = file_path.relative_to(root_path / 'src' / 'nlpl')
+    depth = len(relative_to_nxl.parts) - 1  # Subtract 1 for the file itself
     
     conversions = {}
     
     # If in src/nlpl/ directly (depth 0)
     if depth == 0:
-        # from nlpl.parser -> from .parser
-        conversions['from nlpl.'] = 'from .'
+        # from nexuslang.parser -> from .parser
+        conversions['from nexuslang.'] = 'from .'
     else:
         # If in src/nlpl/compiler/ (depth 1)
-        # from nlpl.parser -> from ..parser
-        # from nlpl.compiler -> from .
+        # from nexuslang.parser -> from ..parser
+        # from nexuslang.compiler -> from .
         
         # For same-level packages (nlpl.X where X is current package)
-        current_package = relative_to_nlpl.parts[0] if depth > 0 else None
+        current_package = relative_to_nxl.parts[0] if depth > 0 else None
         
         # Most imports: go up to nlpl level then down
-        conversions[f'from nlpl.'] = f'from {"." * (depth + 1)}'
+        conversions[f'from nexuslang.'] = f'from {"." * (depth + 1)}'
         
         # Imports from current package
         if current_package:
-            conversions[f'from nlpl.{current_package}.'] = 'from .'
+            conversions[f'from nexuslang.{current_package}.'] = 'from .'
     
     return conversions
 

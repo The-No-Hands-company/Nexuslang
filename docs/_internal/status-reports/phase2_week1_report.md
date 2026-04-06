@@ -29,7 +29,7 @@ Created comprehensive AST-based symbol table system:
 
 - **`symbol_extractor.py` (470 lines)**
   - `ASTSymbolExtractor` walks entire AST
-  - Extracts symbols from all NLPL constructs:
+  - Extracts symbols from all NexusLang constructs:
     - Functions, classes, structs, unions, enums
     - Variables, properties, methods, parameters
     - Interfaces, traits, imports
@@ -245,7 +245,7 @@ tests/test_symbol_extraction.py::test_symbol_hierarchy PASSED                   
 
 ✅ **Complete Implementation**
 - 26 symbol kinds (full LSP spec)
-- Support for all NLPL constructs
+- Support for all NexusLang constructs
 - Parent-child relationships preserved
 - Type annotations tracked
 
@@ -278,7 +278,7 @@ tests/test_symbol_extraction.py::test_symbol_hierarchy PASSED                   
 ### Priority 4: Extension Testing
 - [ ] Build extension with TypeScript compiler
 - [ ] Package as `.vsix`
-- [ ] Test in VS Code with real NLPL files
+- [ ] Test in VS Code with real NexusLang files
 - [ ] Validate all LSP features work
 
 ---

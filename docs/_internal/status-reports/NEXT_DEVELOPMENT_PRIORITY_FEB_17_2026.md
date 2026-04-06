@@ -46,7 +46,7 @@ Based on roadmap analysis and "Polish Before Expansion" philosophy, the three mo
 
 **Why This Matters:**
 - LSP exists (17 files) but untested and incomplete
-- Developer experience blocker - no one will use NLPL without good IDE support
+- Developer experience blocker - no one will use NexusLang without good IDE support
 - VS Code users expect: go-to-definition, refactoring, instant diagnostics
 - **This is the #1 barrier to adoption**
 
@@ -99,18 +99,18 @@ src/nlpl/lsp/
 - ❌ No profiling to identify bottlenecks
 
 **What's Needed:**
-- [ ] Profile NLPL compiler/runtime (where are slowdowns?)
+- [ ] Profile NexusLang compiler/runtime (where are slowdowns?)
 - [ ] Enable aggressive LLVM optimizations (-O3 equivalent)
 - [ ] Implement NLPL-specific optimization passes:
-  - Constant folding for NLPL expressions
+  - Constant folding for NexusLang expressions
   - Dead code elimination
-  - Loop unrolling for NLPL control flow
-  - Inlining for small NLPL functions
+  - Loop unrolling for NexusLang control flow
+  - Inlining for small NexusLang functions
 - [ ] Add benchmark suite (10+ real-world programs)
 - [ ] Document optimization flags and techniques
 
 **Estimated Effort:** 3-4 weeks  
-**Impact:** HIGH - Proves NLPL is production-ready  
+**Impact:** HIGH - Proves NexusLang is production-ready  
 **Priority:** 🟡 **HIGH - DO AFTER LSP**
 
 ---
@@ -198,13 +198,13 @@ src/nlpl/lsp/
 
 **Why Second:**
 - LSP enables productive development
-- Performance proves NLPL is production-ready
+- Performance proves NexusLang is production-ready
 - Benchmarks are marketing material
 - Optimization is concrete and measurable
 
 **Tasks:**
 1. **Week 1: Profiling & Bottleneck Identification** [x] DONE (Feb 18)
-   - [x] Profile NLPL interpreter — found `re.sub()` regex on every AST dispatch
+   - [x] Profile NexusLang interpreter — found `re.sub()` regex on every AST dispatch
    - [x] Root cause: `import re` + `re.sub()` called inside `execute()` per node
    - [x] Fix: static `_DISPATCH_TABLE` (CamelCase -> method_name, built once) +
          per-instance `_dispatch_cache` (bound method cache, O(1) repeated lookups)
@@ -249,7 +249,7 @@ src/nlpl/lsp/
 - [x] No performance regressions (test_performance.py, 16 tests)
 - [x] Consistent 3-5x C performance across benchmarks (needs C comparison)
       **Note (Feb 18):** Actual interpreter-vs-compiled ratios are much larger (thousands-to-millions x)
-      because NLPL is an AST interpreter running on CPython. The 3-5x goal refers to the
+      because NexusLang is an AST interpreter running on CPython. The 3-5x goal refers to the
       future LLVM native code generation backend (Phase 3), not the current interpreter.
       Current baseline documented: fib=20,817x vs C, matrix=1,683,228x vs C, sieve=167,183x vs C.
       All data recorded in `benchmarks/perf-baseline.json` and `benchmarks/perf-dashboard.html`.
@@ -259,7 +259,7 @@ src/nlpl/lsp/
 ### Phase 3: Stdlib Audit & Deepening (4-6 weeks) 🟡 AFTER PERFORMANCE
 
 **Why Third:**
-- LSP and performance prove NLPL is viable
+- LSP and performance prove NexusLang is viable
 - Stdlib depth enables real applications
 - Less urgent than tooling/performance
 - Can be done incrementally
@@ -458,7 +458,7 @@ After completing LSP, Performance, and Stdlib work (3-4 months):
 
 **Total timeline:** 3-4 months to v1.0.0 production release
 
-**This aligns with roadmap philosophy:** Polish existing features before expanding. Make NLPL production-ready before building an ecosystem around it.
+**This aligns with roadmap philosophy:** Polish existing features before expanding. Make NexusLang production-ready before building an ecosystem around it.
 
 **Bottom line:** LSP completion is the single most important task. Start there.
 
@@ -466,11 +466,11 @@ After completing LSP, Performance, and Stdlib work (3-4 months):
 
 ## LSP Integration Prep Checklist (Error Codes in Diagnostics)
 
-Objective: surface NLPL error intelligence directly in editor diagnostics/hover once `client.start()` is fixed.
+Objective: surface NexusLang error intelligence directly in editor diagnostics/hover once `client.start()` is fixed.
 
 ### 1) Diagnostic Payload Shape (target)
 
-Use this canonical payload from NLPL server to LSP adapter:
+Use this canonical payload from NexusLang server to LSP adapter:
 
 ```json
 {
@@ -489,24 +489,24 @@ Use this canonical payload from NLPL server to LSP adapter:
          "Convert types explicitly if needed",
          "Check function parameter types"
       ],
-      "explainHint": "nlpl --explain E200",
+      "explainHint": "nxl --explain E200",
       "docLink": "https://nlpl.dev/docs/types"
    }
 }
 ```
 
 Required fields:
-- `code`: NLPL error code (`E###`)
+- `code`: NexusLang error code (`E###`)
 - `message`: concise human-readable message
 - `range`: precise source location
 - `data.fixes`: top 1-3 quick guidance items
-- `data.explainHint`: always include `nlpl --explain EXXX`
+- `data.explainHint`: always include `nxl --explain EXXX`
 
 ### 2) Server-Side Checklist (`src/nlpl/lsp/`)
 
 - [x] Normalize all parser/interpreter/type errors to `{code, message, line, column, fixes}` before publish. _(done Feb 18 — `_build_diagnostic` adapter in `diagnostics.py`)_
-- [x] Add conversion helper: NLPL error -> LSP `Diagnostic`. _(done Feb 18 — `_build_diagnostic` in `diagnostics.py`)_
-- [x] Map NLPL categories to LSP severities:
+- [x] Add conversion helper: NexusLang error -> LSP `Diagnostic`. _(done Feb 18 — `_build_diagnostic` in `diagnostics.py`)_
+- [x] Map NexusLang categories to LSP severities:
    - syntax/type/runtime -> Error
    - advisory/style (future) -> Warning/Information
 - [x] Ensure diagnostics include `source: "nlpl"` and stable `code` string. _(done Feb 18)_
@@ -515,14 +515,14 @@ Required fields:
 ### 3) VS Code Extension Checklist (`vscode-extension/`)
 
 - [x] Render `code` in Problems panel (ensure string code passes through). _(LSP client forwards `code` automatically; LSP client auto-forwards `code` field — confirmed by smoke tests. Live VS Code visual confirm is non-blocking)_
-- [x] Hover display template includes error title + code, first 2-3 fixes, `nlpl --explain EXXX` hint. _(done Feb 18 — `NLPLDiagnosticHoverProvider` in `extension.ts`)_
+- [x] Hover display template includes error title + code, first 2-3 fixes, `nxl --explain EXXX` hint. _(done Feb 18 — `NLPLDiagnosticHoverProvider` in `extension.ts`)_
 - [x] Code Action provider reads `diagnostic.data.fixes` for quick fix entries. _(done Feb 18 — `_actions_from_structured_fixes` in `code_actions.py`, integration tests passing)_
 - [x] Add command `NLPL: Explain Error Code` that opens explain text for selected diagnostic code. _(done Feb 18 — registered in `extension.ts` + `package.json`)_
 
 ### 4) Validation Checklist
 
 - [x] Unit: diagnostic conversion for representative codes (`E001`, `E100`, `E200`, `E301`, `E309`). _(done Feb 18 — `tests/test_lsp_diagnostic_payload.py`, 42 tests passing)_
-- [x] Integration: open NLPL file with intentional errors and verify Problems shows `code`. _(done Feb 18 — `tests/test_lsp_smoke_diagnostics.py`, live LSP subprocess, 12 tests passing)_
+- [x] Integration: open NexusLang file with intentional errors and verify Problems shows `code`. _(done Feb 18 — `tests/test_lsp_smoke_diagnostics.py`, live LSP subprocess, 12 tests passing)_
 - [x] Hover: verify `data.explainHint` + `data.title` are present on every code-bearing diagnostic. _(done Feb 18 — covered by `TestSyntaxErrorDiagnostics` and `TestDiagnosticInvariants` in smoke tests)_
 - [x] Regression: diagnostics remain stable for unchanged code. _(done Feb 18 — `TestCleanFileDiagnostics.test_valid_file_zero_diagnostics` asserts no spurious diagnostics on valid file)_
 - [x] Added `E150` (Unused variable) error code and wired `_check_unused_vars` to emit it — all diagnostics now carry `code` fields. _(done Feb 18)_

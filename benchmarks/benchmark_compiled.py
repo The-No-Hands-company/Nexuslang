@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Benchmark NLPL compiled mode vs interpreter mode vs C.
+Benchmark NexusLang compiled mode vs interpreter mode vs C.
 
 Measures the three standard benchmarks (fibonacci, matrix_sum, sieve)
 through all execution modes and updates perf-baseline.json with compiled
@@ -21,17 +21,17 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../src"))
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.compiler.backends.llvm_ir_generator import LLVMIRGenerator
-from nlpl.interpreter.interpreter import Interpreter
-from nlpl.runtime.runtime import Runtime
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.compiler.backends.llvm_ir_generator import LLVMIRGenerator
+from nexuslang.interpreter.interpreter import Interpreter
+from nexuslang.runtime.runtime import Runtime
 
 BENCHMARK_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(BENCHMARK_DIR)
 
 # ---------------------------------------------------------------------------
-# NLPL programs adapted for compiler (need explicit main() function, and must
+# NexusLang programs adapted for compiler (need explicit main() function, and must
 # use integer output directly — no 'convert ... to string' since the compiler
 # handles integer-to-string via sprintf already).
 # ---------------------------------------------------------------------------
@@ -205,8 +205,8 @@ RUNS = 5  # measurements per benchmark
 # Compilation helpers
 # ---------------------------------------------------------------------------
 
-def compile_nlpl_to_binary(name: str, source: str, opt_level: int = 0) -> str | None:
-    """Compile NLPL source to a native binary (in a temp dir, caller manages).
+def compile_nxl_to_binary(name: str, source: str, opt_level: int = 0) -> str | None:
+    """Compile NexusLang source to a native binary (in a temp dir, caller manages).
     
     Returns path to the compiled executable, or None on failure.
     """
@@ -217,10 +217,10 @@ def compile_nlpl_to_binary(name: str, source: str, opt_level: int = 0) -> str | 
     tokens = Lexer(source).tokenize()
     ast = Parser(tokens).parse()
     gen = LLVMIRGenerator()
-    gen.generate(ast, source_file=f"{name}.nlpl")
+    gen.generate(ast, source_file=f"{name}.nxl")
 
     # We need to keep the tmpdir alive; store on gen as a side channel
-    tmpdir = tempfile.mkdtemp(prefix="nlpl_bench_")
+    tmpdir = tempfile.mkdtemp(prefix="nxl_bench_")
     exe = os.path.join(tmpdir, name)
 
     saved_stdout = sys.stdout
@@ -264,7 +264,7 @@ def run_binary_n(exe: str, runs: int) -> tuple[float, str]:
 
 
 def run_interpreter(source: str, runs: int) -> tuple[float, str]:
-    """Run a program through the NLPL interpreter, return (median_ms, stdout)."""
+    """Run a program through the NexusLang interpreter, return (median_ms, stdout)."""
     tokens = Lexer(source).tokenize()
     ast = Parser(tokens).parse()
 
@@ -321,7 +321,7 @@ def main() -> None:
 
         # Compiled O0 timing
         print("  Compiled O0: ", end="", flush=True)
-        exe = compile_nlpl_to_binary(bench_name, source, opt_level=0)
+        exe = compile_nxl_to_binary(bench_name, source, opt_level=0)
         if exe:
             try:
                 compiled_ms, compiled_out = run_binary_n(exe, RUNS)
@@ -341,7 +341,7 @@ def main() -> None:
 
         # Compiled O3 timing
         print("  Compiled O3: ", end="", flush=True)
-        exe3 = compile_nlpl_to_binary(bench_name, source, opt_level=3)
+        exe3 = compile_nxl_to_binary(bench_name, source, opt_level=3)
         if exe3:
             try:
                 compiled3_ms, compiled3_out = run_binary_n(exe3, RUNS)

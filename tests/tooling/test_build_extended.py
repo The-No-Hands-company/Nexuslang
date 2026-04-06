@@ -1,5 +1,5 @@
 """
-Tests for NLPL extended build system features:
+Tests for NexusLang extended build system features:
     - Parallel compilation  (src/nlpl/build/parallel.py)
     - Link-Time Optimization (src/nlpl/build/lto.py)
     - Cross-compilation      (src/nlpl/build/cross.py)
@@ -20,7 +20,7 @@ import pytest
 # Parallel compilation
 # ---------------------------------------------------------------------------
 
-from nlpl.build.parallel import (
+from nexuslang.build.parallel import (
     CompilationTask,
     DependencyGraph,
     ParallelCompiler,
@@ -31,7 +31,7 @@ from nlpl.build.parallel import (
 
 class TestCompilationTask:
     def test_creation(self, tmp_path):
-        src = tmp_path / "a.nlpl"
+        src = tmp_path / "a.nxl"
         out = tmp_path / "a.o"
         t = CompilationTask(
             source_file=src,
@@ -43,7 +43,7 @@ class TestCompilationTask:
         assert t.dependencies == []
 
     def test_hash_and_equality(self, tmp_path):
-        src = tmp_path / "a.nlpl"
+        src = tmp_path / "a.nxl"
         out = tmp_path / "a.o"
         t1 = CompilationTask(src, out, [])
         t2 = CompilationTask(src, out, ["extra"])
@@ -51,16 +51,16 @@ class TestCompilationTask:
         assert hash(t1) == hash(t2)
 
     def test_inequality(self, tmp_path):
-        t1 = CompilationTask(tmp_path / "a.nlpl", tmp_path / "a.o", [])
-        t2 = CompilationTask(tmp_path / "b.nlpl", tmp_path / "b.o", [])
+        t1 = CompilationTask(tmp_path / "a.nxl", tmp_path / "a.o", [])
+        t2 = CompilationTask(tmp_path / "b.nxl", tmp_path / "b.o", [])
         assert t1 != t2
 
 
 class TestDependencyGraph:
     def _make_task(self, name: str, deps: List[str], tmp_path: Path) -> CompilationTask:
-        src = tmp_path / f"{name}.nlpl"
+        src = tmp_path / f"{name}.nxl"
         out = tmp_path / f"{name}.o"
-        dep_paths = [tmp_path / f"{d}.nlpl" for d in deps]
+        dep_paths = [tmp_path / f"{d}.nxl" for d in deps]
         return CompilationTask(
             source_file=src,
             output_file=out,
@@ -79,7 +79,7 @@ class TestDependencyGraph:
         g.add_task(t)
         layers = g.topological_layers()
         assert len(layers) == 1
-        assert layers[0][0].source_file.name == "main.nlpl"
+        assert layers[0][0].source_file.name == "main.nxl"
 
     def test_independent_tasks_same_layer(self, tmp_path):
         g = DependencyGraph()
@@ -120,10 +120,10 @@ class TestDependencyGraph:
     def test_external_dep_ignored(self, tmp_path):
         """Dependencies on files not in the graph are silently ignored."""
         t = CompilationTask(
-            source_file=tmp_path / "a.nlpl",
+            source_file=tmp_path / "a.nxl",
             output_file=tmp_path / "a.o",
             compiler_args=[],
-            dependencies=[tmp_path / "external.nlpl"],  # not added as task
+            dependencies=[tmp_path / "external.nxl"],  # not added as task
         )
         g = DependencyGraph()
         g.add_task(t)
@@ -140,7 +140,7 @@ class TestDependencyGraph:
 
 class TestParallelCompiler:
     def _make_task(self, name: str, cmd: List[str], tmp_path: Path) -> CompilationTask:
-        src = tmp_path / f"{name}.nlpl"
+        src = tmp_path / f"{name}.nxl"
         out = tmp_path / f"{name}.o"
         return CompilationTask(src, out, cmd)
 
@@ -180,7 +180,7 @@ class TestParallelCompiler:
 
     def test_invalid_command_returns_failure(self, tmp_path):
         """Non-existent command should produce a failed TaskResult."""
-        t = self._make_task("bad", ["__nlpl_nonexistent_program__"], tmp_path)
+        t = self._make_task("bad", ["__nxl_nonexistent_program__"], tmp_path)
         pc = ParallelCompiler(max_workers=1)
         results = pc.compile_all([t])
         assert len(results) == 1
@@ -196,7 +196,7 @@ class TestParallelCompiler:
 
 class TestBuildTasksFromSources:
     def test_creates_correct_number_of_tasks(self, tmp_path):
-        sources = [tmp_path / f"f{i}.nlpl" for i in range(3)]
+        sources = [tmp_path / f"f{i}.nxl" for i in range(3)]
         compiler = tmp_path / "nlplc"
         tasks = build_tasks_from_sources(
             source_files=sources,
@@ -207,7 +207,7 @@ class TestBuildTasksFromSources:
         assert len(tasks) == 3
 
     def test_output_extension_is_o(self, tmp_path):
-        src = tmp_path / "main.nlpl"
+        src = tmp_path / "main.nxl"
         tasks = build_tasks_from_sources(
             source_files=[src],
             output_dir=tmp_path / "obj",
@@ -217,7 +217,7 @@ class TestBuildTasksFromSources:
         assert tasks[0].output_file.suffix == ".o"
 
     def test_compiler_args_include_source(self, tmp_path):
-        src = tmp_path / "main.nlpl"
+        src = tmp_path / "main.nxl"
         tasks = build_tasks_from_sources(
             source_files=[src],
             output_dir=tmp_path / "obj",
@@ -227,8 +227,8 @@ class TestBuildTasksFromSources:
         assert str(src) in tasks[0].compiler_args
 
     def test_deps_wired_from_dep_graph(self, tmp_path):
-        a = tmp_path / "a.nlpl"
-        b = tmp_path / "b.nlpl"
+        a = tmp_path / "a.nxl"
+        b = tmp_path / "b.nxl"
         dep_graph = {b: {a}}
         tasks = build_tasks_from_sources(
             source_files=[a, b],
@@ -241,7 +241,7 @@ class TestBuildTasksFromSources:
         assert a in b_task.dependencies
 
     def test_output_dir_created(self, tmp_path):
-        src = tmp_path / "main.nlpl"
+        src = tmp_path / "main.nxl"
         obj_dir = tmp_path / "new_obj_dir"
         assert not obj_dir.exists()
         build_tasks_from_sources([src], obj_dir, tmp_path / "nlplc", [])
@@ -252,7 +252,7 @@ class TestBuildTasksFromSources:
 # LTO
 # ---------------------------------------------------------------------------
 
-from nlpl.build.lto import (
+from nexuslang.build.lto import (
     LTOMode,
     LTOConfig,
     LTOResult,
@@ -383,7 +383,7 @@ class TestLTOFlagsForProfile:
 # Cross-compilation
 # ---------------------------------------------------------------------------
 
-from nlpl.build.cross import (
+from nexuslang.build.cross import (
     TargetArch,
     TargetOS,
     TargetABI,
@@ -654,7 +654,7 @@ class TestGetCrossCompiler:
 # Integration: BuildConfig new fields
 # ---------------------------------------------------------------------------
 
-from nlpl.build.project import BuildConfig
+from nexuslang.build.project import BuildConfig
 
 
 class TestBuildConfigNewFields:
@@ -673,12 +673,12 @@ class TestBuildConfigNewFields:
 
 class TestProjectTomlRoundTrip:
     def test_new_fields_persisted(self, tmp_path):
-        from nlpl.build.project import Project
+        from nexuslang.build.project import Project
         project = Project.init(tmp_path, "myapp")
         project.build.parallel_jobs = 4
         project.build.lto = "thin"
         project.build.sysroot = "/usr/sysroot"
-        toml_path = tmp_path / "nlpl.toml"
+        toml_path = tmp_path / "nexuslang.toml"
         project.to_toml(toml_path)
 
         loaded = Project.from_toml(toml_path)
@@ -687,9 +687,9 @@ class TestProjectTomlRoundTrip:
         assert loaded.build.sysroot == "/usr/sysroot"
 
     def test_defaults_preserved_on_round_trip(self, tmp_path):
-        from nlpl.build.project import Project
+        from nexuslang.build.project import Project
         project = Project.init(tmp_path, "myapp")
-        toml_path = tmp_path / "nlpl.toml"
+        toml_path = tmp_path / "nexuslang.toml"
         project.to_toml(toml_path)
 
         loaded = Project.from_toml(toml_path)
@@ -700,8 +700,8 @@ class TestProjectTomlRoundTrip:
 
 class TestBuilderJobsOverride:
     def test_jobs_override_stored(self, tmp_path):
-        from nlpl.build.project import Project
-        from nlpl.build.builder import Builder
+        from nexuslang.build.project import Project
+        from nexuslang.build.builder import Builder
         project = Project.init(tmp_path, "myapp")
         project.build.parallel_jobs = 1
 
@@ -711,8 +711,8 @@ class TestBuilderJobsOverride:
         assert b._jobs == 8
 
     def test_project_jobs_used_when_no_override(self, tmp_path):
-        from nlpl.build.project import Project
-        from nlpl.build.builder import Builder
+        from nexuslang.build.project import Project
+        from nexuslang.build.builder import Builder
         project = Project.init(tmp_path, "myapp")
         project.build.parallel_jobs = 4
 
@@ -725,8 +725,8 @@ class TestBuilderJobsOverride:
 # Integration: BuildSystem LTO wiring
 # ---------------------------------------------------------------------------
 
-from nlpl.tooling.builder import BuildSystem, BuildResult
-from nlpl.tooling.config import ProjectConfig, ProfileConfig, PackageConfig, BuildConfig
+from nexuslang.tooling.builder import BuildSystem, BuildResult
+from nexuslang.tooling.config import ProjectConfig, ProfileConfig, PackageConfig, BuildConfig
 
 
 def _make_build_system(tmp_path: Path, target: str = "c", lto: bool = False) -> BuildSystem:
@@ -829,8 +829,8 @@ class TestBuildSystemRunLTOIfEnabled:
         bs = _make_build_system(tmp_path, target="llvm_ir", lto=True)
         prof = ProfileConfig(name="release", optimization=3, lto=True)
 
-        from nlpl.build.lto import LTOResult
-        with patch("nlpl.tooling.builder.LTOLinker") as MockLinker:
+        from nexuslang.build.lto import LTOResult
+        with patch("nexuslang.tooling.builder.LTOLinker") as MockLinker:
             instance = MockLinker.return_value
             instance.link_with_lto.return_value = LTOResult(
                 success=False, errors=["llvm-link not found"]
@@ -853,8 +853,8 @@ class TestBuildSystemRunLTOIfEnabled:
         prof = ProfileConfig(name="release", optimization=3, lto=True)
 
         final_out = out_dir / "pkg"
-        from nlpl.build.lto import LTOResult
-        with patch("nlpl.tooling.builder.LTOLinker") as MockLinker:
+        from nexuslang.build.lto import LTOResult
+        with patch("nexuslang.tooling.builder.LTOLinker") as MockLinker:
             instance = MockLinker.return_value
             instance.link_with_lto.return_value = LTOResult(
                 success=True, output_file=final_out
@@ -876,14 +876,14 @@ class TestBuildSystemRunLTOIfEnabled:
         bs = _make_build_system(tmp_path, target="llvm_ir", lto=True)
         prof = ProfileConfig(name="dev", optimization=1, lto=True)
 
-        from nlpl.build.lto import LTOResult, LTOMode
+        from nexuslang.build.lto import LTOResult, LTOMode
         captured_config = {}
 
         def capture_link(bitcode_files, output, work_dir=None):
             captured_config["mode"] = MockLinker.call_args[0][0].mode
             return LTOResult(success=True, output_file=output)
 
-        with patch("nlpl.tooling.builder.LTOLinker") as MockLinker:
+        with patch("nexuslang.tooling.builder.LTOLinker") as MockLinker:
             instance = MockLinker.return_value
             instance.link_with_lto.side_effect = capture_link
             bs._run_lto_if_enabled(prof, str(out_dir), "pkg")
@@ -900,8 +900,8 @@ class TestBuildSystemRunLTOIfEnabled:
         bs = _make_build_system(tmp_path, target="llvm_ir", lto=True)
         prof = ProfileConfig(name="release", optimization=3, lto=True)
 
-        from nlpl.build.lto import LTOResult, LTOMode
-        with patch("nlpl.tooling.builder.LTOLinker") as MockLinker:
+        from nexuslang.build.lto import LTOResult, LTOMode
+        with patch("nexuslang.tooling.builder.LTOLinker") as MockLinker:
             instance = MockLinker.return_value
             instance.link_with_lto.return_value = LTOResult(success=True, output_file=out_dir / "pkg")
             bs._run_lto_if_enabled(prof, str(out_dir), "pkg")
@@ -917,8 +917,8 @@ class TestBuildSystemRunLTOIfEnabled:
         bs = _make_build_system(tmp_path, target="llvm_ir", lto=True)
         prof = ProfileConfig(name="release", optimization=3, lto=True, strip=True)
 
-        from nlpl.build.lto import LTOResult
-        with patch("nlpl.tooling.builder.LTOLinker") as MockLinker:
+        from nexuslang.build.lto import LTOResult
+        with patch("nexuslang.tooling.builder.LTOLinker") as MockLinker:
             instance = MockLinker.return_value
             instance.link_with_lto.return_value = LTOResult(
                 success=True, output_file=out_dir / "pkg"
@@ -940,8 +940,8 @@ class TestBuildSystemRunLTOIfEnabled:
         bs = _make_build_system(tmp_path, target="llvm_ir", lto=True)
         prof = ProfileConfig(name="release", optimization=3, lto=True)
 
-        from nlpl.build.lto import LTOResult
-        with patch("nlpl.tooling.builder.LTOLinker") as MockLinker:
+        from nexuslang.build.lto import LTOResult
+        with patch("nexuslang.tooling.builder.LTOLinker") as MockLinker:
             instance = MockLinker.return_value
             instance.link_with_lto.return_value = LTOResult(
                 success=True, output_file=out_dir / "pkg"
@@ -959,7 +959,7 @@ class TestBuildResultLTOIntegration:
     def _make_project_config(self, tmp_path: Path, target: str, lto: bool) -> ProjectConfig:
         src_dir = tmp_path / "src"
         src_dir.mkdir(parents=True, exist_ok=True)
-        (src_dir / "main.nlpl").write_text('print text "hello"\n')
+        (src_dir / "main.nxl").write_text('print text "hello"\n')
         build_dir = tmp_path / "build"
 
         pkg = PackageConfig(name="mypkg", version="0.1.0")

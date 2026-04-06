@@ -1,8 +1,8 @@
-# NLPL Build System Improvements
+# NexusLang Build System Improvements
 
 ## Overview
 
-Successfully implemented three critical TODOs in the NLPL build system (`src/nlpl/tooling/builder.py`), significantly enhancing its capabilities for handling complex projects with dependencies, multi-file modules, and intelligent executable detection.
+Successfully implemented three critical TODOs in the NexusLang build system (`src/nlpl/tooling/builder.py`), significantly enhancing its capabilities for handling complex projects with dependencies, multi-file modules, and intelligent executable detection.
 
 ## Changes Summary
 
@@ -158,7 +158,7 @@ def _find_executable(self, out_dir: str) -> Optional[str]:
  files = glob.glob(os.path.join(out_dir, '*'))
  for f in files:
  if (os.path.isfile(f) and os.access(f, os.X_OK) and 
- not f.endswith(('.o', '.c', '.cpp', '.h', '.nlpl', '.ll', '.js', '.ts'))):
+ not f.endswith(('.o', '.c', '.cpp', '.h', '.nxl', '.ll', '.js', '.ts'))):
  return f
  
  # Strategy 4: Newest file without source extension
@@ -363,7 +363,7 @@ Potential improvements for future versions:
 
 ## Conclusion
 
-The NLPL build system is now production-ready for complex, multi-file projects with dependencies. All three critical TODOs have been implemented with comprehensive testing, proper error handling, and intelligent fallback strategies.
+The NexusLang build system is now production-ready for complex, multi-file projects with dependencies. All three critical TODOs have been implemented with comprehensive testing, proper error handling, and intelligent fallback strategies.
 
 **Status**: **COMPLETE** - All TODOs removed, fully implemented and tested
 

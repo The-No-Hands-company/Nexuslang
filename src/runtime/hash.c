@@ -13,7 +13,7 @@ int64_t hash_string(const char *str) {
 
 #include <stdlib.h>
 
-/* Wrapper for free to avoid keyword collision in NLPL */
+/* Wrapper for free to avoid keyword collision in NexusLang */
 void c_free(void *ptr) {
     free(ptr);
 }

@@ -1,6 +1,6 @@
 """tests/unit/compiler/test_stdlib_native.py
 
-Tests for the NLPL native runtime library (stdlib_native).
+Tests for the NexusLang native runtime library (stdlib_native).
 
 Covers:
 - Python package API (is_built, get_library_path, get_link_flags)
@@ -30,7 +30,7 @@ REPO_ROOT = os.path.abspath(
 )
 sys.path.insert(0, os.path.join(REPO_ROOT, "src"))
 
-from nlpl.stdlib_native import (
+from nexuslang.stdlib_native import (
     DEFAULT_BUILD_DIR,
     INCLUDE_DIR,
     STDLIB_NATIVE_DIR,
@@ -86,7 +86,7 @@ class TestPackageAPI:
         assert os.path.isdir(INCLUDE_DIR)
 
     def test_header_present(self):
-        assert os.path.isfile(os.path.join(INCLUDE_DIR, "nlpl_runtime.h"))
+        assert os.path.isfile(os.path.join(INCLUDE_DIR, "nxl_runtime.h"))
 
     def test_is_built_reflects_reality(self):
         lib = get_library_path()
@@ -134,57 +134,57 @@ class TestPackageAPI:
 # Minimum expected symbols from each translation unit.
 _REQUIRED_SYMBOLS = [
     # runtime
-    "nlpl_panic",
-    "nlpl_assert",
-    "nlpl_print",
-    "nlpl_println",
-    "nlpl_print_int",
-    "nlpl_print_float",
-    "nlpl_print_bool",
-    "nlpl_int_to_string",
-    "nlpl_float_to_string",
-    "nlpl_bool_to_string",
-    "nlpl_string_to_int",
-    "nlpl_string_to_float",
-    "nlpl_runtime_version",
+    "nxl_panic",
+    "nxl_assert",
+    "nxl_print",
+    "nxl_println",
+    "nxl_print_int",
+    "nxl_print_float",
+    "nxl_print_bool",
+    "nxl_int_to_string",
+    "nxl_float_to_string",
+    "nxl_bool_to_string",
+    "nxl_string_to_int",
+    "nxl_string_to_float",
+    "nxl_runtime_version",
     # math
-    "nlpl_sin",
-    "nlpl_cos",
-    "nlpl_tan",
-    "nlpl_sqrt",
-    "nlpl_pow",
-    "nlpl_exp",
-    "nlpl_log",
-    "nlpl_floor",
-    "nlpl_ceil",
-    "nlpl_round",
-    "nlpl_abs_int",
-    "nlpl_abs_float",
-    "nlpl_min_int",
-    "nlpl_max_int",
-    "nlpl_min_float",
-    "nlpl_max_float",
+    "nxl_sin",
+    "nxl_cos",
+    "nxl_tan",
+    "nxl_sqrt",
+    "nxl_pow",
+    "nxl_exp",
+    "nxl_log",
+    "nxl_floor",
+    "nxl_ceil",
+    "nxl_round",
+    "nxl_abs_int",
+    "nxl_abs_float",
+    "nxl_min_int",
+    "nxl_max_int",
+    "nxl_min_float",
+    "nxl_max_float",
     # string
-    "nlpl_str_concat",
-    "nlpl_str_length",
-    "nlpl_str_replace",
-    "nlpl_str_trim",
-    "nlpl_str_toupper",
-    "nlpl_str_tolower",
-    "nlpl_substr",
-    "nlpl_charat",
-    "nlpl_indexof",
+    "nxl_str_concat",
+    "nxl_str_length",
+    "nxl_str_replace",
+    "nxl_str_trim",
+    "nxl_str_toupper",
+    "nxl_str_tolower",
+    "nxl_substr",
+    "nxl_charat",
+    "nxl_indexof",
     # collections
-    "nlpl_array_new",
-    "nlpl_array_push",
-    "nlpl_array_pop",
-    "nlpl_array_get",
-    "nlpl_array_length",
-    "nlpl_array_free",
+    "nxl_array_new",
+    "nxl_array_push",
+    "nxl_array_pop",
+    "nxl_array_get",
+    "nxl_array_length",
+    "nxl_array_free",
     # io
-    "nlpl_read_line",
-    "nlpl_read_file",
-    "nlpl_write_file",
+    "nxl_read_line",
+    "nxl_read_file",
+    "nxl_write_file",
 ]
 
 
@@ -200,8 +200,8 @@ class TestArchiveSymbols:
     def test_minimum_symbol_count(self, symbols):
         assert len(symbols) >= 50, f"Expected at least 50 symbols, got {len(symbols)}"
 
-    def test_all_nlpl_prefixed(self, symbols):
-        non_prefixed = [s for s in symbols if not s.startswith("nlpl_") and not s.startswith("arr")]
+    def test_all_nxl_prefixed(self, symbols):
+        non_prefixed = [s for s in symbols if not s.startswith("nxl_") and not s.startswith("arr")]
         assert non_prefixed == [], f"Unexpected non-prefixed symbols: {non_prefixed}"
 
 
@@ -225,7 +225,7 @@ def _clib():
         pytest.skip("No C compiler found, skipping ctypes tests")
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        so_path = os.path.join(tmpdir, "libnlpl_test.so")
+        so_path = os.path.join(tmpdir, "libnxl_test.so")
         # Compile an empty .c into a shared library that links the static archive
         empty_c = os.path.join(tmpdir, "empty.c")
         with open(empty_c, "w") as f:
@@ -247,48 +247,48 @@ def _clib():
 
 class TestMathFunctions:
     def test_sqrt(self, _clib):
-        fn = _clib.nlpl_sqrt
+        fn = _clib.nxl_sqrt
         fn.restype = ctypes.c_double
         fn.argtypes = [ctypes.c_double]
         assert abs(fn(4.0) - 2.0) < 1e-9
         assert abs(fn(9.0) - 3.0) < 1e-9
 
     def test_sin(self, _clib):
-        fn = _clib.nlpl_sin
+        fn = _clib.nxl_sin
         fn.restype = ctypes.c_double
         fn.argtypes = [ctypes.c_double]
         assert abs(fn(0.0)) < 1e-9
         assert abs(fn(math.pi / 2) - 1.0) < 1e-9
 
     def test_cos(self, _clib):
-        fn = _clib.nlpl_cos
+        fn = _clib.nxl_cos
         fn.restype = ctypes.c_double
         fn.argtypes = [ctypes.c_double]
         assert abs(fn(0.0) - 1.0) < 1e-9
         assert abs(fn(math.pi)) < 1e-9 or abs(fn(math.pi) + 1.0) < 1e-9
 
     def test_pow(self, _clib):
-        fn = _clib.nlpl_pow
+        fn = _clib.nxl_pow
         fn.restype = ctypes.c_double
         fn.argtypes = [ctypes.c_double, ctypes.c_double]
         assert abs(fn(2.0, 10.0) - 1024.0) < 1e-6
 
     def test_floor(self, _clib):
-        fn = _clib.nlpl_floor
+        fn = _clib.nxl_floor
         fn.restype = ctypes.c_double
         fn.argtypes = [ctypes.c_double]
         assert fn(3.9) == 3.0
         assert fn(-1.1) == -2.0
 
     def test_ceil(self, _clib):
-        fn = _clib.nlpl_ceil
+        fn = _clib.nxl_ceil
         fn.restype = ctypes.c_double
         fn.argtypes = [ctypes.c_double]
         assert fn(3.1) == 4.0
         assert fn(-1.9) == -1.0
 
     def test_abs_int(self, _clib):
-        fn = _clib.nlpl_abs_int
+        fn = _clib.nxl_abs_int
         fn.restype = ctypes.c_longlong
         fn.argtypes = [ctypes.c_longlong]
         assert fn(-42) == 42
@@ -296,27 +296,27 @@ class TestMathFunctions:
         assert fn(100) == 100
 
     def test_abs_float(self, _clib):
-        fn = _clib.nlpl_abs_float
+        fn = _clib.nxl_abs_float
         fn.restype = ctypes.c_double
         fn.argtypes = [ctypes.c_double]
         assert abs(fn(-3.14) - 3.14) < 1e-9
 
     def test_min_int(self, _clib):
-        fn = _clib.nlpl_min_int
+        fn = _clib.nxl_min_int
         fn.restype = ctypes.c_longlong
         fn.argtypes = [ctypes.c_longlong, ctypes.c_longlong]
         assert fn(3, 7) == 3
         assert fn(-5, 2) == -5
 
     def test_max_int(self, _clib):
-        fn = _clib.nlpl_max_int
+        fn = _clib.nxl_max_int
         fn.restype = ctypes.c_longlong
         fn.argtypes = [ctypes.c_longlong, ctypes.c_longlong]
         assert fn(3, 7) == 7
         assert fn(-5, 2) == 2
 
     def test_clamp_int(self, _clib):
-        fn = _clib.nlpl_clamp_int
+        fn = _clib.nxl_clamp_int
         fn.restype = ctypes.c_longlong
         fn.argtypes = [ctypes.c_longlong, ctypes.c_longlong, ctypes.c_longlong]
         assert fn(5, 0, 10) == 5
@@ -326,92 +326,92 @@ class TestMathFunctions:
 
 class TestStringFunctions:
     def test_str_length(self, _clib):
-        fn = _clib.nlpl_str_length
+        fn = _clib.nxl_str_length
         fn.restype = ctypes.c_longlong
         fn.argtypes = [ctypes.c_char_p]
         assert fn(b"hello") == 5
         assert fn(b"") == 0
 
     def test_str_concat(self, _clib):
-        fn = _clib.nlpl_str_concat
+        fn = _clib.nxl_str_concat
         fn.restype = ctypes.c_char_p
         fn.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
         result = fn(b"hello", b" world")
         assert result == b"hello world"
 
     def test_substr(self, _clib):
-        fn = _clib.nlpl_substr
+        fn = _clib.nxl_substr
         fn.restype = ctypes.c_char_p
         fn.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_int]
         result = fn(b"hello", 1, 3)
         assert result == b"ell"
 
     def test_indexof_found(self, _clib):
-        fn = _clib.nlpl_indexof
+        fn = _clib.nxl_indexof
         fn.restype = ctypes.c_longlong
         fn.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
         assert fn(b"hello world", b"world") == 6
 
     def test_indexof_not_found(self, _clib):
-        fn = _clib.nlpl_indexof
+        fn = _clib.nxl_indexof
         fn.restype = ctypes.c_longlong
         fn.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
         assert fn(b"hello", b"xyz") == -1
 
     def test_str_toupper(self, _clib):
-        fn = _clib.nlpl_str_toupper
+        fn = _clib.nxl_str_toupper
         fn.restype = ctypes.c_char_p
         fn.argtypes = [ctypes.c_char_p]
         result = fn(b"hello")
         assert result == b"HELLO"
 
     def test_str_tolower(self, _clib):
-        fn = _clib.nlpl_str_tolower
+        fn = _clib.nxl_str_tolower
         fn.restype = ctypes.c_char_p
         fn.argtypes = [ctypes.c_char_p]
         result = fn(b"WORLD")
         assert result == b"world"
 
     def test_str_trim(self, _clib):
-        fn = _clib.nlpl_str_trim
+        fn = _clib.nxl_str_trim
         fn.restype = ctypes.c_char_p
         fn.argtypes = [ctypes.c_char_p]
         result = fn(b"  hi  ")
         assert result == b"hi"
 
     def test_str_replace(self, _clib):
-        fn = _clib.nlpl_str_replace
+        fn = _clib.nxl_str_replace
         fn.restype = ctypes.c_char_p
         fn.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]
         result = fn(b"aabbcc", b"bb", b"XX")
         assert result == b"aaXXcc"
 
     def test_str_compare_equal(self, _clib):
-        fn = _clib.nlpl_str_compare
+        fn = _clib.nxl_str_compare
         fn.restype = ctypes.c_int
         fn.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
         assert fn(b"abc", b"abc") == 0
 
     def test_str_compare_less(self, _clib):
-        fn = _clib.nlpl_str_compare
+        fn = _clib.nxl_str_compare
         fn.restype = ctypes.c_int
         fn.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
         assert fn(b"abc", b"abd") < 0
 
     def test_str_starts_with_true(self, _clib):
-        fn = _clib.nlpl_str_starts_with
+        fn = _clib.nxl_str_starts_with
         fn.restype = ctypes.c_int
         fn.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
         assert fn(b"hello world", b"hello") != 0
 
     def test_str_starts_with_false(self, _clib):
-        fn = _clib.nlpl_str_starts_with
+        fn = _clib.nxl_str_starts_with
         fn.restype = ctypes.c_int
         fn.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
         assert fn(b"hello world", b"world") == 0
 
     def test_str_ends_with_true(self, _clib):
-        fn = _clib.nlpl_str_ends_with
+        fn = _clib.nxl_str_ends_with
         fn.restype = ctypes.c_int
         fn.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
         assert fn(b"hello world", b"world") != 0
@@ -419,7 +419,7 @@ class TestStringFunctions:
 
 class TestRuntimeFunctions:
     def test_runtime_version(self, _clib):
-        fn = _clib.nlpl_runtime_version
+        fn = _clib.nxl_runtime_version
         fn.restype = ctypes.c_char_p
         fn.argtypes = []
         result = fn()
@@ -427,7 +427,7 @@ class TestRuntimeFunctions:
         assert len(result) > 0
 
     def test_int_to_string(self, _clib):
-        fn = _clib.nlpl_int_to_string
+        fn = _clib.nxl_int_to_string
         fn.restype = ctypes.c_char_p
         fn.argtypes = [ctypes.c_longlong]
         assert fn(42) == b"42"
@@ -435,7 +435,7 @@ class TestRuntimeFunctions:
         assert fn(0) == b"0"
 
     def test_float_to_string(self, _clib):
-        fn = _clib.nlpl_float_to_string
+        fn = _clib.nxl_float_to_string
         fn.restype = ctypes.c_char_p
         fn.argtypes = [ctypes.c_double]
         result = fn(3.14)
@@ -443,26 +443,26 @@ class TestRuntimeFunctions:
         assert b"3.14" in result or b"3.1" in result  # allow formatting variation
 
     def test_bool_to_string_true(self, _clib):
-        fn = _clib.nlpl_bool_to_string
+        fn = _clib.nxl_bool_to_string
         fn.restype = ctypes.c_char_p
         fn.argtypes = [ctypes.c_int]
         assert fn(1) == b"true"
 
     def test_bool_to_string_false(self, _clib):
-        fn = _clib.nlpl_bool_to_string
+        fn = _clib.nxl_bool_to_string
         fn.restype = ctypes.c_char_p
         fn.argtypes = [ctypes.c_int]
         assert fn(0) == b"false"
 
     def test_string_to_int(self, _clib):
-        fn = _clib.nlpl_string_to_int
+        fn = _clib.nxl_string_to_int
         fn.restype = ctypes.c_longlong
         fn.argtypes = [ctypes.c_char_p]
         assert fn(b"42") == 42
         assert fn(b"-7") == -7
 
     def test_string_to_float(self, _clib):
-        fn = _clib.nlpl_string_to_float
+        fn = _clib.nxl_string_to_float
         fn.restype = ctypes.c_double
         fn.argtypes = [ctypes.c_char_p]
         assert abs(fn(b"3.14") - 3.14) < 1e-6
@@ -470,10 +470,10 @@ class TestRuntimeFunctions:
 
 class TestCollectionFunctions:
     def test_array_new_and_free(self, _clib):
-        new_fn = _clib.nlpl_array_new
+        new_fn = _clib.nxl_array_new
         new_fn.restype = ctypes.c_void_p
         new_fn.argtypes = []
-        free_fn = _clib.nlpl_array_free
+        free_fn = _clib.nxl_array_free
         free_fn.restype = None
         free_fn.argtypes = [ctypes.c_void_p]
 
@@ -482,16 +482,16 @@ class TestCollectionFunctions:
         free_fn(arr)
 
     def test_array_push_and_length(self, _clib):
-        new_fn = _clib.nlpl_array_new
+        new_fn = _clib.nxl_array_new
         new_fn.restype = ctypes.c_void_p
         new_fn.argtypes = []
-        push_fn = _clib.nlpl_array_push
+        push_fn = _clib.nxl_array_push
         push_fn.restype = None
         push_fn.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-        len_fn = _clib.nlpl_array_length
+        len_fn = _clib.nxl_array_length
         len_fn.restype = ctypes.c_longlong
         len_fn.argtypes = [ctypes.c_void_p]
-        free_fn = _clib.nlpl_array_free
+        free_fn = _clib.nxl_array_free
         free_fn.restype = None
         free_fn.argtypes = [ctypes.c_void_p]
 
@@ -516,7 +516,7 @@ print text "hello from native"
 
 @pytest.mark.integration
 class TestCompileToExecutableIntegration:
-    """Compile a minimal NLPL program and verify it links against libNLPL.a."""
+    """Compile a minimal NexusLang program and verify it links against libNLPL.a."""
 
     @pytest.fixture(scope="class")
     def compiled_exe(self, tmp_path_factory):
@@ -526,9 +526,9 @@ class TestCompileToExecutableIntegration:
         shutil.which("llc") or pytest.skip("llc not found")
         shutil.which("clang") or pytest.skip("clang not found")
 
-        from nlpl.compiler.backends.llvm_ir_generator import LLVMIRGenerator
-        from nlpl.parser.lexer import Lexer
-        from nlpl.parser.parser import Parser
+        from nexuslang.compiler.backends.llvm_ir_generator import LLVMIRGenerator
+        from nexuslang.parser.lexer import Lexer
+        from nexuslang.parser.parser import Parser
 
         src = _MINIMAL_NLPL
         tokens = Lexer(src).tokenize()
@@ -565,10 +565,10 @@ class TestCompileToExecutableIntegration:
                 ["nm", compiled_exe], capture_output=True, text=True
             )
             combined = r.stdout + r.stderr
-            # At minimum, nlpl_panic or nlpl_print should appear somewhere.
-            nlpl_present = any(
+            # At minimum, nxl_panic or nxl_print should appear somewhere.
+            nxl_present = any(
                 sym in combined
-                for sym in ("nlpl_panic", "nlpl_print", "nlpl_sqrt")
+                for sym in ("nxl_panic", "nxl_print", "nxl_sqrt")
             )
             # Soft assertion: the binary ran OK already; symbol listing is best-effort.
-            assert nlpl_present or r.returncode != 0  # skip if nm can't inspect it
+            assert nxl_present or r.returncode != 0  # skip if nm can't inspect it

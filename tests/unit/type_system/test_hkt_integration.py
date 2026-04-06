@@ -14,8 +14,8 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import pytest
-from nlpl.typesystem.typechecker import TypeChecker
-from nlpl.typesystem.hkt import (
+from nexuslang.typesystem.typechecker import TypeChecker
+from nexuslang.typesystem.hkt import (
     GLOBAL_HKT_REGISTRY,
     FUNCTOR_HKT, APPLICATIVE_HKT, MONAD_HKT, FOLDABLE_HKT, TRAVERSABLE_HKT,
     HKT_TRAITS, HKTRegistry, HigherKindedType, TypeConstructorParam, STAR_TO_STAR,
@@ -214,7 +214,7 @@ class TestGenericConstraintsWithHkt:
 
     def test_functor_constraint_satisfied(self):
         tc = make_checker()
-        from nlpl.typesystem.types import ANY_TYPE
+        from nexuslang.typesystem.types import ANY_TYPE
         # 'List' satisfies Functor constraint
         result = tc.check_generic_constraints(
             type_params=['F'],
@@ -230,7 +230,7 @@ class TestGenericConstraintsWithHkt:
 
     def test_monad_constraint_does_not_produce_unknown_trait_error(self):
         tc = make_checker()
-        from nlpl.typesystem.types import ANY_TYPE
+        from nexuslang.typesystem.types import ANY_TYPE
         tc.check_generic_constraints(
             type_params=['M'],
             type_args=[ANY_TYPE],
@@ -242,7 +242,7 @@ class TestGenericConstraintsWithHkt:
 
     def test_non_hkt_unknown_trait_still_errors(self):
         tc = make_checker()
-        from nlpl.typesystem.types import ANY_TYPE
+        from nexuslang.typesystem.types import ANY_TYPE
         tc.check_generic_constraints(
             type_params=['T'],
             type_args=[ANY_TYPE],
@@ -259,7 +259,7 @@ class TestGenericConstraintsWithHkt:
 class TestPackageLevelExports:
 
     def test_can_import_hkt_types_from_typesystem_package(self):
-        from nlpl.typesystem import (
+        from nexuslang.typesystem import (
             Kind, StarKind, ArrowKind,
             STAR, STAR_TO_STAR,
             TypeConstructorParam, TypeApplication, HigherKindedType, HKTRegistry,
@@ -276,6 +276,6 @@ class TestPackageLevelExports:
         assert kinds_equal(STAR, StarKind())
 
     def test_global_registry_accessible_from_package(self):
-        from nlpl.typesystem import GLOBAL_HKT_REGISTRY
+        from nexuslang.typesystem import GLOBAL_HKT_REGISTRY
         assert GLOBAL_HKT_REGISTRY.implements('List', 'Functor')
         assert not GLOBAL_HKT_REGISTRY.implements('Integer', 'Monad')

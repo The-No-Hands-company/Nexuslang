@@ -1,4 +1,4 @@
-# NLPL REPL Implementation Summary
+# NexusLang REPL Implementation Summary
 
 **Date**: 2024
 **Feature**: Interactive REPL (Read-Eval-Print Loop)
@@ -6,7 +6,7 @@
 
 ## Overview
 
-Implemented a full-featured interactive REPL for NLPL, providing immediate feedback environment for testing code, learning the language, and rapid prototyping.
+Implemented a full-featured interactive REPL for NexusLang, providing immediate feedback environment for testing code, learning the language, and rapid prototyping.
 
 ## Implementation Details
 
@@ -30,7 +30,7 @@ Implemented a full-featured interactive REPL for NLPL, providing immediate feedb
 - **Automatic prompt switching**: `>>>` `...` for continuations
 
 #### 4. **Command History**
-- Persistent storage: `~/.nlpl_history`
+- Persistent storage: `~/.nxl_history`
 - Arrow key navigation (Up/Down)
 - `:history` command shows last 20 entries
 - Automatic save on exit
@@ -59,14 +59,14 @@ Implemented a full-featured interactive REPL for NLPL, providing immediate feedb
 #### 7. **Pretty-print Results**
 - `_format_value()`: Smart value formatting
 - Max length limiting (80 chars)
-- Special handling for NLPL objects (structs, unions, functions)
+- Special handling for NexusLang objects (structs, unions, functions)
 - Result display: `=> value`
 
 #### 8. **Debug Mode**
 - Toggle with `:debug` command
 - Shows tokens from lexer
 - Shows AST from parser
-- Helps understand NLPL compilation
+- Helps understand NexusLang compilation
 
 #### 9. **Runtime Inspection**
 - Variable listing with scope depth
@@ -85,17 +85,17 @@ Implemented a full-featured interactive REPL for NLPL, providing immediate feedb
 
 1. **Via main module**:
  ```bash
- python -m nlpl.main
+ python -m nexuslang.main
  ```
 
-2. **Convenience script** (`nlpl_repl.py`):
+2. **Convenience script** (`nxl_repl.py`):
  ```bash
- python nlpl_repl.py
+ python nxl_repl.py
  ```
 
 3. **After file execution**:
  ```bash
- python -m nlpl.main program.nlpl --repl
+ python -m nexuslang.main program.nlpl --repl
  ```
 
 ### Technical Architecture
@@ -125,14 +125,14 @@ Display (=> value)
 - Continuation prompt (`...`)
 
 ### 2. Command History 
-- Persistent across sessions (`~/.nlpl_history`)
+- Persistent across sessions (`~/.nxl_history`)
 - Arrow key navigation
 - `:history` command
 - Automatic save on exit
 
 ### 3. Auto-completion 
 - Tab completion for:
- - NLPL keywords (`function`, `class`, `set`, etc.)
+ - NexusLang keywords (`function`, `class`, `set`, etc.)
  - Variables in scope
  - Defined functions
  - Special commands (`:help`, `:vars`, etc.)
@@ -154,7 +154,7 @@ Display (=> value)
 ### 6. Pretty-print Results 
 - Smart value formatting
 - Length limiting
-- Special handling for NLPL objects
+- Special handling for NexusLang objects
 - `=> value` display
 
 ### 7. Runtime State Inspection 
@@ -234,14 +234,14 @@ All 10 features implemented:
 ```nlpl
 >>> set x to 42
 => 42
->>> set name to "NLPL"
-=> NLPL
+>>> set name to "NexusLang"
+=> NexusLang
 >>> :vars
 
 Variables:
  Scope 1:
  x = 42
- name = NLPL
+ name = NexusLang
 ```
 
 ### Example 2: Multi-line Function
@@ -291,7 +291,7 @@ Debug mode: enabled
  - REPL class (400+ lines)
  - main() entry point (20 lines)
 
-3. **nlpl_repl.py** (25 lines)
+3. **nxl_repl.py** (25 lines)
  - Convenience entry point script
  - Path setup and import
 
@@ -341,7 +341,7 @@ Debug mode: enabled
 
 ### Developer Experience
 - **Immediate feedback**: Test code instantly
-- **Learning tool**: Experiment with NLPL syntax
+- **Learning tool**: Experiment with NexusLang syntax
 - **Debugging**: Inspect variables and functions
 - **Prototyping**: Try ideas before writing files
 
@@ -384,7 +384,7 @@ Potential improvements for future versions:
  - Generate .nlpl file from history
 
 6. **Module Loading**
- - Import NLPL modules interactively
+ - Import NexusLang modules interactively
  - Hot-reload modules
 
 7. **Inline Help**
@@ -407,7 +407,7 @@ Potential improvements for future versions:
 
 ## Conclusion
 
-The NLPL REPL implementation is **complete and production-ready**. It provides a comprehensive interactive environment with all essential features:
+The NexusLang REPL implementation is **complete and production-ready**. It provides a comprehensive interactive environment with all essential features:
 
  Multi-line input
  Command history (persistent)
@@ -419,7 +419,7 @@ The NLPL REPL implementation is **complete and production-ready**. It provides a
  Type checking toggle
  Runtime inspection
 
-The REPL significantly improves the developer experience and makes NLPL more accessible to new users. It's well-documented, thoroughly tested, and ready for daily use.
+The REPL significantly improves the developer experience and makes NexusLang more accessible to new users. It's well-documented, thoroughly tested, and ready for daily use.
 
 ## Next Steps
 

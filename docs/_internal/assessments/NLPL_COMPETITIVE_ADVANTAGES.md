@@ -1,4 +1,4 @@
-# NLPL Competitive Advantages: Solving Traditional Language Pain Points
+# NexusLang Competitive Advantages: Solving Traditional Language Pain Points
 
 **Mission:** Turn C/C++/Assembly's weaknesses into NLPL's strengths. Make debugging 10x easier, memory bugs rare, and development 5x faster.
 
@@ -21,7 +21,7 @@
 
 ---
 
-## Part 1: C/C++/Assembly Pain Points NLPL Solutions
+## Part 1: C/C++/Assembly Pain Points NexusLang Solutions
 
 ### 1. Memory Management Nightmares
 
@@ -48,7 +48,7 @@ int* ptr = nullptr;
 *ptr = 42; // CRASH
 ```
 
-#### NLPL Solutions
+#### NexusLang Solutions
 
 **Level 5 (Natural Language): Automatic Everything**
 ```nlpl
@@ -134,14 +134,14 @@ error: no matching function for call to 'std::vector<int>::push_back(std::string
 undefined reference to `_ZN3FooC1Ev'
 ```
 
-#### NLPL Solutions
+#### NexusLang Solutions
 
 ```nlpl
 # User writes:
 set x to 42
 print text x
 
-# NLPL error:
+# NexusLang error:
 Error: Type mismatch
  at line 2, column 12
 
@@ -189,7 +189,7 @@ int counter = 0;
 // Result is unpredictable
 ```
 
-#### NLPL Solutions
+#### NexusLang Solutions
 
 **Compile-Time Detection:**
 ```nlpl
@@ -277,7 +277,7 @@ void criticalSection() {
 }
 ```
 
-#### NLPL Solutions
+#### NexusLang Solutions
 
 **Level 3+: Automatic RAII**
 ```nlpl
@@ -338,7 +338,7 @@ Segmentation fault (core dumped)
 // Works 99% of the time, fails in production
 ```
 
-#### NLPL Solutions
+#### NexusLang Solutions
 
 **Enhanced Error Messages:**
 ```nlpl
@@ -346,7 +346,7 @@ Segmentation fault (core dumped)
 set ptr to null
 set value to dereference ptr
 
-# NLPL runtime error:
+# NexusLang runtime error:
 RuntimeError: Null pointer dereference
  at line 2, column 18
 
@@ -432,7 +432,7 @@ perf record ./main # Profile
 # Manual integration required
 ```
 
-#### NLPL Solutions
+#### NexusLang Solutions
 
 **Unified Toolchain:**
 ```bash
@@ -506,7 +506,7 @@ pthread_mutex_t mutex;
 // ... complex queue management
 ```
 
-#### NLPL Solutions
+#### NexusLang Solutions
 
 **Level 4 (Goroutines): Simple Concurrency**
 ```nlpl
@@ -578,7 +578,7 @@ end
 #endif
 ```
 
-#### NLPL Solutions
+#### NexusLang Solutions
 
 ```nlpl
 # Cross-platform by default
@@ -597,7 +597,7 @@ end
 
 ---
 
-## Part 2: NLPL Tooling Ecosystem
+## Part 2: NexusLang Tooling Ecosystem
 
 ### Development Tools
 
@@ -783,7 +783,7 @@ nlpl-memview program.nlpl
 **Interactive Display:**
 ```
 
- NLPL Memory Visualizer 
+ NexusLang Memory Visualizer 
 
  Stack (growing down) 
  
@@ -956,7 +956,7 @@ error: no matching function for call to 'std::map<std::__cxx11::basic_string<cha
 ... 30 more lines ...
 ```
 
-### NLPL Error
+### NexusLang Error
 ```
 Error: Dictionary key type mismatch
  at line 5, column 17
@@ -1017,7 +1017,7 @@ Debugging: ~2 hours (80%)
 Development: ~30 min (20%)
 ```
 
-### NLPL Workflow
+### NexusLang Workflow
 
 ```
 Write code (10 min)
@@ -1142,7 +1142,7 @@ Development: ~25 min (93%)
 
 ---
 
-## Conclusion: The NLPL Promise
+## Conclusion: The NexusLang Promise
 
 **For Beginners (Level 5):**
 - Write almost-English code

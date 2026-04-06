@@ -1,4 +1,4 @@
-# NLPL Current Status & Action Plan
+# NexusLang Current Status & Action Plan
 **Date:** February 3, 2026  
 **Analysis:** Comprehensive audit of implementation vs documentation
 
@@ -261,7 +261,7 @@ The core language is **production-ready** for many use cases:
 - Some tooling integration needs polish
 - LSP testing and validation
 
-**Bottom line:** NLPL could be released as v1.0 soon after:
+**Bottom line:** NexusLang could be released as v1.0 soon after:
 1. ~~Fixing pattern matching interpreter~~ ✅ DONE (Feb 3, 2026)
 2. ~~Verifying struct/union~~ ✅ DONE (Feb 3, 2026)
 3. Updating documentation to reflect reality

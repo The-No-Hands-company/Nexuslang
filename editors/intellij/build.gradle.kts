@@ -32,11 +32,11 @@ intellijPlatform {
         version = project.version.toString()
 
         description = """
-            Native support for the NLPL (Natural Language Programming Language) in IntelliJ-based IDEs.
+            Native support for the NexusLang (NexusLang) in IntelliJ-based IDEs.
 
             Features:
             - Syntax highlighting for .nlpl files
-            - LSP integration with the NLPL language server (nlpl lsp)
+            - LSP integration with the NexusLang language server (nlpl lsp)
             - File type recognition and icons
             - Code completion via LSP
             - Go to definition, find references

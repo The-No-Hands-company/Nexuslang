@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-nlpl-analyze - Static code analyzer for NLPL
+nlpl-analyze - Static code analyzer for NexusLang
 """
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent / 'src'))
 
-from nlpl.tools.analyzer import main
+from nexuslang.tools.analyzer import main
 
 if __name__ == '__main__':
     main()

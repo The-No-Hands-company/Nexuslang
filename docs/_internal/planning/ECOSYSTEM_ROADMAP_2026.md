@@ -1,4 +1,4 @@
-# NLPL Ecosystem Development Roadmap (2026-2027)
+# NexusLang Ecosystem Development Roadmap (2026-2027)
 
 **Date**: January 26, 2026  
 **Language Status**: 98-99% Complete ✅  
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-**The language itself is production-ready.** What follows is not "completing NLPL" but rather **building the ecosystem** that makes NLPL practical for specific domains.
+**The language itself is production-ready.** What follows is not "completing NLPL" but rather **building the ecosystem** that makes NexusLang practical for specific domains.
 
 **Philosophy**: Unity took 10 years, Unreal took 15 years, Godot took 8 years. We're not behind - we're focused on building a **solid foundation first**, then **ecosystem second**. This is the correct order.
 
@@ -542,12 +542,12 @@
 
 ## Comparison to Competition
 
-| Feature | NLPL (2027) | Godot 4 | Unity | Unreal 5 |
+| Feature | NexusLang (2027) | Godot 4 | Unity | Unreal 5 |
 |---------|-------------|---------|-------|----------|
 | **Language** | Natural English | GDScript | C# | C++/Blueprint |
 | **Rendering** | Vulkan/OpenGL | Vulkan/OpenGL | Custom | Custom |
 | **Physics** | Bullet (FFI) | Godot Physics | PhysX | Chaos |
-| **Scripting** | Native NLPL | GDScript | C# | Blueprint |
+| **Scripting** | Native NexusLang | GDScript | C# | Blueprint |
 | **Editor** | ImGui | Custom | Custom | Custom |
 | **Open Source** | ✅ | ✅ | ❌ | ✅ (engine) |
 | **Learning Curve** | **Easiest** | Easy | Medium | Hard |
@@ -590,7 +590,7 @@
 NLPL is no longer a "work in progress" language. It's a **production-ready foundation** for building domain-specific ecosystems. 
 
 The next 12 months are about:
-- ✅ **Proving** NLPL can build real applications
+- ✅ **Proving** NexusLang can build real applications
 - ✅ **Growing** a library ecosystem
 - ✅ **Attracting** contributors and users
 - ✅ **Shipping** games, tools, and systems software

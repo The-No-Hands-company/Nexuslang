@@ -2,13 +2,13 @@
 
 **Status**: ✅ **Production Ready** (February 2026)  
 **Complexity**: ⭐⭐⭐ (Advanced - IDE Integration)  
-**Prerequisites**: NLPL installed, IDE/editor with LSP support
+**Prerequisites**: NexusLang installed, IDE/editor with LSP support
 
 ---
 
 ## Overview
 
-The NLPL Language Server Protocol (LSP) integration provides modern IDE features for NLPL development:
+The NexusLang Language Server Protocol (LSP) integration provides modern IDE features for NexusLang development:
 
 - **Real-time error checking** - See syntax and type errors as you type
 - **Intelligent auto-completion** - Context-aware suggestions for keywords, functions, types
@@ -26,11 +26,11 @@ The NLPL Language Server Protocol (LSP) integration provides modern IDE features
 
 ## Quick Start (VS Code)
 
-### Step 1: Install NLPL
+### Step 1: Install NexusLang
 
 ```bash
 git clone https://github.com/Zajfan/NLPL.git
-cd NLPL
+cd NexusLang
 python src/main.py --version  # Verify installation
 ```
 
@@ -38,7 +38,7 @@ python src/main.py --version  # Verify installation
 
 **Option A: From Marketplace** (when published)
 ```
-Search "NLPL" in VS Code Extensions
+Search "NexusLang" in VS Code Extensions
 Click "Install"
 ```
 
@@ -52,14 +52,14 @@ code --install-extension .
 
 ### Step 3: Configure (Optional)
 
-Create `.vscode/settings.json` in your NLPL project:
+Create `.vscode/settings.json` in your NexusLang project:
 
 ```json
 {
-  "nlpl.languageServer.enabled": true,
-  "nlpl.languageServer.path": "/absolute/path/to/NLPL/src/nlpl_lsp.py",
-  "nlpl.trace.server": "verbose",
-  "nlpl.diagnostics.enable": true
+  "nexuslang.languageServer.enabled": true,
+  "nexuslang.languageServer.path": "/absolute/path/to/NexusLang/src/nxl_lsp.py",
+  "nexuslang.trace.server": "verbose",
+  "nexuslang.diagnostics.enable": true
 }
 ```
 
@@ -586,7 +586,7 @@ end
 
 `main.nlpl`:
 ```nlpl
-import utils from "utils.nlpl"
+import utils from "utils.nxl"
 
 set result to calculate with 10, 20  # References utils.calculate
 ```
@@ -614,13 +614,13 @@ set result to calculate with 10, 20  # References utils.calculate
 File: `main.nlpl`
 ```nlpl
 import math                        #  OK (stdlib)
-import utils from "utils.nlpl"     #  OK (file exists)
-import nonexistent from "fake.nlpl"  #  ERROR
+import utils from "utils.nxl"     #  OK (file exists)
+import nonexistent from "fake.nxl"  #  ERROR
 ```
 
 **Result**: Error diagnostic on line 3:
 ```
-Cannot find module 'fake.nlpl'
+Cannot find module 'fake.nxl'
 ```
 
 #### Workspace Symbol Search
@@ -656,11 +656,11 @@ Results:
 **Settings**:
 ```json
 {
-  "nlpl.languageServer.enabled": true,
-  "nlpl.languageServer.path": "/path/to/NLPL/src/nlpl_lsp.py",
-  "nlpl.diagnostics.enable": true,
-  "nlpl.completion.enable": true,
-  "nlpl.trace.server": "off",  // or "messages", "verbose"
+  "nexuslang.languageServer.enabled": true,
+  "nexuslang.languageServer.path": "/path/to/NexusLang/src/nxl_lsp.py",
+  "nexuslang.diagnostics.enable": true,
+  "nexuslang.completion.enable": true,
+  "nexuslang.trace.server": "off",  // or "messages", "verbose"
   "editor.quickSuggestions": {
     "other": true,
     "comments": false,
@@ -680,19 +680,19 @@ Results:
 local lspconfig = require('lspconfig')
 local configs = require('lspconfig.configs')
 
--- Define NLPL LSP
+-- Define NexusLang LSP
 if not configs.nlpl then
   configs.nlpl = {
     default_config = {
-      cmd = {'python3', '/path/to/NLPL/src/nlpl_lsp.py'},
+      cmd = {'python3', '/path/to/NexusLang/src/nxl_lsp.py'},
       filetypes = {'nlpl'},
-      root_dir = lspconfig.util.root_pattern('.git', '.nlpl'),
+      root_dir = lspconfig.util.root_pattern('.git', '.nxl'),
       settings = {},
     },
   }
 end
 
--- Setup NLPL LSP
+-- Setup NexusLang LSP
 lspconfig.nlpl.setup{
   on_attach = function(client, bufnr)
     -- Keybindings
@@ -712,7 +712,7 @@ vim.api.nvim_create_autocmd("FileType", {
   callback = function()
     vim.lsp.start({
       name = "nlpl",
-      cmd = {"python3", "/path/to/NLPL/src/nlpl_lsp.py"},
+      cmd = {"python3", "/path/to/NexusLang/src/nxl_lsp.py"},
     })
   end,
 })
@@ -737,13 +737,13 @@ vim.api.nvim_create_autocmd("FileType", {
 ;; In your init.el or .emacs
 (require 'lsp-mode)
 
-;; Define NLPL language
+;; Define NexusLang language
 (add-to-list 'lsp-language-id-configuration '(nlpl-mode . "nlpl"))
 
-;; Register NLPL LSP client
+;; Register NexusLang LSP client
 (lsp-register-client
  (make-lsp-client 
-  :new-connection (lsp-stdio-connection '("python3" "/path/to/NLPL/src/nlpl_lsp.py"))
+  :new-connection (lsp-stdio-connection '("python3" "/path/to/NexusLang/src/nxl_lsp.py"))
   :activation-fn (lsp-activate-on "nlpl")
   :major-modes '(nlpl-mode)
   :server-id 'nlpl-lsp))
@@ -777,8 +777,8 @@ vim.api.nvim_create_autocmd("FileType", {
   "clients": {
     "nlpl": {
       "enabled": true,
-      "command": ["python3", "/path/to/NLPL/src/nlpl_lsp.py"],
-      "selector": "source.nlpl",
+      "command": ["python3", "/path/to/NexusLang/src/nxl_lsp.py"],
+      "selector": "source.nxl",
       "languageId": "nlpl"
     }
   }
@@ -790,7 +790,7 @@ vim.api.nvim_create_autocmd("FileType", {
 ```yaml
 %YAML 1.2
 ---
-name: NLPL
+name: NexusLang
 file_extensions: [nlpl]
 scope: source.nlpl
 
@@ -824,7 +824,7 @@ contexts:
    python3 --version  # Must be 3.8+
    ```
 
-2. **Verify NLPL installation**:
+2. **Verify NexusLang installation**:
    ```bash
    cd /path/to/NLPL
    python3 src/main.py --version
@@ -832,12 +832,12 @@ contexts:
 
 3. **Check LSP server directly**:
    ```bash
-   python3 /path/to/NLPL/src/nlpl_lsp.py
+   python3 /path/to/NexusLang/src/nxl_lsp.py
    ```
    Should start without errors
 
 4. **Check logs** (VS Code):
-   - Output panel → NLPL Language Server
+   - Output panel → NexusLang Language Server
    - Or: `/tmp/nlpl-lsp.log`
 
 5. **Restart editor** after configuration changes
@@ -860,7 +860,7 @@ contexts:
 3. **Verify completion is enabled** (VS Code settings):
    ```json
    {
-     "nlpl.completion.enable": true,
+     "nexuslang.completion.enable": true,
      "editor.quickSuggestions": {
        "other": true
      }
@@ -882,7 +882,7 @@ contexts:
 2. **Check diagnostic settings** (VS Code):
    ```json
    {
-     "nlpl.diagnostics.enable": true
+     "nexuslang.diagnostics.enable": true
    }
    ```
 
@@ -983,7 +983,7 @@ Enable multi-file diagnostics in settings:
 
 ```json
 {
-  "nlpl.diagnostics.workspace": true
+  "nexuslang.diagnostics.workspace": true
 }
 ```
 
@@ -998,7 +998,7 @@ Enable semantic token coloring (coming soon):
 
 ```json
 {
-  "nlpl.semanticHighlighting.enable": true
+  "nexuslang.semanticHighlighting.enable": true
 }
 ```
 
@@ -1046,7 +1046,7 @@ python dev_tools/test_lsp_server.py
 **Expected output**:
 ```
 ======================================================================
- NLPL LSP Server - Comprehensive Test Suite
+ NexusLang LSP Server - Comprehensive Test Suite
 ======================================================================
 
 Test 1: Server Initialization
@@ -1082,13 +1082,13 @@ Test 7: Signature Help
 
 ## FAQ
 
-### Q: Does LSP work with NLPL interpreter or compiler?
+### Q: Does LSP work with NexusLang interpreter or compiler?
 
 **A**: LSP works with both. It uses the same parser/type checker as the interpreter, so diagnostics match runtime behavior exactly.
 
 ### Q: Can I use LSP without VS Code?
 
-**A**: Yes! NLPL LSP implements standard LSP protocol and works with any LSP-compatible editor (Neovim, Emacs, Sublime Text, Vim with coc.nvim, etc.)
+**A**: Yes! NexusLang LSP implements standard LSP protocol and works with any LSP-compatible editor (Neovim, Emacs, Sublime Text, Vim with coc.nvim, etc.)
 
 ### Q: Does LSP support debugging?
 
@@ -1099,9 +1099,9 @@ Test 7: Signature Help
 **A**: Configure in settings (VS Code):
 ```json
 {
-  "nlpl.diagnostics.unusedVariables": false,
-  "nlpl.diagnostics.typeErrors": true,
-  "nlpl.diagnostics.syntaxErrors": true
+  "nexuslang.diagnostics.unusedVariables": false,
+  "nexuslang.diagnostics.typeErrors": true,
+  "nexuslang.diagnostics.syntaxErrors": true
 }
 ```
 
@@ -1115,7 +1115,7 @@ Test 7: Signature Help
 
 ### Q: Is LSP required to use NLPL?
 
-**A**: No! You can write NLPL in any text editor and run programs with `python src/main.py program.nlpl`. LSP just makes development more convenient.
+**A**: No! You can write NexusLang in any text editor and run programs with `python src/main.py program.nlpl`. LSP just makes development more convenient.
 
 ---
 

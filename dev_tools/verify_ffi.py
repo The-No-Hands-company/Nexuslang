@@ -2,9 +2,9 @@ import os
 import subprocess
 import sys
 import textwrap
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.compiler import create_compiler, CompilationTarget
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.compiler import create_compiler, CompilationTarget
 
 def verify_ffi():
     # 1. Compile C library
@@ -18,9 +18,9 @@ def verify_ffi():
         
     cwd = os.getcwd()
     
-    # 2. Parse and compile NLPL
-    print("\nCompiling NLPL...")
-    with open('test_ffi.nlpl', 'r') as f:
+    # 2. Parse and compile NexusLang
+    print("\nCompiling NexusLang...")
+    with open('test_ffi.nxl', 'r') as f:
         source = f.read()
         
     try:

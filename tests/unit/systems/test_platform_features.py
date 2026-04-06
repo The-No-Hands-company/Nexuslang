@@ -15,18 +15,18 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.parser.ast import InlineAssembly, Program
-from nlpl.compiler.preprocessor import (
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.parser.ast import InlineAssembly, Program
+from nexuslang.compiler.preprocessor import (
     CompileTarget,
     host_target,
     evaluate_condition,
     preprocess_ast,
 )
-from nlpl.interpreter.interpreter import Interpreter
-from nlpl.runtime.runtime import Runtime
-from nlpl.stdlib import register_stdlib
+from nexuslang.interpreter.interpreter import Interpreter
+from nexuslang.runtime.runtime import Runtime
+from nexuslang.stdlib import register_stdlib
 
 
 # ---------------------------------------------------------------------------
@@ -39,13 +39,13 @@ def _parse(source: str) -> Program:
 
 
 def _run_src(source: str, target=None, capture_output=True):
-    """Execute NLPL source, optionally against a specific CompileTarget."""
+    """Execute NexusLang source, optionally against a specific CompileTarget."""
     if capture_output:
         buf = io.StringIO()
         old_stdout = sys.stdout
         sys.stdout = buf
     try:
-        from nlpl.main import run_program
+        from nexuslang.main import run_program
         run_program(source, type_check=True, target=target)
     finally:
         if capture_output:
@@ -233,7 +233,7 @@ class TestStaticPruning:
 
     def test_preprocess_ast_mutates_program(self):
         """preprocess_ast() strips ConditionalCompilationBlock nodes from AST."""
-        from nlpl.parser.ast import ConditionalCompilationBlock
+        from nexuslang.parser.ast import ConditionalCompilationBlock
         src = (
             'when target os is "this_os_does_not_exist_9999"\n'
             '    set dead to 1\n'
@@ -258,7 +258,7 @@ class TestStaticPruning:
 # ---------------------------------------------------------------------------
 
 class TestInlineAssemblyASTNode:
-    # Correct NLPL inline-assembly syntax: indented 'code' block, closed by a
+    # Correct NexusLang inline-assembly syntax: indented 'code' block, closed by a
     # single trailing 'end' at the asm level (no nested 'end' for the code block).
     _ASM_SIMPLE = 'asm\n    code\n        "nop"\nend\n'
     _ASM_ARCH = 'asm for arch "riscv64"\n    code\n        "add a0, a1, a2"\nend\n'
@@ -318,7 +318,7 @@ class TestLLVMArchRegisters:
     @staticmethod
     def _make_gen(arch: str):
         """Create an LLVMIRGenerator with target_arch forced to arch."""
-        from nlpl.compiler.backends.llvm_ir_generator import LLVMIRGenerator
+        from nexuslang.compiler.backends.llvm_ir_generator import LLVMIRGenerator
         gen = LLVMIRGenerator.__new__(LLVMIRGenerator)
         # Minimal attribute setup to avoid full __init__ overhead
         gen.target_arch = arch
@@ -406,7 +406,7 @@ class TestLLVMArchRegisters:
 class TestLLVMDangerousInstructions:
     @staticmethod
     def _make_gen(arch: str):
-        from nlpl.compiler.backends.llvm_ir_generator import LLVMIRGenerator
+        from nexuslang.compiler.backends.llvm_ir_generator import LLVMIRGenerator
         gen = LLVMIRGenerator.__new__(LLVMIRGenerator)
         gen.target_arch = arch
         return gen
@@ -466,7 +466,7 @@ class TestLLVMArchGuard:
 
     @staticmethod
     def _make_gen(arch: str):
-        from nlpl.compiler.backends.llvm_ir_generator import LLVMIRGenerator
+        from nexuslang.compiler.backends.llvm_ir_generator import LLVMIRGenerator
         gen = LLVMIRGenerator.__new__(LLVMIRGenerator)
         gen.target_arch = arch
         gen.ir_lines = []
@@ -475,7 +475,7 @@ class TestLLVMArchGuard:
     def test_arch_guard_mismatch_skips_node(self):
         """An InlineAssembly node with arch='riscv64' should not be emitted
         when target_arch is 'x86_64'."""
-        from nlpl.compiler.backends.llvm_ir_generator import LLVMIRGenerator
+        from nexuslang.compiler.backends.llvm_ir_generator import LLVMIRGenerator
         gen = self._make_gen("x86_64")
 
         # Build a minimal InlineAssembly node with arch guard
@@ -485,7 +485,7 @@ class TestLLVMArchGuard:
         # Replicate the dispatch logic from _generate_statement
         node_arch = getattr(node, 'arch', None)
         if node_arch is not None:
-            from nlpl.compiler.preprocessor import _ARCH_ALIASES as _PP_ARCH
+            from nexuslang.compiler.preprocessor import _ARCH_ALIASES as _PP_ARCH
             normalized = _PP_ARCH.get(node_arch.lower(), node_arch.lower())
             skipped = (normalized != gen.target_arch)
         else:
@@ -496,7 +496,7 @@ class TestLLVMArchGuard:
     def test_arch_guard_match_not_skipped(self):
         """An InlineAssembly node with arch='x86_64' should NOT be skipped
         when target_arch is 'x86_64'."""
-        from nlpl.compiler.backends.llvm_ir_generator import LLVMIRGenerator
+        from nexuslang.compiler.backends.llvm_ir_generator import LLVMIRGenerator
         gen = self._make_gen("x86_64")
 
         node = InlineAssembly("nop", arch="x86_64")
@@ -504,7 +504,7 @@ class TestLLVMArchGuard:
 
         node_arch = getattr(node, 'arch', None)
         if node_arch is not None:
-            from nlpl.compiler.preprocessor import _ARCH_ALIASES as _PP_ARCH
+            from nexuslang.compiler.preprocessor import _ARCH_ALIASES as _PP_ARCH
             normalized = _PP_ARCH.get(node_arch.lower(), node_arch.lower())
             skipped = (normalized != gen.target_arch)
         else:

@@ -1,9 +1,9 @@
 """
-Tests for NLPL 8.1 Metaprogramming:
+Tests for NexusLang 8.1 Metaprogramming:
 - Hygienic macros
 - Compile-time evaluation (comptime)
 - Code generation via decorators (@derive, @singleton, @cached_property, @pure, @once)
-- User-defined NLPL decorators
+- User-defined NexusLang decorators
 - Metaprogramming introspection stdlib functions
 """
 
@@ -17,13 +17,13 @@ if _SRC not in sys.path:
 
 
 def run(src):
-    """Run an NLPL program and return its result."""
-    from nlpl.main import run_program
+    """Run an NexusLang program and return its result."""
+    from nexuslang.main import run_program
     return run_program(src, type_check=False)
 
 
 def run_raises(src, exc_type=None):
-    """Run NLPL source, expecting an exception. Return the exception."""
+    """Run NexusLang source, expecting an exception. Return the exception."""
     with pytest.raises(exc_type or Exception) as exc_info:
         run(src)
     return exc_info.value
@@ -130,14 +130,14 @@ expand DOUBLE with num 6
         assert "12" in capsys.readouterr().out
 
     def test_macro_defined_in_registry(self):
-        from nlpl.main import run_program
-        from nlpl.interpreter.interpreter import Interpreter
-        from nlpl.runtime.runtime import Runtime
+        from nexuslang.main import run_program
+        from nexuslang.interpreter.interpreter import Interpreter
+        from nexuslang.runtime.runtime import Runtime
         runtime = Runtime()
-        from nlpl.stdlib import register_stdlib
+        from nexuslang.stdlib import register_stdlib
         register_stdlib(runtime)
-        from nlpl.parser.lexer import Lexer
-        from nlpl.parser.parser import Parser
+        from nexuslang.parser.lexer import Lexer
+        from nexuslang.parser.parser import Parser
         src = "macro MY_MACRO\n    set x to 1\nend\n"
         tokens = Lexer(src).tokenize()
         ast = Parser(tokens, source=src).parse()
@@ -152,7 +152,7 @@ expand DOUBLE with num 6
 
 class TestMacroHygiene:
     def test_macro_var_does_not_leak_to_caller(self):
-        from nlpl.errors import NLPLRuntimeError, NLPLNameError
+        from nexuslang.errors import NxlRuntimeError, NxlNameError
         # 'inner' is defined inside macro body; accessing it after should fail
         src = """
 macro SET_INNER
@@ -259,7 +259,7 @@ expand OUTER with w "hello"
 
 class TestMacroErrors:
     def test_undefined_macro_raises(self):
-        from nlpl.errors import NLPLRuntimeError
+        from nexuslang.errors import NxlRuntimeError
         with pytest.raises(Exception) as exc_info:
             run("expand UNDEFINED_MACRO")
         assert "UNDEFINED_MACRO" in str(exc_info.value) or "ndefined" in str(exc_info.value)
@@ -295,7 +295,7 @@ expand uppercase
             run(src)
 
     def test_error_message_mentions_macro_name(self):
-        from nlpl.errors import NLPLRuntimeError
+        from nexuslang.errors import NxlRuntimeError
         with pytest.raises(Exception) as exc_info:
             run("expand MY_UNKNOWN_MACRO")
         assert "MY_UNKNOWN_MACRO" in str(exc_info.value)
@@ -359,13 +359,13 @@ print text "pass"
         assert "pass" in capsys.readouterr().out
 
     def test_comptime_token_type_exists(self):
-        from nlpl.parser.lexer import TokenType
+        from nexuslang.parser.lexer import TokenType
         assert hasattr(TokenType, "COMPTIME")
 
     def test_comptime_expression_ast_node(self):
-        from nlpl.parser.ast import ComptimeExpression
-        from nlpl.parser.lexer import Lexer
-        from nlpl.parser.parser import Parser
+        from nexuslang.parser.ast import ComptimeExpression
+        from nexuslang.parser.lexer import Lexer
+        from nexuslang.parser.parser import Parser
         src = "comptime eval 5"
         tokens = Lexer(src).tokenize()
         ast = Parser(tokens, source=src).parse()
@@ -404,11 +404,11 @@ print text A plus B
         assert "3" in capsys.readouterr().out
 
     def test_comptime_const_in_registry(self):
-        from nlpl.runtime.runtime import Runtime
-        from nlpl.stdlib import register_stdlib
-        from nlpl.parser.lexer import Lexer
-        from nlpl.parser.parser import Parser
-        from nlpl.interpreter.interpreter import Interpreter
+        from nexuslang.runtime.runtime import Runtime
+        from nexuslang.stdlib import register_stdlib
+        from nexuslang.parser.lexer import Lexer
+        from nexuslang.parser.parser import Parser
+        from nexuslang.interpreter.interpreter import Interpreter
         src = "comptime const MY_CONST is 99\n"
         runtime = Runtime()
         register_stdlib(runtime)
@@ -437,18 +437,18 @@ print text check_limit(3)
         assert "True" in capsys.readouterr().out or "true" in capsys.readouterr().out
 
     def test_comptime_const_ast_node(self):
-        from nlpl.parser.ast import ComptimeConst
-        from nlpl.parser.lexer import Lexer
-        from nlpl.parser.parser import Parser
+        from nexuslang.parser.ast import ComptimeConst
+        from nexuslang.parser.lexer import Lexer
+        from nexuslang.parser.parser import Parser
         src = "comptime const ANSWER is 42"
         tokens = Lexer(src).tokenize()
         ast = Parser(tokens, source=src).parse()
         assert any(stmt.node_type == "comptime_const" for stmt in ast.statements)
 
     def test_comptime_const_name_captured(self):
-        from nlpl.parser.ast import ComptimeConst
-        from nlpl.parser.lexer import Lexer
-        from nlpl.parser.parser import Parser
+        from nexuslang.parser.ast import ComptimeConst
+        from nexuslang.parser.lexer import Lexer
+        from nexuslang.parser.parser import Parser
         src = "comptime const MYVAL is 7"
         tokens = Lexer(src).tokenize()
         ast_node = Parser(tokens, source=src).parse()
@@ -470,13 +470,13 @@ print text "passed"
         assert "passed" in capsys.readouterr().out
 
     def test_failing_assertion_raises(self):
-        from nlpl.errors import NLPLRuntimeError
+        from nexuslang.errors import NxlRuntimeError
         with pytest.raises(Exception) as exc_info:
             run("comptime assert 1 is equal to 2")
         assert exc_info.value is not None
 
     def test_failing_assertion_error_message(self):
-        from nlpl.errors import NLPLRuntimeError
+        from nexuslang.errors import NxlRuntimeError
         with pytest.raises(Exception) as exc_info:
             run('comptime assert 1 is equal to 2 message "values differ"')
         # Message should mention the custom text or "assertion"
@@ -499,9 +499,9 @@ print text "math ok"
         assert "math ok" in capsys.readouterr().out
 
     def test_comptime_assert_ast_node(self):
-        from nlpl.parser.ast import ComptimeAssert
-        from nlpl.parser.lexer import Lexer
-        from nlpl.parser.parser import Parser
+        from nexuslang.parser.ast import ComptimeAssert
+        from nexuslang.parser.lexer import Lexer
+        from nexuslang.parser.parser import Parser
         src = "comptime assert 1 is equal to 1"
         tokens = Lexer(src).tokenize()
         ast = Parser(tokens, source=src).parse()
@@ -563,11 +563,11 @@ validated(5)
 """)
 
     def test_singleton_decorator_exists_in_registry(self):
-        from nlpl.decorators import get_decorator
+        from nexuslang.decorators import get_decorator
         assert get_decorator("singleton") is not None
 
     def test_singleton_returns_same_instance(self):
-        from nlpl.decorators import singleton
+        from nexuslang.decorators import singleton
 
         call_count = [0]
 
@@ -582,7 +582,7 @@ validated(5)
         assert call_count[0] == 1
 
     def test_singleton_second_call_same_object(self):
-        from nlpl.decorators import singleton
+        from nexuslang.decorators import singleton
 
         @singleton
         def factory():
@@ -593,11 +593,11 @@ validated(5)
         assert a is b
 
     def test_cached_property_decorator_exists(self):
-        from nlpl.decorators import get_decorator
+        from nexuslang.decorators import get_decorator
         assert get_decorator("cached_property") is not None
 
     def test_pure_marks_function(self):
-        from nlpl.decorators import pure
+        from nexuslang.decorators import pure
 
         @pure
         def add(x, y):
@@ -606,7 +606,7 @@ validated(5)
         assert getattr(add, "_is_pure", False) is True
 
     def test_once_first_call_works(self):
-        from nlpl.decorators import once
+        from nexuslang.decorators import once
 
         @once
         def init():
@@ -616,7 +616,7 @@ validated(5)
         assert result == "initialized"
 
     def test_once_second_call_raises(self):
-        from nlpl.decorators import once
+        from nexuslang.decorators import once
 
         @once
         def setup():
@@ -629,11 +629,11 @@ validated(5)
 
 
 # ---------------------------------------------------------------------------
-# 8. User-Defined NLPL Decorators
+# 8. User-Defined NexusLang Decorators
 # ---------------------------------------------------------------------------
 
 class TestUserDefinedDecorators:
-    def test_nlpl_function_as_decorator(self, capsys):
+    def test_nxl_function_as_decorator(self, capsys):
         run("""
 function my_decorator with fn
     print text "decorated"
@@ -731,7 +731,7 @@ print text "both ok"
         assert out.count("logged") == 2
 
     def test_memoize_builtin_takes_priority(self):
-        # @memoize is a built-in; should work even if there's no NLPL function called memoize
+        # @memoize is a built-in; should work even if there's no NexusLang function called memoize
         run("""
 @memoize
 function cached with n as Integer returns Integer
@@ -780,11 +780,11 @@ print text double(5)
 
 class TestDeriveDecorator:
     def test_derive_debug_print_generates_to_string(self):
-        from nlpl.runtime.runtime import Runtime
-        from nlpl.stdlib import register_stdlib
-        from nlpl.parser.lexer import Lexer
-        from nlpl.parser.parser import Parser
-        from nlpl.interpreter.interpreter import Interpreter
+        from nexuslang.runtime.runtime import Runtime
+        from nexuslang.stdlib import register_stdlib
+        from nexuslang.parser.lexer import Lexer
+        from nexuslang.parser.parser import Parser
+        from nexuslang.interpreter.interpreter import Interpreter
         src = """
 @derive(DebugPrint)
 class Point
@@ -805,11 +805,11 @@ set p to new Point
         assert "to_string" in point_class._derived_methods
 
     def test_derive_debug_print_generates_debug_print(self):
-        from nlpl.runtime.runtime import Runtime
-        from nlpl.stdlib import register_stdlib
-        from nlpl.parser.lexer import Lexer
-        from nlpl.parser.parser import Parser
-        from nlpl.interpreter.interpreter import Interpreter
+        from nexuslang.runtime.runtime import Runtime
+        from nexuslang.stdlib import register_stdlib
+        from nexuslang.parser.lexer import Lexer
+        from nexuslang.parser.parser import Parser
+        from nexuslang.interpreter.interpreter import Interpreter
         src = """
 @derive(DebugPrint)
 class Item
@@ -825,11 +825,11 @@ end
         assert "debug_print" in interp.classes["Item"]._derived_methods
 
     def test_derive_equality_generates_equals(self):
-        from nlpl.runtime.runtime import Runtime
-        from nlpl.stdlib import register_stdlib
-        from nlpl.parser.lexer import Lexer
-        from nlpl.parser.parser import Parser
-        from nlpl.interpreter.interpreter import Interpreter
+        from nexuslang.runtime.runtime import Runtime
+        from nexuslang.stdlib import register_stdlib
+        from nexuslang.parser.lexer import Lexer
+        from nexuslang.parser.parser import Parser
+        from nexuslang.interpreter.interpreter import Interpreter
         src = """
 @derive(Equality)
 class Box
@@ -845,12 +845,12 @@ end
         assert "equals" in interp.classes["Box"]._derived_methods
 
     def test_derive_equality_equals_true_for_same_props(self):
-        from nlpl.runtime.runtime import Runtime
-        from nlpl.stdlib import register_stdlib
-        from nlpl.parser.lexer import Lexer
-        from nlpl.parser.parser import Parser
-        from nlpl.interpreter.interpreter import Interpreter
-        from nlpl.runtime.runtime import Object
+        from nexuslang.runtime.runtime import Runtime
+        from nexuslang.stdlib import register_stdlib
+        from nexuslang.parser.lexer import Lexer
+        from nexuslang.parser.parser import Parser
+        from nexuslang.interpreter.interpreter import Interpreter
+        from nexuslang.runtime.runtime import Object
         src = """
 @derive(Equality)
 class Val
@@ -871,12 +871,12 @@ end
         assert equals_fn(a, b) is True
 
     def test_derive_equality_equals_false_for_diff_props(self):
-        from nlpl.runtime.runtime import Runtime
-        from nlpl.stdlib import register_stdlib
-        from nlpl.parser.lexer import Lexer
-        from nlpl.parser.parser import Parser
-        from nlpl.interpreter.interpreter import Interpreter
-        from nlpl.runtime.runtime import Object
+        from nexuslang.runtime.runtime import Runtime
+        from nexuslang.stdlib import register_stdlib
+        from nexuslang.parser.lexer import Lexer
+        from nexuslang.parser.parser import Parser
+        from nexuslang.interpreter.interpreter import Interpreter
+        from nexuslang.runtime.runtime import Object
         src = """
 @derive(Equality)
 class Num
@@ -897,12 +897,12 @@ end
         assert equals_fn(a, b) is False
 
     def test_derive_clone_generates_clone(self):
-        from nlpl.runtime.runtime import Runtime
-        from nlpl.stdlib import register_stdlib
-        from nlpl.parser.lexer import Lexer
-        from nlpl.parser.parser import Parser
-        from nlpl.interpreter.interpreter import Interpreter
-        from nlpl.runtime.runtime import Object
+        from nexuslang.runtime.runtime import Runtime
+        from nexuslang.stdlib import register_stdlib
+        from nexuslang.parser.lexer import Lexer
+        from nexuslang.parser.parser import Parser
+        from nexuslang.interpreter.interpreter import Interpreter
+        from nexuslang.runtime.runtime import Object
         src = """
 @derive(Clone)
 class Sample
@@ -922,12 +922,12 @@ end
         assert b is not a
 
     def test_derive_hash_generates_hash_code(self):
-        from nlpl.runtime.runtime import Runtime
-        from nlpl.stdlib import register_stdlib
-        from nlpl.parser.lexer import Lexer
-        from nlpl.parser.parser import Parser
-        from nlpl.interpreter.interpreter import Interpreter
-        from nlpl.runtime.runtime import Object
+        from nexuslang.runtime.runtime import Runtime
+        from nexuslang.stdlib import register_stdlib
+        from nexuslang.parser.lexer import Lexer
+        from nexuslang.parser.parser import Parser
+        from nexuslang.interpreter.interpreter import Interpreter
+        from nexuslang.runtime.runtime import Object
         src = """
 @derive(Hash)
 class Key
@@ -947,12 +947,12 @@ end
         assert isinstance(h, int)
 
     def test_derive_default_generates_default(self):
-        from nlpl.runtime.runtime import Runtime
-        from nlpl.stdlib import register_stdlib
-        from nlpl.parser.lexer import Lexer
-        from nlpl.parser.parser import Parser
-        from nlpl.interpreter.interpreter import Interpreter
-        from nlpl.runtime.runtime import Object
+        from nexuslang.runtime.runtime import Runtime
+        from nexuslang.stdlib import register_stdlib
+        from nexuslang.parser.lexer import Lexer
+        from nexuslang.parser.parser import Parser
+        from nexuslang.interpreter.interpreter import Interpreter
+        from nexuslang.runtime.runtime import Object
         src = """
 @derive(Default)
 class Config
@@ -974,11 +974,11 @@ end
 
 class TestMetaprogrammingStdlib:
     def _make_interp(self, src):
-        from nlpl.runtime.runtime import Runtime
-        from nlpl.stdlib import register_stdlib
-        from nlpl.parser.lexer import Lexer
-        from nlpl.parser.parser import Parser
-        from nlpl.interpreter.interpreter import Interpreter
+        from nexuslang.runtime.runtime import Runtime
+        from nexuslang.stdlib import register_stdlib
+        from nexuslang.parser.lexer import Lexer
+        from nexuslang.parser.parser import Parser
+        from nexuslang.interpreter.interpreter import Interpreter
         runtime = Runtime()
         register_stdlib(runtime)
         tokens = Lexer(src).tokenize()
@@ -1044,8 +1044,8 @@ class TestMetaprogrammingStdlib:
 
 class TestParsingComptime:
     def _parse(self, src):
-        from nlpl.parser.lexer import Lexer
-        from nlpl.parser.parser import Parser
+        from nexuslang.parser.lexer import Lexer
+        from nexuslang.parser.parser import Parser
         tokens = Lexer(src).tokenize()
         return Parser(tokens, source=src).parse()
 
@@ -1070,7 +1070,7 @@ class TestParsingComptime:
         assert "comptime_expression" in node_types
 
     def test_comptime_token_type_in_lexer(self):
-        from nlpl.parser.lexer import TokenType, Lexer
+        from nexuslang.parser.lexer import TokenType, Lexer
         tokens = Lexer("comptime const X is 1").tokenize()
         token_types = [t.type for t in tokens]
         assert TokenType.COMPTIME in token_types

@@ -1,4 +1,4 @@
-# NLPL Implementation Status
+# NexusLang Implementation Status
 
 **Last Updated:** February 3, 2026  
 **Version:** Pre-1.0 (Release Candidate)
@@ -237,7 +237,7 @@ NLPL is a **production-ready** general-purpose programming language with:
 ## Testing Status ✅ COMPREHENSIVE
 
 ### Test Programs
-- **409 NLPL test programs** organized by type:
+- **409 NexusLang test programs** organized by type:
   - `test_programs/unit/` - Single feature tests
   - `test_programs/integration/` - Multi-feature tests
   - `test_programs/regression/` - Bug fix validation
@@ -248,7 +248,7 @@ NLPL is a **production-ready** general-purpose programming language with:
 
 ### Examples
 - **24+ tutorial programs** demonstrating all major features
-- Numbered by complexity (01_basic_concepts.nlpl → 24_struct_and_union.nlpl)
+- Numbered by complexity (01_basic_concepts.nlpl → 24_struct_and_union.nxl)
 
 ### Recent Test Additions (Feb 3, 2026)
 - ✅ Pattern matching tests (5/5 passing)
@@ -261,10 +261,10 @@ NLPL is a **production-ready** general-purpose programming language with:
 ## Error Handling ✅ EXCELLENT
 
 ### Enhanced Error System
-- [x] `NLPLSyntaxError` - Fuzzy matching for typos with suggestions
-- [x] `NLPLRuntimeError` - Stack traces with variable context
-- [x] `NLPLNameError` - "Did you mean" suggestions for undefined names
-- [x] `NLPLTypeError` - Type mismatch details (expected vs actual)
+- [x] `NxlSyntaxError` - Fuzzy matching for typos with suggestions
+- [x] `NxlRuntimeError` - Stack traces with variable context
+- [x] `NxlNameError` - "Did you mean" suggestions for undefined names
+- [x] `NxlTypeError` - Type mismatch details (expected vs actual)
 - [x] Caret pointers showing exact error location
 - [x] Contextual suggestions based on error type
 
@@ -332,7 +332,7 @@ NLPL is a **production-ready** general-purpose programming language with:
 ### Current Limitations
 1. **offsetof operator** - Not implemented (OffsetofExpression exists in AST)
 2. **Package manager** - Not yet implemented
-3. **Self-hosting** - NLPL compiler not yet written in NLPL
+3. **Self-hosting** - NexusLang compiler not yet written in NexusLang
 4. **Web framework** - Planned but not started
 5. **JIT compilation** - Infrastructure exists, not fully integrated
 6. **LSP validation** - Implementation exists but needs testing
@@ -371,7 +371,7 @@ NLPL is a **production-ready** general-purpose programming language with:
 - Self-hosting compiler
 
 ### Target Release Date
-**Q2 2026** - NLPL is very close to v1.0!
+**Q2 2026** - NexusLang is very close to v1.0!
 
 Most technical work is complete. The language is production-ready for:
 - System programming
@@ -420,14 +420,14 @@ Most technical work is complete. The language is production-ready for:
 pytest tests/
 
 # Run specific feature tests
-python -m nlpl.main test_programs/integration/pattern_matching_simple.nlpl
-python -m nlpl.main test_programs/integration/features/struct_union.nlpl
+python -m nexuslang.main test_programs/integration/pattern_matching_simple.nlpl
+python -m nexuslang.main test_programs/integration/features/struct_union.nlpl
 
 # Run with type checking
-python -m nlpl.main program.nlpl
+python -m nexuslang.main program.nlpl
 
 # Run without type checking
-python -m nlpl.main program.nlpl --no-type-check
+python -m nexuslang.main program.nlpl --no-type-check
 ```
 
 ### Check Implementation
@@ -640,7 +640,7 @@ Test 7: Signature Help                 ✓ PASS
 | Go-to-Definition | ✅ Working | Accurate positioning |
 | Signature Help | ✅ Working | Parameter hints |
 | Code Actions | ✅ Working | 3 quick fixes implemented |
-| Formatting | ✅ Working | Basic NLPL formatting |
+| Formatting | ✅ Working | Basic NexusLang formatting |
 | Workspace Symbols | ✅ Working | Cross-file search |
 | Rename | ⏳ Planned | Post-v1.0 |
 | References | ⏳ Planned | Post-v1.0 |
@@ -672,4 +672,4 @@ Test 7: Signature Help                 ✓ PASS
 - More stdlib modules
 - ⏳ Enhanced tooling (post-1.0)
 
-**Bottom Line:** NLPL is ready for serious use. Only documentation and tooling polish remain before v1.0 release!
+**Bottom Line:** NexusLang is ready for serious use. Only documentation and tooling polish remain before v1.0 release!

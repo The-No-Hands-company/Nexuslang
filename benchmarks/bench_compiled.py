@@ -11,7 +11,7 @@ Usage:
     .venv/bin/python benchmarks/bench_compiled.py [--runs N] [--update-json]
 
 Output:
-    Prints a markdown-style table comparing compiled NLPL vs interpreter vs C.
+    Prints a markdown-style table comparing compiled NexusLang vs interpreter vs C.
     With --update-json, writes results into benchmarks/perf-baseline.json.
 """
 
@@ -28,9 +28,9 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "src"))
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.compiler.backends.llvm_ir_generator import LLVMIRGenerator
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.compiler.backends.llvm_ir_generator import LLVMIRGenerator
 
 
 # ---------------------------------------------------------------------------
@@ -41,7 +41,7 @@ BENCHMARKS = [
     {
         "key": "fibonacci_iterative",
         "name": "Fibonacci(1000) iterative",
-        "nlpl_file": REPO / "benchmarks" / "bench_fibonacci.nlpl",
+        "nxl_file": REPO / "benchmarks" / "bench_fibonacci.nxl",
         "c_o3_binary": REPO / "benchmarks" / "bench_fib_c_o3",
         "c_o0_binary": REPO / "benchmarks" / "bench_fib_c_o0",
         "expected_output_contains": "817770325994397771",
@@ -49,7 +49,7 @@ BENCHMARKS = [
     {
         "key": "matrix_sum",
         "name": "Matrix sum 200x200",
-        "nlpl_file": REPO / "benchmarks" / "bench_matrix.nlpl",
+        "nxl_file": REPO / "benchmarks" / "bench_matrix.nxl",
         "c_o3_binary": REPO / "benchmarks" / "bench_matrix_c_o3",
         "c_o0_binary": REPO / "benchmarks" / "bench_matrix_c_o0",
         "expected_output_contains": "799980000",
@@ -57,7 +57,7 @@ BENCHMARKS = [
     {
         "key": "sieve_of_eratosthenes",
         "name": "Sieve of Eratosthenes (limit=1000)",
-        "nlpl_file": REPO / "benchmarks" / "bench_sieve.nlpl",
+        "nxl_file": REPO / "benchmarks" / "bench_sieve.nxl",
         "c_o3_binary": REPO / "benchmarks" / "bench_sieve_c_o3",
         "c_o0_binary": REPO / "benchmarks" / "bench_sieve_c_o0",
         "expected_output_contains": "168",
@@ -100,8 +100,8 @@ def measure_binary(binary_path: Path, runs: int = 10) -> dict:
     }
 
 
-def compile_nlpl_to_binary(source_path: Path, opt_level: int, tmpdir: str) -> tuple[bool, Path, str]:
-    """Compile an NLPL source file through the LLVM backend.
+def compile_nxl_to_binary(source_path: Path, opt_level: int, tmpdir: str) -> tuple[bool, Path, str]:
+    """Compile an NexusLang source file through the LLVM backend.
 
     Returns (success, exe_path, error_message).
     """
@@ -180,11 +180,11 @@ def measure_interpreter(source_path: Path, runs: int = 5) -> dict:
 def run_all(runs: int, update_json: bool, verbose: bool) -> dict:
     results = {}
 
-    with tempfile.TemporaryDirectory(prefix="nlpl_bench_") as tmpdir:
+    with tempfile.TemporaryDirectory(prefix="nxl_bench_") as tmpdir:
         for bench in BENCHMARKS:
             key = bench["key"]
             name = bench["name"]
-            nlpl_file = bench["nlpl_file"]
+            nxl_file = bench["nxl_file"]
             c_o3_bin = bench["c_o3_binary"]
             c_o0_bin = bench["c_o0_binary"]
             expected = bench["expected_output_contains"]
@@ -211,7 +211,7 @@ def run_all(runs: int, update_json: bool, verbose: bool) -> dict:
 
             # -- Interpreter timing  ------------------------------------------
             print(f"  Measuring interpreter ({min(runs, 5)} runs)... ", end="", flush=True)
-            interp_stats = measure_interpreter(nlpl_file, runs=min(runs, 5))
+            interp_stats = measure_interpreter(nxl_file, runs=min(runs, 5))
             if "error" in interp_stats:
                 print(f"FAILED: {interp_stats['error']}")
                 entry["interpreter_error"] = interp_stats["error"]
@@ -220,11 +220,11 @@ def run_all(runs: int, update_json: bool, verbose: bool) -> dict:
                 entry["interpreter_stdout"] = interp_stats["stdout"]
                 print(f"{interp_stats['median_ms']:.1f} ms  output: {interp_stats['stdout'][:60]!r}")
 
-            # -- Compiled NLPL timings ----------------------------------------
+            # -- Compiled NexusLang timings ----------------------------------------
             for opt_level in [0, 3]:
                 label = f"compiled_O{opt_level}"
-                print(f"  Compiling NLPL -O{opt_level}... ", end="", flush=True)
-                ok, exe_path, err = compile_nlpl_to_binary(nlpl_file, opt_level, tmpdir)
+                print(f"  Compiling NexusLang -O{opt_level}... ", end="", flush=True)
+                ok, exe_path, err = compile_nxl_to_binary(nxl_file, opt_level, tmpdir)
                 if not ok:
                     print(f"FAILED: {err}")
                     entry[f"{label}_error"] = err
@@ -279,7 +279,7 @@ def run_all(runs: int, update_json: bool, verbose: bool) -> dict:
 
 def print_summary_table(results: dict):
     print(f"\n\n{'='*80}")
-    print("SUMMARY: Compiled NLPL vs Interpreter vs C -O3")
+    print("SUMMARY: Compiled NexusLang vs Interpreter vs C -O3")
     print(f"{'='*80}")
     print(f"{'Benchmark':<32} {'Interp(ms)':>12} {'Comp-O0(ms)':>12} {'Comp-O3(ms)':>12} {'C-O3(ms)':>10} {'Comp-O3 vs C':>14}")
     print(f"{'-'*80}")

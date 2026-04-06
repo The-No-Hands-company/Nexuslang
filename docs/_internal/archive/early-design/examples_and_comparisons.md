@@ -1,6 +1,6 @@
-# Natural Language Programming Language (NLPL) Examples and Comparisons
+# NexusLang (NexusLang) Examples and Comparisons
 
-This document provides concrete examples of how programs would be written in the proposed Natural Language Programming Language (NLPL) compared to their C++ equivalents. These examples demonstrate the readability, expressiveness, and power of NLPL while showing how it maintains the capabilities of C++.
+This document provides concrete examples of how programs would be written in the proposed NexusLang (NexusLang) compared to their C++ equivalents. These examples demonstrate the readability, expressiveness, and power of NexusLang while showing how it maintains the capabilities of C++.
 
 ## Basic Examples
 
@@ -613,19 +613,19 @@ Display "Final counter value: " followed by counter.
 
 ## Comparison Summary
 
-These examples demonstrate several key advantages of NLPL over traditional C++:
+These examples demonstrate several key advantages of NexusLang over traditional C++:
 
-1. **Reduced Boilerplate**: NLPL eliminates the need for header includes, main function declarations, and return statements, focusing on the actual logic.
+1. **Reduced Boilerplate**: NexusLang eliminates the need for header includes, main function declarations, and return statements, focusing on the actual logic.
 
-2. **Natural Readability**: NLPL code reads like English prose, making it accessible to non-programmers while maintaining the precision needed for programming.
+2. **Natural Readability**: NexusLang code reads like English prose, making it accessible to non-programmers while maintaining the precision needed for programming.
 
-3. **Flexible Expression**: NLPL allows multiple ways to express the same operation, accommodating different writing styles and preferences.
+3. **Flexible Expression**: NexusLang allows multiple ways to express the same operation, accommodating different writing styles and preferences.
 
 4. **Implicit Simplifications**: Common operations like displaying text or iterating through collections are simplified with more natural constructs.
 
-5. **Maintained Power**: Despite its natural language syntax, NLPL retains all the power of C++, including object-oriented programming, memory management, and multithreading.
+5. **Maintained Power**: Despite its natural language syntax, NexusLang retains all the power of C++, including object-oriented programming, memory management, and multithreading.
 
-The examples also show how NLPL handles various programming paradigms:
+The examples also show how NexusLang handles various programming paradigms:
 
 - **Procedural Programming**: Basic operations, functions, and control flow
 - **Object-Oriented Programming**: Classes, methods, and inheritance

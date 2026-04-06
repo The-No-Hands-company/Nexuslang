@@ -1,5 +1,5 @@
 """
-Tests for the NLPL coverage reporting system.
+Tests for the NexusLang coverage reporting system.
 
 Covers:
   - FileCoverage data model and properties
@@ -22,7 +22,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 
-from nlpl.tooling.coverage import (
+from nexuslang.tooling.coverage import (
     CoverageCollector,
     CoverageReport,
     FileCoverage,
@@ -37,7 +37,7 @@ from nlpl.tooling.coverage import (
 
 
 def _make_file_coverage(
-    path: str = "test.nlpl",
+    path: str = "test.nxl",
     total: int = 10,
     executable: Set[int] = frozenset({1, 2, 3, 4, 5}),
     hit: Set[int] = frozenset({1, 2, 3}),
@@ -124,8 +124,8 @@ class TestFileCoverage:
         assert fc.total_lines == 20
 
     def test_path_stored(self):
-        fc = _make_file_coverage(path="/some/path.nlpl")
-        assert fc.path == "/some/path.nlpl"
+        fc = _make_file_coverage(path="/some/path.nxl")
+        assert fc.path == "/some/path.nxl"
 
 
 # ===========================================================================
@@ -135,20 +135,20 @@ class TestFileCoverage:
 
 class TestCoverageReport:
     def test_total_executable_sums_files(self):
-        fc1 = _make_file_coverage("a.nlpl", executable={1, 2, 3})
-        fc2 = _make_file_coverage("b.nlpl", executable={1, 2})
+        fc1 = _make_file_coverage("a.nxl", executable={1, 2, 3})
+        fc2 = _make_file_coverage("b.nxl", executable={1, 2})
         report = _make_report(fc1, fc2)
         assert report.total_executable() == 5
 
     def test_total_covered_sums_files(self):
-        fc1 = _make_file_coverage("a.nlpl", executable={1, 2, 3}, hit={1, 2})
-        fc2 = _make_file_coverage("b.nlpl", executable={1, 2}, hit={1})
+        fc1 = _make_file_coverage("a.nxl", executable={1, 2, 3}, hit={1, 2})
+        fc2 = _make_file_coverage("b.nxl", executable={1, 2}, hit={1})
         report = _make_report(fc1, fc2)
         assert report.total_covered() == 3
 
     def test_total_pct_correct(self):
-        fc1 = _make_file_coverage("a.nlpl", executable={1, 2, 3, 4}, hit={1, 2})
-        fc2 = _make_file_coverage("b.nlpl", executable={1, 2}, hit={1, 2})
+        fc1 = _make_file_coverage("a.nxl", executable={1, 2, 3, 4}, hit={1, 2})
+        fc2 = _make_file_coverage("b.nxl", executable={1, 2}, hit={1, 2})
         report = _make_report(fc1, fc2)
         # 4 out of 6 = 66.67%
         assert report.total_pct() == pytest.approx(4 / 6 * 100)
@@ -162,9 +162,9 @@ class TestCoverageReport:
         assert report.generated_at == "2026-02-27T12:00:00"
 
     def test_files_dict_accessible(self):
-        fc = _make_file_coverage("x.nlpl")
+        fc = _make_file_coverage("x.nxl")
         report = _make_report(fc)
-        assert "x.nlpl" in report.files
+        assert "x.nxl" in report.files
 
 
 # ===========================================================================
@@ -174,18 +174,18 @@ class TestCoverageReport:
 
 class TestCoverageReportSummary:
     def test_summary_contains_total_row(self):
-        fc = _make_file_coverage("a.nlpl", executable={1, 2, 3}, hit={1})
+        fc = _make_file_coverage("a.nxl", executable={1, 2, 3}, hit={1})
         report = _make_report(fc)
         summary = report.summary()
         assert "TOTAL" in summary
 
     def test_summary_contains_file_name(self):
-        fc = _make_file_coverage("myfile.nlpl", executable={1, 2}, hit={1})
+        fc = _make_file_coverage("myfile.nxl", executable={1, 2}, hit={1})
         report = _make_report(fc)
-        assert "myfile.nlpl" in report.summary()
+        assert "myfile.nxl" in report.summary()
 
     def test_summary_contains_coverage_percentage(self):
-        fc = _make_file_coverage("f.nlpl", executable={1, 2, 3, 4}, hit={1, 2, 3, 4})
+        fc = _make_file_coverage("f.nxl", executable={1, 2, 3, 4}, hit={1, 2, 3, 4})
         report = _make_report(fc)
         assert "100%" in report.summary()
 
@@ -212,38 +212,38 @@ class TestCoverageReportJson:
         assert isinstance(result, str)
 
     def test_to_json_has_meta_key(self):
-        fc = _make_file_coverage("a.nlpl", executable={1, 2}, hit={1})
+        fc = _make_file_coverage("a.nxl", executable={1, 2}, hit={1})
         report = _make_report(fc)
         data = json.loads(report.to_json())
         assert "meta" in data
 
     def test_to_json_has_files_key(self):
-        fc = _make_file_coverage("a.nlpl", executable={1, 2}, hit={1})
+        fc = _make_file_coverage("a.nxl", executable={1, 2}, hit={1})
         report = _make_report(fc)
         data = json.loads(report.to_json())
         assert "files" in data
 
     def test_to_json_meta_pct_correct(self):
-        fc = _make_file_coverage("a.nlpl", executable={1, 2}, hit={1})
+        fc = _make_file_coverage("a.nxl", executable={1, 2}, hit={1})
         report = _make_report(fc)
         data = json.loads(report.to_json())
         assert data["meta"]["total_pct"] == pytest.approx(50.0, abs=0.1)
 
     def test_to_json_hit_lines_sorted(self):
-        fc = _make_file_coverage("a.nlpl", executable={1, 2, 3, 4}, hit={4, 1, 2})
+        fc = _make_file_coverage("a.nxl", executable={1, 2, 3, 4}, hit={4, 1, 2})
         report = _make_report(fc)
         data = json.loads(report.to_json())
-        hit = data["files"]["a.nlpl"]["hit"]
+        hit = data["files"]["a.nxl"]["hit"]
         assert hit == sorted(hit)
 
     def test_to_json_missed_lines_correct(self):
-        fc = _make_file_coverage("a.nlpl", executable={1, 2, 3}, hit={1, 2})
+        fc = _make_file_coverage("a.nxl", executable={1, 2, 3}, hit={1, 2})
         report = _make_report(fc)
         data = json.loads(report.to_json())
-        assert data["files"]["a.nlpl"]["missed"] == [3]
+        assert data["files"]["a.nxl"]["missed"] == [3]
 
     def test_write_json_creates_file(self, tmp_path):
-        fc = _make_file_coverage("f.nlpl", executable={1}, hit={1})
+        fc = _make_file_coverage("f.nxl", executable={1}, hit={1})
         report = _make_report(fc)
         out = str(tmp_path / "cov.json")
         report.write_json(out)
@@ -259,10 +259,10 @@ class TestCoverageReportJson:
         assert os.path.exists(out)
 
     def test_to_json_executable_list_sorted(self):
-        fc = _make_file_coverage("a.nlpl", executable={5, 1, 3}, hit=set())
+        fc = _make_file_coverage("a.nxl", executable={5, 1, 3}, hit=set())
         report = _make_report(fc)
         data = json.loads(report.to_json())
-        exe = data["files"]["a.nlpl"]["executable"]
+        exe = data["files"]["a.nxl"]["executable"]
         assert exe == sorted(exe)
 
 
@@ -273,20 +273,20 @@ class TestCoverageReportJson:
 
 class TestCoverageReportHtml:
     def test_write_html_creates_index(self, tmp_path):
-        fc = _make_file_coverage("a.nlpl", executable={1}, hit={1})
+        fc = _make_file_coverage("a.nxl", executable={1}, hit={1})
         report = _make_report(fc)
         report.write_html(str(tmp_path))
         assert (tmp_path / "index.html").exists()
 
     def test_write_html_creates_css(self, tmp_path):
-        fc = _make_file_coverage("a.nlpl", executable={1}, hit={1})
+        fc = _make_file_coverage("a.nxl", executable={1}, hit={1})
         report = _make_report(fc)
         report.write_html(str(tmp_path))
         assert (tmp_path / "coverage.css").exists()
 
     def test_write_html_creates_per_file_page(self, tmp_path):
         fc = FileCoverage(
-            path=str(tmp_path / "prog.nlpl"),
+            path=str(tmp_path / "prog.nxl"),
             total_lines=3,
             executable_lines={1, 2},
             hit_lines={1},
@@ -298,7 +298,7 @@ class TestCoverageReportHtml:
         assert len(html_files) >= 2  # index.html + one per-file page
 
     def test_index_html_contains_file_link(self, tmp_path):
-        fc = _make_file_coverage("mymodule.nlpl", executable={1}, hit={1})
+        fc = _make_file_coverage("mymodule.nxl", executable={1}, hit={1})
         report = _make_report(fc)
         report.write_html(str(tmp_path))
         index_content = (tmp_path / "index.html").read_text()
@@ -306,7 +306,7 @@ class TestCoverageReportHtml:
 
     def test_write_html_creates_output_dir(self, tmp_path):
         subdir = tmp_path / "new_dir"
-        fc = _make_file_coverage("a.nlpl", executable={1}, hit=set())
+        fc = _make_file_coverage("a.nxl", executable={1}, hit=set())
         report = _make_report(fc)
         report.write_html(str(subdir))
         assert subdir.exists()
@@ -436,26 +436,26 @@ class TestCoverageCollector:
     def test_record_adds_line(self):
         col = CoverageCollector()
         col.start()
-        col.record("f.nlpl", 5)
-        assert 5 in col._hits.get("f.nlpl", set())
+        col.record("f.nxl", 5)
+        assert 5 in col._hits.get("f.nxl", set())
 
     def test_record_ignores_zero_line(self):
         col = CoverageCollector()
         col.start()
-        col.record("f.nlpl", 0)
-        assert "f.nlpl" not in col._hits
+        col.record("f.nxl", 0)
+        assert "f.nxl" not in col._hits
 
     def test_record_ignores_negative_line(self):
         col = CoverageCollector()
         col.start()
-        col.record("f.nlpl", -3)
-        assert "f.nlpl" not in col._hits
+        col.record("f.nxl", -3)
+        assert "f.nxl" not in col._hits
 
     def test_record_ignores_when_inactive(self):
         col = CoverageCollector()
         # Not started — _active is False
-        col.record("f.nlpl", 1)
-        assert "f.nlpl" not in col._hits
+        col.record("f.nxl", 1)
+        assert "f.nxl" not in col._hits
 
     def test_start_sets_active(self):
         col = CoverageCollector()
@@ -472,35 +472,35 @@ class TestCoverageCollector:
         col = CoverageCollector()
         col.start()
         col.stop()
-        col.record("f.nlpl", 5)
-        assert "f.nlpl" not in col._hits
+        col.record("f.nxl", 5)
+        assert "f.nxl" not in col._hits
 
     def test_different_files_tracked_separately(self):
         col = CoverageCollector()
         col.start()
-        col.record("a.nlpl", 1)
-        col.record("b.nlpl", 2)
-        assert 1 in col._hits["a.nlpl"]
-        assert 2 in col._hits["b.nlpl"]
-        assert "b.nlpl" not in col._hits.get("a.nlpl", {})
+        col.record("a.nxl", 1)
+        col.record("b.nxl", 2)
+        assert 1 in col._hits["a.nxl"]
+        assert 2 in col._hits["b.nxl"]
+        assert "b.nxl" not in col._hits.get("a.nxl", {})
 
     def test_same_line_recorded_once(self):
         col = CoverageCollector()
         col.start()
-        col.record("f.nlpl", 3)
-        col.record("f.nlpl", 3)
-        assert col._hits["f.nlpl"] == {3}
+        col.record("f.nxl", 3)
+        col.record("f.nxl", 3)
+        assert col._hits["f.nxl"] == {3}
 
     def test_multiple_lines_per_file(self):
         col = CoverageCollector()
         col.start()
         for line in [1, 3, 5, 7]:
-            col.record("f.nlpl", line)
-        assert col._hits["f.nlpl"] == {1, 3, 5, 7}
+            col.record("f.nxl", line)
+        assert col._hits["f.nxl"] == {1, 3, 5, 7}
 
     def test_build_report_single_path_in_memory(self, tmp_path):
         src = "set x to 1\n# comment\nprint text x\n"
-        src_path = str(tmp_path / "prog.nlpl")
+        src_path = str(tmp_path / "prog.nxl")
         Path(src_path).write_text(src)
 
         col = CoverageCollector()
@@ -517,7 +517,7 @@ class TestCoverageCollector:
 
     def test_build_report_unhit_lines_recorded_as_miss(self, tmp_path):
         src = "set x to 1\nset y to 2\nprint text x\n"
-        src_path = str(tmp_path / "p.nlpl")
+        src_path = str(tmp_path / "p.nxl")
         Path(src_path).write_text(src)
 
         col = CoverageCollector()
@@ -532,9 +532,9 @@ class TestCoverageCollector:
 
     def test_build_report_with_source_paths(self, tmp_path):
         src = "set x to 0\n"
-        f1 = tmp_path / "f1.nlpl"
+        f1 = tmp_path / "f1.nxl"
         f1.write_text(src)
-        f2 = tmp_path / "f2.nlpl"
+        f2 = tmp_path / "f2.nxl"
         f2.write_text(src)
 
         col = CoverageCollector()
@@ -548,7 +548,7 @@ class TestCoverageCollector:
 
     def test_build_report_falls_back_to_hit_paths(self, tmp_path):
         src = "set z to 0\n"
-        f = tmp_path / "z.nlpl"
+        f = tmp_path / "z.nxl"
         f.write_text(src)
 
         col = CoverageCollector()
@@ -590,27 +590,27 @@ class TestCoverageCollector:
 
 class TestRunnerCoverageIntegration:
     def test_coverage_enabled_false_by_default(self):
-        from nlpl.tooling.test_runner import TestRunner
+        from nexuslang.tooling.test_runner import TestRunner
         runner = TestRunner()
         assert runner.coverage_enabled is False
 
     def test_coverage_enabled_can_be_set(self):
-        from nlpl.tooling.test_runner import TestRunner
+        from nexuslang.tooling.test_runner import TestRunner
         runner = TestRunner(coverage_enabled=True)
         assert runner.coverage_enabled is True
 
     def test_coverage_output_dir_default(self):
-        from nlpl.tooling.test_runner import TestRunner
+        from nexuslang.tooling.test_runner import TestRunner
         runner = TestRunner()
         assert runner.coverage_output_dir == "coverage"
 
     def test_coverage_output_dir_custom(self):
-        from nlpl.tooling.test_runner import TestRunner
+        from nexuslang.tooling.test_runner import TestRunner
         runner = TestRunner(coverage_output_dir="my_cov/")
         assert runner.coverage_output_dir == "my_cov/"
 
     def test_build_coverage_report_returns_none_when_no_hits(self):
-        from nlpl.tooling.test_runner import TestRunner
+        from nexuslang.tooling.test_runner import TestRunner
         runner = TestRunner()
         summary = {"files": [
             {"coverage_hits": {}},
@@ -620,10 +620,10 @@ class TestRunnerCoverageIntegration:
         assert result is None
 
     def test_build_coverage_report_merges_hits(self, tmp_path):
-        from nlpl.tooling.test_runner import TestRunner
+        from nexuslang.tooling.test_runner import TestRunner
         # Create a real source file so build_report can read it
         src = "set x to 1\nset y to 2\n"
-        f = tmp_path / "prog.nlpl"
+        f = tmp_path / "prog.nxl"
         f.write_text(src)
         src_path = str(f)
 
@@ -640,20 +640,20 @@ class TestRunnerCoverageIntegration:
         assert 2 in fc.hit_lines
 
     def test_file_result_contains_coverage_hits_key(self):
-        from nlpl.tooling.test_runner import _run_file_collect
+        from nexuslang.tooling.test_runner import _run_file_collect
         # Run against a non-existent file to get error result quickly
-        result = _run_file_collect("/nonexistent_xyz_12345.nlpl", None,
+        result = _run_file_collect("/nonexistent_xyz_12345.nxl", None,
                                    coverage_enabled=False)
         assert "coverage_hits" in result
 
     def test_file_result_coverage_hits_empty_when_disabled(self):
-        from nlpl.tooling.test_runner import _run_file_collect
-        result = _run_file_collect("/nonexistent_xyz_12345.nlpl", None,
+        from nexuslang.tooling.test_runner import _run_file_collect
+        result = _run_file_collect("/nonexistent_xyz_12345.nxl", None,
                                    coverage_enabled=False)
         assert result["coverage_hits"] == {}
 
     def test_write_coverage_skips_when_no_hits(self, tmp_path):
-        from nlpl.tooling.test_runner import TestRunner
+        from nexuslang.tooling.test_runner import TestRunner
         runner = TestRunner(coverage_output_dir=str(tmp_path))
         summary = {"files": [{"coverage_hits": {}}]}
         # Should not raise and should not write files
@@ -672,93 +672,93 @@ class TestNlplCoverCli:
         import argparse
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
         # Import just the argparse setup by re-reading the module
-        from nlpl.cli import nlplcover as mod
+        from nexuslang.cli import nlplcover as mod
         # We test by checking the _cli function accepts the args without error
         # (using --help would sys.exit)
         return argv
 
     def test_default_output_dir(self, tmp_path, monkeypatch):
         """_cli should default output to 'coverage'."""
-        nlpl_file = tmp_path / "prog.nlpl"
-        nlpl_file.write_text("set x to 1\n")
-        from nlpl.cli.nlplcover import _cli
+        nxl_file = tmp_path / "prog.nxl"
+        nxl_file.write_text("set x to 1\n")
+        from nexuslang.cli.nlplcover import _cli
         # Patch _run_coverage to avoid actual execution
-        import nlpl.cli.nlplcover as mod
+        import nexuslang.cli.nlplcover as mod
         called_with = {}
         def fake_run(**kwargs):
             called_with.update(kwargs)
             return 0
         monkeypatch.setattr(mod, "_run_coverage", fake_run)
-        _cli([str(nlpl_file)])
+        _cli([str(nxl_file)])
         assert called_with.get("output_dir") == "coverage"
 
     def test_custom_output_dir(self, tmp_path, monkeypatch):
-        nlpl_file = tmp_path / "prog.nlpl"
-        nlpl_file.write_text("set x to 1\n")
-        from nlpl.cli.nlplcover import _cli
-        import nlpl.cli.nlplcover as mod
+        nxl_file = tmp_path / "prog.nxl"
+        nxl_file.write_text("set x to 1\n")
+        from nexuslang.cli.nlplcover import _cli
+        import nexuslang.cli.nlplcover as mod
         called_with = {}
         def fake_run(**kwargs):
             called_with.update(kwargs)
             return 0
         monkeypatch.setattr(mod, "_run_coverage", fake_run)
-        _cli([str(nlpl_file), "--output", "my_coverage/"])
+        _cli([str(nxl_file), "--output", "my_coverage/"])
         assert called_with.get("output_dir") == "my_coverage/"
 
     def test_no_json_flag(self, tmp_path, monkeypatch):
-        nlpl_file = tmp_path / "prog.nlpl"
-        nlpl_file.write_text("set x to 1\n")
-        from nlpl.cli.nlplcover import _cli
-        import nlpl.cli.nlplcover as mod
+        nxl_file = tmp_path / "prog.nxl"
+        nxl_file.write_text("set x to 1\n")
+        from nexuslang.cli.nlplcover import _cli
+        import nexuslang.cli.nlplcover as mod
         called_with = {}
         def fake_run(**kwargs):
             called_with.update(kwargs)
             return 0
         monkeypatch.setattr(mod, "_run_coverage", fake_run)
-        _cli([str(nlpl_file), "--no-json"])
+        _cli([str(nxl_file), "--no-json"])
         assert called_with.get("write_json") is False
 
     def test_no_html_flag(self, tmp_path, monkeypatch):
-        nlpl_file = tmp_path / "prog.nlpl"
-        nlpl_file.write_text("set x to 1\n")
-        from nlpl.cli.nlplcover import _cli
-        import nlpl.cli.nlplcover as mod
+        nxl_file = tmp_path / "prog.nxl"
+        nxl_file.write_text("set x to 1\n")
+        from nexuslang.cli.nlplcover import _cli
+        import nexuslang.cli.nlplcover as mod
         called_with = {}
         def fake_run(**kwargs):
             called_with.update(kwargs)
             return 0
         monkeypatch.setattr(mod, "_run_coverage", fake_run)
-        _cli([str(nlpl_file), "--no-html"])
+        _cli([str(nxl_file), "--no-html"])
         assert called_with.get("write_html") is False
 
     def test_fail_under_parsed(self, tmp_path, monkeypatch):
-        nlpl_file = tmp_path / "prog.nlpl"
-        nlpl_file.write_text("set x to 1\n")
-        from nlpl.cli.nlplcover import _cli
-        import nlpl.cli.nlplcover as mod
+        nxl_file = tmp_path / "prog.nxl"
+        nxl_file.write_text("set x to 1\n")
+        from nexuslang.cli.nlplcover import _cli
+        import nexuslang.cli.nlplcover as mod
         called_with = {}
         def fake_run(**kwargs):
             called_with.update(kwargs)
             return 0
         monkeypatch.setattr(mod, "_run_coverage", fake_run)
-        _cli([str(nlpl_file), "--fail-under", "80"])
+        _cli([str(nxl_file), "--fail-under", "80"])
         assert called_with.get("fail_under") == pytest.approx(80.0)
 
     def test_missing_file_returns_exit_1(self, tmp_path):
-        from nlpl.cli.nlplcover import _cli
-        result = _cli(["/this_file_does_not_exist_xyz.nlpl"])
+        from nexuslang.cli.nlplcover import _cli
+        result = _cli(["/this_file_does_not_exist_xyz.nxl"])
         assert result == 1
 
     def test_fail_under_passes_when_coverage_sufficient(self, tmp_path):
-        nlpl_file = tmp_path / "prog.nlpl"
-        nlpl_file.write_text("set x to 1\n")
-        from nlpl.cli.nlplcover import _cli
-        import nlpl.cli.nlplcover as mod
+        nxl_file = tmp_path / "prog.nxl"
+        nxl_file.write_text("set x to 1\n")
+        from nexuslang.cli.nlplcover import _cli
+        import nexuslang.cli.nlplcover as mod
         def fake_run(**kwargs):
             return 0
         import unittest.mock as mock
         with mock.patch.object(mod, "_run_coverage", fake_run):
-            result = _cli([str(nlpl_file), "--fail-under", "50"])
+            result = _cli([str(nxl_file), "--fail-under", "50"])
         assert result == 0
 
 
@@ -769,16 +769,16 @@ class TestNlplCoverCli:
 
 class TestCoverageReportMultiFile:
     def test_multi_file_json_has_all_paths(self):
-        fc1 = _make_file_coverage("a.nlpl", executable={1}, hit={1})
-        fc2 = _make_file_coverage("b.nlpl", executable={1, 2}, hit={1})
+        fc1 = _make_file_coverage("a.nxl", executable={1}, hit={1})
+        fc2 = _make_file_coverage("b.nxl", executable={1, 2}, hit={1})
         report = _make_report(fc1, fc2)
         data = json.loads(report.to_json())
-        assert "a.nlpl" in data["files"]
-        assert "b.nlpl" in data["files"]
+        assert "a.nxl" in data["files"]
+        assert "b.nxl" in data["files"]
 
     def test_multi_file_total_pct_in_json(self):
-        fc1 = _make_file_coverage("a.nlpl", executable={1, 2}, hit={1})
-        fc2 = _make_file_coverage("b.nlpl", executable={1, 2}, hit={1})
+        fc1 = _make_file_coverage("a.nxl", executable={1, 2}, hit={1})
+        fc2 = _make_file_coverage("b.nxl", executable={1, 2}, hit={1})
         report = _make_report(fc1, fc2)
         data = json.loads(report.to_json())
         # 2 hit out of 4 = 50%
@@ -787,7 +787,7 @@ class TestCoverageReportMultiFile:
     def test_zero_executable_correctly_100pct(self):
         # File with only comments — no executable lines
         fc = FileCoverage(
-            path="empty.nlpl",
+            path="empty.nxl",
             total_lines=3,
             executable_lines=set(),
             hit_lines=set(),

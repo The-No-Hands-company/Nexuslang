@@ -1,7 +1,7 @@
-# NLPL Module System Enhancements
+# NexusLang Module System Enhancements
 
 ## Overview
-We have enhanced the NLPL module system with improved relative import support and organized the standard library into a modular structure. These enhancements make the language more maintainable, scalable, and user-friendly.
+We have enhanced the NexusLang module system with improved relative import support and organized the standard library into a modular structure. These enhancements make the language more maintainable, scalable, and user-friendly.
 
 ## Enhancements Implemented
 
@@ -88,4 +88,4 @@ Print("File content: " + content).
 5. **Built-in Module Documentation**: Provide runtime access to module documentation
 
 ## Conclusion
-The enhanced module system and organized standard library significantly improve the NLPL language's usability and maintainability. These features make it easier for developers to organize their code, reuse functionality, and build larger applications. The modular approach also makes the language more extensible, allowing for future growth of the standard library and third-party modules. 
+The enhanced module system and organized standard library significantly improve the NexusLang language's usability and maintainability. These features make it easier for developers to organize their code, reuse functionality, and build larger applications. The modular approach also makes the language more extensible, allowing for future growth of the standard library and third-party modules. 

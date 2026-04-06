@@ -1,5 +1,5 @@
 """
-Comprehensive test suite for NLPL operators.
+Comprehensive test suite for NexusLang operators.
 Tests all arithmetic, bitwise, logical, and comparison operators.
 """
 
@@ -89,7 +89,7 @@ class TestArithmeticOperators(NLPLTestBase):
     
     def test_floor_division_negative(self):
         """Test floor division with negative numbers."""
-        # Use proper NLPL syntax for negative numbers
+        # Use proper NexusLang syntax for negative numbers
         result = self.parse_and_execute("set x to (0 minus 17) // 5")
         assert self.interpreter.get_variable("x") == -4
     

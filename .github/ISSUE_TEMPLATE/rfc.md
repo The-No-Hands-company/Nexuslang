@@ -44,7 +44,7 @@ need. Explain why the current design is insufficient.
 
 ### Examples
 
-Show idiomatic NLPL code that uses the new feature:
+Show idiomatic NexusLang code that uses the new feature:
 
 ```nlpl
 # Before (workaround or unsupported)

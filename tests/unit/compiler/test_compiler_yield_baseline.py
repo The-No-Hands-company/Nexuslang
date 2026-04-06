@@ -6,9 +6,9 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from nlpl.parser.ast import Program, VariableDeclaration, YieldExpression, Literal
-from nlpl.compiler.backends.llvm_ir_generator import LLVMIRGenerator
-from nlpl.compiler.backends.c_generator import CCodeGenerator
+from nexuslang.parser.ast import Program, VariableDeclaration, YieldExpression, Literal
+from nexuslang.compiler.backends.llvm_ir_generator import LLVMIRGenerator
+from nexuslang.compiler.backends.c_generator import CCodeGenerator
 
 
 def test_llvm_lowers_yield_expression_value():

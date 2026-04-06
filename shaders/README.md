@@ -18,4 +18,4 @@ These shaders are used to test:
 
 ## Note
 
-This is part of NLPL's advanced features testing. These shaders demonstrate NLPL's capability to work with low-level graphics systems, though the primary focus of NLPL is general-purpose programming.
+This is part of NLPL's advanced features testing. These shaders demonstrate NLPL's capability to work with low-level graphics systems, though the primary focus of NexusLang is general-purpose programming.

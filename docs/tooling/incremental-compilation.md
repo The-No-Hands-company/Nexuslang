@@ -23,7 +23,7 @@ The system tracks metadata for every source file:
 
 ```python
 {
-    "path": "/path/to/file.nlpl",
+    "path": "/path/to/file.nxl",
     "mtime": 1771124456.018715,  # Modification time
     "size": 72,                    # File size in bytes
     "hash": "bda91e29...",         # SHA-256 content hash
@@ -38,10 +38,10 @@ Maintains a bidirectional dependency graph:
 ```python
 {
     "dependencies": {
-        "calculator.nlpl": ["math_utils.nlpl"]
+        "calculator.nxl": ["math_utils.nxl"]
     },
     "reverse_deps": {
-        "math_utils.nlpl": ["calculator.nlpl"]
+        "math_utils.nxl": ["calculator.nxl"]
     }
 }
 ```
@@ -57,7 +57,7 @@ Records build outputs with their settings:
 
 ```python
 {
-    "source_file": "calculator.nlpl",
+    "source_file": "calculator.nxl",
     "output_file": "build/dev/calculator",
     "build_time": 1771124462.679344,
     "profile": "dev",
@@ -84,10 +84,10 @@ Incremental compilation is **enabled by default**:
 
 ```bash
 # Build with incremental compilation (default)
-nlpl_build build
+nxl_build build
 
 # Disable incremental compilation
-nlpl_build build --no-incremental
+nxl_build build --no-incremental
 ```
 
 ### Clean Build
@@ -95,8 +95,8 @@ nlpl_build build --no-incremental
 Clear the cache to force a full rebuild:
 
 ```bash
-nlpl_build clean  # Removes build/ directory and cache
-nlpl_build build  # Fresh build with new cache
+nxl_build clean  # Removes build/ directory and cache
+nxl_build build  # Fresh build with new cache
 ```
 
 ### Verbose Output
@@ -104,7 +104,7 @@ nlpl_build build  # Fresh build with new cache
 See rebuild reasons in verbose mode:
 
 ```bash
-nlpl_build build --verbose
+nxl_build build --verbose
 ```
 
 Output:
@@ -129,8 +129,8 @@ Finished build [profile: dev] (1 compiled, 0 up-to-date)
     "version": "1.0",
     "timestamp": "2026-02-15T04:01:02.679361",
     "file_metadata": {
-        "file.nlpl": {
-            "path": "file.nlpl",
+        "file.nxl": {
+            "path": "file.nxl",
             "mtime": 1771124456.018715,
             "size": 72,
             "hash": "bda91e291778ad44a5d79e673fd40c32aa7652daa051f1131e6f540eab88f762",
@@ -143,7 +143,7 @@ Finished build [profile: dev] (1 compiled, 0 up-to-date)
     },
     "build_artifacts": {
         "file.nlpl:dev:": {
-            "source_file": "file.nlpl",
+            "source_file": "file.nxl",
             "output_file": "build/dev/file",
             "build_time": 1771124462.679344,
             "profile": "dev",
@@ -215,7 +215,7 @@ Example:
 
 ### Integration with Build Tool
 
-**dev_tools/nlpl_build.py**:
+**dev_tools/nxl_build.py**:
 
 ```python
 class BuildTool:
@@ -261,17 +261,17 @@ class BuildTool:
 cd test_programs/build_system
 
 # Clean build
-nlpl_build clean
-nlpl_build build --verbose
+nxl_build clean
+nxl_build build --verbose
 # Output: "1 compiled, 0 up-to-date"
 
 # No changes - should skip
-nlpl_build build --verbose
+nxl_build build --verbose
 # Output: "0 compiled, 1 up-to-date"
 
 # Modify dependency
 echo '# Comment' >> math_utils.nlpl
-nlpl_build build --verbose
+nxl_build build --verbose
 # Output: "Rebuild reason: Dependency math_utils.nlpl changed"
 #         "1 compiled, 0 up-to-date"
 ```
@@ -330,8 +330,8 @@ nlpl_build build --verbose
 
 **Fix**:
 ```bash
-nlpl_build clean  # Removes corrupted cache
-nlpl_build build  # Fresh build
+nxl_build clean  # Removes corrupted cache
+nxl_build build  # Fresh build
 ```
 
 ### False Positives (Unnecessary Rebuilds)
@@ -340,7 +340,7 @@ nlpl_build build  # Fresh build
 
 **Debug**:
 ```bash
-nlpl_build build --verbose  # See rebuild reason
+nxl_build build --verbose  # See rebuild reason
 ```
 
 **Common Causes**:
@@ -367,7 +367,7 @@ stat source_file.nlpl
 
 **Fix**:
 ```bash
-nlpl_build clean && nlpl_build build
+nxl_build clean && nxl_build build
 ```
 
 ## Architecture Decisions
@@ -418,6 +418,6 @@ nlpl_build clean && nlpl_build build
 - Bazel: Content-addressable cache
 
 **Key Differences**:
-- NLPL tracks full dependency graph (not just makefile-style rules)
+- NexusLang tracks full dependency graph (not just makefile-style rules)
 - Profile and feature awareness (rebuild on config changes)
 - Natural language syntax (clear build reasons in English)

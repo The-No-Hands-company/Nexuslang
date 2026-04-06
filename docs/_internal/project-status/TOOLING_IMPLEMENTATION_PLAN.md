@@ -1,7 +1,7 @@
 # Phase 2: Tooling & Developer Experience
 
 ## Overview
-Building professional development tools for NLPL to match modern language ecosystems.
+Building professional development tools for NexusLang to match modern language ecosystems.
 
 **Estimated Time:** 5-7 hours
 **Status:** IN PROGRESS
@@ -54,7 +54,7 @@ error[E0001]: undefined variable 'nmae'
 - textDocument/formatting
 
 ### 3. Debugger Integration (1.5 hours) 
-**Goal:** Debug NLPL programs like C/C++
+**Goal:** Debug NexusLang programs like C/C++
 
 **Status:** **COMPLETE**
 

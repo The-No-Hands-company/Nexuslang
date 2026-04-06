@@ -1,4 +1,4 @@
-# NLPL Feature Completeness Gap Analysis
+# NexusLang Feature Completeness Gap Analysis
 
 **Date**: January 6, 2026 
 **Status**: P0 Complete (3/3) + P1 Quick Wins Complete (3/3) + Stdlib Complete (60+ modules) + REPL Complete 
@@ -169,13 +169,13 @@ end
 
 **Works**:
 ```nlpl
-# NLPL String C bytes
+# NexusLang String C bytes
 set c_string to to_c_string with "Hello"
 # c_string is b'Hello\x00'
 
-# C bytes NLPL String
+# C bytes NexusLang String
 set c_result to from_c_string with some_c_bytes
-set nlpl_string to c_result
+set nxl_string to c_result
 
 # Pointer conversions
 set ptr to string_to_pointer with "data"
@@ -190,7 +190,7 @@ set text to pointer_to_string with ptr
 
 **Implemented Functions**:
 - `to_c_string(str)` - Convert to null-terminated bytes
-- `from_c_string(bytes)` - Convert from C string to NLPL string 
+- `from_c_string(bytes)` - Convert from C string to NexusLang string 
 - `string_to_pointer(str)` - Get pointer address from string
 - `pointer_to_string(ptr, length?)` - Read string from pointer
 
@@ -488,7 +488,7 @@ end
 - Callback registration (C NLPL)
 - Variadic functions
 - Complex types (nested structs, unions)
-- Automatic header parsing (.h NLPL bindings)
+- Automatic header parsing (.h NexusLang bindings)
 
 **Impact**: **HIGH** - Limits C library interop 
 **Complexity**: High 
@@ -800,8 +800,8 @@ nlpl package # Create distributable
 ### 24. Web Backend (JavaScript/WASM)
 
 **Status**: Not implemented 
-**Planned**: Transpile NLPL JavaScript/TypeScript or WASM 
-**Use Case**: Run NLPL in browser, Node.js
+**Planned**: Transpile NexusLang JavaScript/TypeScript or WASM 
+**Use Case**: Run NexusLang in browser, Node.js
 
 **Impact**: **MEDIUM** - Expands platform support 
 **Complexity**: Very High - New compiler backend
@@ -824,7 +824,7 @@ nlpl package # Create distributable
 
 **Works**:
 ```bash
-$ python -m nlpl.main
+$ python -m nexuslang.main
 NLPL Interactive REPL
 Version: 0.1.0
 Type :help for help, :quit to exit
@@ -845,15 +845,15 @@ Variables:
 
 **Features Implemented**:
 - **Multi-line input**: Automatic block depth tracking (function/class/if/while/for)
-- **Command history**: Persistent via readline (~/.nlpl_history), arrow key navigation
+- **Command history**: Persistent via readline (~/.nxl_history), arrow key navigation
 - **Auto-completion**: Tab completion for keywords, variables, functions, commands
 - **Error recovery**: Catch exceptions and continue running
 - **Special commands**: `:help`, `:vars`, `:funcs`, `:debug`, `:reset`, `:history`, `:type-check`, `:clear`
-- **Pretty-print**: Smart value formatting for NLPL objects
+- **Pretty-print**: Smart value formatting for NexusLang objects
 - **Debug mode**: Toggle to show tokens and AST
 - **Type checking toggle**: Runtime enable/disable
 - **Runtime inspection**: Variable and function listing with scope depth
-- **Integration**: Works with main CLI, convenience script (`nlpl_repl.py`)
+- **Integration**: Works with main CLI, convenience script (`nxl_repl.py`)
 
 **Implementation Details**:
 - **File**: `src/nlpl/repl/repl.py` (470+ lines)
@@ -861,7 +861,7 @@ Variables:
 - **Multi-line detection**: Block depth tracking + bracket matching
 - **History**: readline integration with persistent storage
 - **Commands**: 9 special commands for REPL control
-- **Entry points**: `python -m nlpl.main`, `python nlpl_repl.py`
+- **Entry points**: `python -m nexuslang.main`, `python nxl_repl.py`
 
 **Documentation**:
 - Comprehensive guide: `docs/7_development/repl.md` (300+ lines)
@@ -883,7 +883,7 @@ Variables:
 
 ### 27. Language Server Protocol (LSP) Enhancements
 
-**Status**: Basic LSP exists (`src/nlpl_lsp.py`) 
+**Status**: Basic LSP exists (`src/nxl_lsp.py`) 
 **Working**: Syntax highlighting, basic completions 
 **Missing**:
 - Go to definition

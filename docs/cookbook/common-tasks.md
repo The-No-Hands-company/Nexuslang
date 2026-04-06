@@ -188,7 +188,7 @@ set responses to await fetch_all_users()
 ```nlpl
 import argparse_utils
 
-set parser to argparse_utils.new_parser with description: "My NLPL tool"
+set parser to argparse_utils.new_parser with description: "My NexusLang tool"
 argparse_utils.add_argument with parser and "--input"  and type: "string" and required: true
 argparse_utils.add_argument with parser and "--output" and type: "string" and default: "out.txt"
 argparse_utils.add_argument with parser and "--verbose" and type: "flag"
@@ -234,7 +234,7 @@ print text string.trim_left with raw  # "hello world  "
 ```nlpl
 import string
 set text to "Hello, World!"
-set updated to string.replace with text and "World" and "NLPL"
+set updated to string.replace with text and "World" and "NexusLang"
 print text updated                         # Hello, NLPL!
 print text string.contains with text and "World"  # true
 ```

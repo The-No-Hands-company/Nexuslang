@@ -5,12 +5,12 @@ import os
 # Add src to path
 sys.path.append(os.path.join(os.getcwd(), 'src'))
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.compiler.backends.llvm_ir_generator import LLVMIRGenerator
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.compiler.backends.llvm_ir_generator import LLVMIRGenerator
 
 def verify_ir():
-    source_file = 'test_programs/foundation/bitwise_verification.nlpl'
+    source_file = 'test_programs/foundation/bitwise_verification.nxl'
     with open(source_file, 'r') as f:
         source_code = f.read()
 

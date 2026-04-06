@@ -13,7 +13,7 @@ _SRC = str(Path(__file__).resolve().parent.parent.parent.parent / "src")
 if _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
-from nlpl.runtime.gc import (
+from nexuslang.runtime.gc import (
     GCColor,
     GCStats,
     GCError,
@@ -688,7 +688,7 @@ class TestGarbageCollector:
         gc = GarbageCollector(GCConfig(mode="none"))
         assert not gc.is_enabled
 
-    def test_allocate_returns_nlpl_object(self):
+    def test_allocate_returns_nxl_object(self):
         gc = GarbageCollector()
         obj = gc.allocate(value=10)
         assert isinstance(obj, NLPLObject)
@@ -807,21 +807,21 @@ class TestGCFacadeFromFlag:
 
 class TestGCLazyImportViaRuntime:
     def test_garbage_collector_importable_via_runtime(self):
-        from nlpl.runtime import GarbageCollector as GC
+        from nexuslang.runtime import GarbageCollector as GC
         assert GC is GarbageCollector
 
     def test_gc_config_importable_via_runtime(self):
-        from nlpl.runtime import GCConfig as Cfg
+        from nexuslang.runtime import GCConfig as Cfg
         assert Cfg is GCConfig
 
     def test_gc_stats_importable_via_runtime(self):
-        from nlpl.runtime import GCStats as Stats
+        from nexuslang.runtime import GCStats as Stats
         assert Stats is GCStats
 
-    def test_nlpl_object_importable_via_runtime(self):
-        from nlpl.runtime import NLPLObject as Obj
+    def test_nxl_object_importable_via_runtime(self):
+        from nexuslang.runtime import NLPLObject as Obj
         assert Obj is NLPLObject
 
     def test_gc_error_importable_via_runtime(self):
-        from nlpl.runtime import GCError as Err
+        from nexuslang.runtime import GCError as Err
         assert Err is GCError

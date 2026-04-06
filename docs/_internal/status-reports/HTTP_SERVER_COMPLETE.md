@@ -444,7 +444,7 @@ server.start()
   - ✅ URL utilities (encode, decode, parse, join)
   - ✅ Authentication (Basic Auth, JWT create/verify)
   - ⊙ Live HTTP requests (skipped - requires server)
-  - ⊙ Routing (requires NLPL function handlers)
+  - ⊙ Routing (requires NexusLang function handlers)
 
 ### Integration Tests Pending
 - **Route matching** with various patterns
@@ -487,10 +487,10 @@ server.start()
 
 ---
 
-## Impact on NLPL Ecosystem
+## Impact on NexusLang Ecosystem
 
 ### Before HTTP Server
-- NLPL could make HTTP requests (client)
+- NexusLang could make HTTP requests (client)
 - Limited to consuming external APIs
 - No ability to build web services
 - **Use cases**: Scripts, automation, data fetching
@@ -504,7 +504,7 @@ server.start()
 - **Use cases**: Web apps, APIs, webhooks, microservices, dashboards
 
 ### Language Competitiveness
-| Feature | Python (Flask) | Node.js (Express) | NLPL |
+| Feature | Python (Flask) | Node.js (Express) | NexusLang |
 |---------|---------------|-------------------|------|
 | HTTP Client | ✅ (requests) | ✅ (axios) | ✅ |
 | HTTP Server | ✅ (Flask) | ✅ (Express) | ✅ |
@@ -515,7 +515,7 @@ server.start()
 | Async/await | ✅ (FastAPI) | ✅ (native) | ⏳ (pending) |
 | WebSockets | ✅ (socketio) | ✅ (ws) | ❌ (pending) |
 
-**Assessment**: NLPL now has competitive HTTP capabilities for building web services. Missing only async/await and WebSockets for full parity.
+**Assessment**: NexusLang now has competitive HTTP capabilities for building web services. Missing only async/await and WebSockets for full parity.
 
 ---
 
@@ -582,7 +582,7 @@ server.start()
 - **Examples**: Complete REST API example with curl commands
 - **Documentation**: Full API documentation in docstrings
 
-**Impact**: NLPL can now build complete web applications and REST APIs, not just consume them. This is a critical milestone for language adoption and real-world usage.
+**Impact**: NexusLang can now build complete web applications and REST APIs, not just consume them. This is a critical milestone for language adoption and real-world usage.
 
 **Timeline**: Completed in 1 day (Feb 16, 2026) vs 3-week estimate (ahead of schedule)
 

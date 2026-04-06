@@ -1,5 +1,5 @@
 """
-Tests for NLPL 8.2 Attribute System.
+Tests for NexusLang 8.2 Attribute System.
 
 Groups:
     TestAttributeDeclaration    -- `attribute Name [with ...]` parsing and registration
@@ -8,7 +8,7 @@ Groups:
     TestReflectListAttributes   -- reflect_list_attributes: returns all applied names
     TestReflectGetAttribute     -- reflect_get_attribute: returns property dict
     TestReflectAttributeValue   -- reflect_attribute_value: returns single property
-    TestAttributeIntegration    -- end-to-end via full NLPL interpreter pipeline
+    TestAttributeIntegration    -- end-to-end via full NexusLang interpreter pipeline
 """
 
 import sys
@@ -28,25 +28,25 @@ import pytest
 # ---------------------------------------------------------------------------
 
 def _make_runtime():
-    from nlpl.runtime.runtime import Runtime
-    from nlpl.stdlib import register_stdlib
+    from nexuslang.runtime.runtime import Runtime
+    from nexuslang.stdlib import register_stdlib
     rt = Runtime()
     register_stdlib(rt)
     return rt
 
 
 def _make_object(class_name, properties=None):
-    from nlpl.runtime.runtime import Object
+    from nexuslang.runtime.runtime import Object
     return Object(class_name, properties or {})
 
 
 def _interp(src):
-    """Parse and execute NLPL source; return the Interpreter instance."""
-    from nlpl.interpreter.interpreter import Interpreter
-    from nlpl.runtime.runtime import Runtime
-    from nlpl.stdlib import register_stdlib
-    from nlpl.parser.parser import Parser
-    from nlpl.parser.lexer import Lexer
+    """Parse and execute NexusLang source; return the Interpreter instance."""
+    from nexuslang.interpreter.interpreter import Interpreter
+    from nexuslang.runtime.runtime import Runtime
+    from nexuslang.stdlib import register_stdlib
+    from nexuslang.parser.parser import Parser
+    from nexuslang.parser.lexer import Lexer
     rt = Runtime()
     register_stdlib(rt)
     prog = Parser(Lexer(src).tokenize()).parse()
@@ -203,7 +203,7 @@ class TestAttributeOnClass:
 
 class TestReflectHasAttribute:
     def setup_method(self):
-        from nlpl.stdlib.reflection import reflect_has_attribute
+        from nexuslang.stdlib.reflection import reflect_has_attribute
         self.rt = _make_runtime()
         self.fn = lambda obj, name: reflect_has_attribute(self.rt, obj, name)
 
@@ -247,7 +247,7 @@ class TestReflectHasAttribute:
 
 class TestReflectListAttributes:
     def setup_method(self):
-        from nlpl.stdlib.reflection import reflect_list_attributes
+        from nexuslang.stdlib.reflection import reflect_list_attributes
         self.rt = _make_runtime()
         self.fn = lambda obj: reflect_list_attributes(self.rt, obj)
 
@@ -287,7 +287,7 @@ class TestReflectListAttributes:
 
 class TestReflectGetAttribute:
     def setup_method(self):
-        from nlpl.stdlib.reflection import reflect_get_attribute
+        from nexuslang.stdlib.reflection import reflect_get_attribute
         self.rt = _make_runtime()
         self.fn = lambda obj, name: reflect_get_attribute(self.rt, obj, name)
 
@@ -333,7 +333,7 @@ class TestReflectGetAttribute:
 
 class TestReflectAttributeValue:
     def setup_method(self):
-        from nlpl.stdlib.reflection import reflect_attribute_value
+        from nexuslang.stdlib.reflection import reflect_attribute_value
         self.rt = _make_runtime()
         self.fn = lambda obj, attr, prop: reflect_attribute_value(self.rt, obj, attr, prop)
 
@@ -362,11 +362,11 @@ class TestReflectAttributeValue:
 
 
 # ---------------------------------------------------------------------------
-# 7. End-to-end integration via NLPL interpreter
+# 7. End-to-end integration via NexusLang interpreter
 # ---------------------------------------------------------------------------
 
 class TestAttributeIntegration:
-    def test_reflect_has_attribute_true_via_nlpl(self):
+    def test_reflect_has_attribute_true_via_nxl(self):
         src = (
             "attribute Serializable\n"
             "@Serializable\n"

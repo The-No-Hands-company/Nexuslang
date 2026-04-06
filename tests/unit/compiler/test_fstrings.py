@@ -15,9 +15,9 @@ if _SRC not in sys.path:
 
 # --- from test_fstring_lexer.py ---
 
-sys.path.insert(0, '/run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NLPL/src')
+sys.path.insert(0, '/run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NexusLang/src')
 
-from nlpl.parser.lexer import Lexer, TokenType
+from nexuslang.parser.lexer import Lexer, TokenType
 
 def test_fstring_lexer():
     """Test lexer recognition of f-strings."""
@@ -73,9 +73,9 @@ if __name__ == "__main__":
 
 # --- from test_fstring_ast.py ---
 
-from nlpl.parser.ast import FStringExpression, Literal, Identifier
-from nlpl.parser.parser import Parser
-from nlpl.parser.lexer import Lexer, TokenType
+from nexuslang.parser.ast import FStringExpression, Literal, Identifier
+from nexuslang.parser.parser import Parser
+from nexuslang.parser.lexer import Lexer, TokenType
 
 def test_fstring_parsing():
     """Test parsing f-strings."""
@@ -119,11 +119,11 @@ if __name__ == "__main__":
 
 # --- from test_fstring_parser.py ---
 
-sys.path.insert(0, '/run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NLPL/src')
+sys.path.insert(0, '/run/media/zajferx/Data/dev/The-No-hands-Company/projects/Active/NexusLang/src')
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.parser.ast import FStringExpression, Identifier
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.parser.ast import FStringExpression, Identifier
 
 def test_fstring_parser():
     """Test parser conversion of f-strings to AST."""

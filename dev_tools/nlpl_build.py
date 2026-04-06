@@ -2,19 +2,19 @@
 """
 NLPL Build Tool - Project-aware build system
 
-Provides Cargo-like build commands for NLPL projects with nlpl.toml manifests.
+Provides Cargo-like build commands for NexusLang projects with nlpl.toml manifests.
 Integrates with the existing nlplc compiler and provides build orchestration,
 dependency management, and feature flag support.
 
 Usage:
-    nlpl_build.py build                    # Build all targets
-    nlpl_build.py build --release          # Build with release profile
-    nlpl_build.py build --features csv,db  # Build with specific features
-    nlpl_build.py clean                    # Clean build artifacts
-    nlpl_build.py test                     # Run tests
-    nlpl_build.py run                      # Run default binary
-    nlpl_build.py run --bin analyzer       # Run specific binary
-    nlpl_build.py check                    # Check project without building
+    nxl_build.py build                    # Build all targets
+    nxl_build.py build --release          # Build with release profile
+    nxl_build.py build --features csv,db  # Build with specific features
+    nxl_build.py clean                    # Clean build artifacts
+    nxl_build.py test                     # Run tests
+    nxl_build.py run                      # Run default binary
+    nxl_build.py run --bin analyzer       # Run specific binary
+    nxl_build.py check                    # Check project without building
 """
 
 import sys
@@ -29,11 +29,11 @@ from dataclasses import dataclass
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from nlpl.build.manifest import load_manifest, Manifest, BuildProfile, BinaryTarget
-from nlpl.build.incremental import BuildCache, extract_imports_from_source
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.compiler import Compiler, CompilerOptions
+from nexuslang.build.manifest import load_manifest, Manifest, BuildProfile, BinaryTarget
+from nexuslang.build.incremental import BuildCache, extract_imports_from_source
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.compiler import Compiler, CompilerOptions
 
 
 @dataclass
@@ -51,7 +51,7 @@ class BuildContext:
 
 
 class BuildTool:
-    """NLPL Build Tool - manages compilation of NLPL projects."""
+    """NLPL Build Tool - manages compilation of NexusLang projects."""
     
     def __init__(self, manifest_path: Optional[str] = None, verbose: bool = False, 
                  incremental: bool = True):
@@ -353,7 +353,7 @@ class BuildTool:
             return True
         
         # Run all test binaries
-        test_files = list(test_dir.glob('**/*.nlpl'))
+        test_files = list(test_dir.glob('**/*.nxl'))
         if not test_files:
             print("No test files found")
             return True
@@ -464,7 +464,7 @@ class BuildTool:
             imports = extract_imports_from_source(source_code)
             import_paths = []
             for imp in imports:
-                imp_file = self.project_root / f"{imp.replace('.', '/')}.nlpl"
+                imp_file = self.project_root / f"{imp.replace('.', '/')}.nxl"
                 if imp_file.exists():
                     import_paths.append(str(imp_file))
             
@@ -494,7 +494,7 @@ class BuildTool:
             imports = extract_imports_from_source(source_code)
             import_paths = []
             for imp in imports:
-                imp_file = self.project_root / f"{imp.replace('.', '/')}.nlpl"
+                imp_file = self.project_root / f"{imp.replace('.', '/')}.nxl"
                 if imp_file.exists():
                     import_paths.append(str(imp_file))
             
@@ -520,7 +520,7 @@ class BuildTool:
     def _compile_single_file(self, source: Path, output: Path, profile: str, 
                             features: Optional[Set[str]] = None) -> bool:
         """
-        Compile single NLPL file to executable.
+        Compile single NexusLang file to executable.
         
         Args:
             source: Source file path
@@ -620,7 +620,7 @@ class BuildTool:
 
 
 def main():
-    """Main entry point for nlpl_build CLI."""
+    """Main entry point for nxl_build CLI."""
     parser = argparse.ArgumentParser(
         description="NLPL Build Tool - Project-aware build system",
         formatter_class=argparse.RawDescriptionHelpFormatter,

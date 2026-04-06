@@ -15,14 +15,14 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../../src"))
 
-from nlpl.typesystem.type_alias_registry import (
+from nexuslang.typesystem.type_alias_registry import (
     TypeAliasRegistry,
     GLOBAL_ALIAS_REGISTRY,
     register_alias,
     resolve_alias,
     expand_type,
 )
-from nlpl.typesystem.types import (
+from nexuslang.typesystem.types import (
     TypeAliasType, GenericParameter, ListType, DictionaryType,
     FunctionType, UnionType, TraitType,
     INTEGER_TYPE, STRING_TYPE, FLOAT_TYPE, BOOLEAN_TYPE, ANY_TYPE,

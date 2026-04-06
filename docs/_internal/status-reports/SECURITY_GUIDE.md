@@ -1,5 +1,5 @@
-# NLPL Security Guide
-## Comprehensive Guide to Secure Programming in NLPL
+# NexusLang Security Guide
+## Comprehensive Guide to Secure Programming in NexusLang
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -17,7 +17,7 @@
 
 ## Introduction
 
-NLPL is designed with security as a core principle. Unlike many languages that allow unrestricted access to system resources by default, NLPL follows a **deny-by-default** security model inspired by Deno.
+NLPL is designed with security as a core principle. Unlike many languages that allow unrestricted access to system resources by default, NexusLang follows a **deny-by-default** security model inspired by Deno.
 
 ### Core Security Principles
 
@@ -96,21 +96,21 @@ nlpl --prompt script.nlpl
 ```
 Prompts user for permission when needed:
 ```
-⚠️  NLPL requests READ permission
+⚠️  NexusLang requests READ permission
    Resource: /etc/passwd
    Allow? [y/N/A(always)]
 ```
 
 ### Runtime Permission API
 
-Check permissions from within NLPL code:
+Check permissions from within NexusLang code:
 
 ```nlpl
 # Check if permission is granted
 set has_network to check_permission "net"
 if has_network is false
     print text "Error: Network access denied"
-    print text "Run with: nlpl --allow-net script.nlpl"
+    print text "Run with: nlpl --allow-net script.nxl"
     exit with 1
 
 # Continue with network operation
@@ -429,7 +429,7 @@ if ptr is not null
 set ptr to allocate 100 bytes
 free ptr
 set val to dereference ptr  # ERROR: Use after free detected
-# NLPL tracks allocations and prevents UAF
+# NexusLang tracks allocations and prevents UAF
 ```
 
 ### Buffer Overflow Protection
@@ -437,7 +437,7 @@ set val to dereference ptr  # ERROR: Use after free detected
 ```nlpl
 set buffer to allocate 10 bytes
 write_to_buffer buffer at offset 15 with data  # ERROR: Buffer overflow
-# NLPL checks buffer bounds at runtime
+# NexusLang checks buffer bounds at runtime
 ```
 
 ---
@@ -483,7 +483,7 @@ write_to_buffer buffer at offset 15 with data  # ERROR: Buffer overflow
 
 ## Security Checklist
 
-Before deploying NLPL code, verify:
+Before deploying NexusLang code, verify:
 
 ### Input Validation
 - [ ] All user input is validated
@@ -643,13 +643,13 @@ See `examples/security/` directory for complete examples:
 - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
 - [CWE Top 25](https://cwe.mitre.org/top25/)
 - [Deno Security Model](https://deno.land/manual/getting_started/permissions)
-- NLPL Security API Documentation
+- NexusLang Security API Documentation
 
 ---
 
 ## Reporting Security Issues
 
-If you discover a security vulnerability in NLPL:
+If you discover a security vulnerability in NexusLang:
 
 1. **DO NOT** create a public GitHub issue
 2. Email security@nlpl-lang.org

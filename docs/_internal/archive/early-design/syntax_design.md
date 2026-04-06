@@ -1,8 +1,8 @@
-# Natural Language Programming Language (NLPL) Syntax Design
+# NexusLang (NexusLang) Syntax Design
 
 ## Core Design Philosophy
 
-The NLPL syntax is designed to balance the natural feel of English with the precision and power required for a C++-level programming language. The design follows these guiding principles:
+The NexusLang syntax is designed to balance the natural feel of English with the precision and power required for a C++-level programming language. The design follows these guiding principles:
 
 1. **Natural readability**: Code should be readable by non-programmers while maintaining precision
 2. **Flexible expression**: Multiple ways to express the same operation, accommodating different writing styles
@@ -15,7 +15,7 @@ The NLPL syntax is designed to balance the natural feel of English with the prec
 
 ### 1. Statement Structure
 
-Statements in NLPL follow natural English sentence structure with a few consistent patterns:
+Statements in NexusLang follow natural English sentence structure with a few consistent patterns:
 
 #### Basic Statement Pattern
 ```
@@ -306,7 +306,7 @@ Tell the compiler to use the C calling convention for this function.
 
 ## Type System
 
-The NLPL type system includes:
+The NexusLang type system includes:
 
 1. **Basic types**: integer, float, double, boolean, character, string
 2. **Compound types**: array, list, dictionary, set, tuple
@@ -335,6 +335,6 @@ Set result to the sum of a and b, multiplied by c.  // Natural language with cle
 
 ## Conclusion
 
-This syntax design provides a foundation for a Natural Language Programming Language that combines the readability and accessibility of English with the power and precision of C++. The flexible syntax allows programmers to express ideas in a way that feels natural while maintaining the technical capabilities required for systems programming.
+This syntax design provides a foundation for a NexusLang that combines the readability and accessibility of English with the power and precision of C++. The flexible syntax allows programmers to express ideas in a way that feels natural while maintaining the technical capabilities required for systems programming.
 
 The next steps involve designing the compiler architecture that can translate this natural language syntax into efficient machine code, focusing on parsing strategies, semantic analysis, and code generation techniques.

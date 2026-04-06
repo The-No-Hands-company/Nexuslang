@@ -1,4 +1,4 @@
-# NLPL Compiler - Implementation Progress
+# NexusLang Compiler - Implementation Progress
 
 ## Massive Progress: 4 Major Systems Complete!
 
@@ -20,7 +20,7 @@
 - Generic standard library (List<T>, Dictionary<K,V>, Optional<T>)
 - Full integration with type checker and code generator
 
-**Impact:** NLPL now has zero-cost generics rivaling Rust and C++!
+**Impact:** NexusLang now has zero-cost generics rivaling Rust and C++!
 
 ---
 

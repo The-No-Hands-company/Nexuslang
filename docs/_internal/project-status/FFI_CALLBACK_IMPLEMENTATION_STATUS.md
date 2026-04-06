@@ -1,7 +1,7 @@
 # FFI Callback Implementation Status
 
 ## Overview
-Callback functions allow C libraries to call back into NLPL code. This is essential for many C APIs including qsort(), signal handlers, event loops, and iterator functions.
+Callback functions allow C libraries to call back into NexusLang code. This is essential for many C APIs including qsort(), signal handlers, event loops, and iterator functions.
 
 ## Implementation Complete 
 
@@ -9,7 +9,7 @@ Callback functions allow C libraries to call back into NLPL code. This is essent
 **Location**: `src/nlpl/compiler/ffi.py`
 
 **Features Implemented**:
-- `create_callback_wrapper()` - Creates C-callable wrappers for NLPL functions
+- `create_callback_wrapper()` - Creates C-callable wrappers for NexusLang functions
 - `get_callback_pointer()` - Returns function pointers for passing to C
 - `create_comparison_callback()` - qsort/bsearch compatible callbacks
 - `create_signal_handler_callback()` - POSIX signal handler callbacks
@@ -17,9 +17,9 @@ Callback functions allow C libraries to call back into NLPL code. This is essent
 - `declare_callback_extern()` - Declare C functions that accept callbacks
 
 **How It Works**:
-1. Takes an NLPL function and wraps it with C calling convention
+1. Takes an NexusLang function and wraps it with C calling convention
 2. Handles parameter type conversions (C NLPL)
-3. Calls the NLPL function
+3. Calls the NexusLang function
 4. Converts return value (NLPL C)
 5. Returns wrapper that C code can call
 
@@ -35,7 +35,7 @@ Callback functions allow C libraries to call back into NLPL code. This is essent
 
 **New Node**: `CallbackReference`
 - Represents `callback function_name` expressions
-- Used when passing NLPL functions to C functions
+- Used when passing NexusLang functions to C functions
 - Stores function name for lookup
 
 ### 4. Parser Support
@@ -82,7 +82,7 @@ call qsort with array, size, element_size, callback compare_ints
 ## Test Programs Created
 
 ### 1. test_ffi_callback_qsort.nlpl
-Demonstrates qsort() with NLPL comparison function:
+Demonstrates qsort() with NexusLang comparison function:
 - Defines `compare_ints` function
 - Declares qsort from C library
 - Sorts integer array using callback
@@ -118,15 +118,15 @@ NLPL Function
 CallbackManager.create_callback_wrapper()
  
 Wrapper Function (C calling convention)
- Convert C parameters NLPL
- Call NLPL function
- Convert NLPL result C
+ Convert C parameters NexusLang
+ Call NexusLang function
+ Convert NexusLang result C
  
 Function Pointer (@wrapper_name)
  
 Passed to C Function
  
-C calls wrapper wrapper calls NLPL
+C calls wrapper wrapper calls NexusLang
 ```
 
 ### Type Conversion
@@ -265,7 +265,7 @@ extern function c_func with cb as Callback<Integer->Integer>
 
 ## Documentation Needed
 
-1. **User Guide** - How to use callbacks in NLPL
+1. **User Guide** - How to use callbacks in NexusLang
 2. **C Interop Guide** - Calling conventions, type mapping
 3. **Best Practices** - Memory safety, error handling
 4. **Examples** - Common callback patterns
@@ -329,7 +329,7 @@ extern function c_func with cb as Callback<Integer->Integer>
 
 ## Summary
 
-The callback implementation provides **complete basic functionality** for passing NLPL functions to C code. The core infrastructure is solid and extensible. Testing is the next critical step, followed by documentation and advanced features.
+The callback implementation provides **complete basic functionality** for passing NexusLang functions to C code. The core infrastructure is solid and extensible. Testing is the next critical step, followed by documentation and advanced features.
 
 **Ready for**: Real-world C library integration
 **Supports**: qsort, signal handlers, iterators, event loops

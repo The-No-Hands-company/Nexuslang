@@ -1,5 +1,5 @@
 """
-Tests for the NLPL stdlib http module.
+Tests for the NexusLang stdlib http module.
 
 Split into two groups:
 1. Offline tests (always run): URL utilities, HTTPResponse class,
@@ -22,7 +22,7 @@ _PROJECT_ROOT = os.path.abspath(
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from nlpl.stdlib.http import (
+from nexuslang.stdlib.http import (
     HTTPResponse,
     url_encode,
     url_decode,

@@ -12,14 +12,14 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 
-from nlpl.tooling.analyzer.report import (
+from nexuslang.tooling.analyzer.report import (
     Issue,
     Severity,
     Category,
     SourceLocation,
     AnalysisReport,
 )
-from nlpl.tooling.analyzer.autofix import (
+from nexuslang.tooling.analyzer.autofix import (
     TextEdit,
     FixSuggestion,
     FixResult,
@@ -28,7 +28,7 @@ from nlpl.tooling.analyzer.autofix import (
     _sort_edits_reverse,
     _FIX_GENERATORS,
 )
-from nlpl.tooling.analyzer.ide_hooks import (
+from nexuslang.tooling.analyzer.ide_hooks import (
     IDEHooks,
     LspFormatter,
     severity_to_lsp,
@@ -62,7 +62,7 @@ def _make_issue(
         category=category,
         message=message,
         location=SourceLocation(
-            "test.nlpl", line, col, end_line or line, end_col or (col + 1)
+            "test.nxl", line, col, end_line or line, end_col or (col + 1)
         ),
         source_line=None,
         suggestion=suggestion,
@@ -72,7 +72,7 @@ def _make_issue(
     )
 
 
-def _make_report(issues=None, file_path="test.nlpl"):
+def _make_report(issues=None, file_path="test.nxl"):
     report = AnalysisReport(
         file_path=file_path, total_lines=20, lines_analyzed=20
     )
@@ -769,7 +769,7 @@ class TestLspRange:
 class TestIDEHooksIssueToDiagnostic:
     def setup_method(self):
         self.hooks = IDEHooks()
-        self.file_uri = "file:///test.nlpl"
+        self.file_uri = "file:///test.nxl"
 
     def test_has_range_key(self):
         issue = _make_issue()
@@ -786,7 +786,7 @@ class TestIDEHooksIssueToDiagnostic:
         diag = self.hooks.issue_to_diagnostic(issue, self.file_uri)
         assert diag.get("code") == "W-STYLE-TRAIL"
 
-    def test_source_is_nlpl_analyze(self):
+    def test_source_is_nxl_analyze(self):
         issue = _make_issue()
         diag = self.hooks.issue_to_diagnostic(issue, self.file_uri)
         assert diag.get("source") == "nlpl-analyze"
@@ -809,7 +809,7 @@ class TestIDEHooksIssueToDiagnostic:
         assert "consider using X instead" in str(data)
 
     def test_related_information_present_for_related_locations(self):
-        related_loc = SourceLocation("other.nlpl", 5, 1, 5, 10)
+        related_loc = SourceLocation("other.nxl", 5, 1, 5, 10)
         issue = _make_issue(related_locations=[related_loc])
         diag = self.hooks.issue_to_diagnostic(issue, self.file_uri)
         # Either relatedInformation key present or skipped — check without error
@@ -826,7 +826,7 @@ class TestIDEHooksIssueToDiagnostic:
 class TestIDEHooksIssuesToDiagnostics:
     def setup_method(self):
         self.hooks = IDEHooks()
-        self.file_uri = "file:///test.nlpl"
+        self.file_uri = "file:///test.nxl"
 
     def test_empty_list_returns_empty(self):
         result = self.hooks.issues_to_diagnostics([], self.file_uri)
@@ -853,17 +853,17 @@ class TestIDEHooksReportToPublishParams:
         self.hooks = IDEHooks()
 
     def test_has_uri_key(self):
-        report = _make_report(file_path="/tmp/test.nlpl")
+        report = _make_report(file_path="/tmp/test.nxl")
         params = self.hooks.report_to_publish_params(report)
         assert "uri" in params
 
     def test_has_diagnostics_key(self):
-        report = _make_report(file_path="/tmp/test.nlpl")
+        report = _make_report(file_path="/tmp/test.nxl")
         params = self.hooks.report_to_publish_params(report)
         assert "diagnostics" in params
 
     def test_uri_is_file_scheme(self):
-        report = _make_report(file_path="/tmp/test.nlpl")
+        report = _make_report(file_path="/tmp/test.nxl")
         params = self.hooks.report_to_publish_params(report)
         assert params["uri"].startswith("file://")
 
@@ -876,7 +876,7 @@ class TestIDEHooksReportToPublishParams:
 class TestIDEHooksFixToCodeAction:
     def setup_method(self):
         self.hooks = IDEHooks()
-        self.file_uri = "file:///test.nlpl"
+        self.file_uri = "file:///test.nxl"
 
     def _make_suggestion(self):
         issue = _make_issue()
@@ -921,7 +921,7 @@ class TestIDEHooksFixToCodeAction:
 class TestIDEHooksFixesToCodeActions:
     def setup_method(self):
         self.hooks = IDEHooks()
-        self.file_uri = "file:///test.nlpl"
+        self.file_uri = "file:///test.nxl"
 
     def _make_suggestion(self, line=1):
         issue = _make_issue(line=line)
@@ -951,7 +951,7 @@ class TestIDEHooksFixesToCodeActions:
 class TestIDEHooksGetCodeActionsForRange:
     def setup_method(self):
         self.hooks = IDEHooks()
-        self.file_uri = "file:///test.nlpl"
+        self.file_uri = "file:///test.nxl"
 
     def _make_suggestion(self, line):
         issue = _make_issue(line=line)
@@ -999,20 +999,20 @@ class TestIDEHooksWorkspaceDiagnostics:
         self.hooks = IDEHooks()
 
     def test_multiple_reports_multiple_uris(self):
-        r1 = _make_report(file_path="/tmp/a.nlpl")
-        r2 = _make_report(file_path="/tmp/b.nlpl")
+        r1 = _make_report(file_path="/tmp/a.nxl")
+        r2 = _make_report(file_path="/tmp/b.nxl")
         result = self.hooks.reports_to_workspace_diagnostics([r1, r2])
         assert len(result) == 2
 
     def test_each_uri_has_diagnostics_list(self):
         issue = _make_issue(line=1)
-        r = _make_report(issues=[issue], file_path="/tmp/c.nlpl")
+        r = _make_report(issues=[issue], file_path="/tmp/c.nxl")
         result = self.hooks.reports_to_workspace_diagnostics([r])
         for diagnostics in result.values():
             assert isinstance(diagnostics, list)
 
     def test_empty_report_gives_empty_diagnostics(self):
-        r = _make_report(issues=[], file_path="/tmp/empty.nlpl")
+        r = _make_report(issues=[], file_path="/tmp/empty.nxl")
         result = self.hooks.reports_to_workspace_diagnostics([r])
         for uri, diagnostics in result.items():
             assert diagnostics == []
@@ -1029,7 +1029,7 @@ class TestLspFormatterFacade:
 
     def test_diagnostics_for_file_returns_dict_with_uri_and_diagnostics(self):
         issue = _make_issue(line=1)
-        report = _make_report(issues=[issue], file_path="/tmp/test.nlpl")
+        report = _make_report(issues=[issue], file_path="/tmp/test.nxl")
         source = "some code   \n"
         result = self.formatter.diagnostics_for_file(report, source)
         assert "uri" in result
@@ -1037,14 +1037,14 @@ class TestLspFormatterFacade:
 
     def test_code_actions_for_range_returns_list(self):
         issue = _make_issue(code="W-STYLE-TRAIL", line=1)
-        report = _make_report(issues=[issue], file_path="/tmp/test.nlpl")
+        report = _make_report(issues=[issue], file_path="/tmp/test.nxl")
         source = "trailing   \n"
         result = self.formatter.code_actions_for_range(report, source, 1, 1)
         assert isinstance(result, list)
 
     def test_apply_suggestions_returns_string(self):
         issue = _make_issue(code="W-STYLE-TRAIL", line=1)
-        report = _make_report(issues=[issue], file_path="/tmp/test.nlpl")
+        report = _make_report(issues=[issue], file_path="/tmp/test.nxl")
         source = "trailing   \n"
         result = self.formatter.apply_fixes(report, source, dry_run=True)
         assert isinstance(result, str)
@@ -1055,7 +1055,7 @@ class TestLspFormatterFacade:
     def test_custom_source_name_propagated(self):
         formatter = LspFormatter(source_name="my-linter")
         issue = _make_issue(line=1)
-        report = _make_report(issues=[issue], file_path="/tmp/test.nlpl")
+        report = _make_report(issues=[issue], file_path="/tmp/test.nxl")
         result = formatter.diagnostics_for_file(report, "line\n")
         # Diagnostics should carry the custom source name
         for diag in result.get("diagnostics", []):

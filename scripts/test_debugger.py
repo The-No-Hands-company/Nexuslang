@@ -11,12 +11,12 @@ import os
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from nlpl.debugger.debugger import Debugger, DebuggerState, Breakpoint
-from nlpl.interpreter.interpreter import Interpreter
-from nlpl.runtime.runtime import Runtime
-from nlpl.stdlib import register_stdlib
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
+from nexuslang.debugger.debugger import Debugger, DebuggerState, Breakpoint
+from nexuslang.interpreter.interpreter import Interpreter
+from nexuslang.runtime.runtime import Runtime
+from nexuslang.stdlib import register_stdlib
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
 
 def test_breakpoint_creation():
  """Test creating and managing breakpoints."""
@@ -29,9 +29,9 @@ def test_breakpoint_creation():
  debugger = Debugger(interpreter, interactive=False)
  
  # Add breakpoints
- bp1 = debugger.add_breakpoint("test.nlpl", 10)
- bp2 = debugger.add_breakpoint("test.nlpl", 20, condition="x > 5")
- bp3 = debugger.add_breakpoint("other.nlpl", 15, temp=True)
+ bp1 = debugger.add_breakpoint("test.nxl", 10)
+ bp2 = debugger.add_breakpoint("test.nxl", 20, condition="x > 5")
+ bp3 = debugger.add_breakpoint("other.nxl", 15, temp=True)
  
  assert len(debugger.list_breakpoints()) == 3
  assert bp1.line == 10
@@ -39,11 +39,11 @@ def test_breakpoint_creation():
  assert bp3.temp == True
  
  # Remove breakpoint
- assert debugger.remove_breakpoint("test.nlpl", 10) == True
+ assert debugger.remove_breakpoint("test.nxl", 10) == True
  assert len(debugger.list_breakpoints()) == 2
  
  # Toggle breakpoint
- assert debugger.toggle_breakpoint("test.nlpl", 20) == True
+ assert debugger.toggle_breakpoint("test.nxl", 20) == True
  assert bp2.enabled == False
  
  print(" Breakpoint creation and management works")
@@ -61,9 +61,9 @@ def test_call_stack():
  debugger = Debugger(interpreter, interactive=False)
  
  # Push frames
- debugger.push_frame("main", "test.nlpl", 1, {"x": 10})
- debugger.push_frame("calculate", "test.nlpl", 5, {"y": 20})
- debugger.push_frame("helper", "test.nlpl", 10, {"z": 30})
+ debugger.push_frame("main", "test.nxl", 1, {"x": 10})
+ debugger.push_frame("calculate", "test.nxl", 5, {"y": 20})
+ debugger.push_frame("helper", "test.nxl", 10, {"z": 30})
  
  assert len(debugger.call_stack) == 3
  assert debugger.step_depth == 3
@@ -93,12 +93,12 @@ def test_variable_inspection():
  
  # Set up variables
  interpreter.set_variable("x", 42)
- interpreter.set_variable("name", "NLPL")
+ interpreter.set_variable("name", "NexusLang")
  interpreter.set_variable("data", [1, 2, 3])
  
  # Inspect
  assert debugger.inspect_variable("x") == 42
- assert debugger.inspect_variable("name") == "NLPL"
+ assert debugger.inspect_variable("name") == "NexusLang"
  
  all_vars = debugger.inspect_all_variables()
  assert "x" in all_vars
@@ -153,20 +153,20 @@ def test_breakpoint_hit():
  debugger = Debugger(interpreter, interactive=False)
  
  # Add breakpoint
- bp = debugger.add_breakpoint("test.nlpl", 5)
+ bp = debugger.add_breakpoint("test.nxl", 5)
  assert bp.hit_count == 0
  
  # Check breakpoint (should hit)
- result = debugger._check_breakpoint("test.nlpl", 5)
+ result = debugger._check_breakpoint("test.nxl", 5)
  assert result is not None
  assert bp.hit_count == 1
  
  # Check again
- result = debugger._check_breakpoint("test.nlpl", 5)
+ result = debugger._check_breakpoint("test.nxl", 5)
  assert bp.hit_count == 2
  
  # Check non-existent breakpoint
- result = debugger._check_breakpoint("test.nlpl", 10)
+ result = debugger._check_breakpoint("test.nxl", 10)
  assert result is None
  
  print(" Breakpoint hit detection works")
@@ -192,10 +192,10 @@ print text sum
  
  # Attach debugger
  interpreter.debugger = debugger
- interpreter.current_file = "test.nlpl"
+ interpreter.current_file = "test.nxl"
  
  # Add breakpoint
- debugger.add_breakpoint("test.nlpl", 3)
+ debugger.add_breakpoint("test.nxl", 3)
  
  # Parse and execute
  lexer = Lexer(source)

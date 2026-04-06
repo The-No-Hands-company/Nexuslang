@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Performance profiling for NLPL parser.
+Performance profiling for NexusLang parser.
 Measures parsing time, memory usage, and identifies bottlenecks.
 """
 
@@ -13,8 +13,8 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
 
 
 def profile_parse(source_file):
@@ -91,10 +91,10 @@ def profile_parse(source_file):
 def benchmark_multiple_files():
     """Benchmark multiple files of varying sizes."""
     test_files = [
-        'examples/01_basics/01_basic_concepts.nlpl',
-        'examples/10_concurrency_and_async.nlpl',
-        'examples/09_feature_patterns/07_performance_optimization.nlpl',
-        'test_programs/unit/stdlib/test_json.nlpl',
+        'examples/01_basics/01_basic_concepts.nxl',
+        'examples/10_concurrency_and_async.nxl',
+        'examples/09_feature_patterns/07_performance_optimization.nxl',
+        'test_programs/unit/stdlib/test_json.nxl',
     ]
     
     results = []
@@ -133,7 +133,7 @@ def test_incremental_simulation():
     print(f"{'='*70}")
     
     # Test with a small file
-    test_file = 'examples/01_basic_concepts.nlpl'
+    test_file = 'examples/01_basic_concepts.nxl'
     if not os.path.exists(test_file):
         print(f"Test file not found: {test_file}")
         return

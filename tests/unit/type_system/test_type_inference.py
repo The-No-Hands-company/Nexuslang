@@ -3,9 +3,9 @@
 Test type inference for different array element types.
 """
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.compiler.backends.c_generator import CCodeGenerator
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.compiler.backends.c_generator import CCodeGenerator
 
 def test_type_inference():
     """Test type inference for various array types."""

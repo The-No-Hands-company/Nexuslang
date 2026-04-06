@@ -65,10 +65,10 @@ NLPL inline assembly implementation includes ARM/AArch64 support, but the develo
 
 ### If You Have ARM Hardware
 
-1. **Clone NLPL repository**:
+1. **Clone NexusLang repository**:
    ```bash
    git clone https://github.com/Zajfan/NLPL.git
-   cd NLPL
+   cd NexusLang
    ```
 
 2. **Install dependencies**:

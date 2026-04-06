@@ -33,7 +33,7 @@
    - Select **"NLPL Language Server"** from dropdown
    - Look for startup messages:
      ```
-     Starting NLPL Language Server...
+     Starting NexusLang Language Server...
      Workspace root: /path/to/NLPL
      Indexing workspace...
      Found 41 files
@@ -42,9 +42,9 @@
      ```
 
 4. **Open test file:**
-   - File → Open Folder → Select NLPL workspace
+   - File → Open Folder → Select NexusLang workspace
    - Open `examples/01_basic_concepts.nlpl`
-   - Verify file is recognized as NLPL (bottom right shows "NLPL")
+   - Verify file is recognized as NexusLang (bottom right shows "NexusLang")
 
 ---
 
@@ -315,16 +315,16 @@
 ### If LSP Server Doesn't Start:
 
 1. Check Output → "NLPL Language Server" for errors
-2. Check trace logs: Set `"nlpl.trace.server": "verbose"` in settings
+2. Check trace logs: Set `"nexuslang.trace.server": "verbose"` in settings
 3. Test server manually:
    ```bash
    python3 src/nlpl/lsp/server.py
    ```
-4. Verify Python path: Check `"nlpl.languageServer.pythonPath"` setting
+4. Verify Python path: Check `"nexuslang.languageServer.pythonPath"` setting
 
 ### If Features Don't Work:
 
-1. Verify file is recognized as NLPL (bottom right)
+1. Verify file is recognized as NexusLang (bottom right)
 2. Check LSP capabilities in trace logs (initialize response)
 3. Look for Python exceptions in Output panel
 4. Try restarting extension: Ctrl+Shift+P → "Reload Window"
@@ -371,5 +371,5 @@ _____________________________________________
 - **NLPL LSP Trace** - Communication trace (if verbose enabled)
 
 **Settings Location:**
-- File → Preferences → Settings → Search "NLPL"
+- File → Preferences → Settings → Search "NexusLang"
 - Or: `.vscode/settings.json` in workspace

@@ -12,7 +12,7 @@ import sys
 import time
 from pathlib import Path
 
-# Add NLPL to path
+# Add NexusLang to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src'))
 
 
@@ -33,7 +33,7 @@ class LSPTestClient:
         existing = env.get("PYTHONPATH", "")
         env["PYTHONPATH"] = src_dir + (os.pathsep + existing if existing else "")
         self.process = subprocess.Popen(
-            [sys.executable, '-m', 'nlpl.lsp', '--stdio'],
+            [sys.executable, '-m', 'nexuslang.lsp', '--stdio'],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -160,7 +160,7 @@ def test_goto_definition_same_file():
     print("TEST: Go-To-Definition (Same File)")
     print("=" * 70)
     
-    # Test NLPL code
+    # Test NexusLang code
     test_code = """function calculate_sum with a as Integer, b as Integer returns Integer
     return a plus b
 end
@@ -172,7 +172,7 @@ print text result
     client = LSPTestClient()
     client.start()
     
-    test_file = Path(__file__).parent.parent.parent / "test_programs" / "lsp_tests" / "test_same_file.nlpl"
+    test_file = Path(__file__).parent.parent.parent / "test_programs" / "lsp_tests" / "test_same_file.nxl"
     test_file.parent.mkdir(parents=True, exist_ok=True)
     test_file.write_text(test_code)
     
@@ -228,8 +228,8 @@ def test_goto_definition_cross_file():
     test_dir = Path(__file__).parent.parent.parent / "test_programs" / "lsp_tests"
     
     # Read the test files
-    module_a_path = test_dir / "test_module_a.nlpl"
-    module_b_path = test_dir / "test_module_b.nlpl"
+    module_a_path = test_dir / "test_module_a.nxl"
+    module_b_path = test_dir / "test_module_b.nxl"
     
     if not module_a_path.exists() or not module_b_path.exists():
         print("Test files not found!")
@@ -267,10 +267,10 @@ def test_goto_definition_cross_file():
         print(f"   Line: {location['range']['start']['line']}")
         
         # Check if it points to module_a
-        if 'test_module_a.nlpl' in location['uri']:
-            print("   ✅ Correct file (test_module_a.nlpl)!")
+        if 'test_module_a.nxl' in location['uri']:
+            print("   ✅ Correct file (test_module_a.nxl)!")
         else:
-            print(f"   ❌ Wrong file (expected test_module_a.nlpl)")
+            print(f"   ❌ Wrong file (expected test_module_a.nxl)")
             
         if location['range']['start']['line'] == 3:  # greet function at line 3
             print("   ✅ Correct line!")
@@ -294,7 +294,7 @@ def test_goto_definition_cross_file():
         print(f"   File: {location['uri']}")
         print(f"   Line: {location['range']['start']['line']}")
         
-        if 'test_module_a.nlpl' in location['uri']:
+        if 'test_module_a.nxl' in location['uri']:
             print("   ✅ Correct file!")
         else:
             print(f"   ❌ Wrong file")

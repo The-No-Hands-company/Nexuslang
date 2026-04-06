@@ -443,6 +443,6 @@ With inline assembly complete (~87%), consider:
 2. **User documentation**: Comprehensive inline assembly guide
 3. **Example programs**: Real-world inline assembly use cases
 4. **Performance benchmarks**: Compare to C inline assembly
-5. **Integration testing**: Use inline assembly in larger NLPL programs
+5. **Integration testing**: Use inline assembly in larger NexusLang programs
 
 Or move to next major feature area per project roadmap!

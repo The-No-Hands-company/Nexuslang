@@ -26,15 +26,15 @@ import pytest
 ROOT = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from nlpl.errors import NLPLContractError
-from nlpl.interpreter.interpreter import Interpreter
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.runtime.runtime import Runtime
+from nexuslang.errors import NLPLContractError
+from nexuslang.interpreter.interpreter import Interpreter
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.runtime.runtime import Runtime
 
 
 def run(source: str):
-    """Parse + execute NLPL source; return final expression value."""
+    """Parse + execute NexusLang source; return final expression value."""
     runtime = Runtime()
     interpreter = Interpreter(runtime)
     return interpreter.interpret(source)
@@ -284,7 +284,7 @@ class TestOldExpression:
 
     def test_old_parseable_in_ast(self):
         """old(x) in ensure must produce an OldExpression node."""
-        from nlpl.parser.ast import OldExpression
+        from nexuslang.parser.ast import OldExpression
 
         src = (
             "function f returns Integer\n"
@@ -386,7 +386,7 @@ class TestSpecBlock:
 
 class TestVerificationCondition:
     def setup_method(self):
-        from nlpl.verification.specification import (
+        from nexuslang.verification.specification import (
             FormalSpec,
             VerificationCondition,
             VerificationStatus,
@@ -429,17 +429,17 @@ class TestVerificationCondition:
             self.VC("postcondition", "b", "f", 2),
             self.VC("guarantee", "c", "g", 3),
         ]
-        spec = self.FS(path="test.nlpl", conditions=vcs)
+        spec = self.FS(path="test.nxl", conditions=vcs)
         assert spec.total == 3
 
     def test_formal_spec_unverified_count(self):
         vcs = [self.VC("precondition", "a", "f", 1) for _ in range(4)]
-        spec = self.FS(path="test.nlpl", conditions=vcs)
+        spec = self.FS(path="test.nxl", conditions=vcs)
         assert spec.unverified == 4
 
     def test_formal_spec_proved_count(self):
         vcs = [self.VC("precondition", "a", "f", 1, status=self.VS.PROVED) for _ in range(2)]
-        spec = self.FS(path="test.nlpl", conditions=vcs)
+        spec = self.FS(path="test.nxl", conditions=vcs)
         assert spec.proved == 2
 
     def test_formal_spec_by_function(self):
@@ -448,7 +448,7 @@ class TestVerificationCondition:
             self.VC("postcondition", "b", "f", 2),
             self.VC("guarantee", "c", "g", 3),
         ]
-        spec = self.FS(path="test.nlpl", conditions=vcs)
+        spec = self.FS(path="test.nxl", conditions=vcs)
         grouped = spec.by_function()
         assert "f" in grouped
         assert "g" in grouped
@@ -456,14 +456,14 @@ class TestVerificationCondition:
         assert len(grouped["g"]) == 1
 
     def test_formal_spec_summary_is_string(self):
-        spec = self.FS(path="test.nlpl", conditions=[])
+        spec = self.FS(path="test.nxl", conditions=[])
         s = spec.summary()
         assert isinstance(s, str)
-        assert "test.nlpl" in s
+        assert "test.nxl" in s
 
     def test_formal_spec_to_dict_serializable(self):
         vcs = [self.VC("precondition", "x > 0", "f", 1)]
-        spec = self.FS(path="test.nlpl", conditions=vcs)
+        spec = self.FS(path="test.nxl", conditions=vcs)
         d = spec.to_dict()
         json.dumps(d)  # must not raise
 
@@ -475,15 +475,15 @@ class TestVerificationCondition:
 
 class TestConstraintCollector:
     def setup_method(self):
-        from nlpl.verification.constraint_collector import ConstraintCollector
-        from nlpl.verification.specification import VerificationStatus
+        from nexuslang.verification.constraint_collector import ConstraintCollector
+        from nexuslang.verification.specification import VerificationStatus
 
         self.CC = ConstraintCollector
         self.VS = VerificationStatus
 
     def _collect(self, source: str):
         ast = parse_only(source)
-        return self.CC("test.nlpl").collect(ast)
+        return self.CC("test.nxl").collect(ast)
 
     def test_empty_program_no_vcs(self):
         spec = self._collect("set x to 1")
@@ -613,8 +613,8 @@ class TestConstraintCollector:
 
 class TestZ3Backend:
     def setup_method(self):
-        from nlpl.verification.z3_backend import Z3_AVAILABLE, Z3Backend
-        from nlpl.verification.specification import (
+        from nexuslang.verification.z3_backend import Z3_AVAILABLE, Z3Backend
+        from nexuslang.verification.specification import (
             FormalSpec,
             VerificationCondition,
             VerificationStatus,
@@ -636,7 +636,7 @@ class TestZ3Backend:
     def test_verify_all_returns_spec_when_unavailable(self):
         if self.Z3_AVAILABLE:
             pytest.skip("Z3 is available; skip unavailability test")
-        spec = self.FS(path="t.nlpl", conditions=[])
+        spec = self.FS(path="t.nxl", conditions=[])
         b = self.Z3Backend()
         result = b.verify_all(spec)
         assert result is spec
@@ -653,7 +653,7 @@ class TestZ3Backend:
         if self.Z3_AVAILABLE:
             pytest.skip("Z3 is available; skip unavailability test")
         vcs = [self.VC("precondition", "x > 0", "f", 1)]
-        spec = self.FS(path="t.nlpl", conditions=vcs)
+        spec = self.FS(path="t.nxl", conditions=vcs)
         b = self.Z3Backend()
         result = b.verify_all(spec)
         assert all(vc.status == self.VS.UNVERIFIED for vc in result.conditions)
@@ -678,8 +678,8 @@ class TestZ3Backend:
 
 class TestVerificationReport:
     def setup_method(self):
-        from nlpl.verification.reporter import VerificationReport
-        from nlpl.verification.specification import (
+        from nexuslang.verification.reporter import VerificationReport
+        from nexuslang.verification.specification import (
             FormalSpec,
             VerificationCondition,
             VerificationStatus,
@@ -698,25 +698,25 @@ class TestVerificationReport:
         assert r.total_conditions == 0
 
     def test_report_aggregates_multiple_specs(self):
-        s1 = self._make_spec("a.nlpl", [self.VC("precondition", "x", "f", 1)])
-        s2 = self._make_spec("b.nlpl", [self.VC("postcondition", "y", "g", 2)])
+        s1 = self._make_spec("a.nxl", [self.VC("precondition", "x", "f", 1)])
+        s2 = self._make_spec("b.nxl", [self.VC("postcondition", "y", "g", 2)])
         r = self.VR([s1, s2])
         assert r.total_conditions == 2
 
     def test_has_failures_false_when_no_failures(self):
-        s = self._make_spec("a.nlpl", [self.VC("precondition", "x", "f", 1)])
+        s = self._make_spec("a.nxl", [self.VC("precondition", "x", "f", 1)])
         r = self.VR([s])
         assert not r.has_failures
 
     def test_has_failures_true_when_some_failed(self):
         vc = self.VC("precondition", "x", "f", 1, status=self.VS.FAILED)
-        s = self._make_spec("a.nlpl", [vc])
+        s = self._make_spec("a.nxl", [vc])
         r = self.VR([s])
         assert r.has_failures
 
     def test_total_proved(self):
         vcs = [self.VC("precondition", "x", "f", 1, status=self.VS.PROVED) for _ in range(3)]
-        s = self._make_spec("a.nlpl", vcs)
+        s = self._make_spec("a.nxl", vcs)
         r = self.VR([s])
         assert r.total_proved == 3
 
@@ -726,7 +726,7 @@ class TestVerificationReport:
 
     def test_to_dict_is_json_serializable(self):
         vcs = [self.VC("precondition", "x", "f", 1)]
-        s = self._make_spec("a.nlpl", vcs)
+        s = self._make_spec("a.nxl", vcs)
         r = self.VR([s])
         json.dumps(r.to_dict())  # must not raise
 
@@ -752,18 +752,18 @@ class TestVerificationReport:
 
 class TestVerifyFile:
     def setup_method(self):
-        from nlpl.verification.reporter import verify_file, verify_files
+        from nexuslang.verification.reporter import verify_file, verify_files
 
         self.verify_file = verify_file
         self.verify_files = verify_files
 
-    def _write_nlpl(self, tmp_path, content, name="test.nlpl"):
+    def _write_nxl(self, tmp_path, content, name="test.nxl"):
         p = tmp_path / name
         p.write_text(content)
         return str(p)
 
     def test_verify_file_no_contracts_zero_vcs(self, tmp_path):
-        path = self._write_nlpl(tmp_path, "set x to 1\n")
+        path = self._write_nxl(tmp_path, "set x to 1\n")
         spec = self.verify_file(path, use_z3=False)
         assert spec.total == 0
 
@@ -774,27 +774,27 @@ class TestVerifyFile:
             "    return x\n"
             "end\n"
         )
-        path = self._write_nlpl(tmp_path, src)
+        path = self._write_nxl(tmp_path, src)
         spec = self.verify_file(path, use_z3=False)
         assert spec.total >= 1
 
     def test_verify_file_returns_formal_spec(self, tmp_path):
-        from nlpl.verification.specification import FormalSpec
+        from nexuslang.verification.specification import FormalSpec
 
-        path = self._write_nlpl(tmp_path, "set x to 1\n")
+        path = self._write_nxl(tmp_path, "set x to 1\n")
         spec = self.verify_file(path, use_z3=False)
         assert isinstance(spec, FormalSpec)
 
     def test_verify_files_aggregates(self, tmp_path):
-        from nlpl.verification.reporter import VerificationReport
+        from nexuslang.verification.reporter import VerificationReport
 
-        p1 = self._write_nlpl(tmp_path, "set x to 1\n", "a.nlpl")
-        p2 = self._write_nlpl(tmp_path, "set y to 2\n", "b.nlpl")
+        p1 = self._write_nxl(tmp_path, "set x to 1\n", "a.nxl")
+        p2 = self._write_nxl(tmp_path, "set y to 2\n", "b.nxl")
         report = self.verify_files([p1, p2], use_z3=False)
         assert isinstance(report, VerificationReport)
 
     def test_verify_file_path_recorded_in_spec(self, tmp_path):
-        path = self._write_nlpl(tmp_path, "set x to 1\n")
+        path = self._write_nxl(tmp_path, "set x to 1\n")
         spec = self.verify_file(path, use_z3=False)
         assert spec.path == path
 
@@ -806,38 +806,38 @@ class TestVerifyFile:
 
 class TestNlplVerifyCli:
     def setup_method(self):
-        from nlpl.cli.nlplverify import _cli
+        from nexuslang.cli.nlplverify import _cli
 
         self._cli = _cli
 
-    def _write_nlpl(self, tmp_path, content, name="test.nlpl"):
+    def _write_nxl(self, tmp_path, content, name="test.nxl"):
         p = tmp_path / name
         p.write_text(content)
         return str(p)
 
     def test_missing_file_exits_2(self):
-        rc = self._cli(["nonexistent_file_xyz.nlpl"])
+        rc = self._cli(["nonexistent_file_xyz.nxl"])
         assert rc == 2
 
     def test_valid_file_exits_0(self, tmp_path):
-        path = self._write_nlpl(tmp_path, "set x to 1\n")
+        path = self._write_nxl(tmp_path, "set x to 1\n")
         rc = self._cli(["--no-z3", path])
         assert rc == 0
 
     def test_no_z3_flag_succeeds(self, tmp_path):
-        path = self._write_nlpl(tmp_path, "set x to 1\n")
+        path = self._write_nxl(tmp_path, "set x to 1\n")
         rc = self._cli(["--no-z3", path])
         assert rc == 0
 
     def test_json_output_creates_file(self, tmp_path):
-        path = self._write_nlpl(tmp_path, "set x to 1\n")
+        path = self._write_nxl(tmp_path, "set x to 1\n")
         out = str(tmp_path / "out.json")
         rc = self._cli(["--no-z3", "--json", out, path])
         assert rc == 0
         assert Path(out).exists()
 
     def test_text_output_creates_file(self, tmp_path):
-        path = self._write_nlpl(tmp_path, "set x to 1\n")
+        path = self._write_nxl(tmp_path, "set x to 1\n")
         out = str(tmp_path / "out.txt")
         rc = self._cli(["--no-z3", "--text", out, path])
         assert rc == 0
@@ -850,19 +850,19 @@ class TestNlplVerifyCli:
             "    return x\n"
             "end\n"
         )
-        path = self._write_nlpl(tmp_path, src)
+        path = self._write_nxl(tmp_path, src)
         rc = self._cli(["--no-z3", "--fail-unverified", path])
         assert rc == 1
 
     def test_quiet_flag_accepted(self, tmp_path, capsys):
-        path = self._write_nlpl(tmp_path, "set x to 1\n")
+        path = self._write_nxl(tmp_path, "set x to 1\n")
         rc = self._cli(["--no-z3", "--quiet", path])
         assert rc == 0
         captured = capsys.readouterr()
         assert captured.out == "" or len(captured.out) < 10  # quiet = minimal output
 
     def test_multiple_files_all_processed(self, tmp_path):
-        p1 = self._write_nlpl(tmp_path, "set x to 1\n", "a.nlpl")
-        p2 = self._write_nlpl(tmp_path, "set y to 2\n", "b.nlpl")
+        p1 = self._write_nxl(tmp_path, "set x to 1\n", "a.nxl")
+        p2 = self._write_nxl(tmp_path, "set y to 2\n", "b.nxl")
         rc = self._cli(["--no-z3", p1, p2])
         assert rc == 0

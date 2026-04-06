@@ -1,7 +1,7 @@
 # Generic Type System Implementation - Completion Summary
 
 ## Overview
-Successfully completed the full generic type system implementation for NLPL, including type parameter inference, runtime generic instantiation, and three major stdlib generic types (Optional<T>, Result<T,E>, Promise<T>).
+Successfully completed the full generic type system implementation for NexusLang, including type parameter inference, runtime generic instantiation, and three major stdlib generic types (Optional<T>, Result<T,E>, Promise<T>).
 
 ## Completed Features
 
@@ -248,7 +248,7 @@ The async system uses:
 
 1. **Type Erasure**: Generic type arguments are parse-time only, not enforced at runtime (by design)
 2. **Interpreter Integration**: Generic instantiation parses correctly but interpreter doesn't use type_arguments yet
-3. **NLPL Promise Syntax**: Promise functionality implemented in Python, NLPL syntax integration pending
+3. **NLPL Promise Syntax**: Promise functionality implemented in Python, NexusLang syntax integration pending
 4. **Module Conflict**: Had to rename 'async' to 'asyncio_utils' to avoid Python keyword clash
 
 ---

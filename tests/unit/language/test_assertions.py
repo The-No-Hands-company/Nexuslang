@@ -15,166 +15,166 @@ if _SRC not in sys.path:
 
 class TestAssertionLibraryLexer:
     def _lex(self, src):
-        from nlpl.parser.lexer import Lexer
+        from nexuslang.parser.lexer import Lexer
         return Lexer(src).tokenize()
 
     def test_require_keyword_token(self):
-        from nlpl.parser.lexer import TokenType
+        from nexuslang.parser.lexer import TokenType
         toks = self._lex("require x")
         assert TokenType.REQUIRE in [t.type for t in toks]
 
     def test_ensure_keyword_token(self):
-        from nlpl.parser.lexer import TokenType
+        from nexuslang.parser.lexer import TokenType
         toks = self._lex("ensure x")
         assert TokenType.ENSURE in [t.type for t in toks]
 
     def test_guarantee_keyword_token(self):
-        from nlpl.parser.lexer import TokenType
+        from nexuslang.parser.lexer import TokenType
         toks = self._lex("guarantee x")
         assert TokenType.GUARANTEE in [t.type for t in toks]
 
     def test_expect_token_with_equal(self):
-        from nlpl.parser.lexer import TokenType
+        from nexuslang.parser.lexer import TokenType
         toks = self._lex("expect x to equal 5")
         types = [t.type for t in toks]
         assert TokenType.EXPECT in types
         assert TokenType.TO in types
 
     def test_expect_token_with_not(self):
-        from nlpl.parser.lexer import TokenType
+        from nexuslang.parser.lexer import TokenType
         toks = self._lex("expect x to not equal 5")
         types = [t.type for t in toks]
         assert TokenType.NOT in types
 
 class TestAssertionLibraryAST:
     def test_expect_statement_import(self):
-        from nlpl.parser.ast import ExpectStatement
+        from nexuslang.parser.ast import ExpectStatement
         node = ExpectStatement(actual_expr=None, matcher="equal")
         assert node.node_type == "expect_statement"
 
     def test_expect_statement_matcher(self):
-        from nlpl.parser.ast import ExpectStatement
+        from nexuslang.parser.ast import ExpectStatement
         node = ExpectStatement(actual_expr=None, matcher="greater_than")
         assert node.matcher == "greater_than"
 
     def test_expect_statement_negated_default_false(self):
-        from nlpl.parser.ast import ExpectStatement
+        from nexuslang.parser.ast import ExpectStatement
         node = ExpectStatement(actual_expr=None, matcher="equal")
         assert node.negated is False
 
     def test_expect_statement_negated_true(self):
-        from nlpl.parser.ast import ExpectStatement
+        from nexuslang.parser.ast import ExpectStatement
         node = ExpectStatement(actual_expr=None, matcher="equal", negated=True)
         assert node.negated is True
 
     def test_require_statement_import(self):
-        from nlpl.parser.ast import RequireStatement
+        from nexuslang.parser.ast import RequireStatement
         node = RequireStatement(condition=None)
         assert node.node_type == "require_statement"
 
     def test_ensure_statement_import(self):
-        from nlpl.parser.ast import EnsureStatement
+        from nexuslang.parser.ast import EnsureStatement
         node = EnsureStatement(condition=None)
         assert node.node_type == "ensure_statement"
 
     def test_guarantee_statement_import(self):
-        from nlpl.parser.ast import GuaranteeStatement
+        from nexuslang.parser.ast import GuaranteeStatement
         node = GuaranteeStatement(condition=None)
         assert node.node_type == "guarantee_statement"
 
 class TestAssertionLibraryParser:
     def _parse(self, src):
-        from nlpl.parser.parser import Parser
-        from nlpl.parser.lexer import Lexer
+        from nexuslang.parser.parser import Parser
+        from nexuslang.parser.lexer import Lexer
         return Parser(Lexer(src).tokenize()).parse()
 
     def test_parse_expect_equal(self):
-        from nlpl.parser.ast import ExpectStatement
+        from nexuslang.parser.ast import ExpectStatement
         prog = self._parse("set x to 5\nexpect x to equal 5")
         assert any(isinstance(s, ExpectStatement) for s in prog.statements)
 
     def test_parse_expect_equal_matcher(self):
-        from nlpl.parser.ast import ExpectStatement
+        from nexuslang.parser.ast import ExpectStatement
         prog = self._parse("set x to 5\nexpect x to equal 5")
         node = next(s for s in prog.statements if isinstance(s, ExpectStatement))
         assert node.matcher == "equal"
 
     def test_parse_expect_not_equal(self):
-        from nlpl.parser.ast import ExpectStatement
+        from nexuslang.parser.ast import ExpectStatement
         prog = self._parse("set x to 5\nexpect x to not equal 3")
         node = next(s for s in prog.statements if isinstance(s, ExpectStatement))
         assert node.negated is True
 
     def test_parse_expect_greater_than(self):
-        from nlpl.parser.ast import ExpectStatement
+        from nexuslang.parser.ast import ExpectStatement
         prog = self._parse("set x to 5\nexpect x to be greater than 3")
         node = next(s for s in prog.statements if isinstance(s, ExpectStatement))
         assert node.matcher == "greater_than"
 
     def test_parse_expect_less_than(self):
-        from nlpl.parser.ast import ExpectStatement
+        from nexuslang.parser.ast import ExpectStatement
         prog = self._parse("set x to 5\nexpect x to be less than 10")
         node = next(s for s in prog.statements if isinstance(s, ExpectStatement))
         assert node.matcher == "less_than"
 
     def test_parse_expect_greater_than_or_equal_to(self):
-        from nlpl.parser.ast import ExpectStatement
+        from nexuslang.parser.ast import ExpectStatement
         prog = self._parse("set x to 5\nexpect x to be greater than or equal to 5")
         node = next(s for s in prog.statements if isinstance(s, ExpectStatement))
         assert node.matcher == "greater_than_or_equal_to"
 
     def test_parse_expect_less_than_or_equal_to(self):
-        from nlpl.parser.ast import ExpectStatement
+        from nexuslang.parser.ast import ExpectStatement
         prog = self._parse("set x to 5\nexpect x to be less than or equal to 5")
         node = next(s for s in prog.statements if isinstance(s, ExpectStatement))
         assert node.matcher == "less_than_or_equal_to"
 
     def test_parse_expect_contain(self):
-        from nlpl.parser.ast import ExpectStatement
+        from nexuslang.parser.ast import ExpectStatement
         prog = self._parse('set s to "hello"\nexpect s to contain "ell"')
         node = next(s for s in prog.statements if isinstance(s, ExpectStatement))
         assert node.matcher == "contain"
 
     def test_parse_expect_be_true(self):
-        from nlpl.parser.ast import ExpectStatement
+        from nexuslang.parser.ast import ExpectStatement
         prog = self._parse("set flag to true\nexpect flag to be true")
         node = next(s for s in prog.statements if isinstance(s, ExpectStatement))
         assert node.matcher == "be_true"
 
     def test_parse_expect_be_false(self):
-        from nlpl.parser.ast import ExpectStatement
+        from nexuslang.parser.ast import ExpectStatement
         prog = self._parse("set flag to false\nexpect flag to be false")
         node = next(s for s in prog.statements if isinstance(s, ExpectStatement))
         assert node.matcher == "be_false"
 
     def test_parse_expect_be_null(self):
-        from nlpl.parser.ast import ExpectStatement
+        from nexuslang.parser.ast import ExpectStatement
         prog = self._parse("set v to null\nexpect v to be null")
         node = next(s for s in prog.statements if isinstance(s, ExpectStatement))
         assert node.matcher == "be_null"
 
     def test_parse_require(self):
-        from nlpl.parser.ast import RequireStatement
+        from nexuslang.parser.ast import RequireStatement
         prog = self._parse("require 1 equals 1")
         assert any(isinstance(s, RequireStatement) for s in prog.statements)
 
     def test_parse_ensure(self):
-        from nlpl.parser.ast import EnsureStatement
+        from nexuslang.parser.ast import EnsureStatement
         prog = self._parse("ensure 1 equals 1")
         assert any(isinstance(s, EnsureStatement) for s in prog.statements)
 
     def test_parse_guarantee(self):
-        from nlpl.parser.ast import GuaranteeStatement
+        from nexuslang.parser.ast import GuaranteeStatement
         prog = self._parse("guarantee 1 equals 1")
         assert any(isinstance(s, GuaranteeStatement) for s in prog.statements)
 
 class TestAssertionLibraryInterpreter:
     def _interp(self, src):
-        from nlpl.interpreter.interpreter import Interpreter
-        from nlpl.runtime.runtime import Runtime
-        from nlpl.stdlib import register_stdlib
-        from nlpl.parser.parser import Parser
-        from nlpl.parser.lexer import Lexer
+        from nexuslang.interpreter.interpreter import Interpreter
+        from nexuslang.runtime.runtime import Runtime
+        from nexuslang.stdlib import register_stdlib
+        from nexuslang.parser.parser import Parser
+        from nexuslang.parser.lexer import Lexer
         rt = Runtime()
         register_stdlib(rt)
         prog = Parser(Lexer(src).tokenize()).parse()
@@ -251,11 +251,11 @@ class TestNewAssertionMatchers:
     """
 
     def _interp(self, src):
-        from nlpl.interpreter.interpreter import Interpreter
-        from nlpl.runtime.runtime import Runtime
-        from nlpl.stdlib import register_stdlib
-        from nlpl.parser.parser import Parser
-        from nlpl.parser.lexer import Lexer
+        from nexuslang.interpreter.interpreter import Interpreter
+        from nexuslang.runtime.runtime import Runtime
+        from nexuslang.stdlib import register_stdlib
+        from nexuslang.parser.parser import Parser
+        from nexuslang.parser.lexer import Lexer
         rt = Runtime()
         register_stdlib(rt)
         prog = Parser(Lexer(src).tokenize()).parse()
@@ -264,9 +264,9 @@ class TestNewAssertionMatchers:
         return i
 
     def _parse_matcher(self, src):
-        from nlpl.parser.ast import ExpectStatement
-        from nlpl.parser.parser import Parser
-        from nlpl.parser.lexer import Lexer
+        from nexuslang.parser.ast import ExpectStatement
+        from nexuslang.parser.parser import Parser
+        from nexuslang.parser.lexer import Lexer
         prog = Parser(Lexer(src).tokenize()).parse()
         return next(s for s in prog.statements if isinstance(s, ExpectStatement))
 
@@ -378,7 +378,7 @@ class TestNewAssertionMatchers:
         assert node.matcher == "raise_error"
 
     def test_raise_error_passes_when_exception_raised(self):
-        # Access undefined variable inside a function — guaranteed NLPLNameError
+        # Access undefined variable inside a function — guaranteed NxlNameError
         self._interp(
             "function boom returns Integer\n"
             "  set x to 1\n"

@@ -18,11 +18,11 @@ def fix_relative_imports(file_path):
     original_content = content
     
     # Pattern to match relative imports
-    # Examples: "from ..module import X" -> "from nlpl.module import X"
-    #           "from ..parser.lexer import X" -> "from nlpl.parser.lexer import X"
+    # Examples: "from ..module import X" -> "from nexuslang.module import X"
+    #           "from ..parser.lexer import X" -> "from nexuslang.parser.lexer import X"
     
     # Replace ..xxx with nlpl.xxx
-    content = re.sub(r'^from \.\.([\w.]+) import', r'from nlpl.\1 import', content, flags=re.MULTILINE)
+    content = re.sub(r'^from \.\.([\w.]+) import', r'from nexuslang.\1 import', content, flags=re.MULTILINE)
     
     # Replace .. standalone (from parent package)
     content = re.sub(r'^from \.\. import', r'from nlpl import', content, flags=re.MULTILINE)

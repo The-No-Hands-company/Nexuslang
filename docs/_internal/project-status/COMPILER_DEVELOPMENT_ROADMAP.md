@@ -1,4 +1,4 @@
-# NLPL Compiler Development Roadmap
+# NexusLang Compiler Development Roadmap
 ## Current Status & Next Priorities
 
 ---
@@ -194,7 +194,7 @@
  - Static/dynamic linking options
 
 3. **C Header Generation**
- - Export NLPL functions to C
+ - Export NexusLang functions to C
  - Generate .h files automatically
  - ABI compatibility
 
@@ -286,10 +286,10 @@ After optimization implementation:
 
 **What would you like to focus on next?**
 
-1. **Optimizations** - Make NLPL fast
-2. **Error Handling** - Make NLPL safe
-3. **FFI & Interop** - Make NLPL practical
-4. **Advanced Features** - Make NLPL expressive
-5. **Tooling** - Make NLPL developer-friendly
+1. **Optimizations** - Make NexusLang fast
+2. **Error Handling** - Make NexusLang safe
+3. **FFI & Interop** - Make NexusLang practical
+4. **Advanced Features** - Make NexusLang expressive
+5. **Tooling** - Make NexusLang developer-friendly
 
 Choose your path, and I'll implement it with the same quality and completeness as the generics system!

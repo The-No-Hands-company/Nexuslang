@@ -1,5 +1,5 @@
 """
-Comprehensive test suite for NLPL while loops.
+Comprehensive test suite for NexusLang while loops.
 Tests iteration, conditions, scope, breaks, and edge cases.
 """
 

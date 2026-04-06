@@ -1,7 +1,7 @@
-# NLPL Development Tools Implementation Status
+# NexusLang Development Tools Implementation Status
 
 **Date:** January 2, 2026 
-**Goal:** Transform NLPL from "90% debugging" to "90% development"
+**Goal:** Transform NexusLang from "90% debugging" to "90% development"
 
 ---
 
@@ -21,7 +21,7 @@
 **File:** `docs/NLPL_COMPETITIVE_ADVANTAGES.md`
 
 **Content (1,200+ lines):**
-- Part 1: C/C++/ASM Pain Points NLPL Solutions
+- Part 1: C/C++/ASM Pain Points NexusLang Solutions
  - Memory management nightmares Automatic safety by level
  - Cryptic errors Educational messages with fixes
  - Undefined behavior Compile-time + runtime detection
@@ -31,7 +31,7 @@
  - Concurrency complexity Goroutines + channels
  - Platform chaos Cross-platform by default
 
-- Part 2: NLPL Tooling Ecosystem Design
+- Part 2: NexusLang Tooling Ecosystem Design
  - `nlplbuild` - Unified build system
  - `nlpllint` - Static analyzer (100+ checks)
  - `nlpltest` - Testing framework
@@ -49,7 +49,7 @@
 
 - Part 4-7: Error quality, workflows, roadmap, next steps
 
-**Key Insight:** C++ spends 90-95% time debugging, NLPL targets 10% debugging (5-9x improvement)
+**Key Insight:** C++ spends 90-95% time debugging, NexusLang targets 10% debugging (5-9x improvement)
 
 ---
 
@@ -90,7 +90,7 @@
 |------|----------|--------|--------------|
 | **Enhanced Errors** | `src/nlpl/errors.py` | Production | Caret pointers, fuzzy matching, suggestions |
 | **Null Safety** | `src/nlpl/safety/null_safety.py` | Production | Uninitialized detection, null checks |
-| **Basic Linter** | `dev_tools/nlpl_lint.py` | Functional | Style checks, undefined vars |
+| **Basic Linter** | `dev_tools/nxl_lint.py` | Functional | Style checks, undefined vars |
 | **Memory Manager** | `src/nlpl/runtime/memory.py` | Production | alloc, dealloc, tracking |
 | **LSP Diagnostics** | `src/nlpl/lsp/diagnostics.py` | Production | Real-time error checking |
 | **Build System** | `src/nlpl/tooling/builder.py` | Production | LLVM compilation |
@@ -441,7 +441,7 @@ analyzer = StaticAnalyzer(
 ### Code References
 - `src/nlpl/errors.py` - Error formatting patterns
 - `src/nlpl/safety/null_safety.py` - Existing null checker
-- `dev_tools/nlpl_lint.py` - Basic linter patterns
+- `dev_tools/nxl_lint.py` - Basic linter patterns
 - `utility/include/voltron/utility/memory/` - C++ memory debug tools
 
 ### External Inspiration

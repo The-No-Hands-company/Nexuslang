@@ -1,6 +1,6 @@
-# NLPL Deployment Guide
+# NexusLang Deployment Guide
 
-Complete guide to deploying NLPL as a production-ready programming language.
+Complete guide to deploying NexusLang as a production-ready programming language.
 
 ## Table of Contents
 
@@ -48,7 +48,7 @@ vsce publish
  "url": "https://github.com/Zajfan/NLPL.git"
  },
  "bugs": {
- "url": "https://github.com/Zajfan/NLPL/issues"
+ "url": "https://github.com/Zajfan/NexusLang/issues"
  },
  "homepage": "https://github.com/Zajfan/NLPL#readme",
  "keywords": ["nlpl", "natural-language", "programming", "language-server"]
@@ -59,7 +59,7 @@ vsce publish
 ```bash
 code --install-extension nlpl-lang.nlpl-language-support
 ```
-Or search "NLPL" in VSCode Extensions marketplace.
+Or search "NexusLang" in VSCode Extensions marketplace.
 
 ### 1.2 Manual Distribution (.vsix file)
 
@@ -90,13 +90,13 @@ Create `~/.config/nvim/lua/nlpl.lua`:
 local lspconfig = require('lspconfig')
 local configs = require('lspconfig.configs')
 
--- Register NLPL LSP
+-- Register NexusLang LSP
 if not configs.nlpl then
  configs.nlpl = {
  default_config = {
- cmd = {'python3', '/path/to/NLPL/src/nlpl_lsp.py'},
+ cmd = {'python3', '/path/to/NexusLang/src/nxl_lsp.py'},
  filetypes = {'nlpl'},
- root_dir = lspconfig.util.root_pattern('.git', 'main.nlpl'),
+ root_dir = lspconfig.util.root_pattern('.git', 'main.nxl'),
  settings = {},
  },
  }
@@ -121,9 +121,9 @@ Add to `~/.vim/coc-settings.json`:
  "languageserver": {
  "nlpl": {
  "command": "python3",
- "args": ["/path/to/NLPL/src/nlpl_lsp.py"],
+ "args": ["/path/to/NexusLang/src/nxl_lsp.py"],
  "filetypes": ["nlpl"],
- "rootPatterns": [".git/", "main.nlpl"]
+ "rootPatterns": [".git/", "main.nxl"]
  }
  }
 }
@@ -141,8 +141,8 @@ Add to `~/.vim/coc-settings.json`:
  "clients": {
  "nlpl": {
  "enabled": true,
- "command": ["python3", "/path/to/NLPL/src/nlpl_lsp.py"],
- "selector": "source.nlpl",
+ "command": ["python3", "/path/to/NexusLang/src/nxl_lsp.py"],
+ "selector": "source.nxl",
  "syntaxes": ["Packages/User/NLPL.sublime-syntax"]
  }
  }
@@ -153,7 +153,7 @@ Add to `~/.vim/coc-settings.json`:
 ```yaml
 %YAML 1.2
 ---
-name: NLPL
+name: NexusLang
 file_extensions: [nlpl]
 scope: source.nlpl
 
@@ -177,24 +177,24 @@ Add to `~/.emacs` or `~/.emacs.d/init.el`:
 ```elisp
 (require 'lsp-mode)
 
-;; Define NLPL LSP client
+;; Define NexusLang LSP client
 (lsp-register-client
  (make-lsp-client
  :new-connection (lsp-stdio-connection
- '("python3" "/path/to/NLPL/src/nlpl_lsp.py"))
+ '("python3" "/path/to/NexusLang/src/nxl_lsp.py"))
  :major-modes '(nlpl-mode)
  :server-id 'nlpl-lsp))
 
-;; Define NLPL major mode
-(define-derived-mode nlpl-mode prog-mode "NLPL"
- "Major mode for NLPL."
+;; Define NexusLang major mode
+(define-derived-mode nlpl-mode prog-mode "NexusLang"
+ "Major mode for NexusLang."
  (setq-local comment-start "# ")
  (setq-local comment-end ""))
 
 ;; Auto-activate for .nlpl files
-(add-to-list 'auto-mode-alist '("\\.nlpl\\'" . nlpl-mode))
+(add-to-list 'auto-mode-alist '("\\.nxl\\'" . nlpl-mode))
 
-;; Enable LSP for NLPL
+;; Enable LSP for NexusLang
 (add-hook 'nlpl-mode-hook #'lsp)
 ```
 
@@ -224,18 +224,18 @@ nlpl-intellij-plugin/
  <id>com.nlpl.language</id>
  <name>NLPL Language Support</name>
  <vendor>NLPL Team</vendor>
- <description>Support for NLPL programming language</description>
+ <description>Support for NexusLang programming language</description>
  
  <depends>com.intellij.modules.platform</depends>
  
  <extensions defaultExtensionNs="com.intellij">
- <fileType name="NLPL" 
+ <fileType name="NexusLang" 
  implementationClass="com.nlpl.NLPLFileType" 
  fieldName="INSTANCE" 
- language="NLPL" 
+ language="NexusLang" 
  extensions="nlpl"/>
  <lang.syntaxHighlighterFactory 
- language="NLPL" 
+ language="NexusLang" 
  implementationClass="com.nlpl.NLPLSyntaxHighlighterFactory"/>
  </extensions>
 </idea-plugin>
@@ -252,7 +252,7 @@ nlpl-intellij-plugin/
 ```bash
 # pyproject.toml additions for LSP server
 [project.scripts]
-nlpl-lsp = "nlpl.lsp.server:main"
+nlpl-lsp = "nexuslang.lsp.server:main"
 
 # Install as system service
 pip install -e .
@@ -274,7 +274,7 @@ ENV PYTHONPATH=/app
 
 EXPOSE 2087
 
-CMD ["python3", "-m", "nlpl.lsp.server"]
+CMD ["python3", "-m", "nexuslang.lsp.server"]
 ```
 
 Build and run:
@@ -306,7 +306,7 @@ Editors connect via TCP: `tcp://localhost:2087`
 
 ---
 
-## 4. NLPL CLI Distribution
+## 4. NexusLang CLI Distribution
 
 ### 4.1 System-Wide Installation
 
@@ -353,9 +353,9 @@ pyinstaller --onefile \
 **Homebrew Formula** (`nlpl.rb`):
 ```ruby
 class Nlpl < Formula
- desc "Natural Language Programming Language"
+ desc "NexusLang"
  homepage "https://github.com/Zajfan/NLPL"
- url "https://github.com/Zajfan/NLPL/archive/v1.0.0.tar.gz"
+ url "https://github.com/Zajfan/NexusLang/archive/v1.0.0.tar.gz"
  sha256 "..."
  license "MIT"
 
@@ -391,7 +391,7 @@ debian/
 Build:
 ```bash
 dpkg-buildpackage -us -uc
-sudo dpkg -i ../nlpl_1.0.0_all.deb
+sudo dpkg -i ../nxl_1.0.0_all.deb
 ```
 
 ---
@@ -435,7 +435,7 @@ sudo dpkg -i ../nlpl_1.0.0_all.deb
 **For Users (Production):**
 
 ```bash
-# 1. Install NLPL CLI
+# 1. Install NexusLang CLI
 pip install nlpl
 
 # 2. Install VSCode Extension
@@ -453,7 +453,7 @@ nlpl run hello.nlpl
 ```bash
 # 1. Clone repository
 git clone https://github.com/Zajfan/NLPL.git
-cd NLPL
+cd NexusLang
 
 # 2. Install development dependencies
 pip install -e ".[dev]"
@@ -472,7 +472,7 @@ pytest tests/
 | Platform | Installation Command | Status |
 |----------|---------------------|--------|
 | **PyPI** | `pip install nlpl` | Pending |
-| **VSCode Marketplace** | Search "NLPL" in Extensions | Pending |
+| **VSCode Marketplace** | Search "NexusLang" in Extensions | Pending |
 | **Homebrew** | `brew install nlpl` | Pending |
 | **APT** | `apt install nlpl` | Pending |
 | **Chocolatey** | `choco install nlpl` | Pending |
@@ -559,7 +559,7 @@ docs/
 ## Contact
 
 - **Repository:** https://github.com/Zajfan/NLPL
-- **Issues:** https://github.com/Zajfan/NLPL/issues
+- **Issues:** https://github.com/Zajfan/NexusLang/issues
 - **Documentation:** (Coming soon)
 - **Discord:** (Coming soon)
 

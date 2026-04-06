@@ -5,7 +5,7 @@ Production-ready test suite with comprehensive coverage.
 """
 
 import pytest
-from nlpl.stdlib.option_result import (
+from nexuslang.stdlib.option_result import (
     Some, NoneValue, Ok, Err, Option, Result
 )
 

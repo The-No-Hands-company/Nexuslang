@@ -1,4 +1,4 @@
-# NLPL Standard Library Expansion - Session Summary
+# NexusLang Standard Library Expansion - Session Summary
 
 **Date**: January 17, 2026 
 **Focus**: Standard Library Module Expansion 

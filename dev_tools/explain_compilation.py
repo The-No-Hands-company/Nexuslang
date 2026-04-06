@@ -3,7 +3,7 @@
 NLPL Compilation Pipeline Visualizer
 =====================================
 
-Shows the different compilation paths from NLPL to executables.
+Shows the different compilation paths from NexusLang to executables.
 Demonstrates why we have multiple backends, not just one.
 """
 
@@ -21,15 +21,15 @@ def main():
     print_section("NLPL COMPILATION STRATEGIES")
     
     print(f"{Fore.YELLOW}The Question:")
-    print(f"  'Why go NLPL → C → Executable instead of NLPL → Executable directly?'\n")
+    print(f"  'Why go NexusLang → C → Executable instead of NexusLang → Executable directly?'\n")
     
     print(f"{Fore.GREEN}The Answer:")
-    print(f"  Because NLPL supports MULTIPLE compilation targets for different use cases!\n")
+    print(f"  Because NexusLang supports MULTIPLE compilation targets for different use cases!\n")
     
     # Show the different paths
     print_section("PATH 1: SYSTEM APPLICATIONS (What We Built)")
     print(f"{Fore.WHITE}Use Case: {Fore.CYAN}Desktop apps, CLI tools, system utilities")
-    print(f"\n  NLPL Source (.nlpl)")
+    print(f"\n  NexusLang Source (.nxl)")
     print(f"    ↓ {Fore.YELLOW}[C Code Generator]")
     print(f"  C Source (.c)")
     print(f"    ↓ {Fore.YELLOW}[GCC/Clang Compiler]")
@@ -46,7 +46,7 @@ def main():
     # Path 2: Web Applications
     print_section("PATH 2: WEB APPLICATIONS (Future)")
     print(f"{Fore.WHITE}Use Case: {Fore.CYAN}Browser apps, Node.js servers, React apps")
-    print(f"\n  NLPL Source (.nlpl)")
+    print(f"\n  NexusLang Source (.nxl)")
     print(f"    ↓ {Fore.YELLOW}[JavaScript Generator]")
     print(f"  JavaScript (.js)")
     print(f"    ↓ {Fore.YELLOW}[Browser/Node.js Runtime]")
@@ -61,7 +61,7 @@ def main():
     # Path 3: OS Kernels
     print_section("PATH 3: OPERATING SYSTEM KERNELS (Advanced Future)")
     print(f"{Fore.WHITE}Use Case: {Fore.CYAN}Linux kernel, bootloaders, device drivers")
-    print(f"\n  NLPL Source (.nlpl)")
+    print(f"\n  NexusLang Source (.nxl)")
     print(f"    ↓ {Fore.YELLOW}[Assembly Generator]")
     print(f"  Assembly (.asm)")
     print(f"    ↓ {Fore.YELLOW}[Assembler]")
@@ -78,7 +78,7 @@ def main():
     # Path 4: Production Apps
     print_section("PATH 4: PRODUCTION APPLICATIONS (Priority Future)")
     print(f"{Fore.WHITE}Use Case: {Fore.CYAN}Commercial software, high-performance apps")
-    print(f"\n  NLPL Source (.nlpl)")
+    print(f"\n  NexusLang Source (.nxl)")
     print(f"    ↓ {Fore.YELLOW}[LLVM IR Generator]")
     print(f"  LLVM Intermediate Representation")
     print(f"    ↓ {Fore.YELLOW}[LLVM Optimizer - 100+ passes]")
@@ -151,7 +151,7 @@ def main():
     
     print(f"{Fore.CYAN}One day, you'll write:\n")
     
-    print(f"{Fore.WHITE}  # Same NLPL source code")
+    print(f"{Fore.WHITE}  # Same NexusLang source code")
     print(f"  {Fore.YELLOW}set message to \"Hello, World!\"")
     print(f"  {Fore.YELLOW}print text message\n")
     

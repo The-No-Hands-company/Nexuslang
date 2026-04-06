@@ -8,7 +8,7 @@
 
 ## Overview
 
-Completed all remaining Day 2 deliverables plus extensive performance analysis and VS Code extension setup. The NLPL LSP server now has 13 fully implemented and tested features, comprehensive performance profiling, and a ready-to-test VS Code extension.
+Completed all remaining Day 2 deliverables plus extensive performance analysis and VS Code extension setup. The NexusLang LSP server now has 13 fully implemented and tested features, comprehensive performance profiling, and a ready-to-test VS Code extension.
 
 ---
 
@@ -270,7 +270,7 @@ LSP client with smart defaults:
 2. **Launch Extension Development Host**
    - Open extension in VS Code
    - Press F5 to launch
-   - Opens NLPL workspace with extension active
+   - Opens NexusLang workspace with extension active
 
 3. **Test All 13 Features**
    - Follow VSCODE_LSP_TESTING_GUIDE.md checklist

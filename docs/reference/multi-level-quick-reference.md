@@ -1,4 +1,4 @@
-# NLPL Multi-Level Quick Reference
+# NexusLang Multi-Level Quick Reference
 
 **One-Page Guide to Choosing the Right Abstraction Level**
 
@@ -188,17 +188,17 @@ end
 
 ## Migration Path
 
-### Python Developer NLPL
+### Python Developer NexusLang
 1. Start L4 (goroutines like asyncio)
 2. Learn L3 (add types, OOP)
 3. Use L2 for performance hotspots
 
-### C++ Developer NLPL
+### C++ Developer NexusLang
 1. Start L2 (familiar pointers/memory)
 2. Learn L3 (modern generics)
 3. Adopt L4 for concurrency
 
-### Go Developer NLPL
+### Go Developer NexusLang
 1. Start L4 (identical goroutines!)
 2. Drop to L2 for systems work
 3. Use L1 for kernel development

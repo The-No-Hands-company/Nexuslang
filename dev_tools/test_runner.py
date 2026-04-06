@@ -3,7 +3,7 @@
 NLPL Test Runner
 ================
 
-Enhanced test runner CLI for NLPL programs with coverage support.
+Enhanced test runner CLI for NexusLang programs with coverage support.
 
 Features:
 - Test discovery (finds all test_*.nlpl files)
@@ -51,16 +51,16 @@ class TestResult:
         self.error = error
 
 class TestRunner:
-    """Enhanced test runner for NLPL programs."""
+    """Enhanced test runner for NexusLang programs."""
     
     def __init__(self, verbose: bool = False, quiet: bool = False, coverage: bool = False):
         self.verbose = verbose
         self.quiet = quiet
         self.coverage = coverage
         self.results: List[TestResult] = []
-        self.nlpl_interpreter = "python src/nlpl/main.py"
+        self.nxl_interpreter = "python src/nlpl/main.py"
         
-    def discover_tests(self, pattern: str = "test_*.nlpl", category: str = None) -> List[str]:
+    def discover_tests(self, pattern: str = "test_*.nxl", category: str = None) -> List[str]:
         """Discover test files matching pattern."""
         test_dirs = [
             "test_programs/features",
@@ -99,8 +99,8 @@ class TestRunner:
         start_time = time.time()
         
         try:
-            # Run the NLPL program
-            cmd = f"{self.nlpl_interpreter} {test_file}"
+            # Run the NexusLang program
+            cmd = f"{self.nxl_interpreter} {test_file}"
             result = subprocess.run(
                 cmd,
                 shell=True,
@@ -225,7 +225,7 @@ class TestRunner:
 def main():
     """Main entry point for test runner."""
     parser = argparse.ArgumentParser(
-        description="NLPL Test Runner - Run NLPL test programs",
+        description="NLPL Test Runner - Run NexusLang test programs",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__
     )
@@ -233,8 +233,8 @@ def main():
     parser.add_argument(
         "pattern",
         nargs="?",
-        default="test_*.nlpl",
-        help="Test file pattern (default: test_*.nlpl)"
+        default="test_*.nxl",
+        help="Test file pattern (default: test_*.nxl)"
     )
     
     parser.add_argument(

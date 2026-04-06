@@ -1,4 +1,4 @@
-# NLPL Compiler: Shortcuts & Simplifications Audit
+# NexusLang Compiler: Shortcuts & Simplifications Audit
 
 **Date:** December 17, 2025 
 **Status:** CRITICAL - Systematic violations of NO SHORTCUTS policy 
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-The NLPL compiler has **79 instances** of shortcuts, placeholders, and simplifications that violate the "NO SHORTCUTS. NO COMPROMISES" development philosophy. This audit categorizes them by severity and provides a remediation plan.
+The NexusLang compiler has **79 instances** of shortcuts, placeholders, and simplifications that violate the "NO SHORTCUTS. NO COMPROMISES" development philosophy. This audit categorizes them by severity and provides a remediation plan.
 
 ### Impact on Feature Parity
 
@@ -208,7 +208,7 @@ set doubled to [x times 2 for x in numbers]
 ### 12. **Error Functions - Placeholders**
 **Lines:** 710, 713, 720 
 **Status:** COMPLETE 
-**Current:** Placeholder implementations for nlpl_panic and nlpl_error_msg 
+**Current:** Placeholder implementations for nxl_panic and nxl_error_msg 
 **Required:** Actual error reporting functions
 
 **Impact:** LOW - Errors compile but don't report well 
@@ -383,7 +383,7 @@ set doubled to [x times 2 for x in numbers]
 
 ## Conclusion
 
-The NLPL compiler has significant technical debt from shortcuts and simplifications. While the architecture is sound, many features marked as "COMPLETE" are actually partial or non-functional implementations.
+The NexusLang compiler has significant technical debt from shortcuts and simplifications. While the architecture is sound, many features marked as "COMPLETE" are actually partial or non-functional implementations.
 
 **Recommended Immediate Action:**
 1. Update documentation to reflect reality (honest feature parity)

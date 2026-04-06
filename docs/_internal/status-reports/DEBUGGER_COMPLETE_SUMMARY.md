@@ -1,4 +1,4 @@
-# NLPL Debugger - Implementation Complete Summary
+# NexusLang Debugger - Implementation Complete Summary
 
 **Date:** February 16, 2026  
 **Status:** ✅ **PRODUCTION-READY** (95% complete)  
@@ -67,7 +67,7 @@ python3 -m nlpl.debugger
 {
   "type": "nlpl",
   "request": "launch",
-  "name": "Debug NLPL Program",
+  "name": "Debug NexusLang Program",
   "program": "${file}",
   "stopOnEntry": false
 }
@@ -172,7 +172,7 @@ if self.debugger and hasattr(node, 'line'):
 
 ### 3. Conditional Breakpoint Evaluation
 
-**Challenge:** Evaluate NLPL expressions for breakpoint conditions.
+**Challenge:** Evaluate NexusLang expressions for breakpoint conditions.
 
 **Solution:** Parse and execute condition in interpreter context
 ```python
@@ -271,7 +271,7 @@ if bp.condition:
 ### Low Priority
 
 6. **Attach Mode** (3-5 days)
-   - Attach to running NLPL process
+   - Attach to running NexusLang process
    - Requires IPC mechanism
 
 7. **Remote Debugging** (1-2 weeks)
@@ -282,7 +282,7 @@ if bp.condition:
 
 ## Comparison to Other Languages
 
-| Feature | NLPL | Python (pdb) | Node.js | Rust (lldb) |
+| Feature | NexusLang | Python (pdb) | Node.js | Rust (lldb) |
 |---------|------|--------------|---------|-------------|
 | Line Breakpoints | ✅ | ✅ | ✅ | ✅ |
 | Conditional Breakpoints | ✅ | ✅ | ✅ | ✅ |
@@ -297,7 +297,7 @@ if bp.condition:
 | Hot Reload | ❌ | ❌ | ✅ | ❌ |
 | Reverse Debugging | ❌ | ❌ | ❌ | ⏳ |
 
-**Status:** NLPL debugger is **feature-complete** compared to Python/Node.js debuggers for core functionality.
+**Status:** NexusLang debugger is **feature-complete** compared to Python/Node.js debuggers for core functionality.
 
 ---
 
@@ -363,7 +363,7 @@ With debugger complete, next priority is **stdlib expansion** to build the found
 
 ## Conclusion
 
-The NLPL debugger is **production-ready** and provides a professional debugging experience comparable to established languages. With 95% completion, it successfully:
+The NexusLang debugger is **production-ready** and provides a professional debugging experience comparable to established languages. With 95% completion, it successfully:
 
 ✅ **Implements industry-standard DAP protocol**  
 ✅ **Integrates seamlessly with VS Code**  
@@ -373,7 +373,7 @@ The NLPL debugger is **production-ready** and provides a professional debugging 
 ✅ **Performs efficiently**  
 ✅ **Supports both CLI and IDE workflows**
 
-**The debugger is ready for real-world usage and positions NLPL as a serious development platform capable of supporting professional workflows across all programming domains.**
+**The debugger is ready for real-world usage and positions NexusLang as a serious development platform capable of supporting professional workflows across all programming domains.**
 
 ---
 
@@ -408,7 +408,7 @@ The NLPL debugger is **production-ready** and provides a professional debugging 
 - ✅ Complete implementation (no placeholders)
 - ✅ Production-ready (robust error handling)
 - ✅ No shortcuts (proper architecture)
-- ✅ Domain-neutral (works for all NLPL programs)
+- ✅ Domain-neutral (works for all NexusLang programs)
 - ✅ Real working code (tested and verified)
 
 **NLPL continues its mission as a truly universal general-purpose language, now with professional-grade debugging capabilities supporting development across all programming domains.**

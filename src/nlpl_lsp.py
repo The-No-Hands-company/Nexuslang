@@ -3,12 +3,12 @@
 NLPL Language Server Entry Point
 =================================
 
-Starts the NLPL Language Server for IDE integration.
+Starts the NexusLang Language Server for IDE integration.
 
 Usage:
-    python -m nlpl_lsp
+    python -m nxl_lsp
     or
-    python src/nlpl_lsp.py
+    python src/nxl_lsp.py
 """
 
 import sys
@@ -17,11 +17,11 @@ import os
 # Add src directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
 
-from nlpl.lsp.server import NLPLLanguageServer
+from nexuslang.lsp.server import NLPLLanguageServer
 
 
 def main():
-    """Start the NLPL Language Server."""
+    """Start the NexusLang Language Server."""
     server = NLPLLanguageServer()
     server.start()
 

@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-Started implementation of inline assembly support for NLPL. Created comprehensive 8-week roadmap and began LLVM backend foundation. **Discovered critical issue**: existing `src/nlpl/stdlib/asm/` contains hardcoded instruction stub that violates NLPL's NO COMPROMISES philosophy.
+Started implementation of inline assembly support for NexusLang. Created comprehensive 8-week roadmap and began LLVM backend foundation. **Discovered critical issue**: existing `src/nlpl/stdlib/asm/` contains hardcoded instruction stub that violates NLPL's NO COMPROMISES philosophy.
 
 **Key Decision**: Inline assembly will be **LLVM-compiled mode only**. No shortcuts with hardcoded instructions.
 
@@ -46,7 +46,7 @@ Started implementation of inline assembly support for NLPL. Created comprehensiv
   - Joins assembly instructions
   
 - `_translate_asm_constraint()` method (50+ lines)
-  - Translates NLPL constraints to LLVM syntax
+  - Translates NexusLang constraints to LLVM syntax
   - Week 1: Basic pass-through (LLVM uses GCC syntax)
   - Week 3-4: Full constraint validation and translation
 
@@ -57,10 +57,10 @@ call <return_type> asm sideeffect "assembly_code", "constraints" (operands)
 
 **Example Output:**
 ```llvm
-; NLPL: asm code "mov rax, rbx" end
+; NexusLang: asm code "mov rax, rbx" end
 call void asm sideeffect "mov rax, rbx", "" ()
 
-; NLPL: asm code "add rax, %0" inputs "r": x outputs "=r": result
+; NexusLang: asm code "add rax, %0" inputs "r": x outputs "=r": result
 %1 = load i64, i64* %x
 %2 = call i64 asm sideeffect "add rax, $0", "=r,r" (i64 %1)
 store i64 %2, i64* %result
@@ -133,7 +133,7 @@ Warning: Inline assembly is only fully supported in compiled mode.
   - arm64: nop, ret
 - Raises error for any other instruction
 - Uses mmap/VirtualAlloc to execute machine code
-- **This is a COMPROMISE and violates NLPL principles**
+- **This is a COMPROMISE and violates NexusLang principles**
 
 **Why This Is Wrong:**
 
@@ -144,7 +144,7 @@ Warning: Inline assembly is only fully supported in compiled mode.
 5. **False Promise**: Claims "inline assembly support" but only works for trivial cases
 
 **User's Correct Assessment:**
-> "what we expect to be a part of NLPL is full inline asm support and not just partial or very limited"
+> "what we expect to be a part of NexusLang is full inline asm support and not just partial or very limited"
 
 **Decision Made:**
 - ✅ **DELETE** `src/nlpl/stdlib/asm/` entirely (or mark as deprecated)
@@ -224,7 +224,7 @@ encoding, count = ks.asm("mov rax, 5")
 ### Interpreter Mode ✅ WORKS
 
 ```bash
-$ python -m nlpl.main test_programs/unit/assembly/test_asm_basic.nlpl
+$ python -m nexuslang.main test_programs/unit/assembly/test_asm_basic.nlpl
 Warning: Inline assembly is only fully supported in compiled mode.
          Assembly blocks are skipped in interpreter mode.
          Compile with 'nlplc' to generate actual inline assembly.
@@ -307,7 +307,7 @@ entry:
    - Example: `"add rax, $0"` where `$0` = first input operand
 
 4. **Type Inference for Operands**
-   - Match NLPL types to LLVM types
+   - Match NexusLang types to LLVM types
    - Ensure constraint compatibility
    - Error if type mismatch
 
@@ -408,10 +408,10 @@ Week 1 made solid progress on inline assembly foundation:
 - Planning complete
 - LLVM backend started
 - Interpreter mode working
-- **Critical issue identified**: stub ASM executor violates NLPL principles
+- **Critical issue identified**: stub ASM executor violates NexusLang principles
 
 **Key Insight from User:**
-> "what we expect to be a part of NLPL is full inline asm support and not just partial or very limited"
+> "what we expect to be a part of NexusLang is full inline asm support and not just partial or very limited"
 
 This reinforces NLPL's core philosophy: **NO SHORTCUTS. NO COMPROMISES. PRODUCTION QUALITY.**
 

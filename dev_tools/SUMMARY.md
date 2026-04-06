@@ -1,8 +1,8 @@
-# NLPL Development Tools - Complete Utility Belt
+# NexusLang Development Tools - Complete Utility Belt
 
 ## What We Built
 
-A comprehensive debugging and development toolkit for NLPL with **no workarounds, no simplifications** - only proper implementations.
+A comprehensive debugging and development toolkit for NexusLang with **no workarounds, no simplifications** - only proper implementations.
 
 ##  Completed Tools
 
@@ -14,7 +14,7 @@ A comprehensive debugging and development toolkit for NLPL with **no workarounds
 
 **Example Usage:**
 ```bash
-python dev_tools/nlpl_dev.py lex myfile.nlpl --visualize --stats
+python dev_tools/nxl_dev.py lex myfile.nlpl --visualize --stats
 ```
 
 ### 2. **Parser Debugging Suite** (`parser_tools/`)
@@ -25,7 +25,7 @@ python dev_tools/nlpl_dev.py lex myfile.nlpl --visualize --stats
 
 **Example Usage:**
 ```bash
-python dev_tools/nlpl_dev.py parse myfile.nlpl --tree --validate
+python dev_tools/nxl_dev.py parse myfile.nlpl --tree --validate
 ```
 
 ### 3. **Interpreter Debugging Suite** (`interpreter_tools/`)
@@ -36,10 +36,10 @@ python dev_tools/nlpl_dev.py parse myfile.nlpl --tree --validate
 
 **Example Usage:**
 ```bash
-python dev_tools/nlpl_dev.py debug myfile.nlpl --interactive
+python dev_tools/nxl_dev.py debug myfile.nlpl --interactive
 ```
 
-### 4. **Unified CLI** (`nlpl_dev.py`)
+### 4. **Unified CLI** (`nxl_dev.py`)
 -  **Single entry point** for all tools
 -  **Environment checker** (`doctor` command)
 -  **Enhanced run mode** with full debugging
@@ -47,8 +47,8 @@ python dev_tools/nlpl_dev.py debug myfile.nlpl --interactive
 
 **Example Usage:**
 ```bash
-python dev_tools/nlpl_dev.py doctor
-python dev_tools/nlpl_dev.py run myfile.nlpl --debug
+python dev_tools/nxl_dev.py doctor
+python dev_tools/nxl_dev.py run myfile.nlpl --debug
 ```
 
 ### 5. **Documentation**
@@ -79,27 +79,27 @@ q/quit      - Exit debugger
 
 1. **Environment Check**
    ```bash
-   python dev_tools/nlpl_dev.py doctor
+   python dev_tools/nxl_dev.py doctor
    ```
 
 2. **Lexer Phase**
    ```bash
-   python dev_tools/nlpl_dev.py lex myfile.nlpl --visualize
+   python dev_tools/nxl_dev.py lex myfile.nlpl --visualize
    ```
 
 3. **Parser Phase**
    ```bash
-   python dev_tools/nlpl_dev.py parse myfile.nlpl --tree
+   python dev_tools/nxl_dev.py parse myfile.nlpl --tree
    ```
 
 4. **Execution Phase**
    ```bash
-   python dev_tools/nlpl_dev.py debug myfile.nlpl --interactive
+   python dev_tools/nxl_dev.py debug myfile.nlpl --interactive
    ```
 
 5. **Full Pipeline**
    ```bash
-   python dev_tools/nlpl_dev.py run myfile.nlpl --debug
+   python dev_tools/nxl_dev.py run myfile.nlpl --debug
    ```
 
 ## Next Steps (Future Tools)
@@ -122,14 +122,14 @@ All tools have been tested and work properly:
 
 ```bash
 # Check environment
-python dev_tools/nlpl_dev.py doctor
+python dev_tools/nxl_dev.py doctor
  Python version 3.14.0
  Package: colorama installed
  All directories exist
  All key files exist
 
 # Test lexer tools
-python dev_tools/nlpl_dev.py lex test_hello.nlpl --visualize --stats
+python dev_tools/nxl_dev.py lex test_hello.nlpl --visualize --stats
  Token visualization with colors
  Statistics generated
  All features working
@@ -138,7 +138,7 @@ python dev_tools/nlpl_dev.py lex test_hello.nlpl --visualize --stats
 ## Benefits of This Utility Belt
 
 1. **Catch issues early** - Debug at each pipeline stage
-2. **Understand execution** - See exactly what NLPL does
+2. **Understand execution** - See exactly what NexusLang does
 3. **Rapid development** - Fix bugs faster with proper tools
 4. **No guesswork** - Inspect everything: tokens, AST, scopes
 5. **Professional tooling** - IDE-quality debugging in terminal
@@ -159,7 +159,7 @@ dev_tools/
  README.md                          # Full documentation
  QUICKSTART.md                      # Quick reference
  SUMMARY.md                         # This file
- nlpl_dev.py                        # Unified CLI
+ nxl_dev.py                        # Unified CLI
  lexer_tools/
     token_debugger.py             # Complete lexer debugging
  parser_tools/
@@ -182,12 +182,12 @@ dev_tools/
 
 ## Conclusion
 
-We've built a **complete, professional-grade debugging toolkit** for NLPL development with:
+We've built a **complete, professional-grade debugging toolkit** for NexusLang development with:
 
 - **No shortcuts** - Features implemented properly
 - **No workarounds** - Dependencies installed, not worked around
 - **No simplifications** - Full functionality at every level
 
-This utility belt will make NLPL development significantly faster and more reliable by providing visibility into every phase of the compilation and execution pipeline.
+This utility belt will make NexusLang development significantly faster and more reliable by providing visibility into every phase of the compilation and execution pipeline.
 
-**Ready to debug NLPL properly!** 
+**Ready to debug NexusLang properly!** 

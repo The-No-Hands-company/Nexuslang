@@ -7,7 +7,7 @@ import com.intellij.openapi.fileTypes.SyntaxHighlighterBase
 import com.intellij.psi.tree.IElementType
 
 /**
- * Syntax highlighter for NLPL files.
+ * Syntax highlighter for NexusLang files.
  * Delegates tokenization to NlplLexer and maps token types to editor colors.
  */
 class NlplSyntaxHighlighter : SyntaxHighlighterBase() {

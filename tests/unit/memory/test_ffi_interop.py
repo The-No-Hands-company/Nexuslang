@@ -19,7 +19,7 @@ from unittest.mock import patch
 # ---------------------------------------------------------------------------
 # Imports under test
 # ---------------------------------------------------------------------------
-from nlpl.compiler.ffi_abi_checker import (
+from nexuslang.compiler.ffi_abi_checker import (
     ABICompatibilityChecker,
     ABIPlatform,
     ABICheckResult,
@@ -33,7 +33,7 @@ from nlpl.compiler.ffi_abi_checker import (
     _NLPL_TO_C,
 )
 
-from nlpl.compiler.ffi_debug import (
+from nexuslang.compiler.ffi_debug import (
     FFICallTracer,
     FFICallRecord,
     FFICallStatus,
@@ -44,7 +44,7 @@ from nlpl.compiler.ffi_debug import (
     generate_valgrind_command,
 )
 
-from nlpl.compiler.ffi_cpp import (
+from nexuslang.compiler.ffi_cpp import (
     CppInterop,
     CppNameMangler,
     ManglingABI,
@@ -180,12 +180,12 @@ class TestCTypesVerifier:
         warnings = [i for i in issues if i.severity == CheckSeverity.WARNING]
         assert len(warnings) >= 1
 
-    def test_nlpl_to_ctypes_int32(self):
-        ct = self.verifier.nlpl_to_ctypes("Int32")
+    def test_nxl_to_ctypes_int32(self):
+        ct = self.verifier.nxl_to_ctypes("Int32")
         assert ct is ctypes.c_int32
 
-    def test_nlpl_to_ctypes_pointer(self):
-        ct = self.verifier.nlpl_to_ctypes("Pointer")
+    def test_nxl_to_ctypes_pointer(self):
+        ct = self.verifier.nxl_to_ctypes("Pointer")
         assert ct is ctypes.c_void_p
 
 
@@ -679,21 +679,21 @@ class TestCppWrapperGenerator:
 
     def test_header_contains_typedef(self):
         header = self.gen.generate_header(self.wrapper)
-        assert "nlpl_widget_t" in header
+        assert "nxl_widget_t" in header
 
     def test_header_contains_new_func(self):
         header = self.gen.generate_header(self.wrapper)
-        assert "nlpl_widget_new" in header
+        assert "nxl_widget_new" in header
 
     def test_header_contains_delete_func(self):
         header = self.gen.generate_header(self.wrapper)
-        assert "nlpl_widget_delete" in header
+        assert "nxl_widget_delete" in header
 
     def test_header_contains_method_declarations(self):
         header = self.gen.generate_header(self.wrapper)
-        assert "nlpl_widget_width" in header
-        assert "nlpl_widget_resize" in header
-        assert "nlpl_widget_name" in header
+        assert "nxl_widget_width" in header
+        assert "nxl_widget_resize" in header
+        assert "nxl_widget_name" in header
 
     def test_header_has_cpp_guard(self):
         header = self.gen.generate_header(self.wrapper)
@@ -706,11 +706,11 @@ class TestCppWrapperGenerator:
 
     def test_impl_contains_constructor(self):
         impl = self.gen.generate_implementation(self.wrapper)
-        assert "nlpl_widget_new" in impl
+        assert "nxl_widget_new" in impl
 
     def test_impl_contains_destructor(self):
         impl = self.gen.generate_implementation(self.wrapper)
-        assert "nlpl_widget_delete" in impl
+        assert "nxl_widget_delete" in impl
 
     def test_impl_contains_exception_catch(self):
         impl = self.gen.generate_implementation(self.wrapper)
@@ -721,13 +721,13 @@ class TestCppWrapperGenerator:
         assert 'extern "C"' in impl
 
     def test_method_names_lowercased(self):
-        assert self.wrapper.c_method_name("Width") == "nlpl_widget_width"
+        assert self.wrapper.c_method_name("Width") == "nxl_widget_width"
 
     def test_qualified_name(self):
         assert self.wrapper.qualified_name == "ui::Widget"
 
     def test_c_type_name(self):
-        assert self.wrapper.c_type_name == "nlpl_widget_t"
+        assert self.wrapper.c_type_name == "nxl_widget_t"
 
     def test_wrapper_without_exception_handling(self):
         gen = CppWrapperGenerator(exception_handling=False)
@@ -750,7 +750,7 @@ class TestTemplateInstantiationHelper:
         inst = TemplateInstance("vector", ["int"], namespace="std", kind="class")
         alias = self.helper.register(inst)
         assert "vector" in alias.lower()
-        assert alias.startswith("nlpl_tmpl_")
+        assert alias.startswith("nxl_tmpl_")
 
     def test_register_custom_alias(self):
         inst = TemplateInstance("vector", ["int"], namespace="std",
@@ -793,11 +793,11 @@ class TestCppExceptionBridge:
 
     def test_generate_infrastructure_contains_clear_func(self):
         src = self.bridge.generate_thread_local_exception_infrastructure()
-        assert "nlpl_ffi_clear_exception" in src
+        assert "nxl_ffi_clear_exception" in src
 
     def test_generate_infrastructure_contains_get_func(self):
         src = self.bridge.generate_thread_local_exception_infrastructure()
-        assert "nlpl_ffi_get_exception" in src
+        assert "nxl_ffi_get_exception" in src
 
     def test_generate_infrastructure_contains_macros(self):
         src = self.bridge.generate_thread_local_exception_infrastructure()
@@ -860,8 +860,8 @@ class TestRTTISupport:
 
     def test_generate_rtti_wrappers_isa_functions(self):
         src = self.rtti.generate_rtti_wrappers("Animal", ["Dog", "Cat"])
-        assert "nlpl_rtti_isa_dog" in src
-        assert "nlpl_rtti_isa_cat" in src
+        assert "nxl_rtti_isa_dog" in src
+        assert "nxl_rtti_isa_cat" in src
 
     def test_generate_rtti_header_has_include_guard(self):
         header = self.rtti.generate_rtti_header("Animal", ["Dog"])
@@ -900,12 +900,12 @@ class TestCppInteropFacade:
             CppMethod("greet", ["String"], "void"),
         ])
         header = self.cpp.generate_class_header(wrapper)
-        assert "nlpl_greeter_t" in header
+        assert "nxl_greeter_t" in header
 
     def test_generate_class_impl(self):
         wrapper = CppClassWrapper("Greeter")
         impl = self.cpp.generate_class_impl(wrapper)
-        assert "nlpl_greeter_new" in impl
+        assert "nxl_greeter_new" in impl
 
     def test_register_and_generate_template(self):
         inst = TemplateInstance("vector", ["double"], namespace="std", kind="class")
@@ -917,7 +917,7 @@ class TestCppInteropFacade:
 
     def test_generate_exception_infrastructure(self):
         src = self.cpp.generate_exception_infrastructure()
-        assert "nlpl_ffi_clear_exception" in src
+        assert "nxl_ffi_clear_exception" in src
 
     def test_exception_code(self):
         code = self.cpp.exception_code(CppExceptionClass.STD_BAD_ALLOC)

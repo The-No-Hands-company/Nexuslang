@@ -9,7 +9,7 @@
 
 Inline assembly is used for:
 
-- Directly issuing CPU instructions that have no NLPL equivalent
+- Directly issuing CPU instructions that have no NexusLang equivalent
 - Cycle-critical routines (e.g., tight inner loops, cryptographic primitives)
 - Accessing hardware control registers
 - Implementing synchronisation primitives (atomics, memory barriers)
@@ -17,7 +17,7 @@ Inline assembly is used for:
 It requires `--allow-asm` on the command line:
 
 ```bash
-PYTHONPATH=src python -m nlpl.main program.nlpl --allow-asm
+PYTHONPATH=src python -m nexuslang.main program.nlpl --allow-asm
 ```
 
 Use it sparingly. Most programs do not need it.
@@ -49,7 +49,7 @@ end
 
 ## Part 3 — Inputs and Outputs
 
-Pass NLPL variables into and out of the assembly block:
+Pass NexusLang variables into and out of the assembly block:
 
 ```nlpl
 set value to 42
@@ -205,7 +205,7 @@ end
 Before merging inline assembly:
 
 - [ ] Declare all modified registers in `clobbers`
-- [ ] Match output constraints to their NLPL variables
+- [ ] Match output constraints to their NexusLang variables
 - [ ] Use `asm volatile` for side-effectful instructions
 - [ ] Test under both dev and release profiles
 - [ ] Document the assembly block's purpose and the calling convention assumed

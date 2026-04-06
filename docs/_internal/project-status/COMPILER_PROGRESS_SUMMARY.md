@@ -1,11 +1,11 @@
-# NLPL Compiler Development Progress
+# NexusLang Compiler Development Progress
 
 **Last Updated**: November 26, 2024 
 **Status**: Phase 2 Week 2 - 71.4% Complete
 
 ## Overview
 
-The NLPL compiler transforms natural-language-like NLPL code into native executables via LLVM IR. The compiler supports object-oriented programming, generics, optimization, and foreign function interfaces.
+The NexusLang compiler transforms natural-language-like NexusLang code into native executables via LLVM IR. The compiler supports object-oriented programming, generics, optimization, and foreign function interfaces.
 
 ## Completion Status by Component
 
@@ -14,7 +14,7 @@ The NLPL compiler transforms natural-language-like NLPL code into native executa
 | Component | Status | Description |
 |-----------|--------|-------------|
 | **Lexer** | 100% | Tokenization with natural language keywords |
-| **Parser** | 100% | Recursive descent parser, full NLPL syntax |
+| **Parser** | 100% | Recursive descent parser, full NexusLang syntax |
 | **AST** | 100% | Complete node types for all language constructs |
 | **LLVM IR Generator** | 100% | Full code generation pipeline |
 | **Type System** | 100% | Primitives, classes, generics, inference |
@@ -73,7 +73,7 @@ The NLPL compiler transforms natural-language-like NLPL code into native executa
 | **Basic FFI Tests** | 100% | - | printf, math, strings, malloc |
 | **Struct Marshalling** | 0% | 4-6 | Passing structs to C |
 | **Callback Functions** | 0% | 6-8 | Function pointers, trampolines |
-| **Variadic NLPL Functions** | 0% | 4-5 | va_list, va_arg |
+| **Variadic NexusLang Functions** | 0% | 4-5 | va_list, va_arg |
 | **Advanced Types** | 0% | 3-4 | Arrays, unions, opaque pointers |
 
 **Current FFI Capabilities**:
@@ -127,7 +127,7 @@ set result to call sqrt with 16.0
 ## Compilation Pipeline
 
 ```
-NLPL Source (.nlpl)
+NLPL Source (.nxl)
  
  [Lexer] Tokens
  
@@ -197,7 +197,7 @@ NLPL Source (.nlpl)
 ### Long Term (3-6 months)
 7. **Phase 4 Features**: Async/await, pattern matching
 8. **JIT Compilation**: Runtime code generation
-9. **Self-Hosting**: NLPL compiler written in NLPL
+9. **Self-Hosting**: NexusLang compiler written in NexusLang
 
 ## Team & Resources
 
@@ -208,7 +208,7 @@ NLPL Source (.nlpl)
 
 ## Conclusion
 
-The NLPL compiler is **production-ready for core features** with ongoing development on advanced capabilities. The FFI system enables seamless C library integration, making NLPL a practical choice for system programming.
+The NexusLang compiler is **production-ready for core features** with ongoing development on advanced capabilities. The FFI system enables seamless C library integration, making NexusLang a practical choice for system programming.
 
 **Overall Progress**: ~65% complete across all planned phases
 **Production Readiness**: Core features stable, advanced features in development

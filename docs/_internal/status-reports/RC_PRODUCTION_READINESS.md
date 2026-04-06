@@ -76,7 +76,7 @@ Arc<T> uses atomic operations for thread-safe reference counting:
 - `atomic_fetch_sub` for release operations  
 - Weak reference operations also use atomic counters
 
-Note: Multi-threaded stress testing would require threading primitives in NLPL (planned for future).
+Note: Multi-threaded stress testing would require threading primitives in NexusLang (planned for future).
 
 ### Task 16: Performance
 
@@ -139,7 +139,7 @@ Performance is suitable for production use.
 ✅ Real-world examples demonstrate practical usage  
 ✅ Performance is efficient  
 
-**Recommendation**: Ready for use in NLPL production code.
+**Recommendation**: Ready for use in NexusLang production code.
 
 ## Files Tested
 

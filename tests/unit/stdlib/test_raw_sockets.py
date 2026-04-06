@@ -1,5 +1,5 @@
 """
-Tests for NLPL stdlib raw socket operations.
+Tests for NexusLang stdlib raw socket operations.
 
 Groups:
 1. Protocol map and constants
@@ -28,7 +28,7 @@ _PROJECT_ROOT = os.path.abspath(
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-from nlpl.stdlib.network import (
+from nexuslang.stdlib.network import (
     raw_socket_create,
     raw_socket_create_icmp,
     raw_socket_create_ethernet,
@@ -453,7 +453,7 @@ class TestRawSocketSniff:
         header[12:16] = src
         header[16:20] = dst
 
-        with patch('nlpl.stdlib.network.socket') as mock_socket_module:
+        with patch('nexuslang.stdlib.network.socket') as mock_socket_module:
             mock_socket_module.htons.return_value = 0x0300
             mock_socket_module.AF_PACKET = _socket.AF_PACKET
             mock_socket_module.SOCK_RAW = _socket.SOCK_RAW

@@ -1,4 +1,4 @@
-# NLPL Code Quality Audit Report
+# NexusLang Code Quality Audit Report
 
 *Last updated: April 1, 2026*
 
@@ -128,7 +128,7 @@ Notes:
 - `QUICKSTART.md` rewritten with current install/run instructions
 - `docs/README.md` — clear user docs vs internal history separation
 - `docs/getting-started/` — overview, installation, key-features all rewritten
-- All NaturalScript→NLPL references fixed (was the old project name)
+- All NexusLang→NLPL references fixed (was the old project name)
 - All stale date headers (`Last Updated: Feb 2026`) removed
 - `docs/reference/versioning.md` — documents no-versioning policy until v1.0
 

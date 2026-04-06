@@ -1,13 +1,13 @@
-# NLPL: Beyond Assembly, C, and C++
+# NexusLang: Beyond Assembly, C, and C++
 
 **Date:** December 17, 2025 
-**Purpose:** Document how NLPL addresses fundamental flaws in Assembly, C, and C++ while maintaining low-level power
+**Purpose:** Document how NexusLang addresses fundamental flaws in Assembly, C, and C++ while maintaining low-level power
 
 ---
 
 ## Vision Statement
 
-NLPL is designed to be **what Rust is to C++, but with natural language syntax and even more comprehensive solutions**. Just as Rust emerged to fix C++'s memory safety issues, NLPL aims to solve the collective problems of Assembly, C, and C++ while being **more readable, safer, and more powerful**.
+NLPL is designed to be **what Rust is to C++, but with natural language syntax and even more comprehensive solutions**. Just as Rust emerged to fix C++'s memory safety issues, NexusLang aims to solve the collective problems of Assembly, C, and C++ while being **more readable, safer, and more powerful**.
 
 ### The Core Philosophy
 
@@ -21,9 +21,9 @@ NLPL is designed to be **what Rust is to C++, but with natural language syntax a
 
 ---
 
-## Problems NLPL Solves
+## Problems NexusLang Solves
 
-### Assembly Language Problems NLPL Solutions
+### Assembly Language Problems NexusLang Solutions
 
 #### Problem 1: **Debugging Nightmare**
 **Assembly Issue:**
@@ -48,7 +48,7 @@ set result to first_number plus second_number
 **Features:**
 - **Automatic debug symbol generation** - Full variable names in stack traces
 - **Type-aware error messages** - Know exactly what went wrong
-- **Source-level debugging** - Debug in NLPL, not assembly
+- **Source-level debugging** - Debug in NexusLang, not assembly
 - **Watch expressions in English** - `watch "balance is greater than 0"`
 - **Readable stack traces** - Function names, not addresses
 
@@ -161,7 +161,7 @@ import standard library system
 
 ---
 
-### C++ Problems NLPL Solutions
+### C++ Problems NexusLang Solutions
 
 #### Problem 1: **Memory Safety Nightmare**
 **C++ Issue:**
@@ -322,7 +322,7 @@ set value to dereference ptr
 # COMPILE ERROR: "Cannot dereference null pointer at line 42"
 # OR: Runtime panic with stack trace (configurable)
 
-# NO undefined behavior in NLPL
+# NO undefined behavior in NexusLang
 # Everything is specified and checked
 ```
 
@@ -385,7 +385,7 @@ set result to lambda(5)
 
 ---
 
-### Problems Both Assembly and C++ Share NLPL Solutions
+### Problems Both Assembly and C++ Share NexusLang Solutions
 
 #### Problem 1: **Poor Tooling and IDE Support**
 **Assembly/C++ Issue:**
@@ -404,7 +404,7 @@ set result to lambda(5)
 # - Safe refactoring (rename, extract function, etc.)
 # - Inline documentation with examples
 # - Debugger integration with variable inspection
-# - Profiler shows NLPL code, not assembly
+# - Profiler shows NexusLang code, not assembly
 ```
 
 **Features:**
@@ -414,7 +414,7 @@ set result to lambda(5)
 - **Refactoring tools** - Rename safely across codebase
 - **Inline documentation** - Hover for docs + examples
 - **Debug integration** - Source-level debugging always
-- **Performance profiling** - See NLPL code in profiles
+- **Performance profiling** - See NexusLang code in profiles
 
 ---
 
@@ -462,7 +462,7 @@ print text "User input: {user_input}" # Sanitized automatically
 
 ---
 
-## NLPL Unique Advantages
+## NexusLang Unique Advantages
 
 ### 1. **Natural Language Syntax = Universal Accessibility**
 
@@ -504,7 +504,7 @@ if (balance >= 100) {
 
 **NLPL Solution:**
 ```nlpl
-# OS kernel in NLPL
+# OS kernel in NexusLang
 module kernel
 
 # Direct hardware access
@@ -593,7 +593,7 @@ end
 - **Multi-target compilation** - Native, WASM, JS/TS from one source
 - **Zero-cost web** - WASM performance near-native
 - **Shared code** - Logic works everywhere
-- **Web APIs** - DOM/fetch/etc. as NLPL modules
+- **Web APIs** - DOM/fetch/etc. as NexusLang modules
 - **Server + client** - One language for full stack
 - **No build tool hell** - Compiler handles everything
 
@@ -690,23 +690,23 @@ set max_obj to find_max with objects
 
 ## Comparison Summary Table
 
-| Feature | Assembly | C++ | NLPL | Winner |
+| Feature | Assembly | C++ | NexusLang | Winner |
 |----------------------------------|----------|----------|----------|--------|
-| **Readability** | 1/10 | 4/10 | 10/10 | NLPL |
-| **Memory Safety** | 0/10 | 2/10 | 9/10 | NLPL |
-| **Debugging Experience** | 1/10 | 5/10 | 9/10 | NLPL |
+| **Readability** | 1/10 | 4/10 | 10/10 | NexusLang |
+| **Memory Safety** | 0/10 | 2/10 | 9/10 | NexusLang |
+| **Debugging Experience** | 1/10 | 5/10 | 9/10 | NexusLang |
 | **Compilation Speed** | 10/10 | 3/10 | 8/10 | ASM |
 | **Runtime Performance** | 10/10 | 9/10 | 9/10 | ASM |
-| **Portability** | 0/10 | 8/10 | 10/10 | NLPL |
-| **Standard Library** | 0/10 | 7/10 | 9/10 | NLPL |
-| **Error Messages** | 1/10 | 3/10 | 10/10 | NLPL |
-| **Learning Curve** | 1/10 | 3/10 | 9/10 | NLPL |
-| **Concurrency Safety** | 0/10 | 4/10 | 9/10 | NLPL |
-| **Security by Default** | 0/10 | 2/10 | 9/10 | NLPL |
+| **Portability** | 0/10 | 8/10 | 10/10 | NexusLang |
+| **Standard Library** | 0/10 | 7/10 | 9/10 | NexusLang |
+| **Error Messages** | 1/10 | 3/10 | 10/10 | NexusLang |
+| **Learning Curve** | 1/10 | 3/10 | 9/10 | NexusLang |
+| **Concurrency Safety** | 0/10 | 4/10 | 9/10 | NexusLang |
+| **Security by Default** | 0/10 | 2/10 | 9/10 | NexusLang |
 | **OS Development** | 10/10 | 8/10 | 9/10 | ASM |
-| **Web Compilation (WASM)** | 3/10 | 6/10 | 9/10 | NLPL |
-| **IDE/Tooling Support** | 2/10 | 6/10 | 9/10 | NLPL |
-| **Generic Programming** | 0/10 | 6/10 | 9/10 | NLPL |
+| **Web Compilation (WASM)** | 3/10 | 6/10 | 9/10 | NexusLang |
+| **IDE/Tooling Support** | 2/10 | 6/10 | 9/10 | NexusLang |
+| **Generic Programming** | 0/10 | 6/10 | 9/10 | NexusLang |
 | **Zero-Cost Abstractions** | N/A | 9/10 | 9/10 | Tie |
 | **Community/Ecosystem** | 5/10 | 10/10 | 2/10 | C++ |
 
@@ -750,7 +750,7 @@ kernel function main
 end
 ```
 
-**Winner:** NLPL (safety + clarity)
+**Winner:** NexusLang (safety + clarity)
 
 ---
 
@@ -789,7 +789,7 @@ function vector_add with a as Array of Float, b as Array of Float returns Array 
 end
 ```
 
-**Winner:** NLPL (clarity + performance)
+**Winner:** NexusLang (clarity + performance)
 
 ---
 
@@ -827,7 +827,7 @@ server module api
 end
 ```
 
-**Winner:** NLPL (native support)
+**Winner:** NexusLang (native support)
 
 ---
 
@@ -839,32 +839,32 @@ end
 # FFI (Foreign Function Interface) for C/C++ interop
 extern "C" function legacy_cpp_function with x as Integer returns Integer
 
-# Call C++ from NLPL
+# Call C++ from NexusLang
 set result to legacy_cpp_function with 42
 
-# Export NLPL functions to C++ (for gradual migration)
-export function nlpl_new_feature with data as Array of Byte returns Integer
- # New code in NLPL, old code calls it via C ABI
+# Export NexusLang functions to C++ (for gradual migration)
+export function nxl_new_feature with data as Array of Byte returns Integer
+ # New code in NexusLang, old code calls it via C ABI
 end
 
 # Inline assembly for critical sections
 function optimized_function
  inline assembly
  ; Existing assembly code here
- ; Gradual conversion to NLPL over time
+ ; Gradual conversion to NexusLang over time
  end
 end
 ```
 
 **Migration Steps:**
-1. **Step 1:** Write new modules in NLPL, call from C++
-2. **Step 2:** Wrap C++ in NLPL interfaces
-3. **Step 3:** Incrementally convert C++ modules to NLPL
+1. **Step 1:** Write new modules in NexusLang, call from C++
+2. **Step 2:** Wrap C++ in NexusLang interfaces
+3. **Step 3:** Incrementally convert C++ modules to NexusLang
 4. **Step 4:** Remove C++ entirely when ready
 
 ---
 
-## Conclusion: Why NLPL Will Succeed Where Others Haven't
+## Conclusion: Why NexusLang Will Succeed Where Others Haven't
 
 ### The Problems with Previous "C++ Killers"
 
@@ -874,7 +874,7 @@ end
 - **Rust:** Excellent but steep learning curve (borrow checker intimidates beginners)
 - **Go:** Too simple, no low-level control
 
-### Why NLPL is Different
+### Why NexusLang is Different
 
 1. **Natural Language Syntax** - Truly accessible to everyone who can read English
 2. **No Compromises** - Low-level power + high-level safety + modern features
@@ -887,9 +887,9 @@ end
 9. **Better Ecosystem** - Comprehensive stdlib from day one
 10. **Better Web Story** - Native + WASM + JS from same code
 
-### The NLPL Promise
+### The NexusLang Promise
 
-**"If Assembly, C, and C++ had a baby that was raised by Rust and Python, with Haskell as the godparent, you'd get NLPL."**
+**"If Assembly, C, and C++ had a baby that was raised by Rust and Python, with Haskell as the godparent, you'd get NexusLang."**
 
 - Assembly's **power** + C++'s **features** + Rust's **safety** + Python's **clarity**
 - None of their **flaws**
@@ -904,4 +904,4 @@ See also:
 - `docs/4_architecture/compiler_architecture.md` - How we achieve these goals
 - `docs/10_assessments/SHORTCUTS_AUDIT.md` - Ensuring we don't compromise
 
-**The future of programming is natural, safe, and powerful. The future is NLPL.**
+**The future of programming is natural, safe, and powerful. The future is NexusLang.**

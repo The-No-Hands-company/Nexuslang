@@ -2,10 +2,10 @@
 
 ## Issue Summary
 
-**Status**: BLOCKING - All NLPL tools hang on startup 
+**Status**: BLOCKING - All NexusLang tools hang on startup 
 **Affected**: Python 3.14.0 
 **Cause**: Import system regression in Python 3.14 
-**Impact**: Cannot use nlplc_llvm.py, tests, or any NLPL tooling 
+**Impact**: Cannot use nlplc_llvm.py, tests, or any NexusLang tooling 
 
 ## Symptoms
 
@@ -20,7 +20,7 @@
 $ python3 --version
 Python 3.14.0
 
-$ timeout 3 python3 -c "from nlpl.parser.lexer import Lexer"
+$ timeout 3 python3 -c "from nexuslang.parser.lexer import Lexer"
 # Hangs... timeout kills it
 ```
 
@@ -43,7 +43,7 @@ The lexer.py module itself is valid Python code and works when loaded via `exec(
 sudo pacman -S python313 # Arch/Manjaro
 sudo apt install python3.13 # Ubuntu/Debian
 
-# Use it for NLPL
+# Use it for NexusLang
 python3.13 nlplc_llvm.py program.nlpl -o output
 ```
 
@@ -67,7 +67,7 @@ importlib.invalidate_caches()
 
 ## Temporary Solution
 
-Until Python 3.14 is fixed or we can use 3.13, NLPL development is BLOCKED on 
+Until Python 3.14 is fixed or we can use 3.13, NexusLang development is BLOCKED on 
 systems with only Python 3.14.
 
 ## Action Items

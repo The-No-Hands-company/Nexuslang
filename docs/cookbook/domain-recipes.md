@@ -139,7 +139,7 @@ print text "Total records: " plus convert length(results) to string
 ### Run a Shell Command Safely
 
 ```nlpl
-from nlpl.security import safe_execute
+from nexuslang.security import safe_execute
 
 set output to safe_execute with program: "ls" and args: ["-la", "/tmp"] and allowed_programs: ["ls"]
 print text output

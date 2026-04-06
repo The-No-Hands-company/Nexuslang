@@ -1,8 +1,8 @@
-# Enum Types in NLPL
+# Enum Types in NexusLang
 
 ## Overview
 
-Enums (enumerations) in NLPL provide a way to define named constant sets with automatic or explicit value assignment. They make code more readable and maintainable by replacing magic numbers with meaningful names.
+Enums (enumerations) in NexusLang provide a way to define named constant sets with automatic or explicit value assignment. They make code more readable and maintainable by replacing magic numbers with meaningful names.
 
 ## Syntax
 
@@ -446,7 +446,7 @@ enum Color {
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 enum Color
     Red
     Green
@@ -465,7 +465,7 @@ class Color(Enum):
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 enum Color
     Red
     Green
@@ -484,7 +484,7 @@ enum Color {
 ```
 
 ```nlpl
-# NLPL
+# NexusLang
 enum Color
     Red
     Green

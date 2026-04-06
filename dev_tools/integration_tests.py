@@ -15,11 +15,11 @@ from typing import List, Optional
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / 'src'))
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.interpreter.interpreter import Interpreter
-from nlpl.runtime.runtime import Runtime
-from nlpl.stdlib import register_stdlib
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.interpreter.interpreter import Interpreter
+from nexuslang.runtime.runtime import Runtime
+from nexuslang.stdlib import register_stdlib
 
 
 @dataclass
@@ -37,7 +37,7 @@ class BenchmarkResult:
 
 
 class IntegrationTester:
-    """Integration tester and benchmarker for NLPL."""
+    """Integration tester and benchmarker for NexusLang."""
     
     def __init__(self, verbose: bool = False):
         self.verbose = verbose
@@ -68,7 +68,7 @@ class IntegrationTester:
         import tempfile
         
         with tempfile.TemporaryDirectory() as tmpdir:
-            source_file = Path(tmpdir) / f"{test_name}.nlpl"
+            source_file = Path(tmpdir) / f"{test_name}.nxl"
             executable = Path(tmpdir) / test_name
             
             # Write source
@@ -267,7 +267,7 @@ print text sum
     
     # Test 5: String operations
     tester.benchmark("strings", """
-set name to "NLPL"
+set name to "NexusLang"
 set greeting to "Hello, "
 set message to greeting plus name
 print text message

@@ -7,7 +7,7 @@
 
 ## Session Overview
 
-Successfully implemented **variadic parameters** (*args style) for NLPL, completing the third of five planned parameter enhancement features. Variadic parameters allow functions to accept variable numbers of arguments, collected into a list.
+Successfully implemented **variadic parameters** (*args style) for NexusLang, completing the third of five planned parameter enhancement features. Variadic parameters allow functions to accept variable numbers of arguments, collected into a list.
 
 **Duration:** ~4 hours  
 **Complexity:** Medium - Required integration across AST, parser, interpreter, and type checker
@@ -347,14 +347,14 @@ end
 ### Why Collect Into List?
 
 **Rationale:**
-- NLPL lists are first-class types
+- NexusLang lists are first-class types
 - Natural to iterate with `for each`
 - Type checker already understands `ListType`
 - Allows type safety: `*messages as String` means list of strings
 
 **Alternatives Considered:**
-- Tuple (immutable) - NLPL doesn't have tuples yet
-- Array - Less idiomatic in NLPL
+- Tuple (immutable) - NexusLang doesn't have tuples yet
+- Array - Less idiomatic in NexusLang
 - Custom Variadic type - Unnecessary complexity
 
 ### Why Prohibit Defaults on Variadic?
@@ -492,10 +492,10 @@ print_all with "one" and "two" and "three"
 ```
 
 **Differences:**
-- NLPL uses `with` keyword (more natural language)
-- NLPL uses `and` separator (reads like English)
-- NLPL requires type annotation (optional in Python)
-- NLPL uses `for each` (more readable than `for in`)
+- NexusLang uses `with` keyword (more natural language)
+- NexusLang uses `and` separator (reads like English)
+- NexusLang requires type annotation (optional in Python)
+- NexusLang uses `for each` (more readable than `for in`)
 
 ### Ruby
 ```ruby
@@ -518,9 +518,9 @@ print_all with "one" and "two" and "three"
 ```
 
 **Differences:**
-- NLPL requires `with` keyword before args
-- Ruby uses commas, NLPL uses `and`
-- NLPL has explicit type annotations
+- NexusLang requires `with` keyword before args
+- Ruby uses commas, NexusLang uses `and`
+- NexusLang has explicit type annotations
 
 ### JavaScript
 ```javascript
@@ -543,9 +543,9 @@ print_all with "one" and "two" and "three"
 ```
 
 **Differences:**
-- NLPL uses `*` like Python, not `...` like JS
-- NLPL has structured `for each...end` not lambdas
-- NLPL requires `with` keyword
+- NexusLang uses `*` like Python, not `...` like JS
+- NexusLang has structured `for each...end` not lambdas
+- NexusLang requires `with` keyword
 
 ---
 

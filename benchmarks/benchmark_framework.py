@@ -9,8 +9,8 @@ Measures and compares performance across:
 - Memory usage
 
 Supports comparison between:
-- NLPL interpreter
-- NLPL compiled (-O0, -O2, -O3)
+- NexusLang interpreter
+- NexusLang compiled (-O0, -O2, -O3)
 - Equivalent C code
 - Other languages (Python, Rust, etc.)
 """
@@ -52,19 +52,19 @@ class BenchmarkResult:
 class BenchmarkRunner:
     """Runs benchmarks and collects performance metrics."""
     
-    def __init__(self, nlpl_compiler: str = 'python src/main.py'):
+    def __init__(self, nxl_compiler: str = 'python src/main.py'):
         """
         Initialize benchmark runner.
         
         Args:
-            nlpl_compiler: Command to invoke NLPL compiler
+            nxl_compiler: Command to invoke NexusLang compiler
         """
-        self.nlpl_compiler = nlpl_compiler
+        self.nxl_compiler = nxl_compiler
         self.results: List[BenchmarkResult] = []
     
-    def benchmark_nlpl_interpreted(self, source_file: str, iterations: int = 10) -> BenchmarkResult:
+    def benchmark_nxl_interpreted(self, source_file: str, iterations: int = 10) -> BenchmarkResult:
         """
-        Benchmark NLPL in interpreter mode.
+        Benchmark NexusLang in interpreter mode.
         
         Args:
             source_file: Path to .nlpl file
@@ -80,7 +80,7 @@ class BenchmarkRunner:
         for i in range(iterations):
             start = time.time()
             result = subprocess.run(
-                f'{self.nlpl_compiler} {source_file}'.split(),
+                f'{self.nxl_compiler} {source_file}'.split(),
                 capture_output=True,
                 text=True
             )
@@ -107,14 +107,14 @@ class BenchmarkRunner:
             iterations=len(execution_times)
         )
     
-    def benchmark_nlpl_compiled(
+    def benchmark_nxl_compiled(
         self, 
         source_file: str, 
         optimization_level: str = 'O2',
         iterations: int = 10
     ) -> BenchmarkResult:
         """
-        Benchmark NLPL in compiled mode.
+        Benchmark NexusLang in compiled mode.
         
         Args:
             source_file: Path to .nlpl file
@@ -131,7 +131,7 @@ class BenchmarkRunner:
         
         compile_start = time.time()
         compile_result = subprocess.run(
-            f'{self.nlpl_compiler} {source_file} --compile -{optimization_level} -o {output_binary}'.split(),
+            f'{self.nxl_compiler} {source_file} --compile -{optimization_level} -o {output_binary}'.split(),
             capture_output=True,
             text=True
         )
@@ -254,7 +254,7 @@ class BenchmarkRunner:
             benchmark_dir: Directory containing benchmark programs
             optimization_levels: List of optimization levels to test
         """
-        benchmark_files = list(Path(benchmark_dir).glob('*.nlpl'))
+        benchmark_files = list(Path(benchmark_dir).glob('*.nxl'))
         
         if not benchmark_files:
             print(f"No benchmark files found in {benchmark_dir}")
@@ -265,12 +265,12 @@ class BenchmarkRunner:
         print(f"Optimization levels: {', '.join(optimization_levels)}")
         print(f"{'='*60}\n")
         
-        for nlpl_file in benchmark_files:
-            print(f"\n--- Benchmarking: {nlpl_file.name} ---")
+        for nxl_file in benchmark_files:
+            print(f"\n--- Benchmarking: {nxl_file.name} ---")
             
             # Interpreter baseline
             try:
-                result = self.benchmark_nlpl_interpreted(str(nlpl_file))
+                result = self.benchmark_nxl_interpreted(str(nxl_file))
                 self.results.append(result)
             except Exception as e:
                 print(f"  Interpreter benchmark failed: {e}")
@@ -278,13 +278,13 @@ class BenchmarkRunner:
             # Compiled versions
             for opt_level in optimization_levels:
                 try:
-                    result = self.benchmark_nlpl_compiled(str(nlpl_file), opt_level)
+                    result = self.benchmark_nxl_compiled(str(nxl_file), opt_level)
                     self.results.append(result)
                 except Exception as e:
                     print(f"  Compiled -{opt_level} benchmark failed: {e}")
             
             # C comparison (if exists)
-            c_file = nlpl_file.with_suffix('.c')
+            c_file = nxl_file.with_suffix('.c')
             if c_file.exists():
                 try:
                     result = self.benchmark_c_code(str(c_file), 'O2')
@@ -304,7 +304,7 @@ class BenchmarkRunner:
             return
         
         report_lines = [
-            "# NLPL Compiler Performance Benchmark Report",
+            "# NexusLang Compiler Performance Benchmark Report",
             "",
             f"**Generated**: {time.strftime('%Y-%m-%d %H:%M:%S')}",
             f"**Total Benchmarks**: {len(self.results)}",
@@ -336,7 +336,7 @@ class BenchmarkRunner:
                 compile_time_str = f"{result.compile_time:.3f}s" if result.compile_time > 0 else "N/A"
                 binary_size_str = f"{result.binary_size // 1024}KB" if result.binary_size > 0 else "N/A"
                 
-                mode = "C" if result.name.endswith('_c') else "NLPL"
+                mode = "C" if result.name.endswith('_c') else "NexusLang"
                 
                 report_lines.append(
                     f"| {program} | {mode} | {result.optimization_level} | "
@@ -357,7 +357,7 @@ class BenchmarkRunner:
         by_opt_level = {}
         for result in self.results:
             if result.name.endswith('_c'):
-                continue  # Skip C for NLPL comparison
+                continue  # Skip C for NexusLang comparison
             
             level = result.optimization_level
             if level not in by_opt_level:

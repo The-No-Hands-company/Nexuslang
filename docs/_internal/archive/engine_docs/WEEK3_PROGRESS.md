@@ -73,7 +73,7 @@ class GraphicsWindow:
 - `is_key_pressed/held/released(window_id, key)`
 - `get_mouse_position(window_id)` - Returns tuple
 - `get_mouse_delta(window_id)` - Returns tuple
-- `get_mouse_delta_x/y(window_id)` - Separate X/Y for easier NLPL access
+- `get_mouse_delta_x/y(window_id)` - Separate X/Y for easier NexusLang access
 - `is_mouse_button_pressed/held/released(window_id, button)`
 - `get_scroll_offset(window_id)`
 - `set_cursor_mode(window_id, mode)`
@@ -83,7 +83,7 @@ class GraphicsWindow:
 - `CURSOR_NORMAL`, `CURSOR_HIDDEN`, `CURSOR_DISABLED`
 
 **Technical Innovation**:
-Added `get_mouse_delta_x()` and `get_mouse_delta_y()` to avoid tuple unpacking issues in NLPL (no list indexing yet).
+Added `get_mouse_delta_x()` and `get_mouse_delta_y()` to avoid tuple unpacking issues in NexusLang (no list indexing yet).
 
 ### 3. Interactive Camera Demo ✅
 
@@ -329,7 +329,7 @@ All demos run at **60+ FPS** (vsync limited):
 
 ## Lessons Learned
 
-### 1. Tuple Unpacking in NLPL
+### 1. Tuple Unpacking in NexusLang
 **Problem**: No list indexing syntax yet (`list[0]` doesn't exist).  
 **Solution**: Created `get_mouse_delta_x()` and `get_mouse_delta_y()` to return individual components.  
 **Pattern**: For multi-value returns, provide separate accessor functions.
@@ -341,13 +341,13 @@ All demos run at **60+ FPS** (vsync limited):
 
 ### 3. Quaternion vs. Euler Angles
 **Decision**: Used quaternions internally for rotations (no gimbal lock).  
-**API**: Exposed Euler angles to NLPL (more intuitive: `set_node_rotation(node, x, y, z)`).  
+**API**: Exposed Euler angles to NexusLang (more intuitive: `set_node_rotation(node, x, y, z)`).  
 **Benefit**: Best of both worlds - stable math, user-friendly API.
 
 ### 4. Boolean Expression Evaluation
 **Problem**: Can't use `if is_key_held with window and key_w` directly.  
 **Solution**: Store result first: `set w_held to is_key_held with window and key_w`, then `if w_held`.  
-**Pattern**: NLPL requires intermediate variables for function return values in conditionals.
+**Pattern**: NexusLang requires intermediate variables for function return values in conditionals.
 
 ---
 

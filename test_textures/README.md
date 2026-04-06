@@ -19,4 +19,4 @@ These textures are used to test:
 
 ## Note
 
-This is part of NLPL's advanced features testing. These assets demonstrate NLPL's capability to handle real-world graphics data, though the primary focus of NLPL is general-purpose programming with low-level capabilities.
+This is part of NLPL's advanced features testing. These assets demonstrate NLPL's capability to handle real-world graphics data, though the primary focus of NexusLang is general-purpose programming with low-level capabilities.

@@ -1,4 +1,4 @@
-# Inline Assembly Design for NLPL
+# Inline Assembly Design for NexusLang
 
 ## Syntax Options
 

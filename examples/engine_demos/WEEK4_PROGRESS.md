@@ -47,7 +47,7 @@ def load_texture_from_file(self, filepath: str) -> int:
 
 **Test Results**:
 ```
-=== NLPL Texture Loading Demo ===
+=== NexusLang Texture Loading Demo ===
 Loading textures from image files...
 Compiling shaders...
 Creating cube geometry...
@@ -83,7 +83,7 @@ Demo complete!
 ### Technical Notes
 
 **Compiler vs Interpreter**:
-- Graphics demos use `nlplc` (compiler) not `nlpl.main` (interpreter)
+- Graphics demos use `nlplc` (compiler) not `nexuslang.main` (interpreter)
 - Command: `./nlplc program.nlpl --run`
 - List literals `[...]` work in compiler, `new List of Float` has issues
 - Break statements work in compiler

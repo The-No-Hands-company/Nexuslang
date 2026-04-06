@@ -7,9 +7,9 @@
 
 ## Summary
 
-Successfully implemented a complete Cargo-inspired build system for NLPL with four major components:
+Successfully implemented a complete Cargo-inspired build system for NexusLang with four major components:
 
-### Task 1: NLPL.toml Specification ✅
+### Task 1: NexusLang.toml Specification ✅
 - **Deliverable**: `docs/build_system/NLPL_TOML_SPECIFICATION.md` (17,000+ characters)
 - **Features**: Package metadata, build profiles, feature flags, dependencies
 - **Format**: TOML-based manifest inspired by Cargo
@@ -21,7 +21,7 @@ Successfully implemented a complete Cargo-inspired build system for NLPL with fo
 - **Validation**: Type checking, required field enforcement
 
 ### Task 3: Build CLI Tool ✅
-- **Deliverable**: `dev_tools/nlpl_build.py` (720+ lines)
+- **Deliverable**: `dev_tools/nxl_build.py` (720+ lines)
 - **Commands**: `build`, `clean`, `check`, `run`, `test`
 - **Features**: Profile support, feature flags, multiple targets
 - **Documentation**: `docs/build_system/BUILD_TOOL_GUIDE.md` (730+ lines)
@@ -91,9 +91,9 @@ No domain bias - equal support for all programming domains.
 ### File Structure
 
 ```
-NLPL/
+NexusLang/
   dev_tools/
-    nlpl_build.py           # Build CLI tool (720 lines)
+    nxl_build.py           # Build CLI tool (720 lines)
   src/nlpl/build/
     manifest.py             # Manifest parser (500 lines)
     incremental.py          # Incremental compilation (463 lines)
@@ -115,7 +115,7 @@ NLPL/
 - Resolves dependencies
 - Type-safe dataclasses
 
-**BuildTool** (`nlpl_build.py`):
+**BuildTool** (`nxl_build.py`):
 - CLI command dispatcher
 - Build orchestration
 - Profile and feature management
@@ -141,14 +141,14 @@ NLPL/
 
 **Test Case 1: Clean Build**
 ```bash
-nlpl_build clean && nlpl_build build --verbose
+nxl_build clean && nxl_build build --verbose
 # Expected: "X compiled, 0 up-to-date"
 # Result: ✅ Passed
 ```
 
 **Test Case 2: No Changes**
 ```bash
-nlpl_build build --verbose
+nxl_build build --verbose
 # Expected: "0 compiled, X up-to-date"
 # Result: ✅ Passed
 ```
@@ -156,7 +156,7 @@ nlpl_build build --verbose
 **Test Case 3: Source Modified**
 ```bash
 echo '# Comment' >> calculator.nlpl
-nlpl_build build --verbose
+nxl_build build --verbose
 # Expected: "Rebuild reason: Source file calculator.nlpl changed"
 # Result: ✅ Passed
 ```
@@ -164,14 +164,14 @@ nlpl_build build --verbose
 **Test Case 4: Dependency Modified**
 ```bash
 echo '# Comment' >> math_utils.nlpl
-nlpl_build build --verbose
+nxl_build build --verbose
 # Expected: "Rebuild reason: Dependency math_utils.nlpl changed"
 # Result: ✅ Passed
 ```
 
 **Test Case 5: --no-incremental Flag**
 ```bash
-nlpl_build build --no-incremental
+nxl_build build --no-incremental
 # Expected: Always rebuild
 # Result: ✅ Passed
 ```
@@ -189,10 +189,10 @@ cat build/.cache/build_cache.json
 ```json
 {
     "dependencies": {
-        "calculator.nlpl": ["math_utils.nlpl"]
+        "calculator.nxl": ["math_utils.nxl"]
     },
     "reverse_deps": {
-        "math_utils.nlpl": ["calculator.nlpl"]
+        "math_utils.nxl": ["calculator.nxl"]
     }
 }
 ```
@@ -237,7 +237,7 @@ Result: ✅ Passed - Both directions correctly tracked
 ### User Documentation
 
 **BUILD_TOOL_GUIDE.md** (730 lines):
-- Complete reference for `nlpl_build.py`
+- Complete reference for `nxl_build.py`
 - All 5 commands documented with examples
 - Profile and feature usage
 - Incremental compilation overview
@@ -292,7 +292,7 @@ Result: ✅ Passed - Both directions correctly tracked
 
 **Advanced Features**:
 - Cross-compilation support
-- Custom build scripts (build.nlpl)
+- Custom build scripts (build.nxl)
 - Pre/post-build hooks
 - Build server mode (persistent daemon)
 
@@ -410,7 +410,7 @@ Result: ✅ Passed - Both directions correctly tracked
 
 ## Conclusion
 
-The NLPL build system is now **production-ready** with:
+The NexusLang build system is now **production-ready** with:
 
 - ✅ Complete manifest-based project configuration
 - ✅ Robust build tool with 5 commands
@@ -419,7 +419,7 @@ The NLPL build system is now **production-ready** with:
 - ✅ Domain-neutral design
 - ✅ Validated through testing
 
-This provides a solid foundation for NLPL development workflows, with significant improvements to build times through incremental compilation. The system is modular and extensible, ready for future enhancements like parallel builds, distributed caching, and package management.
+This provides a solid foundation for NexusLang development workflows, with significant improvements to build times through incremental compilation. The system is modular and extensible, ready for future enhancements like parallel builds, distributed caching, and package management.
 
 **Next Steps**:
 1. Add automated tests for BuildCache

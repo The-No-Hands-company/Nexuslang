@@ -1,4 +1,4 @@
-# NLPL Cookbook
+# NexusLang Cookbook
 
 Quick-reference recipes for common programming tasks.  Each recipe is a
 short, complete code snippet you can copy and adapt.
@@ -15,7 +15,7 @@ short, complete code snippet you can copy and adapt.
 3. Replace placeholder names and paths with your real ones.
 4. Run and adapt as needed.
 
-Recipes assume NLPL 2.x and may require specific permissions:
+Recipes assume NexusLang 2.x and may require specific permissions:
 
 ```bash
 nlpl program.nlpl --allow-read --allow-write --allow-net

@@ -2,7 +2,7 @@
 
 ## Understanding Game Objects
 
-Game objects are the basic building blocks in NLPL. They represent anything that exists in your game world.
+Game objects are the basic building blocks in NexusLang. They represent anything that exists in your game world.
 
 ## Creating Objects
 

@@ -8,7 +8,7 @@
 
 ## Summary
 
-Implemented `nlpl_build.py` - a Cargo-inspired build tool for NLPL projects that provides project-aware compilation, build orchestration, and feature flag management through `nlpl.toml` manifests.
+Implemented `nxl_build.py` - a Cargo-inspired build tool for NexusLang projects that provides project-aware compilation, build orchestration, and feature flag management through `nlpl.toml` manifests.
 
 ---
 
@@ -16,7 +16,7 @@ Implemented `nlpl_build.py` - a Cargo-inspired build tool for NLPL projects that
 
 ### Core File
 
-**`dev_tools/nlpl_build.py`** (700+ lines)
+**`dev_tools/nxl_build.py`** (700+ lines)
 - Full-featured build tool with 5 commands
 - Integrates with existing `nlplc` compiler
 - Manifest-driven configuration
@@ -83,11 +83,11 @@ concurrent-execution = []
 ```toml
 [[bin]]
 name = "processor"
-path = "src/main.nlpl"
+path = "src/main.nxl"
 
 [[bin]]
 name = "analyzer"
-path = "src/bin/analyzer.nlpl"
+path = "src/bin/analyzer.nxl"
 required-features = ["data-analytics"]
 ```
 
@@ -99,7 +99,7 @@ All commands tested and working:
 
 ### ✅ Build Command
 ```bash
-$ nlpl_build.py build
+$ nxl_build.py build
 Building hello-build-test [profile: dev, features: none]
   Compiling binary hello...
 Finished build [profile: dev]
@@ -107,21 +107,21 @@ Finished build [profile: dev]
 
 ### ✅ Run Command
 ```bash
-$ nlpl_build.py run
+$ nxl_build.py run
 Running hello...
-Hello from NLPL Build System!
+Hello from NexusLang Build System!
 ```
 
 ### ✅ Clean Command
 ```bash
-$ nlpl_build.py clean
+$ nxl_build.py clean
 Cleaning build artifacts...
 Cleaned successfully
 ```
 
 ### ✅ Check Command
 ```bash
-$ nlpl_build.py check
+$ nxl_build.py check
 Checking project...
   Checking hello...
 Check completed successfully
@@ -129,7 +129,7 @@ Check completed successfully
 
 ### ✅ Release Profile
 ```bash
-$ nlpl_build.py build --release
+$ nxl_build.py build --release
 Building hello-build-test [profile: release, features: none]
   Compiling binary hello...
 Finished build [profile: release]
@@ -223,40 +223,40 @@ version = "0.1.0"
 
 [[bin]]
 name = "app"
-path = "main.nlpl"
+path = "main.nxl"
 EOF
 
 # Build
-nlpl_build.py build
+nxl_build.py build
 
 # Run
-nlpl_build.py run
+nxl_build.py run
 ```
 
 ### With Features
 
 ```bash
 # Build with features
-nlpl_build.py build --features data-analytics,storage-backend
+nxl_build.py build --features data-analytics,storage-backend
 
 # Run release build
-nlpl_build.py run --release
+nxl_build.py run --release
 ```
 
 ### Development Workflow
 
 ```bash
 # Fast syntax check
-nlpl_build.py check
+nxl_build.py check
 
 # Full build
-nlpl_build.py build
+nxl_build.py build
 
 # Test
-nlpl_build.py test
+nxl_build.py test
 
 # Clean
-nlpl_build.py clean
+nxl_build.py clean
 ```
 
 ---
@@ -348,7 +348,7 @@ Task 4 will add:
 ## Commits
 
 1. **`21c8987`** - feat(build): Complete Build Tool CLI (Task 3)
-   - Implemented nlpl_build.py (700+ lines)
+   - Implemented nxl_build.py (700+ lines)
    - All 5 commands working
    - Domain-neutral feature flags
    - Test files and validation
@@ -363,7 +363,7 @@ Task 4 will add:
 
 ### Build System Roadmap
 
-- ✅ **Task 1**: NLPL.toml specification (Complete)
+- ✅ **Task 1**: NexusLang.toml specification (Complete)
 - ✅ **Task 2**: Manifest parser (Complete, 24/24 tests passing)
 - ✅ **Task 3**: Build CLI tool (Complete, all commands validated)
 - ⏳ **Task 4**: Incremental compilation (Next)
@@ -407,7 +407,7 @@ Implement smart rebuilds:
 
 ## Conclusion
 
-Build Tool CLI (Task 3) is **100% complete**. NLPL now has a production-ready build tool that provides:
+Build Tool CLI (Task 3) is **100% complete**. NexusLang now has a production-ready build tool that provides:
 - Project-aware compilation
 - Profile management
 - Feature flag support

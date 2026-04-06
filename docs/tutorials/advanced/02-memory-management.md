@@ -5,7 +5,7 @@
 
 ---
 
-## Part 1 — NLPL Memory Model
+## Part 1 — NexusLang Memory Model
 
 NLPL uses automatic memory management for most values — you do not need to
 free ordinary variables, lists, or objects.  Manual memory management is
@@ -19,7 +19,7 @@ available for:
 
 ## Part 2 — Automatic Memory
 
-For everyday programming, NLPL automatically manages object lifetimes:
+For everyday programming, NexusLang automatically manages object lifetimes:
 
 ```nlpl
 function make_greeting with name as String returns String
@@ -191,7 +191,7 @@ Once a buffer is freed, any pointer to it is dangling.  Use the
 development:
 
 ```nlpl
-from nlpl.security.analysis import MemorySafetyValidator
+from nexuslang.security.analysis import MemorySafetyValidator
 
 set mv to create MemorySafetyValidator
 

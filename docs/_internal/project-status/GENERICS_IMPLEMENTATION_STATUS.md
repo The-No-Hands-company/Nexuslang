@@ -1,4 +1,4 @@
-# NLPL Generics System Implementation
+# NexusLang Generics System Implementation
 
 ## Status: FULLY IMPLEMENTED AND READY
 

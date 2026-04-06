@@ -3,7 +3,7 @@
 LSP Performance Profiler
 =========================
 
-Profiles workspace indexing and symbol lookup performance for the NLPL LSP server.
+Profiles workspace indexing and symbol lookup performance for the NexusLang LSP server.
 
 Usage:
     python dev_tools/profile_lsp.py [workspace_path]
@@ -22,7 +22,7 @@ from io import StringIO
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from nlpl.lsp.workspace_index import WorkspaceIndex
+from nexuslang.lsp.workspace_index import WorkspaceIndex
 
 
 def profile_workspace_indexing(workspace_path):

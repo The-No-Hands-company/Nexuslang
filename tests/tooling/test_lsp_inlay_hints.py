@@ -2,7 +2,7 @@
 Tests: Inlay Hints Provider
 ============================
 
-Validates InlayHintsProvider against NLPL source patterns.
+Validates InlayHintsProvider against NexusLang source patterns.
 """
 
 import sys
@@ -11,7 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 import pytest
-from nlpl.lsp.inlay_hints import InlayHintsProvider, INLAY_HINT_TYPE, INLAY_HINT_PARAMETER
+from nexuslang.lsp.inlay_hints import InlayHintsProvider, INLAY_HINT_TYPE, INLAY_HINT_PARAMETER
 
 
 class MockServer:
@@ -105,35 +105,35 @@ def test_infer_empty_returns_none(provider):
 
 def test_hint_integer_declaration(provider):
     lines = ["set count to 0"]
-    hints = provider.get_inlay_hints("file:///t.nlpl", "\n".join(lines))
+    hints = provider.get_inlay_hints("file:///t.nxl", "\n".join(lines))
     type_hints = [h for h in hints if h["kind"] == INLAY_HINT_TYPE]
     assert len(type_hints) == 1
     assert type_hints[0]["label"] == ": Integer"
 
 
 def test_hint_float_declaration(provider):
-    hints = provider.get_inlay_hints("file:///t.nlpl", 'set pi to 3.14159')
+    hints = provider.get_inlay_hints("file:///t.nxl", 'set pi to 3.14159')
     type_hints = [h for h in hints if h["kind"] == INLAY_HINT_TYPE]
     assert len(type_hints) == 1
     assert type_hints[0]["label"] == ": Float"
 
 
 def test_hint_string_declaration(provider):
-    hints = provider.get_inlay_hints("file:///t.nlpl", 'set name to "Alice"')
+    hints = provider.get_inlay_hints("file:///t.nxl", 'set name to "Alice"')
     type_hints = [h for h in hints if h["kind"] == INLAY_HINT_TYPE]
     assert len(type_hints) == 1
     assert type_hints[0]["label"] == ": String"
 
 
 def test_hint_boolean_declaration(provider):
-    hints = provider.get_inlay_hints("file:///t.nlpl", "set flag to true")
+    hints = provider.get_inlay_hints("file:///t.nxl", "set flag to true")
     type_hints = [h for h in hints if h["kind"] == INLAY_HINT_TYPE]
     assert len(type_hints) == 1
     assert type_hints[0]["label"] == ": Boolean"
 
 
 def test_hint_list_declaration(provider):
-    hints = provider.get_inlay_hints("file:///t.nlpl", "set items to [1, 2, 3]")
+    hints = provider.get_inlay_hints("file:///t.nxl", "set items to [1, 2, 3]")
     type_hints = [h for h in hints if h["kind"] == INLAY_HINT_TYPE]
     assert len(type_hints) == 1
     assert type_hints[0]["label"] == ": List"
@@ -141,7 +141,7 @@ def test_hint_list_declaration(provider):
 
 def test_hint_position_after_variable_name(provider):
     line = "set counter to 0"
-    hints = provider.get_inlay_hints("file:///t.nlpl", line)
+    hints = provider.get_inlay_hints("file:///t.nxl", line)
     type_hints = [h for h in hints if h["kind"] == INLAY_HINT_TYPE]
     assert type_hints
     # "set " = 4 chars, "counter" = 7 chars -> hint at col 11
@@ -150,7 +150,7 @@ def test_hint_position_after_variable_name(provider):
 
 def test_hint_indented_declaration(provider):
     line = "    set x to 99"
-    hints = provider.get_inlay_hints("file:///t.nlpl", line)
+    hints = provider.get_inlay_hints("file:///t.nxl", line)
     type_hints = [h for h in hints if h["kind"] == INLAY_HINT_TYPE]
     assert len(type_hints) == 1
     assert type_hints[0]["label"] == ": Integer"
@@ -160,24 +160,24 @@ def test_hint_indented_declaration(provider):
 
 def test_no_hint_for_variable_assigned_variable(provider):
     # 'set x to y' — y is a variable name, not a literal
-    hints = provider.get_inlay_hints("file:///t.nlpl", "set x to y")
+    hints = provider.get_inlay_hints("file:///t.nxl", "set x to y")
     type_hints = [h for h in hints if h["kind"] == INLAY_HINT_TYPE]
     assert len(type_hints) == 0
 
 
 def test_no_hint_for_comment_lines(provider):
-    hints = provider.get_inlay_hints("file:///t.nlpl", "# set x to 42")
+    hints = provider.get_inlay_hints("file:///t.nxl", "# set x to 42")
     assert hints == []
 
 
 def test_no_hint_for_blank_lines(provider):
-    hints = provider.get_inlay_hints("file:///t.nlpl", "")
+    hints = provider.get_inlay_hints("file:///t.nxl", "")
     assert hints == []
 
 
 def test_multiple_declarations_in_document(provider):
     src = "set a to 1\nset b to 2.0\nset c to \"hi\"\n"
-    hints = provider.get_inlay_hints("file:///t.nlpl", src)
+    hints = provider.get_inlay_hints("file:///t.nxl", src)
     type_hints = [h for h in hints if h["kind"] == INLAY_HINT_TYPE]
     assert len(type_hints) == 3
     labels = {h["label"] for h in type_hints}
@@ -198,7 +198,7 @@ def test_range_restricts_hints(provider):
         "start": {"line": 1, "character": 0},
         "end": {"line": 1, "character": 100},
     }
-    hints = provider.get_inlay_hints("file:///t.nlpl", src, range_)
+    hints = provider.get_inlay_hints("file:///t.nxl", src, range_)
     type_hints = [h for h in hints if h["kind"] == INLAY_HINT_TYPE]
     # Only the second declaration should appear
     assert len(type_hints) == 1
@@ -218,7 +218,7 @@ def test_parameter_hints_for_known_function(provider):
         "\n"
         "set result to add with 3 and 5\n"
     )
-    hints = provider.get_inlay_hints("file:///t.nlpl", src)
+    hints = provider.get_inlay_hints("file:///t.nxl", src)
     param_hints = [h for h in hints if h["kind"] == INLAY_HINT_PARAMETER]
     assert len(param_hints) == 2
     labels = {h["label"] for h in param_hints}
@@ -228,7 +228,7 @@ def test_parameter_hints_for_known_function(provider):
 
 def test_no_parameter_hints_for_unknown_function(provider):
     src = "set x to mystery_func with 1 and 2\n"
-    hints = provider.get_inlay_hints("file:///t.nlpl", src)
+    hints = provider.get_inlay_hints("file:///t.nxl", src)
     param_hints = [h for h in hints if h["kind"] == INLAY_HINT_PARAMETER]
     assert len(param_hints) == 0
 
@@ -241,7 +241,7 @@ def test_no_parameter_hints_for_named_args(provider):
         "end\n"
         "set msg to greet with name: \"Alice\"\n"
     )
-    hints = provider.get_inlay_hints("file:///t.nlpl", src)
+    hints = provider.get_inlay_hints("file:///t.nxl", src)
     param_hints = [h for h in hints if h["kind"] == INLAY_HINT_PARAMETER]
     assert len(param_hints) == 0
 
@@ -253,7 +253,7 @@ def test_no_parameter_hints_for_named_args(provider):
 
 def test_all_hints_have_required_fields(provider):
     src = "set x to 42\nset y to 3.14\n"
-    hints = provider.get_inlay_hints("file:///t.nlpl", src)
+    hints = provider.get_inlay_hints("file:///t.nxl", src)
     for hint in hints:
         assert "position" in hint
         assert "line" in hint["position"]
@@ -265,7 +265,7 @@ def test_all_hints_have_required_fields(provider):
 
 def test_hint_line_numbers_match_source(provider):
     src = "# intro\nset a to 1\n# middle\nset b to 2\n"
-    hints = provider.get_inlay_hints("file:///t.nlpl", src)
+    hints = provider.get_inlay_hints("file:///t.nxl", src)
     type_hints = [h for h in hints if h["kind"] == INLAY_HINT_TYPE]
     lines = {h["position"]["line"] for h in type_hints}
     # 'set a to 1' is line 1, 'set b to 2' is line 3

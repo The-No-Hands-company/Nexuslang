@@ -1,6 +1,6 @@
 # nlpl.nvim
 
-Neovim plugin providing full NLPL language support.
+Neovim plugin providing full NexusLang language support.
 
 ## Features
 
@@ -15,7 +15,7 @@ Neovim plugin providing full NLPL language support.
 ## Prerequisites
 
 - Neovim 0.9 or later
-- NLPL installed: `pip install nlpl` (makes `nlpl` CLI and LSP server available)
+- NexusLang installed: `pip install nlpl` (makes `nlpl` CLI and LSP server available)
 - `nvim-lspconfig` plugin (for LSP features)
 - `nvim-cmp` (optional, for enhanced completions)
 
@@ -25,8 +25,8 @@ Neovim plugin providing full NLPL language support.
 
 ```lua
 {
-  dir = "/path/to/NLPL/editors/neovim",
-  name = "nlpl.nvim",
+  dir = "/path/to/NexusLang/editors/neovim",
+  name = "nexuslang.nvim",
   ft = "nlpl",
   config = function()
     require("nlpl").setup()
@@ -38,7 +38,7 @@ Neovim plugin providing full NLPL language support.
 
 ```lua
 use {
-  "/path/to/NLPL/editors/neovim",
+  "/path/to/NexusLang/editors/neovim",
   config = function()
     require("nlpl").setup()
   end,
@@ -51,7 +51,7 @@ Copy this directory to your Neovim data path:
 
 ```bash
 mkdir -p ~/.config/nvim/pack/nlpl/start/nlpl.nvim
-cp -r /path/to/NLPL/editors/neovim/* ~/.config/nvim/pack/nlpl/start/nlpl.nvim/
+cp -r /path/to/NexusLang/editors/neovim/* ~/.config/nvim/pack/nlpl/start/nlpl.nvim/
 ```
 
 Then add to your `init.lua`:
@@ -66,7 +66,7 @@ All options with defaults:
 
 ```lua
 require("nlpl").setup({
-  -- Path to the NLPL LSP server __main__.py (auto-detected if nil)
+  -- Path to the NexusLang LSP server __main__.py (auto-detected if nil)
   lsp_server_path = nil,
 
   -- Python executable used to run the LSP server
@@ -84,7 +84,7 @@ require("nlpl").setup({
   -- Extra settings forwarded to the LSP server
   lsp_settings = {},
 
-  -- Callback called after the NLPL LSP server attaches to a buffer
+  -- Callback called after the NexusLang LSP server attaches to a buffer
   on_attach = nil,
 })
 ```

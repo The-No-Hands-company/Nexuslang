@@ -82,7 +82,7 @@ def main():
     project_root = Path(__file__).parent.parent
     
     # File patterns to process
-    patterns = ['**/*.py', '**/*.nlpl', '**/*.md']
+    patterns = ['**/*.py', '**/*.nxl', '**/*.md']
     
     # Directories to skip
     skip_dirs = {'.git', '.venv', '__pycache__', '.pytest_cache', 'build', 'node_modules'}

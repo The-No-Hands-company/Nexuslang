@@ -16,8 +16,8 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from nlpl.main import run_program
-from nlpl.errors import NLPLRuntimeError
+from nexuslang.main import run_program
+from nexuslang.errors import NxlRuntimeError
 
 
 # ---------------------------------------------------------------------------
@@ -25,12 +25,12 @@ from nlpl.errors import NLPLRuntimeError
 # ---------------------------------------------------------------------------
 
 def run(code, *, type_check=True):
-    """Run NLPL code and return the interpreter result."""
+    """Run NexusLang code and return the interpreter result."""
     return run_program(code, type_check=type_check)
 
 
 def run_raises(code, *, type_check=True):
-    """Assert that NLPL code raises NLPLRuntimeError."""
+    """Assert that NexusLang code raises NxlRuntimeError."""
     with pytest.raises(Exception):
         run_program(code, type_check=type_check)
 

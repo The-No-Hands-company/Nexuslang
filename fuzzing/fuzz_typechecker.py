@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-fuzzing/fuzz_typechecker.py  --  Atheris fuzz target for the NLPL type system.
+fuzzing/fuzz_typechecker.py  --  Atheris fuzz target for the NexusLang type system.
 
 Tests: lexer → parser → borrow checker → lifetime checker → type checker.
 Specifically exercises type inference, generic instantiation, and variance.
 
 Expected outcomes for any input:
-  - Successfully produces a type-annotated AST (or raises NLPLTypeError /
-    any NLPLError subclass).
+  - Successfully produces a type-annotated AST (or raises NxlTypeError /
+    any NxlError subclass).
   - Must NOT raise unhandled AttributeError, IndexError, KeyError, etc.
 
 Running with Atheris:
@@ -27,12 +27,12 @@ _SRC = os.path.join(_ROOT, "src")
 if _SRC not in sys.path:
     sys.path.insert(0, _SRC)
 
-from nlpl.parser.lexer import Lexer  # noqa: E402
-from nlpl.parser.parser import Parser  # noqa: E402
-from nlpl.errors import NLPLError  # noqa: E402
+from nexuslang.parser.lexer import Lexer  # noqa: E402
+from nexuslang.parser.parser import Parser  # noqa: E402
+from nexuslang.errors import NxlError  # noqa: E402
 
 _EXPECTED = (
-    NLPLError,
+    NxlError,
     ValueError,
     TypeError,
     KeyError,
@@ -46,9 +46,9 @@ _EXPECTED = (
 
 def _run_checkers(ast, source: str) -> None:
     """Run all static analysis passes that are part of the type-checking phase."""
-    from nlpl.typesystem.borrow_checker import BorrowChecker
-    from nlpl.typesystem.lifetime_checker import LifetimeChecker
-    from nlpl.typesystem.type_inference import TypeInferenceEngine
+    from nexuslang.typesystem.borrow_checker import BorrowChecker
+    from nexuslang.typesystem.lifetime_checker import LifetimeChecker
+    from nexuslang.typesystem.type_inference import TypeInferenceEngine
 
     BorrowChecker().check(ast)
     LifetimeChecker().check(ast)
@@ -67,13 +67,13 @@ def TestOneInput(data: bytes) -> None:
     # --- Lexer ---
     try:
         tokens = Lexer(source).tokenize()
-    except NLPLError:
+    except NxlError:
         return
 
     # --- Parser ---
     try:
         ast = Parser(tokens, source=source).parse()
-    except NLPLError:
+    except NxlError:
         return
 
     # --- Type checkers ---
@@ -105,7 +105,7 @@ _SANITY_INPUTS: list[bytes] = [
     b"set items as List of String to [\"a\", \"b\", \"c\"]",
     b"function double with n as Integer returns Integer\n  return n times 2\n",
     b"function identity as T with value as T returns T\n  return value\n",
-    # Type errors that should raise NLPLTypeError, not crash
+    # Type errors that should raise NxlTypeError, not crash
     b'set x as Integer to "hello"',
     b"function f with x as Integer\n  return x plus true\n",
     # Complex generic types

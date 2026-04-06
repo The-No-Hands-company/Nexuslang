@@ -105,7 +105,7 @@ class TestFsWatchStart:
                     fs_watch_stop(wid)
 
     def test_raises_oserror_for_nonexistent_path(self):
-        nonexistent = "/tmp/__nlpl_fs_watch_nonexistent_path_xyz__"
+        nonexistent = "/tmp/__nxl_fs_watch_nonexistent_path_xyz__"
         with pytest.raises(OSError):
             fs_watch_start(nonexistent)
 

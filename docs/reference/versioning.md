@@ -1,4 +1,4 @@
-# NLPL Versioning Policy
+# NexusLang Versioning Policy
 
 NLPL does not use version numbers during active pre-v1.0 development.
 

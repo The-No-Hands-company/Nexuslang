@@ -17,9 +17,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 
 def test_lsp_with_real_file():
-    """Test LSP with actual NLPL code."""
+    """Test LSP with actual NexusLang code."""
     print("\n" + "=" * 70)
-    print("LSP INTEGRATION TEST - Real NLPL File")
+    print("LSP INTEGRATION TEST - Real NexusLang File")
     print("=" * 70)
     
     # Start LSP server as VS Code would
@@ -73,9 +73,9 @@ def test_lsp_with_real_file():
     # Send initialized notification
     send({"jsonrpc": "2.0", "method": "initialized", "params": {}})
     
-    # Open a real NLPL file
-    print("\n3. Opening real NLPL file...")
-    test_file = workspace_root / "examples" / "01_basic_concepts.nlpl"
+    # Open a real NexusLang file
+    print("\n3. Opening real NexusLang file...")
+    test_file = workspace_root / "examples" / "01_basic_concepts.nxl"
     
     if not test_file.exists():
         print(f"Test file not found: {test_file}")
@@ -120,7 +120,7 @@ def test_lsp_with_real_file():
     print("\n" + "=" * 70)
     print("INTEGRATION TEST COMPLETED")
     print("=" * 70)
-    print("\n✅ LSP server can open and process real NLPL files!")
+    print("\n✅ LSP server can open and process real NexusLang files!")
     print("   This confirms basic VS Code integration would work.")
     print("\nNext: Install extension in VS Code and test manually:")
     print(f"   code --install-extension {workspace_root}/vscode-extension/nlpl-language-support-0.1.0.vsix")

@@ -1,14 +1,14 @@
-# Using NLPL Extension in This Project
+# Using NexusLang Extension in This Project
 
 ## Extension is Already Set Up!
 
-The NLPL VSCode extension is configured and ready to use in this workspace. No need to start a new project!
+The NexusLang VSCode extension is configured and ready to use in this workspace. No need to start a new project!
 
 ## What's Configured
 
 - **Extension location**: `.vscode/extensions/nlpl/`
 - **Settings file**: `.vscode/settings.json` (auto-configured)
-- **LSP server path**: `${workspaceFolder}/src/nlpl_lsp.py`
+- **LSP server path**: `${workspaceFolder}/src/nxl_lsp.py`
 
 ## How to Use
 
@@ -19,7 +19,7 @@ The NLPL VSCode extension is configured and ready to use in this workspace. No n
  - Type: `Developer: Reload Window`
  - Press Enter
 
-2. **Open any NLPL file**:
+2. **Open any NexusLang file**:
  ```bash
  code examples/01_basic_concepts.nlpl
  ```
@@ -50,7 +50,7 @@ If Option 1 doesn't work, you can run the extension in development mode:
 
 2. **Press F5** to launch Extension Development Host
 
-3. **In the new window**, open your NLPL workspace
+3. **In the new window**, open your NexusLang workspace
 
 ### Option 3: Install Extension Globally
 
@@ -69,9 +69,9 @@ code --install-extension nlpl-language-support-0.1.0.vsix
 
 ### 1. Check Language Mode
 
-Open a `.nlpl` file and look at the bottom-right corner of VSCode. It should say **"NLPL"**.
+Open a `.nlpl` file and look at the bottom-right corner of VSCode. It should say **"NexusLang"**.
 
-If not, click the language indicator and select "NLPL" from the list.
+If not, click the language indicator and select "NexusLang" from the list.
 
 ### 2. Test Diagnostics
 
@@ -119,10 +119,10 @@ You should see:
 
 ### Extension Not Activating
 
-1. **Check if NLPL file type is recognized**:
+1. **Check if NexusLang file type is recognized**:
  - Open Command Palette (`Ctrl+Shift+P`)
  - Type: `Change Language Mode`
- - Look for "NLPL" in the list
+ - Look for "NexusLang" in the list
 
 2. **Check extension logs**:
  - View Output
@@ -137,7 +137,7 @@ You should see:
 
 4. **Test LSP server manually**:
  ```bash
- python3 src/nlpl_lsp.py
+ python3 src/nxl_lsp.py
  ```
  (Should wait for input, press `Ctrl+C` to exit)
 
@@ -161,7 +161,7 @@ You should see:
 
 2. **Check file association**:
  - Settings `files.associations`
- - Should have: `"*.nlpl": "nlpl"`
+ - Should have: `"*.nxl": "nlpl"`
 
 ## Check Extension Status
 
@@ -204,8 +204,8 @@ python dev_tools/test_lsp_enhanced.py
  Edit `.vscode/settings.json`:
  ```json
  {
- "nlpl.languageServer.enabled": true,
- "nlpl.trace.server": "verbose",
+ "nexuslang.languageServer.enabled": true,
+ "nexuslang.trace.server": "verbose",
  "editor.quickSuggestions": {
  "other": true,
  "strings": false

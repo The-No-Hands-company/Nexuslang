@@ -1,4 +1,4 @@
-# NLPL VS Code Extension Installation & Usage Guide
+# NexusLang VS Code Extension Installation & Usage Guide
 
 ## Installation
 
@@ -19,11 +19,11 @@ code --install-extension nlpl-language-support-0.1.0.vsix
 
 ### Method 3: VS Code Marketplace (Future)
 
-Once published, search for "NLPL" in the Extensions marketplace.
+Once published, search for "NexusLang" in the Extensions marketplace.
 
 ## Prerequisites
 
-The NLPL language server must be installed and accessible:
+The NexusLang language server must be installed and accessible:
 
 ```bash
 # Option 1: System-wide installation
@@ -34,14 +34,14 @@ cd /path/to/NLPL
 pip install -e .
 
 # Verify installation
-python -m nlpl.lsp --help
+python -m nexuslang.lsp --help
 ```
 
 ## Features
 
 ### 1. Syntax Highlighting
 
-Full TextMate grammar support for NLPL syntax:
+Full TextMate grammar support for NexusLang syntax:
 - Keywords: `function`, `class`, `if`, `while`, `for`, `return`, `end`
 - Types: `Integer`, `Float`, `String`, `Boolean`, `List`, `Dict`
 - Operators: `plus`, `minus`, `equals`, `is greater than`
@@ -192,32 +192,32 @@ Open VS Code settings (Ctrl+,) and search for "nlpl":
 ```json
 {
   // Enable/disable language server
-  "nlpl.languageServer.enabled": true,
+  "nexuslang.languageServer.enabled": true,
   
   // Path to language server (leave empty for auto-detect)
-  "nlpl.languageServer.path": "",
+  "nexuslang.languageServer.path": "",
   
   // Server arguments
-  "nlpl.languageServer.arguments": ["--stdio"],
+  "nexuslang.languageServer.arguments": ["--stdio"],
   
   // Enable debug mode
-  "nlpl.languageServer.debug": false,
+  "nexuslang.languageServer.debug": false,
   
   // Log file path
-  "nlpl.languageServer.logFile": "/tmp/nlpl-lsp.log",
+  "nexuslang.languageServer.logFile": "/tmp/nlpl-lsp.log",
   
   // Trace server communication
-  "nlpl.trace.server": "off"  // "off", "messages", or "verbose"
+  "nexuslang.trace.server": "off"  // "off", "messages", or "verbose"
 }
 ```
 
 ### Custom Language Server Path
 
-If NLPL is not in your PATH:
+If NexusLang is not in your PATH:
 
 ```json
 {
-  "nlpl.languageServer.path": "/path/to/nlpl-lsp"
+  "nexuslang.languageServer.path": "/path/to/nlpl-lsp"
 }
 ```
 
@@ -227,9 +227,9 @@ To troubleshoot issues:
 
 ```json
 {
-  "nlpl.languageServer.debug": true,
-  "nlpl.trace.server": "verbose",
-  "nlpl.languageServer.logFile": "/tmp/nlpl-debug.log"
+  "nexuslang.languageServer.debug": true,
+  "nexuslang.trace.server": "verbose",
+  "nexuslang.languageServer.logFile": "/tmp/nlpl-debug.log"
 }
 ```
 
@@ -237,7 +237,7 @@ Then check the log file for details.
 
 ## Example Usage
 
-### Create a new NLPL file
+### Create a new NexusLang file
 
 1. Create file: `hello.nlpl`
 2. Type:
@@ -331,7 +331,7 @@ print text product
 
 **Solutions:**
 1. Reload window: Ctrl+Shift+P → "Developer: Reload Window"
-2. Check language mode: Bottom right corner should show "NLPL"
+2. Check language mode: Bottom right corner should show "NexusLang"
 3. Verify file extension is `.nlpl`
 4. Enable debug mode and check logs
 
@@ -353,7 +353,7 @@ print text product
 
 **Solutions:**
 1. Disable semantic highlighting (large files)
-2. Reduce trace level: `"nlpl.trace.server": "off"`
+2. Reduce trace level: `"nexuslang.trace.server": "off"`
 3. Close unused files
 4. Increase VS Code memory: `--max-memory=4096`
 
@@ -411,13 +411,13 @@ The extension automatically activates for `.nlpl` files.
 **Manual activation:**
 1. Open file
 2. Click language mode (bottom right)
-3. Select "NLPL"
+3. Select "NexusLang"
 
 **Configure associations:**
 ```json
 {
   "files.associations": {
-    "*.nlpl": "nlpl"
+    "*.nxl": "nlpl"
   }
 }
 ```
@@ -432,17 +432,17 @@ The extension auto-updates from VS Code Marketplace.
 3. Click "Update" if available
 
 **Check version:**
-Extensions view → NLPL Language Support → Version shown below name
+Extensions view → NexusLang Language Support → Version shown below name
 
 ## Support
 
-**Issues:** https://github.com/Zajfan/NLPL/issues
-**Documentation:** https://github.com/Zajfan/NLPL/docs
+**Issues:** https://github.com/Zajfan/NexusLang/issues
+**Documentation:** https://github.com/Zajfan/NexusLang/docs
 **Discord:** (TBD)
 
 ## Contributing
 
-See [CONTRIBUTING.md](https://github.com/Zajfan/NLPL/CONTRIBUTING.md)
+See [CONTRIBUTING.md](https://github.com/Zajfan/NexusLang/CONTRIBUTING.md)
 
 ## License
 

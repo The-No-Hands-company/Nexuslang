@@ -2,7 +2,7 @@
 
 ## Summary
 
-Successfully implemented core FFI (Foreign Function Interface) infrastructure for NLPL, enabling seamless integration with C libraries and external code.
+Successfully implemented core FFI (Foreign Function Interface) infrastructure for NexusLang, enabling seamless integration with C libraries and external code.
 
 **Date**: 2025-11-25 
 **Time Spent**: ~2 hours 
@@ -188,7 +188,7 @@ clang output.o -lc -o program
 ### FFI Call Flow
 
 ```
-NLPL Source Code
+NexusLang Source Code
  
 Lexer (tokenize: extern, function, library, etc.)
  
@@ -218,7 +218,7 @@ Compiler/Interpreter
 
 ### 1. Compiler Integration
 ```python
-from nlpl.compiler.ffi import FFICodegen
+from nexuslang.compiler.ffi import FFICodegen
 
 # In LLVMCodeGenerator.__init__()
 self.ffi_codegen = FFICodegen(self.module, self.builder)
@@ -250,7 +250,7 @@ subprocess.run(['clang', obj_file, *link_flags, '-o', executable])
 ### Phase 2 Tasks (4-8 hours each)
 
 1. **Struct Marshalling**
- - Convert NLPL structs to C struct layout
+ - Convert NexusLang structs to C struct layout
  - Handle padding and alignment
  - Bidirectional conversion
 
@@ -337,7 +337,7 @@ subprocess.run(['clang', obj_file, *link_flags, '-o', executable])
 ## Known Limitations
 
 1. **No struct passing** - Complex types not yet supported
-2. **No callbacks** - Can't pass NLPL functions to C
+2. **No callbacks** - Can't pass NexusLang functions to C
 3. **No variadic args** - printf-style calls need fixed args
 4. **Static declarations only** - No runtime library loading
 5. **Manual type specification** - No automatic header parsing

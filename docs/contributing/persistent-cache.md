@@ -25,7 +25,7 @@
   "version": 1,
   "entries": [
     {
-      "file_path": "/abs/path/file.nlpl",
+      "file_path": "/abs/path/file.nxl",
       "source_hash": "sha256...",
       "mtime": 1234567890.0,
       "memory_size": 12345,

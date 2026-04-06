@@ -6,9 +6,9 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.compiler.backends.llvm_ir_generator import LLVMIRGenerator
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.compiler.backends.llvm_ir_generator import LLVMIRGenerator
 
 
 def _parse(code: str):
@@ -29,12 +29,12 @@ def test_llvm_generates_channel_runtime_calls():
     generator = LLVMIRGenerator()
     llvm_ir = generator.generate(ast)
 
-    assert "declare i8* @nlpl_channel_create()" in llvm_ir
-    assert "declare void @nlpl_channel_send(i8*, i64)" in llvm_ir
-    assert "declare i64 @nlpl_channel_receive(i8*)" in llvm_ir
-    assert "call i8* @nlpl_channel_create()" in llvm_ir
-    assert "call void @nlpl_channel_send(i8*" in llvm_ir
-    assert "call i64 @nlpl_channel_receive(i8* " in llvm_ir
+    assert "declare i8* @nxl_channel_create()" in llvm_ir
+    assert "declare void @nxl_channel_send(i8*, i64)" in llvm_ir
+    assert "declare i64 @nxl_channel_receive(i8*)" in llvm_ir
+    assert "call i8* @nxl_channel_create()" in llvm_ir
+    assert "call void @nxl_channel_send(i8*" in llvm_ir
+    assert "call i64 @nxl_channel_receive(i8* " in llvm_ir
 
 
 def test_llvm_channel_float_payload_uses_bitcast_transport():

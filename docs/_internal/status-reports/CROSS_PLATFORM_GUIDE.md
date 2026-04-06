@@ -1,10 +1,10 @@
-# NLPL Cross-Platform Development Guide
+# NexusLang Cross-Platform Development Guide
 
 ## Executive Summary
 
 **NLPL is fully cross-platform!** The interpreter is built on Python's standard library and runs on Windows, Linux, macOS, and any platform with Python 3.8+.
 
-The confusion arose because **NLPLDev field testing examples used Windows API** for demonstration. This guide shows how to write cross-platform NLPL code using platform detection and appropriate library selection.
+The confusion arose because **NLPLDev field testing examples used Windows API** for demonstration. This guide shows how to write cross-platform NexusLang code using platform detection and appropriate library selection.
 
 ---
 
@@ -40,7 +40,7 @@ Standard Library: src/nlpl/stdlib/
 
 ---
 
-## Platform Detection in NLPL
+## Platform Detection in NexusLang
 
 ### Built-in Platform Functions
 
@@ -302,7 +302,7 @@ Many standard C functions are available on all platforms:
 
 These libraries work on all platforms with the **same API**:
 
-| Framework | Platform Support | NLPL Compatibility |
+| Framework | Platform Support | NexusLang Compatibility |
 |-----------|-----------------|-------------------|
 | **SDL2** | Windows, Linux, macOS, BSD | FFI Ready |
 | **GLFW** | Windows, Linux, macOS | FFI Ready |
@@ -376,7 +376,7 @@ def is_big_endian():
 
 ---
 
-## Best Practices for Cross-Platform NLPL
+## Best Practices for Cross-Platform NexusLang
 
 ### 1. Always Use Platform Detection
 
@@ -512,7 +512,7 @@ end
 print text home
 ```
 
-**Best Practice**: Use `os.path.join()` through FFI or NLPL path utilities (future stdlib addition).
+**Best Practice**: Use `os.path.join()` through FFI or NexusLang path utilities (future stdlib addition).
 
 ---
 
@@ -520,7 +520,7 @@ print text home
 
 ### Common Cross-Platform Variables
 
-| Variable | Windows | Linux/Mac | NLPL Access |
+| Variable | Windows | Linux/Mac | NexusLang Access |
 |----------|---------|-----------|-------------|
 | **Home Directory** | `USERPROFILE` | `HOME` | `call get_env with "HOME"` |
 | **Temp Directory** | `TEMP` or `TMP` | `TMPDIR` | `call get_env with "TMPDIR"` |
@@ -584,7 +584,7 @@ No platform-specific code needed!
 
 ---
 
-## Testing Cross-Platform NLPL Code
+## Testing Cross-Platform NexusLang Code
 
 ### Test Matrix
 
@@ -595,7 +595,7 @@ Create test programs that verify cross-platform behavior:
 
 use module system
 
-print text "=== NLPL Cross-Platform Test ==="
+print text "=== NexusLang Cross-Platform Test ==="
 print text ""
 
 # Test 1: Platform Detection
@@ -729,7 +729,7 @@ function get_temp_directory returns String
 end
 
 function get_executable_path returns String
- # Path to NLPL interpreter
+ # Path to NexusLang interpreter
 end
 ```
 
@@ -768,7 +768,7 @@ nlplbuild --target macos --output myapp.app
 **NLPL is already cross-platform!** The interpreter runs on any system with Python 3.8+, and the FFI system supports Windows `.dll`, Linux `.so`, and macOS `.dylib` files.
 
 **Key Takeaways**:
-1. NLPL interpreter is Python-based (inherently cross-platform)
+1. NexusLang interpreter is Python-based (inherently cross-platform)
 2. Platform detection is built into `stdlib/system` module
 3. FFI via ctypes works on all platforms
 4. No Windows-specific dependencies in core
@@ -780,7 +780,7 @@ nlplbuild --target macos --output myapp.app
 4. Contribute cross-platform examples to the community
 
 **NLPLDev Field Testing Note**:
-The Windows API examples (MessageBoxA, etc.) were used for **testing convenience**, not because NLPL is Windows-only. The same FFI capabilities work on Linux and macOS with their respective libraries.
+The Windows API examples (MessageBoxA, etc.) were used for **testing convenience**, not because NexusLang is Windows-only. The same FFI capabilities work on Linux and macOS with their respective libraries.
 
 ---
 
@@ -792,4 +792,4 @@ The Windows API examples (MessageBoxA, etc.) were used for **testing convenience
 - **Testing Guide**: `test_programs/README.md`
 
 **Questions or Issues?** 
-Open an issue on GitHub: https://github.com/your-org/NLPL/issues
+Open an issue on GitHub: https://github.com/your-org/NexusLang/issues

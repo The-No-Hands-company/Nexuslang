@@ -1,4 +1,4 @@
-# NLPL Standard Library API Reference
+# NexusLang Standard Library API Reference
 
 **Total Modules:** 62  
 **Status:** Production-ready
@@ -7,7 +7,7 @@
 
 ## Overview
 
-The NLPL standard library provides comprehensive functionality organized into logical categories. All modules are fully implemented and tested.
+The NexusLang standard library provides comprehensive functionality organized into logical categories. All modules are fully implemented and tested.
 
 **Design Principles:**
 - Zero dependencies beyond Python stdlib
@@ -948,7 +948,7 @@ set result to call_function func, arg1, arg2
 
 # Type conversion
 set c_string to to_c_string "Hello"
-set nlpl_string to from_c_string c_ptr
+set nxl_string to from_c_string c_ptr
 ```
 
 ---
@@ -1253,7 +1253,7 @@ set vec to new col.Vec
 
 ## Summary
 
-The NLPL standard library provides:
+The NexusLang standard library provides:
 
 ✅ **62 modules** covering all common needs  
 ✅ **Production-ready** implementations  

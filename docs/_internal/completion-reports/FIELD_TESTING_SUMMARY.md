@@ -1,4 +1,4 @@
-# NLPL Field Testing Summary & Next Steps
+# NexusLang Field Testing Summary & Next Steps
 
 **Project:** NLPLDev Field Testing Analysis 
 **Date:** January 5, 2026 
@@ -6,7 +6,7 @@
 
 ---
 
-## Major Discovery: NLPL is 80% Ready for GUIs!
+## Major Discovery: NexusLang is 80% Ready for GUIs!
 
 Your field testing in NLPLDev has revealed **excellent** progress:
 
@@ -35,7 +35,7 @@ Your field testing in NLPLDev has revealed **excellent** progress:
 1. **Callback functions** - Event handlers for GUIs
 2. **Function pointers** - Store functions in variables
 3. **Complete struct support** - Instantiation + field access
-4. **String conversions** - C NLPL string handling
+4. **String conversions** - C NexusLang string handling
 
 **The good news:** All 4 are well-understood problems with clear solutions!
 
@@ -451,7 +451,7 @@ end
 **Goal:** Working ImGui calculator
 
 - [ ] Research ImGui C API
-- [ ] Create NLPL ImGui wrapper
+- [ ] Create NexusLang ImGui wrapper
 - [ ] Implement window creation
 - [ ] Add input fields
 - [ ] Add buttons (immediate mode)
@@ -581,4 +581,4 @@ Your field testing has revealed **NLPL is remarkably close** to full GUI support
 **Timeline:** 4-6 weeks to production GUI apps 
 **Next Step:** Follow `GUI_QUICK_START.md` Day 1
 
-**Let's make NLPL GUI-capable!** 
+**Let's make NexusLang GUI-capable!** 

@@ -1,6 +1,6 @@
-# NLPL Engine Demos
+# NexusLang Engine Demos
 
-This directory contains example programs demonstrating the NLPL engine ecosystem:
+This directory contains example programs demonstrating the NexusLang engine ecosystem:
 
 ## Math & Graphics Demos
 

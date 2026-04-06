@@ -16,10 +16,10 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../src"))
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.interpreter.interpreter import Interpreter
-from nlpl.runtime.runtime import Runtime
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.interpreter.interpreter import Interpreter
+from nexuslang.runtime.runtime import Runtime
 
 
 def run(source: str) -> list:

@@ -35,12 +35,12 @@ for filename in test_files:
     
     # Replace imports
     original_content = content
-    content = re.sub(r'from src\.nlpl\.', 'from nlpl.', content)
-    content = re.sub(r'from src\.parser\.', 'from nlpl.parser.', content)
-    content = re.sub(r'from src\.interpreter\.', 'from nlpl.interpreter.', content)
-    content = re.sub(r'from src\.runtime\.', 'from nlpl.runtime.', content)
-    content = re.sub(r'from src\.typesystem\.', 'from nlpl.typesystem.', content)
-    content = re.sub(r'from src\.stdlib\.', 'from nlpl.stdlib.', content)
+    content = re.sub(r'from src\.nxl\.', 'from nexuslang.', content)
+    content = re.sub(r'from src\.parser\.', 'from nexuslang.parser.', content)
+    content = re.sub(r'from src\.interpreter\.', 'from nexuslang.interpreter.', content)
+    content = re.sub(r'from src\.runtime\.', 'from nexuslang.runtime.', content)
+    content = re.sub(r'from src\.typesystem\.', 'from nexuslang.typesystem.', content)
+    content = re.sub(r'from src\.stdlib\.', 'from nexuslang.stdlib.', content)
     
     # Fix sys.path if needed
     if 'sys.path.insert' in content:

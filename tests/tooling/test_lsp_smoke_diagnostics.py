@@ -7,7 +7,7 @@ Automates the manual VS Code smoke-tests from the LSP checklist:
     a ``code`` field in E### format.
   - Hover data: every code-bearing diagnostic also has ``data.explainHint``
     and ``source == "nlpl"``.
-  - Clean file: no spurious diagnostics on a valid NLPL file.
+  - Clean file: no spurious diagnostics on a valid NexusLang file.
 
 These tests spawn an actual LSP server subprocess (stdin/stdout) and
 communicate using the LSP wire protocol, matching exactly what the VS Code
@@ -16,7 +16,7 @@ client does.  No mocking.
 Checklist coverage (now automated):
   [x] Problems panel shows ``code`` column          (test_syntax_error_has_code)
   [x] Hover ``data.explainHint`` present            (test_syntax_error_has_explain_hint)
-  [x] ``source`` always "nlpl"                      (test_all_diagnostics_source_nlpl)
+  [x] ``source`` always "nlpl"                      (test_all_diagnostics_source_nxl)
   [x] Clean file emits zero diagnostics             (test_valid_file_zero_diagnostics)
   [x] All codes match E### pattern                  (test_code_format_e_pattern)
 """
@@ -36,14 +36,14 @@ import pytest
 # Helpers
 # ---------------------------------------------------------------------------
 
-WORKSPACE_ROOT = Path(__file__).resolve().parent.parent.parent  # tests/tooling -> tests -> NLPL/
+WORKSPACE_ROOT = Path(__file__).resolve().parent.parent.parent  # tests/tooling -> tests -> NexusLang/
 SRC_DIR = WORKSPACE_ROOT / "src"
-FIXTURE_ERROR = WORKSPACE_ROOT / "test_programs" / "regression" / "lsp_smoke_fixture.nlpl"
-FIXTURE_VALID = WORKSPACE_ROOT / "test_programs" / "regression" / "error_tests" / "test_basic_errors.nlpl"
+FIXTURE_ERROR = WORKSPACE_ROOT / "test_programs" / "regression" / "lsp_smoke_fixture.nxl"
+FIXTURE_VALID = WORKSPACE_ROOT / "test_programs" / "regression" / "error_tests" / "test_basic_errors.nxl"
 
-# Fallback valid NLPL text used when the fixture file doesn't exist yet
+# Fallback valid NexusLang text used when the fixture file doesn't exist yet
 _VALID_NLPL_FALLBACK = 'set x to 42\nprint text x\n'
-# Error NLPL text that the parser must reject (E001)
+# Error NexusLang text that the parser must reject (E001)
 _ERROR_NLPL = 'set greeting to "hello"\nprint text greeting\n\nset broken to\n'
 
 E_CODE_PATTERN = re.compile(r'^E\d{3}$')
@@ -67,7 +67,7 @@ class _LspClient:
         # inherited by the child process, preventing broken-pipe exits when
         # pytest's capture plugin replaces the process-level stdout/stderr FDs.
         self.proc = subprocess.Popen(
-            [sys.executable, "-m", "nlpl.lsp", "--stdio"],
+            [sys.executable, "-m", "nexuslang.lsp", "--stdio"],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -244,19 +244,19 @@ def lsp_client():
 def error_diagnostics(lsp_client):
     """Diagnostics produced when opening a file with a deliberate syntax error."""
     text = _ERROR_NLPL
-    uri = f"file://{WORKSPACE_ROOT}/test_programs/regression/.lsp_smoke_error_virtual.nlpl"
+    uri = f"file://{WORKSPACE_ROOT}/test_programs/regression/.lsp_smoke_error_virtual.nxl"
     diags = lsp_client.did_open(uri, text)
     return diags
 
 
 @pytest.fixture(scope="module")
 def valid_diagnostics(lsp_client):
-    """Diagnostics produced when opening a valid NLPL file."""
+    """Diagnostics produced when opening a valid NexusLang file."""
     if FIXTURE_VALID.exists():
         text = FIXTURE_VALID.read_text(encoding="utf-8")
     else:
         text = _VALID_NLPL_FALLBACK
-    uri = f"file://{WORKSPACE_ROOT}/test_programs/regression/.lsp_smoke_valid_virtual.nlpl"
+    uri = f"file://{WORKSPACE_ROOT}/test_programs/regression/.lsp_smoke_valid_virtual.nxl"
     diags = lsp_client.did_open(uri, text)
     return diags
 
@@ -271,7 +271,7 @@ class TestSyntaxErrorDiagnostics:
     def test_server_emits_at_least_one_diagnostic(self, error_diagnostics):
         """LSP server must publish diagnostics when it detects a syntax error."""
         assert len(error_diagnostics) >= 1, (
-            "Expected at least one diagnostic for the deliberately broken NLPL snippet. "
+            "Expected at least one diagnostic for the deliberately broken NexusLang snippet. "
             "Check that the LSP server can parse and detect syntax errors."
         )
 
@@ -295,7 +295,7 @@ class TestSyntaxErrorDiagnostics:
                 f"Diagnostic code '{code}' does not match E### pattern: {diag.get('message', '?')}"
             )
 
-    def test_all_diagnostics_source_nlpl(self, error_diagnostics):
+    def test_all_diagnostics_source_nxl(self, error_diagnostics):
         """'source' must be 'nlpl' on every diagnostic.
 
         This ensures the VS Code hover provider filter works
@@ -364,10 +364,10 @@ class TestSyntaxErrorDiagnostics:
 # ---------------------------------------------------------------------------
 
 class TestCleanFileDiagnostics:
-    """Regression: a valid NLPL file must not produce spurious diagnostics."""
+    """Regression: a valid NexusLang file must not produce spurious diagnostics."""
 
     def test_valid_file_zero_diagnostics(self, valid_diagnostics):
-        """Opening a valid NLPL file must produce zero diagnostics.
+        """Opening a valid NexusLang file must produce zero diagnostics.
 
         This is the 'regression check: diagnostics stable on unchanged code'
         item from the checklist.  If this fails, the server is producing
@@ -377,7 +377,7 @@ class TestCleanFileDiagnostics:
             codes = [d.get("code", "?") for d in valid_diagnostics]
             messages = [d.get("message", "?") for d in valid_diagnostics]
             pytest.fail(
-                f"Valid NLPL file produced {len(valid_diagnostics)} unexpected diagnostic(s).\n"
+                f"Valid NexusLang file produced {len(valid_diagnostics)} unexpected diagnostic(s).\n"
                 f"Codes: {codes}\n"
                 f"Messages: {messages}"
             )

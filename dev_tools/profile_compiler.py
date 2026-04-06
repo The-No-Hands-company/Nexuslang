@@ -13,14 +13,14 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.compiler.backends.llvm_ir_generator import LLVMIRGenerator
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.compiler.backends.llvm_ir_generator import LLVMIRGenerator
 
 
 def profile_compiler(source_file: str):
     """Profile LLVM compiler execution of a source file."""
-    print(f"=== Profiling NLPL Compiler: {source_file} ===\n")
+    print(f"=== Profiling NexusLang Compiler: {source_file} ===\n")
     
     # Read source code
     with open(source_file, 'r') as f:
@@ -70,7 +70,7 @@ def profile_compiler(source_file: str):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python profile_compiler.py <nlpl_file>")
+        print("Usage: python profile_compiler.py <nxl_file>")
         sys.exit(1)
     
     source_file = sys.argv[1]

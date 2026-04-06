@@ -68,7 +68,7 @@ docs/
 - `WHITEPAPER_READINESS_ASSESSMENT.md` [NEW!]
 - `error_handling_assessment.md` [NEW!]
 - `existing_approaches.md` (150 lines)
-- `nlpl_vs_engpp.md`
+- `nxl_vs_engpp.md`
 - `examples_and_comparisons.md`
 
 ## New Documents Created
@@ -118,7 +118,7 @@ docs/
 
 ## Archive Folder
 
-The `Creating a Truly Natural Language Programming Language/` folder contains:
+The `Creating a Truly NexusLang/` folder contains:
 - Historical/duplicated documents
 - Early planning materials
 - Reference for comparison with current state

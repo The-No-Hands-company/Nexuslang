@@ -1,14 +1,14 @@
-# NLPL Project Reorganization Complete 
+# NexusLang Project Reorganization Complete 
 
 ## Summary
 
-Successfully reorganized NLPL from a flat project structure to a professional Python package layout with proper separation of concerns and installable CLI.
+Successfully reorganized NexusLang from a flat project structure to a professional Python package layout with proper separation of concerns and installable CLI.
 
 ## Changes Made
 
 ### 1. Directory Structure
 ```
-NLPL/
+NexusLang/
  build/ # Build artifacts (NEW)
  bin/ # Compiled executables
  generated/ # Generated C/C++ source files
@@ -23,7 +23,7 @@ NLPL/
  stdlib/ # Standard library
  typesystem/ # Type checking
  modules/ # Module loader
- test_programs/ # Test NLPL files (REORGANIZED)
+ test_programs/ # Test NexusLang files (REORGANIZED)
  basic/ # Hello world, simple tests
  control_flow/ # If/while/for tests
  functions/ # Function definition tests
@@ -73,7 +73,7 @@ Updated all imports from `src.*` to `nlpl.*`:
 ### 4. CLI Entry Point
 
 **New `src/nlpl/cli.py`:**
-- Replaces old `nlpl_compile.py`
+- Replaces old `nxl_compile.py`
 - Registered as `nlpl` command via setup.py entry_points
 - Full argument parsing (source, output, target, link, optimize, debug, verbose)
 - Clean error handling with optional tracebacks
@@ -85,7 +85,7 @@ Updated all imports from `src.*` to `nlpl.*`:
 pip install -e .
 ```
 
-### Compile NLPL Programs
+### Compile NexusLang Programs
 ```bash
 # Generate C code
 nlpl test_programs/control_flow/test_control_flow.nlpl -o build/generated/output.c --target c
@@ -128,7 +128,7 @@ nlpl test_programs/control_flow/test_control_flow.nlpl -o build/bin/test_control
 ## Next Steps
 
 1. **Project reorganization complete**
-2. **Resume function implementation** (test test_functions.nlpl)
+2. **Resume function implementation** (test test_functions.nxl)
 3. **Implement user-defined function calls**
 4. **Add forward declarations for C functions**
 5. **Implement classes/OOP** (structs + function pointers)

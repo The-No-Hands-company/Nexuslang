@@ -1,6 +1,6 @@
 # Debug Tools
 
-Development and debugging utilities for NLPL compiler development.
+Development and debugging utilities for NexusLang compiler development.
 
 ## Files
 

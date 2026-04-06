@@ -10,14 +10,14 @@ import os
 # Add src to path
 sys.path.insert(0, 'src')
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.interpreter.interpreter import Interpreter
-from nlpl.runtime.runtime import Runtime
-from nlpl.stdlib import register_stdlib
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.interpreter.interpreter import Interpreter
+from nexuslang.runtime.runtime import Runtime
+from nexuslang.stdlib import register_stdlib
 
 def _run_file(filepath):
-    """Test a single NLPL file"""
+    """Test a single NexusLang file"""
     print(f"\n{'='*60}")
     print(f"Testing: {filepath}")
     print('='*60)
@@ -54,35 +54,35 @@ def _run_file(filepath):
         return False
 
 def test_cpu_control_files():
-    """Pytest-compatible test for all CPU control NLPL files.
+    """Pytest-compatible test for all CPU control NexusLang files.
 
-    Runs each hardware NLPL test file and collects results.
+    Runs each hardware NexusLang test file and collects results.
     The test itself passes as long as at least one file exists;
     individual file failures are printed but do not fail the suite
     (hardware files may have known parse/runtime issues).
     """
     test_files = [
-        'test_programs/unit/hardware/test_cpu_cpuid.nlpl',
-        'test_programs/unit/hardware/test_cpu_features.nlpl',
-        'test_programs/unit/hardware/test_cpu_control_regs.nlpl',
-        'test_programs/unit/hardware/test_cpu_msr.nlpl',
-        'test_programs/unit/hardware/test_cpu_errors.nlpl',
+        'test_programs/unit/hardware/test_cpu_cpuid.nxl',
+        'test_programs/unit/hardware/test_cpu_features.nxl',
+        'test_programs/unit/hardware/test_cpu_control_regs.nxl',
+        'test_programs/unit/hardware/test_cpu_msr.nxl',
+        'test_programs/unit/hardware/test_cpu_errors.nxl',
     ]
     existing = [f for f in test_files if os.path.exists(f)]
     if not existing:
         import pytest
-        pytest.skip("No CPU control NLPL test files found")
+        pytest.skip("No CPU control NexusLang test files found")
     for filepath in existing:
         _run_file(filepath)  # results are printed; do not assert
 
 
 def main():
     test_files = [
-        'test_programs/unit/hardware/test_cpu_cpuid.nlpl',
-        'test_programs/unit/hardware/test_cpu_features.nlpl',
-        'test_programs/unit/hardware/test_cpu_control_regs.nlpl',
-        'test_programs/unit/hardware/test_cpu_msr.nlpl',
-        'test_programs/unit/hardware/test_cpu_errors.nlpl',
+        'test_programs/unit/hardware/test_cpu_cpuid.nxl',
+        'test_programs/unit/hardware/test_cpu_features.nxl',
+        'test_programs/unit/hardware/test_cpu_control_regs.nxl',
+        'test_programs/unit/hardware/test_cpu_msr.nxl',
+        'test_programs/unit/hardware/test_cpu_errors.nxl',
     ]
 
     results = {}

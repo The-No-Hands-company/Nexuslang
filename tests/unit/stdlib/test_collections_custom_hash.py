@@ -1,7 +1,7 @@
 """Tests for CustomHashMap — HashMap with user-supplied hash/equality functions."""
 
 import pytest
-from nlpl.stdlib.collections import (
+from nexuslang.stdlib.collections import (
     CustomHashMap,
     custom_hash_map_create,
     custom_hash_map_set,

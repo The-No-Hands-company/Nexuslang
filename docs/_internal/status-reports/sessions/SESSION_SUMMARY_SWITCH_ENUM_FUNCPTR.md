@@ -1,6 +1,6 @@
 # Development Session Summary - Function Pointers, Switch Statements, and Enum Types
 
-**Date**: Continuation of NLPL Compiler Development
+**Date**: Continuation of NexusLang Compiler Development
 **Focus**: Implementing switch/match statements, enum types, and function pointers
 
 ## Objectives
