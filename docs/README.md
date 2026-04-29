@@ -22,9 +22,4 @@
 - [Architecture Overview](contributing/architecture.md)
 - [Development Setup](contributing/development-setup.md)
 - [Style Guide](contributing/style-guide.md)
-
-## Internal / Historical
-
-The `_internal/` directory contains development session notes, status reports,
-and planning documents from the project's development history. These are
-historical records, not user documentation, and may be outdated.
+- [Feature Gap Implementation Tracker](contributing/feature-gap-implementation-tracker.md)
