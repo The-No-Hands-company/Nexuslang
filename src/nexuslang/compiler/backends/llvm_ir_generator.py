@@ -12558,15 +12558,21 @@ class LLVMIRGenerator(CodeGenerator):
             # Link all object files
             print(f"Linking {len(obj_files)} modules...")
             
-            # Compile runtime
-            runtime_dir = os.path.join(os.path.dirname(__file__), '../../../runtime')
-            panic_c = os.path.join(runtime_dir, 'panic.c')
-            panic_o = os.path.join(runtime_dir, 'panic.o')
-            
-            if os.path.exists(panic_c):
-                # Compile panic.c
-                subprocess.run([clang, '-c', panic_c, '-o', panic_o, '-fPIC'], check=True)
-                obj_files.append(panic_o)
+            # Compile runtime panic shim.
+            # Prefer canonical src/nexuslang/runtime, but keep legacy src/runtime fallback.
+            backend_dir = os.path.dirname(__file__)
+            runtime_dirs = [
+                os.path.abspath(os.path.join(backend_dir, '../../runtime')),
+                os.path.abspath(os.path.join(backend_dir, '../../../runtime')),
+            ]
+
+            for runtime_dir in runtime_dirs:
+                panic_c = os.path.join(runtime_dir, 'panic.c')
+                panic_o = os.path.join(runtime_dir, 'panic.o')
+                if os.path.exists(panic_c):
+                    subprocess.run([clang, '-c', panic_c, '-o', panic_o, '-fPIC'], check=True)
+                    obj_files.append(panic_o)
+                    break
             
             clang_cmd = [clang] + obj_files + ['-o', output_file, '-lm', '-no-pie']
             if opt_level > 0:
