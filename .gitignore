@@ -63,6 +63,7 @@ htmlcov/
 .cursor/
 .windsurf/
 .continue/
+.github/copilot-instructions.md
 
 # Repository-local workspace clutter
 NLPL.code-workspace
@@ -126,6 +127,7 @@ src/nexuslang/stdlib_native/_cmake_build/
 src/nexuslang/stdlib_native/*.o
 src/nlpl/stdlib_native/_cmake_build/
 src/nlpl/stdlib_native/*.o
+src/nlpl/
 
 # Utility / local helper directories not part of the project
 utility/
