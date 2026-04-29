@@ -22,4 +22,3 @@
 - [Architecture Overview](contributing/architecture.md)
 - [Development Setup](contributing/development-setup.md)
 - [Style Guide](contributing/style-guide.md)
-- [Feature Gap Implementation Tracker](contributing/feature-gap-implementation-tracker.md)
