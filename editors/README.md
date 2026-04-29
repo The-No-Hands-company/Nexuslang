@@ -10,6 +10,11 @@ This directory contains editor plugins and IDE extensions for NexusLang.
 | IntelliJ IDEA (and JetBrains IDEs) | `intellij/` | Complete |
 | VS Code | `../vscode-extension/` | Separate directory |
 
+Why VS Code is separate:
+- The VS Code integration is a standalone Node/TypeScript extension project (`package.json`, build/test tooling, VSIX packaging).
+- Keeping it at the repository root avoids coupling editor-agnostic assets under `editors/` with extension build artifacts and release tooling.
+- `editors/` is kept for lightweight editor configs/modes; `vscode-extension/` remains the canonical source for the VS Code marketplace extension.
+
 ## Quick Install
 
 ### Neovim (lazy.nvim)
