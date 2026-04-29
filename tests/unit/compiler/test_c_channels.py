@@ -47,4 +47,24 @@ def test_c_codegen_uses_intptr_t_channel_payload_transport():
 
     assert "(intptr_t)(42)" in c_code
     assert "intptr_t nxl_channel_receive(void* channel)" in c_code
-    assert "while (!ch->head)" in c_code
+    assert "while (!ch->head && !ch->closed)" in c_code
+
+
+def test_c_codegen_channel_runtime_is_thread_safe_and_close_aware():
+    code = """
+    set ch to create channel
+    send 1 to ch
+    set x to receive from ch
+    """
+
+    ast = _parse(code)
+    generator = CCodeGenerator(target="c")
+    c_code = generator.generate(ast)
+
+    assert "#include <pthread.h>" in c_code
+    assert "pthread_mutex_t lock;" in c_code
+    assert "pthread_cond_t has_data;" in c_code
+    assert "void nxl_channel_close(void* channel)" in c_code
+    assert "pthread_cond_wait(&ch->has_data, &ch->lock);" in c_code
+    assert "pthread_cond_signal(&ch->has_data);" in c_code
+    assert "if (!ch->head && ch->closed)" in c_code

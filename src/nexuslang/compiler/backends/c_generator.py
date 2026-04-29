@@ -384,9 +384,11 @@ class CCodeGenerator(CodeGenerator):
         elif isinstance(node, SendStatement):
             channel_expr = self._generate_expression(node.channel)
             value_expr = self._generate_expression(node.value)
+            self.includes.add("<pthread.h>")
             self.needed_runtime_functions.add("nxl_channel_create")
             self.needed_runtime_functions.add("nxl_channel_send")
             self.needed_runtime_functions.add("nxl_channel_receive")
+            self.needed_runtime_functions.add("nxl_channel_close")
             self.emit(f"nxl_channel_send({channel_expr}, (intptr_t)({value_expr}));")
         elif isinstance(node, (RequireStatement, EnsureStatement, GuaranteeStatement, InvariantStatement)):
             self._generate_contract_statement(node)
@@ -1147,15 +1149,19 @@ class CCodeGenerator(CodeGenerator):
             return self._generate_function_call(node)
 
         elif isinstance(node, ChannelCreation):
+            self.includes.add("<pthread.h>")
             self.needed_runtime_functions.add("nxl_channel_create")
             self.needed_runtime_functions.add("nxl_channel_send")
             self.needed_runtime_functions.add("nxl_channel_receive")
+            self.needed_runtime_functions.add("nxl_channel_close")
             return "nxl_channel_create()"
 
         elif isinstance(node, ReceiveExpression):
+            self.includes.add("<pthread.h>")
             self.needed_runtime_functions.add("nxl_channel_create")
             self.needed_runtime_functions.add("nxl_channel_send")
             self.needed_runtime_functions.add("nxl_channel_receive")
+            self.needed_runtime_functions.add("nxl_channel_close")
             channel_expr = self._generate_expression(node.channel)
             return f"nxl_channel_receive({channel_expr})"
 
@@ -2131,7 +2137,7 @@ int nxl_random_int(int min_val, int max_val) {
 
     def _collect_channel_runtime(self, code_parts: list) -> None:
         """Append channel runtime helpers to code_parts."""
-        required = {"nxl_channel_create", "nxl_channel_send", "nxl_channel_receive"}
+        required = {"nxl_channel_create", "nxl_channel_send", "nxl_channel_receive", "nxl_channel_close"}
         if not required.intersection(self.needed_runtime_functions):
             return
 
@@ -2144,6 +2150,9 @@ typedef struct NLPLChannelNode {
 typedef struct NLPLChannel {
     NLPLChannelNode* head;
     NLPLChannelNode* tail;
+    int closed;
+    pthread_mutex_t lock;
+    pthread_cond_t has_data;
 } NLPLChannel;
 
 void* nxl_channel_create(void) {
@@ -2151,35 +2160,72 @@ void* nxl_channel_create(void) {
     if (!ch) return NULL;
     ch->head = NULL;
     ch->tail = NULL;
+    ch->closed = 0;
+    if (pthread_mutex_init(&ch->lock, NULL) != 0) {
+        free(ch);
+        return NULL;
+    }
+    if (pthread_cond_init(&ch->has_data, NULL) != 0) {
+        pthread_mutex_destroy(&ch->lock);
+        free(ch);
+        return NULL;
+    }
     return (void*)ch;
 }
 
 void nxl_channel_send(void* channel, intptr_t value) {
     if (!channel) return;
     NLPLChannel* ch = (NLPLChannel*)channel;
+    pthread_mutex_lock(&ch->lock);
+    if (ch->closed) {
+        pthread_mutex_unlock(&ch->lock);
+        return;
+    }
     NLPLChannelNode* node = (NLPLChannelNode*)malloc(sizeof(NLPLChannelNode));
-    if (!node) return;
+    if (!node) {
+        pthread_mutex_unlock(&ch->lock);
+        return;
+    }
     node->value = value;
     node->next = NULL;
     if (!ch->tail) {
         ch->head = node;
         ch->tail = node;
+        pthread_cond_signal(&ch->has_data);
+        pthread_mutex_unlock(&ch->lock);
         return;
     }
     ch->tail->next = node;
     ch->tail = node;
+    pthread_cond_signal(&ch->has_data);
+    pthread_mutex_unlock(&ch->lock);
 }
 
 intptr_t nxl_channel_receive(void* channel) {
     if (!channel) return 0;
     NLPLChannel* ch = (NLPLChannel*)channel;
-    while (!ch->head) {
-        /* Blocking receive semantics: wait for a sender to enqueue a value. */
+    pthread_mutex_lock(&ch->lock);
+    while (!ch->head && !ch->closed) {
+        pthread_cond_wait(&ch->has_data, &ch->lock);
+    }
+    if (!ch->head && ch->closed) {
+        pthread_mutex_unlock(&ch->lock);
+        return 0;
     }
     NLPLChannelNode* node = ch->head;
     intptr_t value = node->value;
     ch->head = node->next;
     if (!ch->head) ch->tail = NULL;
     free(node);
+    pthread_mutex_unlock(&ch->lock);
     return value;
+}
+
+void nxl_channel_close(void* channel) {
+    if (!channel) return;
+    NLPLChannel* ch = (NLPLChannel*)channel;
+    pthread_mutex_lock(&ch->lock);
+    ch->closed = 1;
+    pthread_cond_broadcast(&ch->has_data);
+    pthread_mutex_unlock(&ch->lock);
 }''')

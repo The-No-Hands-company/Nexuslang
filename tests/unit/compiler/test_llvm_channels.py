@@ -32,6 +32,7 @@ def test_llvm_generates_channel_runtime_calls():
     assert "declare i8* @nxl_channel_create()" in llvm_ir
     assert "declare void @nxl_channel_send(i8*, i64)" in llvm_ir
     assert "declare i64 @nxl_channel_receive(i8*)" in llvm_ir
+    assert "declare void @nxl_channel_close(i8*)" in llvm_ir
     assert "call i8* @nxl_channel_create()" in llvm_ir
     assert "call void @nxl_channel_send(i8*" in llvm_ir
     assert "call i64 @nxl_channel_receive(i8* " in llvm_ir

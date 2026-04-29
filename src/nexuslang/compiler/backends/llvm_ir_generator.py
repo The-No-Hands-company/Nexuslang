@@ -1137,6 +1137,7 @@ class LLVMIRGenerator(CodeGenerator):
             self.emit('declare i8* @nxl_channel_create() #0')
             self.emit('declare void @nxl_channel_send(i8*, i64) #0')
             self.emit('declare i64 @nxl_channel_receive(i8*) #0')
+            self.emit('declare void @nxl_channel_close(i8*) #0')
             self.emit('')
         
         # Only declare if not already declared via extern
