@@ -34,6 +34,11 @@ class HoverProvider:
             "while": "While loop\n\nSyntax:\n```nlpl\nwhile condition\n    # body\n```",
             "return": "Return value from function\n\nSyntax:\n```nlpl\nreturn value\n```",
             "import": "Import module\n\nSyntax:\n```nlpl\nimport module_name\nfrom module_name import symbol\n```",
+            "channel": "Channel primitive for concurrent message passing.\n\nSyntax:\n```nlpl\nset ch to create channel\nsend 42 to ch\nset value to receive from ch\n```",
+            "Channel": "Typed channel for message passing between concurrent tasks.\n\nExamples:\n```nlpl\nset ch as Channel<Integer> to create channel\nsend 1 to ch\nset x to receive from ch\n```",
+            "create": "Create runtime values such as channels and collections.\n\nChannel example:\n```nlpl\nset ch to create channel\n```",
+            "send": "Send a value to a channel.\n\nSyntax:\n```nlpl\nsend value to channel_var\n```",
+            "receive": "Receive a value from a channel.\n\nSyntax:\n```nlpl\nset value to receive from channel_var\n```",
             
             # Math module
             "sqrt": "**sqrt** - Square root\n\n**From**: math\n\n**Syntax**: `sqrt with number`\n\n**Returns**: Float\n\n**Example**:\n```nlpl\nset result to sqrt with 16  # 4.0\n```",

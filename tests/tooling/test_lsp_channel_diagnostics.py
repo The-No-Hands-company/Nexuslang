@@ -35,3 +35,29 @@ end
     assert diagnostics, "Expected at least one diagnostic for typed channel mismatch"
     assert any(d.get("code") == "E200" for d in diagnostics)
     assert any("Cannot send value of type" in d.get("message", "") for d in diagnostics)
+
+
+def test_send_to_non_channel_reports_invalid_operation():
+    code = """
+set target to 42
+send 1 to target
+"""
+
+    diagnostics = _provider().get_diagnostics("file:///channel_send_invalid_target.nxl", code)
+
+    assert diagnostics, "Expected at least one diagnostic for invalid send target"
+    assert any(d.get("code") == "E201" for d in diagnostics)
+    assert any("Cannot send to non-channel" in d.get("message", "") for d in diagnostics)
+
+
+def test_receive_from_non_channel_reports_invalid_operation():
+    code = """
+set src to "oops"
+set value to receive from src
+"""
+
+    diagnostics = _provider().get_diagnostics("file:///channel_receive_invalid_source.nxl", code)
+
+    assert diagnostics, "Expected at least one diagnostic for invalid receive source"
+    assert any(d.get("code") == "E201" for d in diagnostics)
+    assert any("Cannot receive from non-channel" in d.get("message", "") for d in diagnostics)

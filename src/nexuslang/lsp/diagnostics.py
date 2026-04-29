@@ -118,6 +118,7 @@ class DiagnosticsProvider:
             diagnostics.extend(import_diagnostics)
         
         # Additional static checks
+        diagnostics.extend(self._check_channel_operations(text))
         diagnostics.extend(self._check_unused_vars(text))
         
         # Cache diagnostics for this file
@@ -584,6 +585,105 @@ class DiagnosticsProvider:
                         )
         
         return diagnostics
+
+    def _check_channel_operations(self, text: str) -> List[Dict]:
+        """Check channel send/receive operations for obvious non-channel misuse."""
+        diagnostics = []
+        lines = text.split('\n')
+
+        variable_types = self._infer_variable_types(lines)
+
+        send_pattern = re.compile(r'\bsend\s+.+\s+to\s+(\w+)\b', re.IGNORECASE)
+        receive_pattern = re.compile(r'\breceive\s+from\s+(\w+)\b', re.IGNORECASE)
+
+        for i, line in enumerate(lines):
+            send_match = send_pattern.search(line)
+            if send_match:
+                target = send_match.group(1)
+                target_type = variable_types.get(target)
+                if target_type and target_type != "Channel":
+                    start = send_match.start(1)
+                    diagnostics.append(
+                        self._build_diagnostic(
+                            line=i,
+                            start_char=start,
+                            end_char=start + len(target),
+                            severity=1,
+                            message=f"Cannot send to non-channel variable '{target}' of type {target_type}",
+                            source="nexuslang",
+                            error_code="E201",
+                            error_type_key="type_mismatch",
+                        )
+                    )
+
+            receive_match = receive_pattern.search(line)
+            if receive_match:
+                source_name = receive_match.group(1)
+                source_type = variable_types.get(source_name)
+                if source_type and source_type != "Channel":
+                    start = receive_match.start(1)
+                    diagnostics.append(
+                        self._build_diagnostic(
+                            line=i,
+                            start_char=start,
+                            end_char=start + len(source_name),
+                            severity=1,
+                            message=f"Cannot receive from non-channel variable '{source_name}' of type {source_type}",
+                            source="nexuslang",
+                            error_code="E201",
+                            error_type_key="type_mismatch",
+                        )
+                    )
+
+        return diagnostics
+
+    def _infer_variable_types(self, lines: List[str]) -> Dict[str, str]:
+        """Infer simple variable types for diagnostics checks."""
+        types: Dict[str, str] = {}
+
+        typed_decl_pattern = re.compile(
+            r'^\s*set\s+(\w+)\s+as\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s*<[^>]+>)?\s+to\s+(.+)$',
+            re.IGNORECASE,
+        )
+        create_channel_pattern = re.compile(
+            r'^\s*set\s+(\w+)\s+to\s+create\s+channel\b',
+            re.IGNORECASE,
+        )
+        set_pattern = re.compile(r'^\s*set\s+(\w+)\s+to\s+(.+)$', re.IGNORECASE)
+
+        for line in lines:
+            typed_match = typed_decl_pattern.match(line)
+            if typed_match:
+                name = typed_match.group(1)
+                declared_type = typed_match.group(2)
+                if declared_type.lower() == "channel":
+                    types[name] = "Channel"
+                else:
+                    types[name] = declared_type
+                continue
+
+            if create_channel_pattern.match(line):
+                name = create_channel_pattern.match(line).group(1)
+                types[name] = "Channel"
+                continue
+
+            set_match = set_pattern.match(line)
+            if not set_match:
+                continue
+
+            name, value = set_match.groups()
+            stripped = value.strip()
+
+            if stripped.startswith('"') and stripped.endswith('"'):
+                types[name] = "String"
+            elif re.fullmatch(r'-?\d+', stripped):
+                types[name] = "Integer"
+            elif re.fullmatch(r'-?\d+\.\d+', stripped):
+                types[name] = "Float"
+            elif stripped.lower() in {"true", "false"}:
+                types[name] = "Boolean"
+
+        return types
     
     def get_workspace_diagnostics(self) -> Dict[str, List[Dict]]:
         """

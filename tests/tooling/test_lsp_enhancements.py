@@ -335,6 +335,43 @@ set p to new Per
         labels = [c["label"] for c in completions]
         assert "Person" in labels, "Should suggest Person class"
 
+    def test_channel_completion_after_create(self):
+        """Test channel completion after 'create'."""
+        server = NLPLLanguageServer()
+        provider = CompletionProvider(server)
+
+        code = "set ch to create "
+        position = Position(0, len(code))
+
+        completions = provider.get_completions(code, position)
+        labels = [c["label"] for c in completions]
+        assert "channel" in labels, "Should suggest channel after create"
+
+    def test_channel_type_completion_after_as(self):
+        """Test channel type completion after 'as'."""
+        server = NLPLLanguageServer()
+        provider = CompletionProvider(server)
+
+        code = "set ch as "
+        position = Position(0, len(code))
+
+        completions = provider.get_completions(code, position)
+        labels = [c["label"] for c in completions]
+        assert "Channel" in labels, "Should suggest Channel type"
+
+    def test_channel_hover_keyword_docs(self):
+        """Test hover docs for channel keyword."""
+        server = NLPLLanguageServer()
+        provider = HoverProvider(server)
+
+        code = "set ch to create channel"
+        position = Position(0, code.find("channel") + 1)
+
+        hover = provider.get_hover(code, position)
+        assert hover is not None, "Should provide hover info for channel"
+        content = hover["contents"]["value"]
+        assert "message passing" in content.lower()
+
 
 class TestEnhancedSymbols:
     """Test enhanced symbol search."""

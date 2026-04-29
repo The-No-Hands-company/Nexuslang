@@ -49,6 +49,7 @@ class CompletionProvider:
             "import", "export", "from",
             "new", "delete", "sizeof", "typeof",
             "true", "false", "null",
+            "create", "channel", "send", "receive", "close",
             
             # Error handling
             "Ok", "Error", "panic", "assert",
@@ -176,12 +177,43 @@ class CompletionProvider:
         
         # After "create" - suggest collection types
         elif re.search(r'\bcreate\s*$', prefix, re.IGNORECASE):
-            for coll_type in ["list", "dictionary", "set", "tuple", "queue", "stack"]:
+            for coll_type in ["channel", "list", "dictionary", "set", "tuple", "queue", "stack"]:
                 completions.append({
                     "label": f"{coll_type}",
                     "kind": 14,
                     "insertText": f"{coll_type}",
                     "documentation": f"Create a {coll_type}"
+                })
+
+        # After "send" - suggest send statement snippet
+        elif re.search(r'\bsend\s*$', prefix, re.IGNORECASE):
+            completions.append({
+                "label": "send value to channel",
+                "kind": 15,
+                "insertText": "${1:value} to ${2:channel}",
+                "documentation": "Send a value to a channel"
+            })
+
+        # After "send <value> to" - suggest channel variables
+        elif re.search(r'\bsend\s+.+\s+to\s*$', prefix, re.IGNORECASE):
+            for channel_name in self._extract_channel_variables(text):
+                completions.append({
+                    "label": channel_name,
+                    "kind": 6,
+                    "detail": "Channel variable",
+                    "insertText": channel_name,
+                    "documentation": "Channel"
+                })
+
+        # After "receive from" - suggest channel variables
+        elif re.search(r'\breceive\s+from\s*$', prefix, re.IGNORECASE):
+            for channel_name in self._extract_channel_variables(text):
+                completions.append({
+                    "label": channel_name,
+                    "kind": 6,
+                    "detail": "Channel variable",
+                    "insertText": channel_name,
+                    "documentation": "Channel"
                 })
 
         # After "<funcname> with " — suggest named parameters from function definition
@@ -310,7 +342,7 @@ class CompletionProvider:
             "Integer", "Float", "String", "Boolean",
             "List", "Dictionary", "Set", "Tuple",
             "Optional", "Result", "Pointer", "Array",
-            "Queue", "Stack"
+            "Queue", "Stack", "Channel"
         ]
         
         completions = []
@@ -391,6 +423,20 @@ class CompletionProvider:
         classes.update(matches)
         
         return list(classes)
+
+    def _extract_channel_variables(self, text: str) -> List[str]:
+        """Extract channel variable names from text."""
+        channels = set()
+
+        # Match: set ch to create channel
+        create_pattern = r'set\s+(\w+)\s+to\s+create\s+channel\b'
+        channels.update(re.findall(create_pattern, text, re.IGNORECASE))
+
+        # Match: set ch as Channel<Integer> to ... or set ch as Channel to ...
+        typed_pattern = r'set\s+(\w+)\s+as\s+Channel(?:\s*<[^>]+>)?\s+to\b'
+        channels.update(re.findall(typed_pattern, text, re.IGNORECASE))
+
+        return list(channels)
 
 
 __all__ = ['CompletionProvider']
