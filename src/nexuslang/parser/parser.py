@@ -15,7 +15,7 @@ from nexuslang.parser.ast import (
     UnaryOperation, Literal, Identifier, FunctionCall, PrintStatement, RepeatNTimesLoop, RepeatWhileLoop,
     TypeCastExpression,
     ReturnStatement, BreakStatement, ContinueStatement, Block, ConcurrentBlock, TryCatchBlock, PanicStatement,
-    SendStatement,
+    SendStatement, CloseStatement,
     # Module-related AST nodes
     ImportStatement, SelectiveImport, ModuleAccess, PrivateDeclaration,
     InterfaceDefinition, AbstractClassDefinition, TraitDefinition,
@@ -724,6 +724,15 @@ class Parser:
         self.eat(TokenType.TO)
         channel = self.expression()
         return SendStatement(value, channel, line_number)
+
+    def parse_close_statement(self):
+        """Parse a close statement: close [with] <channel>."""
+        line_number = self.current_token.line
+        self.eat(TokenType.CLOSE)
+        if self.current_token and self.current_token.type == TokenType.WITH:
+            self.advance()
+        channel = self.expression()
+        return CloseStatement(channel, line_number)
 
     # ------------------------------------------------------------------
     # Helper parsers for structured type constructs
@@ -9890,6 +9899,7 @@ class Parser:
 Parser._STMT_DISPATCH = {
     TokenType.SET: 'variable_declaration',
     TokenType.SEND: 'parse_send_statement',
+    TokenType.CLOSE: 'parse_close_statement',
     TokenType.PANIC: 'panic_statement',
     TokenType.PRINT: 'print_statement',
     TokenType.IF: 'if_statement',

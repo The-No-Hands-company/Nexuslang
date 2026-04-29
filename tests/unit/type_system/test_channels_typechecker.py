@@ -93,3 +93,29 @@ def test_typechecker_flags_branch_payload_mismatch_for_same_channel():
     errors = checker.check_program(ast)
 
     assert any("Cannot send value of type" in err for err in errors)
+
+
+def test_typechecker_accepts_close_on_channel():
+    code = """
+    set ch to create channel
+    close ch
+    """
+
+    ast = _parse(code)
+    checker = TypeChecker()
+    errors = checker.check_program(ast)
+
+    assert errors == []
+
+
+def test_typechecker_rejects_close_on_non_channel():
+    code = """
+    set x to 10
+    close x
+    """
+
+    ast = _parse(code)
+    checker = TypeChecker()
+    errors = checker.check_program(ast)
+
+    assert any("Close target must be a channel" in err for err in errors)

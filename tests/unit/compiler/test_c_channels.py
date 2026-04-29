@@ -68,3 +68,17 @@ def test_c_codegen_channel_runtime_is_thread_safe_and_close_aware():
     assert "pthread_cond_wait(&ch->has_data, &ch->lock);" in c_code
     assert "pthread_cond_signal(&ch->has_data);" in c_code
     assert "if (!ch->head && ch->closed)" in c_code
+
+
+def test_c_codegen_lowers_close_statement_to_runtime_call():
+    code = """
+    set ch to create channel
+    close ch
+    """
+
+    ast = _parse(code)
+    generator = CCodeGenerator(target="c")
+    c_code = generator.generate(ast)
+
+    assert "void nxl_channel_close(void* channel)" in c_code
+    assert "nxl_channel_close(ch);" in c_code

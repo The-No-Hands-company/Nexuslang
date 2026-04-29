@@ -4,6 +4,7 @@ Executes AST nodes and manages program state.
 """
 
 import os
+import copy
 import queue
 import re
 import struct
@@ -100,18 +101,37 @@ class _Channel:
 
     def __init__(self):
         self._queue = queue.Queue()
+        self._closed = False
 
     def send(self, value):
-        self._queue.put(value)
+        if self._closed:
+            raise NxlRuntimeError(
+                message="Cannot send to a closed channel",
+                error_type_key="invalid_operation",
+            )
+        # Snapshot mutable payloads to model transfer semantics in interpreter mode.
+        try:
+            transferred = copy.deepcopy(value)
+        except Exception:
+            transferred = value
+        self._queue.put(transferred)
 
     def receive(self):
         try:
             return self._queue.get_nowait()
         except queue.Empty as exc:
+            if self._closed:
+                raise NxlRuntimeError(
+                    message="Cannot receive from a closed and empty channel",
+                    error_type_key="invalid_operation",
+                ) from exc
             raise NxlRuntimeError(
                 message="Cannot receive from an empty channel",
                 error_type_key="invalid_operation",
             ) from exc
+
+    def close(self):
+        self._closed = True
 
     def __repr__(self):
         return "Channel()"
@@ -1073,6 +1093,20 @@ class Interpreter:
             )
 
         channel.send(value)
+        return None
+
+    def execute_close_statement(self, node):
+        """Execute closing a channel."""
+        channel = self.execute(node.channel)
+
+        if not isinstance(channel, _Channel):
+            raise NxlTypeError(
+                f"close target must be a channel, got {type(channel).__name__}",
+                error_type_key="type_mismatch",
+                full_source=self.source,
+            )
+
+        channel.close()
         return None
 
     def execute_receive_expression(self, node):

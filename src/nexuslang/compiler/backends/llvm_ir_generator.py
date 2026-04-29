@@ -1042,7 +1042,7 @@ class LLVMIRGenerator(CodeGenerator):
                 return False
 
             node_type = type(node).__name__
-            if node_type in ('ChannelCreation', 'ReceiveExpression', 'SendStatement'):
+            if node_type in ('ChannelCreation', 'ReceiveExpression', 'SendStatement', 'CloseStatement'):
                 self.has_channel_ops = True
                 return True
 
@@ -3148,6 +3148,9 @@ class LLVMIRGenerator(CodeGenerator):
             self._generate_inline_assembly(stmt, indent)
         elif stmt_type == 'SendStatement':
             self._generate_send_statement(stmt, indent)
+
+        elif stmt_type == 'CloseStatement':
+            self._generate_close_statement(stmt, indent)
         elif stmt_type in ('RequireStatement', 'EnsureStatement', 'GuaranteeStatement', 'InvariantStatement'):
             self._generate_contract_statement(stmt, indent)
         elif stmt_type == 'ExpectStatement':
@@ -3337,6 +3340,11 @@ class LLVMIRGenerator(CodeGenerator):
         i64_value = self._encode_channel_payload(value_reg, payload_type, indent)
 
         self.emit(f'{indent}call void @nxl_channel_send(i8* {channel_reg}, i64 {i64_value})')
+
+    def _generate_close_statement(self, stmt, indent='') -> None:
+        """Generate channel close statement via runtime call."""
+        channel_reg = self._generate_expression(stmt.channel, indent)
+        self.emit(f'{indent}call void @nxl_channel_close(i8* {channel_reg})')
 
     def _encode_channel_payload(self, value_reg: str, value_type: str, indent='') -> str:
         """Encode a typed value into i64 transport storage for channel runtime calls."""

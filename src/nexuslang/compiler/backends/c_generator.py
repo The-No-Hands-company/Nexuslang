@@ -390,6 +390,14 @@ class CCodeGenerator(CodeGenerator):
             self.needed_runtime_functions.add("nxl_channel_receive")
             self.needed_runtime_functions.add("nxl_channel_close")
             self.emit(f"nxl_channel_send({channel_expr}, (intptr_t)({value_expr}));")
+        elif isinstance(node, CloseStatement):
+            channel_expr = self._generate_expression(node.channel)
+            self.includes.add("<pthread.h>")
+            self.needed_runtime_functions.add("nxl_channel_create")
+            self.needed_runtime_functions.add("nxl_channel_send")
+            self.needed_runtime_functions.add("nxl_channel_receive")
+            self.needed_runtime_functions.add("nxl_channel_close")
+            self.emit(f"nxl_channel_close({channel_expr});")
         elif isinstance(node, (RequireStatement, EnsureStatement, GuaranteeStatement, InvariantStatement)):
             self._generate_contract_statement(node)
         elif isinstance(node, ExpectStatement):

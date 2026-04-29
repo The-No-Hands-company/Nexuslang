@@ -53,3 +53,17 @@ def test_llvm_channel_float_payload_uses_bitcast_transport():
     assert "to i64" in llvm_ir
     assert "bitcast i64" in llvm_ir
     assert "to double" in llvm_ir
+
+
+def test_llvm_lowers_close_statement_to_runtime_call():
+    code = """
+    set ch to create channel
+    close ch
+    """
+
+    ast = _parse(code)
+    generator = LLVMIRGenerator()
+    llvm_ir = generator.generate(ast)
+
+    assert "declare void @nxl_channel_close(i8*)" in llvm_ir
+    assert "call void @nxl_channel_close(i8* " in llvm_ir

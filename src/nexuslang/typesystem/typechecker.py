@@ -339,6 +339,9 @@ class TypeChecker:
         if cls == 'SendStatement':
             self._check_send_statement(statement, env)
             return True, ANY_TYPE
+        if cls == 'CloseStatement':
+            self._check_close_statement(statement, env)
+            return True, ANY_TYPE
         if isinstance(statement, (StructDefinition, UnionDefinition, ObjectInstantiation, MemberAssignment)):
             return True, ANY_TYPE
         if cls == 'IndexAssignment':
@@ -452,6 +455,22 @@ class TypeChecker:
             return ANY_TYPE
 
         return channel_type.payload_type
+
+    def _check_close_statement(self, statement: Any, env: TypeEnvironment) -> None:
+        """Type check closing a channel."""
+        if not hasattr(statement, 'channel'):
+            return
+
+        channel_type = self.check_expression(statement.channel, env)
+
+        if isinstance(channel_type, AnyType):
+            return
+
+        if not isinstance(channel_type, ChannelType):
+            self.errors.append(
+                f"Line {getattr(statement, 'line_number', '?')}: "
+                f"Close target must be a channel, got '{self._type_name(channel_type)}'"
+            )
 
     def _refine_channel_identifier_type(self, channel_expr: Any, payload_type: Type, env: TypeEnvironment) -> None:
         """Refine an identifier channel from Channel[Any] to Channel[payload_type]."""

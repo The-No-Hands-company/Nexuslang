@@ -749,6 +749,13 @@ class SendStatement(ASTNode):
         self.value = value
         self.channel = channel
 
+
+class CloseStatement(ASTNode):
+    """Represents closing a channel: close channel."""
+    def __init__(self, channel, line_number=None):
+        super().__init__("close_statement", line_number)
+        self.channel = channel
+
 class ConcurrentBlock(ASTNode):
     """Represents a concurrent block of statements."""
     def __init__(self, statements=None, line_number=None):

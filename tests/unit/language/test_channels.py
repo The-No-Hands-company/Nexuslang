@@ -61,3 +61,36 @@ class TestChannels(NLPLTestBase):
                 set value to receive from ch
                 """
             )
+
+    def test_close_channel_then_receive_raises_closed_error(self):
+        with pytest.raises(NxlRuntimeError, match="closed and empty channel"):
+            self.parse_and_execute(
+                """
+                set ch to create channel
+                close ch
+                set value to receive from ch
+                """
+            )
+
+    def test_send_to_closed_channel_raises(self):
+        with pytest.raises(NxlRuntimeError, match="closed channel"):
+            self.parse_and_execute(
+                """
+                set ch to create channel
+                close ch
+                send 1 to ch
+                """
+            )
+
+    def test_channel_send_transfers_payload_snapshot(self):
+        self.parse_and_execute(
+            """
+            set ch to create channel
+            set payload to [1, 2, 3]
+            send payload to ch
+            set payload[0] to 99
+            set received to receive from ch
+            """
+        )
+
+        assert self.get_variable("received") == [1, 2, 3]
