@@ -95,6 +95,8 @@ class Parser:
             if "Expected" in message:
                 expected_part = message.split("Expected")[1].split(",")[0].strip()
                 expected = expected_part
+            elif message.startswith("Unexpected token"):
+                expected = "a valid expression or statement"
             
             # Determine error type key from context if not provided
             if not error_type_key:
@@ -4076,19 +4078,17 @@ class Parser:
         # Eat 'allocate'
         self.eat(TokenType.ALLOCATE)
         
-        # Skip optional 'a'
-        if self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() == 'a':
+        # Skip optional article before 'new' ("a" / "an").
+        if self.current_token.type in [TokenType.A, TokenType.AN]:
+            self.advance()
+        elif self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() in ('a', 'an'):
             self.advance()
             
         # Eat 'new'
         self.eat(TokenType.NEW)
         
-        # Get type
-        if self.current_token.type == TokenType.TYPE:
-            var_type = self.current_token.value
-            self.advance()
-        else:
-            self.error("Expected a type")
+        # Get allocated type using the standard type parser.
+        var_type = self.parse_type()
             
         # Eat 'in'
         self.eat(TokenType.IN)
@@ -4104,9 +4104,14 @@ class Parser:
             
             # Eat 'value'
             self.eat(TokenType.VALUE)
+
+            # A memory initializer is required after "with value".
+            if self.current_token and self.current_token.type in (TokenType.AND, TokenType.NAME, TokenType.IT):
+                self.error("Expected expression after 'with value'")
             
-            # Parse the expression
-            initial_value = self.expression()
+            # Parse the initializer without consuming the trailing
+            # "and name it <identifier>" memory-allocation clause.
+            initial_value = self.comparison()
             
         # Eat 'and'
         self.eat(TokenType.AND)
@@ -4117,9 +4122,9 @@ class Parser:
         # Eat 'it'
         self.eat(TokenType.IT)
         
-        # Get the identifier
-        if self.current_token.type == TokenType.IDENTIFIER:
-            identifier = self.current_token.value
+        # Get the identifier (allow contextual keywords as names).
+        if self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
+            identifier = self.current_token.lexeme
             self.advance()
         else:
             self.error("Expected an identifier")
@@ -4135,7 +4140,9 @@ class Parser:
         self.eat(TokenType.FREE)
         
         # Eat 'the'
-        if self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() == 'the':
+        if self.current_token.type == TokenType.THE:
+            self.advance()
+        elif self.current_token.type == TokenType.IDENTIFIER and self.current_token.lexeme.lower() == 'the':
             self.advance()
             
         # Eat 'memory'
@@ -4144,9 +4151,9 @@ class Parser:
         # Eat 'at'
         self.eat(TokenType.AT)
         
-        # Get the identifier
-        if self.current_token.type == TokenType.IDENTIFIER:
-            identifier = self.current_token.value
+        # Get the identifier (allow contextual keywords as names).
+        if self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
+            identifier = self.current_token.lexeme
             self.advance()
         else:
             self.error("Expected an identifier")
@@ -4911,6 +4918,20 @@ class Parser:
             self.advance()
             right = self.unary()
             return UnaryOperation(operator, right)
+
+        # Handle symbolic address-of operator: &variable
+        if self.current_token and self.current_token.type == TokenType.BITWISE_AND:
+            line_num = self.current_token.line if hasattr(self.current_token, 'line') else 0
+            self.advance()  # consume '&'
+            target = self.unary()
+            return AddressOfExpression(target, line_num)
+
+        # Handle symbolic dereference operator: *pointer
+        if self.current_token and self.current_token.type == TokenType.TIMES:
+            line_num = self.current_token.line if hasattr(self.current_token, 'line') else 0
+            self.advance()  # consume '*'
+            pointer = self.unary()
+            return DereferenceExpression(pointer, line_num)
         
         # Handle await expression: await async_function()
         if self.current_token and self.current_token.type == TokenType.AWAIT:

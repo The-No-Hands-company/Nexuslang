@@ -1,4 +1,5 @@
 # NexusLang Compiler Dependencies
+colorama>=0.4.6
 psutil>=5.9.0
 tomli-w>=1.0.0  # TOML writer (stdlib tomllib handles reading on Python 3.11+)
 cbor2>=5.4.0    # CBOR serialization (RFC 8949) for stdlib/serialization

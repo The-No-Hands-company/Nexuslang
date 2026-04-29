@@ -885,27 +885,60 @@ class TestMemoryAndLowLevel:
         assert isinstance(node, VariableDeclaration)
         assert isinstance(node.value, SizeofExpression)
 
-    @pytest.mark.xfail(
-        reason="Parser references TokenType.MEMORY which is not defined in the lexer — known parser bug",
-        strict=True,
-    )
     def test_memory_allocation(self):
-        # Actual syntax: 'allocate a new INTEGER in memory and name it buffer'
-        # but TokenType.MEMORY is missing from the lexer, so this crashes.
+        # Regression: this syntax must parse into a MemoryAllocation node.
         src = "allocate a new Integer in memory and name it buffer"
         node = first(src)
         assert isinstance(node, MemoryAllocation)
 
-    @pytest.mark.xfail(
-        reason="Parser references TokenType.MEMORY which is not defined in the lexer — known parser bug",
-        strict=True,
-    )
     def test_memory_deallocation(self):
-        # Actual syntax: 'free the memory at buffer'
-        # but TokenType.MEMORY is missing from the lexer, so this crashes.
+        # Regression: this syntax must parse into a MemoryDeallocation node.
         src = "free the memory at buffer"
         node = first(src)
         assert isinstance(node, MemoryDeallocation)
+
+    def test_memory_allocation_with_literal_initial_value(self):
+        src = "allocate a new Integer in memory with value 5 and name it buffer"
+        node = first(src)
+        assert isinstance(node, MemoryAllocation)
+        assert node.identifier == "buffer"
+        assert isinstance(node.initial_value, Literal)
+
+    def test_memory_allocation_with_expression_initial_value(self):
+        src = "allocate a new Integer in memory with value 2 plus 3 and name it buffer"
+        node = first(src)
+        assert isinstance(node, MemoryAllocation)
+        assert isinstance(node.initial_value, BinaryOperation)
+
+    def test_memory_deallocation_without_the(self):
+        node = first("free memory at buffer")
+        assert isinstance(node, MemoryDeallocation)
+        assert node.identifier == "buffer"
+
+    def test_memory_deallocation_keyword_identifier_message(self):
+        node = first("free memory at message")
+        assert isinstance(node, MemoryDeallocation)
+        assert node.identifier == "message"
+
+    def test_memory_deallocation_keyword_identifier_value(self):
+        node = first("free memory at value")
+        assert isinstance(node, MemoryDeallocation)
+        assert node.identifier == "value"
+
+    def test_symbolic_address_of(self):
+        node = first("set p to &x")
+        assert isinstance(node, VariableDeclaration)
+        assert isinstance(node.value, AddressOfExpression)
+
+    def test_symbolic_address_of_parenthesized(self):
+        node = first("set p to &(x)")
+        assert isinstance(node, VariableDeclaration)
+        assert isinstance(node.value, AddressOfExpression)
+
+    def test_symbolic_dereference(self):
+        node = first("set value to *ptr")
+        assert isinstance(node, VariableDeclaration)
+        assert isinstance(node.value, DereferenceExpression)
 
     def test_inline_assembly(self):
         src = "asm\n    nop\nend asm"

@@ -249,6 +249,10 @@ class TypeChecker:
             return self.check_guarantee_statement(statement, env)
         elif isinstance(statement, InvariantStatement):
             return self.check_invariant_statement(statement, env)
+        elif isinstance(statement, MemoryAllocation):
+            return self.check_memory_allocation(statement, env)
+        elif isinstance(statement, MemoryDeallocation):
+            return self.check_memory_deallocation(statement, env)
         elif isinstance(statement, RepeatNTimesLoop):
             return self.check_repeat_n_times_loop(statement, env)
         elif isinstance(statement, RepeatWhileLoop):
@@ -1221,6 +1225,9 @@ class TypeChecker:
         """Check a binary operation."""
         left_type = self.check_statement(operation.left, env)
         right_type = self.check_statement(operation.right, env)
+        line_no = getattr(operation, 'line_number', None)
+        if line_no is None:
+            line_no = getattr(operation.operator, 'line', '?')
         
         # Get the operator (handle both Token objects and strings)
         if hasattr(operation.operator, 'lexeme'):
@@ -1238,7 +1245,7 @@ class TypeChecker:
                 break
 
         # Arithmetic operators (both symbolic and natural language)
-        arithmetic_ops = ['+', '-', '*', '/', '%', 'plus', 'minus', 'times', 'divided by', 'modulo', 'power', 'to the power of', '**']
+        arithmetic_ops = ['+', '-', '*', '/', '%', '//', 'plus', 'minus', 'times', 'divided by', 'modulo', 'power', 'to the power of', '**', 'integer divided by']
         if op in arithmetic_ops:
             if op in ['+', 'plus'] and (left_type == STRING_TYPE or right_type == STRING_TYPE):
                 # String concatenation
@@ -1255,22 +1262,38 @@ class TypeChecker:
                           any(right_type.is_compatible_with(t) for t in _numeric)
             if not _skip_left:
                 self.errors.append(
-                    f"Type error: Left operand of '{op}' must be a number, got '{self._type_name(left_type)}'"
+                    f"Line {line_no}: Type error: Left operand of '{op}' must be a number, got '{self._type_name(left_type)}'"
                 )
             if not _skip_right:
                 self.errors.append(
-                    f"Type error: Right operand of '{op}' must be a number, got '{self._type_name(right_type)}'"
+                    f"Line {line_no}: Type error: Right operand of '{op}' must be a number, got '{self._type_name(right_type)}'"
                 )
             
             # Division and power always return float
             if op in ['/', 'divided by', 'power', 'to the power of', '**']:
                 return FLOAT_TYPE
+
+            # Floor division returns integer
+            if op in ['//', 'integer divided by']:
+                return INTEGER_TYPE
             
             # If either operand is a float, the result is a float
             if left_type == FLOAT_TYPE or right_type == FLOAT_TYPE:
                 return FLOAT_TYPE
             
             return INTEGER_TYPE
+
+        # Explicit string concatenation operator.
+        if op == 'concatenate':
+            if not left_type.is_compatible_with(STRING_TYPE):
+                self.errors.append(
+                    f"Line {line_no}: Type error: Left operand of '{op}' must be a string, got '{self._type_name(left_type)}'"
+                )
+            if not right_type.is_compatible_with(STRING_TYPE):
+                self.errors.append(
+                    f"Line {line_no}: Type error: Right operand of '{op}' must be a string, got '{self._type_name(right_type)}'"
+                )
+            return STRING_TYPE
         
         # Comparison operators (both symbolic and natural language)
         comparison_ops = ['==', '!=', '<', '>', '<=', '>=', 
@@ -1291,7 +1314,7 @@ class TypeChecker:
                 (right_type.is_compatible_with(INTEGER_TYPE) or right_type.is_compatible_with(FLOAT_TYPE))
             ):
                 self.errors.append(
-                    f"Type error: Operands of '{op}' must be numbers, got '{self._type_name(left_type)}' and '{self._type_name(right_type)}'"
+                    f"Line {line_no}: Type error: Operands of '{op}' must be numbers, got '{self._type_name(left_type)}' and '{self._type_name(right_type)}'"
                 )
             
             return BOOLEAN_TYPE
@@ -1301,12 +1324,12 @@ class TypeChecker:
         if op in logical_ops:
             if not left_type.is_compatible_with(BOOLEAN_TYPE):
                 self.errors.append(
-                    f"Type error: Left operand of '{op}' must be a boolean, got '{self._type_name(left_type)}'"
+                    f"Line {line_no}: Type error: Left operand of '{op}' must be a boolean, got '{self._type_name(left_type)}'"
                 )
             
             if not right_type.is_compatible_with(BOOLEAN_TYPE):
                 self.errors.append(
-                    f"Type error: Right operand of '{op}' must be a boolean, got '{self._type_name(right_type)}'"
+                    f"Line {line_no}: Type error: Right operand of '{op}' must be a boolean, got '{self._type_name(right_type)}'"
                 )
             
             return BOOLEAN_TYPE
@@ -1316,12 +1339,12 @@ class TypeChecker:
         if op in bitwise_ops:
             if not left_type.is_compatible_with(INTEGER_TYPE):
                 self.errors.append(
-                    f"Type error: Left operand of '{op}' must be an integer, got '{self._type_name(left_type)}'"
+                    f"Line {line_no}: Type error: Left operand of '{op}' must be an integer, got '{self._type_name(left_type)}'"
                 )
             
             if not right_type.is_compatible_with(INTEGER_TYPE):
                 self.errors.append(
-                    f"Type error: Right operand of '{op}' must be an integer, got '{self._type_name(right_type)}'"
+                    f"Line {line_no}: Type error: Right operand of '{op}' must be an integer, got '{self._type_name(right_type)}'"
                 )
             
             return INTEGER_TYPE
@@ -1334,6 +1357,9 @@ class TypeChecker:
     def check_unary_operation(self, operation: UnaryOperation, env: TypeEnvironment) -> Type:
         """Check a unary operation."""
         operand_type = self.check_statement(operation.operand, env)
+        line_no = getattr(operation, 'line_number', None)
+        if line_no is None:
+            line_no = getattr(operation.operator, 'line', '?')
         
         # Get the operator (handle both Token objects and strings)
         if hasattr(operation.operator, 'lexeme'):
@@ -1341,10 +1367,10 @@ class TypeChecker:
         else:
             op = str(operation.operator)
         
-        if op == '-':
+        if op in ['-', 'minus', 'negative']:
             if not (operand_type.is_compatible_with(INTEGER_TYPE) or operand_type.is_compatible_with(FLOAT_TYPE)):
                 self.errors.append(
-                    f"Type error: Operand of unary '-' must be a number, got '{self._type_name(operand_type)}'"
+                    f"Line {line_no}: Type error: Operand of unary '{op}' must be a number, got '{self._type_name(operand_type)}'"
                 )
             
             return operand_type
@@ -1352,7 +1378,7 @@ class TypeChecker:
         elif op == 'not':
             if not operand_type.is_compatible_with(BOOLEAN_TYPE):
                 self.errors.append(
-                    f"Type error: Operand of 'not' must be a boolean, got '{self._type_name(operand_type)}'"
+                    f"Line {line_no}: Type error: Operand of 'not' must be a boolean, got '{self._type_name(operand_type)}'"
                 )
             
             return BOOLEAN_TYPE
@@ -1360,7 +1386,7 @@ class TypeChecker:
         elif op in ['~', 'bitwise not']:
             if not operand_type.is_compatible_with(INTEGER_TYPE):
                 self.errors.append(
-                    f"Type error: Operand of '{op}' must be an integer, got '{self._type_name(operand_type)}'"
+                    f"Line {line_no}: Type error: Operand of '{op}' must be an integer, got '{self._type_name(operand_type)}'"
                 )
             
             return INTEGER_TYPE
@@ -1368,6 +1394,34 @@ class TypeChecker:
         else:
             self.errors.append(f"Unsupported unary operator: {op}")
             return ANY_TYPE
+
+    def check_memory_allocation(self, allocation: MemoryAllocation, env: TypeEnvironment) -> Type:
+        """Type-check memory allocation statements."""
+        var_type_name = allocation.var_type if isinstance(allocation.var_type, str) else str(allocation.var_type)
+        allocated_type = get_type_by_name(var_type_name)
+
+        if allocation.initial_value is not None:
+            initial_type = self.check_statement(allocation.initial_value, env)
+            if not initial_type.is_compatible_with(allocated_type):
+                line_num = getattr(allocation, 'line_number', '?')
+                self.errors.append(
+                    f"Line {line_num}: Type error: Cannot initialize allocated '{allocation.identifier}' "
+                    f"of type '{allocated_type}' with value of type '{initial_type}'"
+                )
+
+        env.define_variable(allocation.identifier, allocated_type)
+        return allocated_type
+
+    def check_memory_deallocation(self, deallocation: MemoryDeallocation, env: TypeEnvironment) -> Type:
+        """Type-check memory deallocation statements."""
+        try:
+            env.get_variable_type(deallocation.identifier)
+        except TypeCheckError:
+            line_num = getattr(deallocation, 'line_number', '?')
+            self.errors.append(
+                f"Line {line_num}: Type error: Cannot free undefined memory identifier '{deallocation.identifier}'"
+            )
+        return ANY_TYPE
     
     def check_literal(self, literal: Literal, env: TypeEnvironment) -> Type:
         """Check a literal value."""

@@ -54,6 +54,7 @@ class TokenType(Enum):
     ALLOCATE = auto()
     DEALLOCATE = auto()
     FREE = auto()
+    MEMORY = auto()
     RUN = auto()
     IMPORT = auto()
     TRAIT = auto()
@@ -392,6 +393,7 @@ class Lexer:
             "allocate": TokenType.ALLOCATE,
             "deallocate": TokenType.DEALLOCATE,
             "free": TokenType.FREE,
+            "memory": TokenType.MEMORY,
             "run": TokenType.RUN,
             "import": TokenType.IMPORT,
             "trait": TokenType.TRAIT,
