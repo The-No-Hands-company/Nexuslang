@@ -1,30 +1,12 @@
 #!/usr/bin/env python3
 """
-NLPL Language Server Entry Point
-=================================
+Backward-compatible NLPL LSP launcher.
 
-Starts the NexusLang Language Server for IDE integration.
-
-Usage:
-    python -m nxl_lsp
-    or
-    python src/nxl_lsp.py
+This shim preserves old entrypoints while delegating to nxl_lsp.
 """
 
-import sys
-import os
-
-# Add src directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
-
-from nexuslang.lsp.server import NLPLLanguageServer
+from nxl_lsp import main
 
 
-def main():
-    """Start the NexusLang Language Server."""
-    server = NLPLLanguageServer()
-    server.start()
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
