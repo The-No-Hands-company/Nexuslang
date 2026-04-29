@@ -1511,6 +1511,8 @@ class TestBlock(ASTNode):
         body        - list of statements to execute as the test
         line_number - source line
     """
+    __test__ = False
+
     def __init__(self, name: str, body: list, line_number=None):
         super().__init__("test_block", line_number)
         self.name = name

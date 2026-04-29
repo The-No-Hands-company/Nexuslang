@@ -33,7 +33,7 @@ File → Preferences → Settings → search "nlpl" → check "Debug" box
 
 ## Run Full Tests
 
-See [LSP_MANUAL_TEST_RESULTS.md](docs/7_development/LSP_MANUAL_TEST_RESULTS.md)
+See [LSP_MANUAL_TEST_RESULTS.md](_internal/status-reports/LSP_MANUAL_TEST_RESULTS.md)
 
 10 features to test:
 1. Syntax highlighting

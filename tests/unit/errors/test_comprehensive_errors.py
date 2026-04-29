@@ -10,14 +10,14 @@ from nexuslang.parser.parser import Parser
 def test_lexer_invalid_character():
     """Test lexer error reporting for invalid characters."""
     print("Testing lexer error for invalid character...")
-    source_code = "Create an integer called x and set it to 10.\nCreate an integer called y and set it to @invalid."
+    source_code = "Create an integer called x and set it to 10.\nCreate an integer called y and set it to $invalid."
     
     lexer = Lexer(source_code)
     
     try:
         tokens = lexer.tokenize()
         print("Expected a lexical error but none was raised")
-        return False
+        raise AssertionError("Expected a lexical error but none was raised")
     except Exception as e:
         error_message = str(e)
         print(f"Lexer error: {error_message}")
@@ -26,7 +26,6 @@ def test_lexer_invalid_character():
         # Check that the error message contains a pointer to the error
         assert "^" in error_message, "Error message should contain pointer"
         print("Lexer error for invalid character test passed!")
-        return True
 
 def test_parser_missing_type():
     """Test parser error reporting for missing type in variable declaration."""
@@ -40,7 +39,7 @@ def test_parser_missing_type():
     try:
         parser.parse()
         print("Expected a syntax error but none was raised")
-        return False
+        raise AssertionError("Expected a syntax error but none was raised")
     except Exception as e:
         error_message = str(e)
         print(f"Parser error: {error_message}")
@@ -51,7 +50,6 @@ def test_parser_missing_type():
         # Check that the error message contains a pointer to the error
         assert "^" in error_message, "Error message should contain pointer"
         print("Parser error for missing type test passed!")
-        return True
 
 def test_parser_invalid_function_call():
     """Test parser error reporting for invalid function call."""
@@ -68,7 +66,7 @@ def test_parser_invalid_function_call():
     try:
         parser.parse()
         print("Expected a syntax error but none was raised")
-        return False
+        raise AssertionError("Expected a syntax error but none was raised")
     except Exception as e:
         error_message = str(e)
         print(f"Parser error: {error_message}")
@@ -78,7 +76,6 @@ def test_parser_invalid_function_call():
         assert ("^" in error_message or "line" in error_message.lower() or "-->" in error_message), \
             "Error message should contain pointer or location info"
         print("Parser error for invalid function call test passed!")
-        return True
 
 def test_parser_if_statement_error():
     """Test parser error reporting for syntax error in if statement condition."""
@@ -98,7 +95,7 @@ def test_parser_if_statement_error():
     try:
         parser.parse()
         print("Expected a syntax error but none was raised")
-        return False
+        raise AssertionError("Expected a syntax error but none was raised")
     except Exception as e:
         error_message = str(e)
         print(f"Parser error: {error_message}")
@@ -107,22 +104,15 @@ def test_parser_if_statement_error():
         # Check that the error message contains a pointer to the error
         assert "^" in error_message, "Error message should contain pointer"
         print("Parser error for if statement condition test passed!")
-        return True
 
 if __name__ == "__main__":
     try:
-        success = True
-        
         # Run all tests
-        success = test_lexer_invalid_character() and success
-        success = test_parser_missing_type() and success
-        success = test_parser_invalid_function_call() and success
-        success = test_parser_if_statement_error() and success
-        
-        if success:
-            print("\nAll comprehensive error tests passed!")
-        else:
-            print("\nSome tests failed!")
+        test_lexer_invalid_character()
+        test_parser_missing_type()
+        test_parser_invalid_function_call()
+        test_parser_if_statement_error()
+        print("\nAll comprehensive error tests passed!")
     except Exception as e:
         print(f"Test failed with error: {e}")
         traceback.print_exc() 

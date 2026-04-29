@@ -11,7 +11,7 @@ def test_lexer_error_reporting():
     """Test that the lexer provides detailed error messages."""
     print("Testing lexer error reporting...")
     # Invalid character in the input
-    source_code = "Create variable x with value 10.\nCreate variable y with value @invalid."
+    source_code = "Create variable x with value 10.\nCreate variable y with value $invalid."
     
     lexer = Lexer(source_code)
     
@@ -27,7 +27,7 @@ def test_lexer_error_reporting():
         assert "line 2" in error_message, "Error message should contain line number"
         # The error might show the first line instead of the second due to how we're tracking lines
         # So we'll check for either line content
-        assert ("Create variable y with value @invalid" in error_message or 
+        assert ("Create variable y with value $invalid" in error_message or 
                 "Create variable x with value 10" in error_message), "Error message should contain some context"
         # Check that the error message contains a pointer to the error
         assert "^" in error_message, "Error message should contain pointer"

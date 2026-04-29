@@ -2,9 +2,9 @@
 
 import pytest
 
-from nlpl.errors import NLPLSyntaxError
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
+from nexuslang.errors import NxlSyntaxError
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
 
 
 def _parse(source: str):
@@ -14,7 +14,7 @@ def _parse(source: str):
 
 def test_memory_allocation_with_value_requires_expression_diagnostic():
     source = "allocate a new Integer in memory with value and name it buffer\n"
-    with pytest.raises(NLPLSyntaxError) as exc:
+    with pytest.raises(NxlSyntaxError) as exc:
         _parse(source)
 
     message = str(exc.value)
@@ -25,7 +25,7 @@ def test_memory_allocation_with_value_requires_expression_diagnostic():
 
 def test_unexpected_token_diagnostic_includes_expected_and_got():
     source = "set x to )\n"
-    with pytest.raises(NLPLSyntaxError) as exc:
+    with pytest.raises(NxlSyntaxError) as exc:
         _parse(source)
 
     message = str(exc.value)

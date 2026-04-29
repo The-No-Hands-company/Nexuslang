@@ -1,8 +1,8 @@
 """Regression tests for typechecker edge cases."""
 
-from nlpl.parser.lexer import Lexer
-from nlpl.parser.parser import Parser
-from nlpl.typesystem.typechecker import TypeChecker
+from nexuslang.parser.lexer import Lexer
+from nexuslang.parser.parser import Parser
+from nexuslang.typesystem.typechecker import TypeChecker
 
 
 def _typecheck(source: str) -> list[str]:

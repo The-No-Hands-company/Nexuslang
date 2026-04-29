@@ -1,18 +1,22 @@
-# Python
+# Python bytecode and caches
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
 .Python
-*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.tox/
+.nox/
+.hypothesis/
+
+# Packaging / build outputs
 dist/
 build/
 *.egg
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-.hypothesis/
+*.egg-info/
+pip-wheel-metadata/
 
 # Virtual environments
 venv/
@@ -20,48 +24,79 @@ venv/
 env/
 ENV/
 
-# IDE
-.vscode/*
-!.vscode/settings.json
-!.vscode/extensions/
-!.vscode/*.json
+# Coverage artifacts
+.coverage
+.coverage.*
+coverage.json
+coverage.xml
+htmlcov/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.bak
+*.backup
+*.orig
+*.rej
+
+# Environment / local config
+*.env
+*.env.*
+.envrc
+
+# Editors and IDEs
 .idea/
+.DS_Store
 *.swp
 *.swo
 *~
-.DS_Store
+.vscode/*
+!.vscode/settings.json
+.vscode/extensions.json
+.vscode/nlpl-language-config.json
+
+# Local AI / assistant tooling
+.emergent/
+.aider*
+.claude/
+.cursor/
+.windsurf/
+.continue/
+
+# Repository-local workspace clutter
+NLPL.code-workspace
+vscode-extension-backup-*.tar.gz
 
 # NexusLang build artifacts
 build/bin/*
 build/generated/*
 build/executables/*
+build/artifacts/*
 !build/bin/.gitkeep
 !build/generated/.gitkeep
 !build/executables/.gitkeep
+!build/artifacts/.gitkeep
 
-# Generated files that might end up in root
+# Generated source files
 *.generated.c
 *.generated.cpp
 *.generated.js
 *.generated.wasm
 
-# Compiled binaries and artifacts
-*.exe
-*.out
-a.out
-test
-test_[0-9]*
-bench_o*
-
-# LLVM IR and object files
-*.ll
-*.bc
+# Native / compiler artifacts
 *.o
 *.a
 *.so
 *.dylib
+*.dll
+*.bc
+*.ll
+*.exe
+*.out
+a.out
 
-# ANTLR
+# ANTLR artifacts
 *.tokens
 *.interp
 *Lexer.py
@@ -69,57 +104,45 @@ bench_o*
 *Listener.py
 *Visitor.py
 
-# Logs
-*.log
-*.txt
-!requirements.txt
-!python_version.txt
+# Fuzzing runtime artifacts
+fuzzing/crashes/
+fuzzing/corpus_generated/
+crash-*
+slow-*
+timeout-*
+oom-*
+.atheris_report/
 
-# AI assistant instructions (private)
-GEMINI.md
-.github/copilot-instructions.md
+# VS Code extension build artifacts
+vscode-extension/out/
+vscode-extension/node_modules/
+vscode-extension/*.vsix
+vscode-extension/.vscode/
+.vscode/extensions/
+.vscode/nlpl-extension/
 
-# Utility toolkit (not part of this project)
+# stdlib native build outputs
+src/nexuslang/stdlib_native/_cmake_build/
+src/nexuslang/stdlib_native/*.o
+src/nlpl/stdlib_native/_cmake_build/
+src/nlpl/stdlib_native/*.o
+
+# Utility / local helper directories not part of the project
 utility/
+vscode-nlpl/
 
-# Root-level test files (should be in tests/ or test_programs/)
+# Root-level scratch and verification files that should live elsewhere
 /test_*.py
 /test_*.nlpl
-!/tests/
-!/test_programs/
-
-# Development and debug files in root
 /benchmark_*.py
 /benchmark_*.nlpl
 /debug_*.py
 /debug_*.nlpl
-
-# Test outputs
-test_output/
-*.test
-
-# Backup files
-*.backup
-*~
-
-# Session summaries and temporary docs
+/verify_*.py
+/SESSION_SUMMARY_*.md
 /LLVM_COMPILATION_SESSION*.md
-/GEMINI.md
 
-# Temporary test projects
-test_*_proj/
-
-# Build artifacts in root
-*.ll
-*.o
-*.a
-*.exe
-*.out
-test_ffi
-test_export
--o
-
-# Compiled executables in root (should be in build/)
+# Root-level compiled executables and generated binaries
 /animation_*
 /clean_*
 /shadow_*
@@ -148,74 +171,12 @@ test_export
 /test_file_*
 /test_alloc_*
 /test_array_*
-
-# Tool executables in root (should be in dev_tools/)
 /nlpl-analyze
 /nlpl-format
 /nlplc
-
-# Example program compiled outputs in root (should be in build/)
 /01_basic_concepts
 /02_object_oriented
-/??_*
 
-# Keep build/artifacts directory structure
-build/artifacts/*
-!build/artifacts/.gitkeep
-
-# IDE specific
-vscode-nlpl/
-.vscode/
-.idea/
-
-# Session reports (keep in docs/)
-/SESSION_SUMMARY_*.md
-
-# Verification scripts in root (should be in dev_tools/)
-/verify_*.py
-/debug_*.py
-
-# VS Code Extension Build Artifacts
-vscode-extension/out/
-vscode-extension/node_modules/
-vscode-extension/*.vsix
-
-# Workspace-Local Extensions (should not be in repo)
-.vscode/extensions/
-.vscode/nlpl-extension/
-
-# Extension backup archives
-vscode-extension-backup-*.tar.gz
-NLPL.code-workspace
-
-# Fuzzing artifacts (generated at runtime, never committed)
-fuzzing/crashes/
-fuzzing/corpus_generated/
-# libFuzzer crash artifacts (crash-*, slow-*, timeout-*, oom-*)
-crash-*
-slow-*
-timeout-*
-oom-*
-# Atheris/coverage intermediate dump
-.atheris_report/
-
-# stdlib_native build artifacts (auto-built on demand by build_if_needed())
-src/nlpl/stdlib_native/_cmake_build/
-src/nlpl/stdlib_native/*.o
-coverage.json
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
+# Keep actual source, tests, docs, examples, and fixtures tracked
+!/tests/
+!/test_programs/
