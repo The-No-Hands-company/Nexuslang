@@ -1767,16 +1767,15 @@ class Interpreter:
         """
         # Extract fields and their types from StructField nodes
         fields = []
+        original_fields = []
         for field in node.fields:
             # field is StructField with name, type_annotation, bit_width
             type_name = field.type_annotation
             if not type_name:
                 type_name = "Pointer"  # Default to pointer size if unknown
-            
-            # TODO: Handle bit_width for bit fields (e.g., field.bit_width = 4 for 4-bit field)
-            # For now, bit fields are stored as full bytes
-            
-            fields.append((field.name, type_name))
+
+            fields.append((field.name, type_name, field.bit_width))
+            original_fields.append((field.name, type_name))
             
         # Create runtime definition with packed and alignment support
         definition = RuntimeStructDefinition(
@@ -1787,7 +1786,8 @@ class Interpreter:
         )
         
         # Store original fields for FFI marshalling
-        definition._original_fields = fields
+        definition._original_fields = original_fields
+        definition._original_field_specs = fields
         
         self.classes[node.name] = definition
         
@@ -1845,16 +1845,20 @@ class Interpreter:
         """
         # Extract fields and their types from StructField nodes
         fields = []
+        original_fields = []
         for field in node.fields:
             # field is StructField with name, type_annotation, bit_width
             type_name = field.type_annotation
             if not type_name:
                 type_name = "Pointer"  # Default to pointer size if unknown
-            fields.append((field.name, type_name))
+            fields.append((field.name, type_name, field.bit_width))
+            original_fields.append((field.name, type_name))
             
         # Create runtime definition and store in classes map
         # Unions don't support packed/alignment (they're already minimal)
         definition = RuntimeUnionDefinition(node.name, fields)
+        definition._original_fields = original_fields
+        definition._original_field_specs = fields
         self.classes[node.name] = definition
         return node.name
     
