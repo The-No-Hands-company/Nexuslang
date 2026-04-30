@@ -45,3 +45,35 @@ def test_typechecker_rejects_parallel_for_over_non_list():
     errors = checker.check_program(ast)
 
     assert any("Parallel for iterable must be a list" in err for err in errors)
+
+
+def test_typechecker_flags_parallel_for_outer_variable_write():
+    code = """
+    set items to [1, 2, 3]
+    set total to 0
+    parallel for each x in items
+        set total to total plus x
+    end
+    """
+
+    ast = _parse(code)
+    checker = TypeChecker()
+    errors = checker.check_program(ast)
+
+    assert any("loop-carried dependency" in err for err in errors)
+
+
+def test_typechecker_allows_parallel_for_loop_variable_shadowing_outer_name():
+    code = """
+    set x to 100
+    set items to [1, 2, 3]
+    parallel for each x in items
+        set x to x plus 1
+    end
+    """
+
+    ast = _parse(code)
+    checker = TypeChecker()
+    errors = checker.check_program(ast)
+
+    assert not any("loop-carried dependency" in err for err in errors)

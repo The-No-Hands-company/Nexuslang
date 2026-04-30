@@ -955,7 +955,69 @@ class TypeChecker:
         for stmt in loop.body:
             result_type = self.check_statement(stmt, loop_env)
 
+        # Detect loop-carried dependencies: writes to outer variables from inside the
+        # parallel region may cause data races.
+        outer_mutations = self._collect_outer_mutations(
+            loop.body,
+            env,
+            excluded_names={loop.var_name},
+        )
+        for name in outer_mutations:
+            self.errors.append(
+                f"Type error: parallel for loop writes to outer variable '{name}' — "
+                f"potential data race (loop-carried dependency)"
+            )
+
         return result_type
+
+    def _collect_outer_mutations(
+            self,
+            body: list,
+            outer_env: TypeEnvironment,
+            excluded_names: Optional[Set[str]] = None) -> List[str]:
+        """Return names of variables declared in outer_env that are assigned inside body.
+
+        A VariableDeclaration whose name resolves in the outer environment (not just the loop-local
+        environment) constitutes a write to an outer variable from inside the parallel region.
+        These are loop-carried dependencies that may cause data races.
+        """
+        mutated: List[str] = []
+        excluded = excluded_names or set()
+        non_executed_scope_nodes = {
+            "FunctionDefinition",
+            "MethodDefinition",
+            "ClassDefinition",
+            "InterfaceDefinition",
+            "AbstractClassDefinition",
+            "TraitDefinition",
+        }
+
+        def _walk(nodes):
+            for node in nodes:
+                if node.__class__.__name__ in non_executed_scope_nodes:
+                    # Nested declarations are not immediately executed as loop body writes.
+                    continue
+
+                if isinstance(node, VariableDeclaration):
+                    if node.name in excluded:
+                        continue
+                    try:
+                        outer_env.get_variable_type(node.name)
+                        # Variable exists in outer scope -> mutation of outer variable
+                        if node.name not in mutated:
+                            mutated.append(node.name)
+                    except TypeCheckError:
+                        pass
+                # Recurse into compound statements
+                for attr in ("body", "then_body", "else_body", "cases", "default_case"):
+                    child = getattr(node, attr, None)
+                    if child is None:
+                        continue
+                    if isinstance(child, list):
+                        _walk(child)
+
+        _walk(body)
+        return mutated
 
     def check_switch_statement(self, statement: SwitchStatement, env: TypeEnvironment) -> Type:
         """Check a switch statement for multi-way branching.
