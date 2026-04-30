@@ -252,6 +252,15 @@ class TestFunctionDefinitions:
         node = first(src)
         assert isinstance(node, FunctionDefinition)
 
+    def test_function_with_yield_statement(self):
+        src = "function gen\n    yield 1\nend"
+        node = first(src)
+        assert isinstance(node, FunctionDefinition)
+        assert len(node.body) == 1
+        assert isinstance(node.body[0], YieldExpression)
+        assert isinstance(node.body[0].value, Literal)
+        assert node.body[0].value.value == 1
+
     def test_nested_function_call_in_body(self):
         src = (
             "function wrapper\n"

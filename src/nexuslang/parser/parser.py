@@ -9898,6 +9898,7 @@ class Parser:
 # Populate Parser._STMT_DISPATCH after all methods are defined
 Parser._STMT_DISPATCH = {
     TokenType.SET: 'variable_declaration',
+    TokenType.YIELD: 'parse_yield_expression',
     TokenType.SEND: 'parse_send_statement',
     TokenType.CLOSE: 'parse_close_statement',
     TokenType.PANIC: 'panic_statement',

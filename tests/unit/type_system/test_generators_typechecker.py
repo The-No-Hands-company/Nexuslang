@@ -12,6 +12,7 @@ from nexuslang.parser.ast import (
     ListExpression,
     Literal,
     Program,
+    ReturnStatement,
     VariableDeclaration,
     YieldExpression,
 )
@@ -96,4 +97,74 @@ def test_typechecker_checks_yield_against_function_return_type():
     checker = TypeChecker()
     errors = checker.check_program(ast)
 
-    assert any("Yield value of type" in err for err in errors)
+    assert any("generator function" in err.lower() for err in errors)
+
+
+def test_typechecker_accepts_generator_function_with_list_return_type():
+    ast = Program([
+        FunctionDefinition(
+            name="count_up",
+            parameters=[],
+            body=[YieldExpression(Literal("integer", 1))],
+            return_type="List<Integer>",
+        ),
+    ])
+    checker = TypeChecker()
+    errors = checker.check_program(ast)
+
+    assert errors == []
+    fn_type = checker.env.get_function_type("count_up")
+    assert isinstance(fn_type.return_type, ListType)
+    assert fn_type.return_type.element_type == INTEGER_TYPE
+
+
+def test_typechecker_rejects_generator_function_returning_value():
+    ast = Program([
+        FunctionDefinition(
+            name="bad_return",
+            parameters=[],
+            body=[
+                YieldExpression(Literal("integer", 1)),
+                ReturnStatement(Literal("integer", 2)),
+            ],
+            return_type="List<Integer>",
+        ),
+    ])
+    checker = TypeChecker()
+    errors = checker.check_program(ast)
+
+    assert any("generator function" in err.lower() and "return a value" in err.lower() for err in errors)
+
+
+def test_typechecker_inferrs_generator_function_signature_from_yield_type():
+    ast = Program([
+        FunctionDefinition(
+            name="gen_numbers",
+            parameters=[],
+            body=[YieldExpression(Literal("integer", 1))],
+        ),
+    ])
+    checker = TypeChecker()
+    errors = checker.check_program(ast)
+
+    assert errors == []
+    fn_type = checker.env.get_function_type("gen_numbers")
+    assert isinstance(fn_type.return_type, ListType)
+    assert fn_type.return_type.element_type == INTEGER_TYPE
+
+
+def test_typechecker_rejects_incompatible_yield_types_in_same_generator_function():
+    ast = Program([
+        FunctionDefinition(
+            name="mixed_gen",
+            parameters=[],
+            body=[
+                YieldExpression(Literal("integer", 1)),
+                YieldExpression(Literal("string", "oops")),
+            ],
+        ),
+    ])
+    checker = TypeChecker()
+    errors = checker.check_program(ast)
+
+    assert any("incompatible yield types" in err.lower() for err in errors)

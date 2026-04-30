@@ -65,3 +65,35 @@ def test_logical_type_error_includes_line_context():
     """Logical type mismatch diagnostics should include source line information."""
     errors = _typecheck("set x to 1 and 2\n")
     assert any("Line 1:" in e and "Left operand of 'and'" in e for e in errors)
+
+
+def test_generator_function_requires_list_like_return_annotation():
+    """Generator functions should reject non-list explicit return annotations."""
+    errors = _typecheck(
+        "function bad_gen returns Integer\n"
+        "    yield 1\n"
+        "end\n"
+    )
+    assert any("generator function" in e.lower() and "list-like return type" in e.lower() for e in errors)
+
+
+def test_generator_function_rejects_return_value_statement():
+    """Generator functions should not allow `return value`; yield should be used instead."""
+    errors = _typecheck(
+        "function bad_return returns List<Integer>\n"
+        "    yield 1\n"
+        "    return 2\n"
+        "end\n"
+    )
+    assert any("generator function" in e.lower() and "return a value" in e.lower() for e in errors)
+
+
+def test_generator_function_reports_incompatible_yield_types():
+    """Mixed incompatible yield types should produce a dedicated generator diagnostic."""
+    errors = _typecheck(
+        "function mixed_gen\n"
+        "    yield 1\n"
+        "    yield \"oops\"\n"
+        "end\n"
+    )
+    assert any("incompatible yield types" in e.lower() for e in errors)

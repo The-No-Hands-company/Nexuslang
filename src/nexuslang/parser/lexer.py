@@ -17,6 +17,7 @@ class TokenType(Enum):
     PROTECTED = auto()
     RETURNS = auto()
     RETURN = auto()
+    YIELD = auto()
     NOTHING = auto()
     THIS = auto()
     NEW = auto()
@@ -357,6 +358,7 @@ class Lexer:
             "protected": TokenType.PROTECTED,
             "returns": TokenType.RETURNS,
             "return": TokenType.RETURN,
+            "yield": TokenType.YIELD,
             "nothing": TokenType.NOTHING,
             "this": TokenType.THIS,
             "new": TokenType.NEW,

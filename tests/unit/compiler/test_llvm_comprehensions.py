@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../../src'))
 
 from nexuslang.parser.lexer import Lexer
 from nexuslang.parser.parser import Parser
+from nexuslang.parser.ast import GeneratorExpression, Identifier, ListExpression, Literal, Program, VariableDeclaration
 from nexuslang.compiler.backends.llvm_ir_generator import LLVMIRGenerator
 
 
@@ -70,6 +71,62 @@ class TestGeneratorExpressions:
         """Test generator expression method exists."""
         generator = LLVMIRGenerator()
         assert hasattr(generator, '_generate_generator_expression')
+
+    def test_generator_expression_uses_computed_result_count_not_placeholder_size(self):
+        """Generator lowering should use the produced element count, not a fake placeholder size."""
+        ast = Program([
+            VariableDeclaration(
+                "numbers",
+                ListExpression([
+                    Literal("integer", 1),
+                    Literal("integer", 2),
+                    Literal("integer", 3),
+                ]),
+            ),
+            VariableDeclaration(
+                "gen",
+                GeneratorExpression(
+                    Identifier("x"),
+                    Identifier("x"),
+                    Identifier("numbers"),
+                    None,
+                ),
+            ),
+        ])
+
+        generator = LLVMIRGenerator()
+        llvm_ir = generator.generate(ast)
+
+        assert "add i64 0, 100" not in llvm_ir
+
+    def test_generator_expression_emits_runtime_resume_helpers(self):
+        """Generator lowering should emit has_next/next helpers for pull-style resume semantics."""
+        ast = Program([
+            VariableDeclaration(
+                "numbers",
+                ListExpression([
+                    Literal("integer", 1),
+                    Literal("integer", 2),
+                    Literal("integer", 3),
+                ]),
+            ),
+            VariableDeclaration(
+                "gen",
+                GeneratorExpression(
+                    Identifier("x"),
+                    Identifier("x"),
+                    Identifier("numbers"),
+                    None,
+                ),
+            ),
+        ])
+
+        generator = LLVMIRGenerator()
+        llvm_ir = generator.generate(ast)
+
+        assert "define i1 @nxl_generator_has_next(i8* %gen)" in llvm_ir
+        assert "define i64 @nxl_generator_next(i8* %gen)" in llvm_ir
+        assert "call i8* @malloc(i64 24)" in llvm_ir
 
 
 class TestComprehensionHelpers:

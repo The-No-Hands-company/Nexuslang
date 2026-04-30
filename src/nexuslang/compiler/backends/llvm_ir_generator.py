@@ -162,6 +162,10 @@ class LLVMIRGenerator(CodeGenerator):
         # Channel runtime support (create/send/receive)
         self.has_channel_ops = False
         self.channel_payload_types: Dict[str, str] = {}
+        self.channel_payload_ownership: Dict[str, Dict[str, str]] = {}
+
+        # Generator runtime support (pull-style frame/next semantics)
+        self.has_generator_ops = False
         
         # Type mapping cache
         self.type_cache: Dict[str, str] = {}
@@ -797,6 +801,7 @@ class LLVMIRGenerator(CodeGenerator):
         self._collect_first_pass(ast)
         self._detect_rc_usage(ast)
         self._detect_channel_usage(ast)
+        self._detect_generator_usage(ast)
         self._declare_external_functions()
         self._emit_type_declarations()
         
@@ -856,6 +861,8 @@ class LLVMIRGenerator(CodeGenerator):
                 self._collect_enum_definition(stmt)
             elif stmt_type == 'VariableDeclaration':
                 self._collect_global_variable(stmt)
+            elif stmt_type == 'SendStatement':
+                self._collect_channel_send_metadata(stmt)
             elif stmt_type == 'ExternVariableDeclaration':
                 self._collect_extern_variable(stmt)
             elif stmt_type == 'ExternFunctionDeclaration':
@@ -1068,6 +1075,51 @@ class LLVMIRGenerator(CodeGenerator):
                 for method in node.methods:
                     if scan_node(method):
                         return True
+
+            return False
+
+        if hasattr(ast, 'statements'):
+            for stmt in ast.statements:
+                if scan_node(stmt):
+                    break
+
+    def _detect_generator_usage(self, ast):
+        """Pre-scan AST to detect generator-expression usage."""
+        def scan_node(node):
+            if node is None:
+                return False
+
+            node_type = type(node).__name__
+            if node_type in ('GeneratorExpression', 'YieldExpression'):
+                self.has_generator_ops = True
+                return True
+
+            if hasattr(node, 'body') and isinstance(node.body, list):
+                for stmt in node.body:
+                    if scan_node(stmt):
+                        return True
+
+            if hasattr(node, 'statements') and isinstance(node.statements, list):
+                for stmt in node.statements:
+                    if scan_node(stmt):
+                        return True
+
+            if hasattr(node, 'value') and node.value:
+                if scan_node(node.value):
+                    return True
+
+            if hasattr(node, 'methods') and isinstance(node.methods, list):
+                for method in node.methods:
+                    if scan_node(method):
+                        return True
+
+            if hasattr(node, 'iterable') and node.iterable:
+                if scan_node(node.iterable):
+                    return True
+
+            if hasattr(node, 'expr') and node.expr:
+                if scan_node(node.expr):
+                    return True
 
             return False
 
@@ -1316,10 +1368,56 @@ class LLVMIRGenerator(CodeGenerator):
             
             # Add array helper functions
             self._define_array_helper_functions()
+
+            # Add generator runtime helper functions (for frame/resume pull API)
+            if self.has_generator_ops:
+                self._define_generator_runtime_functions()
             
             # Add coroutine runtime functions (for async/await) - only if needed
             if self.has_async_functions:
                 self._define_coroutine_runtime_functions()
+
+    def _define_generator_runtime_functions(self):
+        """Define generator frame helpers for pull-style resume semantics."""
+        self.emit('; Generator runtime helper functions')
+
+        # has_next(gen_frame) -> i1
+        self.emit('define i1 @nxl_generator_has_next(i8* %gen) {')
+        self.emit('entry:')
+        self.emit('  %frame = bitcast i8* %gen to { i64*, i64, i64 }*')
+        self.emit('  %size_ptr = getelementptr inbounds { i64*, i64, i64 }, { i64*, i64, i64 }* %frame, i32 0, i32 1')
+        self.emit('  %size = load i64, i64* %size_ptr, align 8')
+        self.emit('  %index_ptr = getelementptr inbounds { i64*, i64, i64 }, { i64*, i64, i64 }* %frame, i32 0, i32 2')
+        self.emit('  %index = load i64, i64* %index_ptr, align 8')
+        self.emit('  %has_next = icmp slt i64 %index, %size')
+        self.emit('  ret i1 %has_next')
+        self.emit('}')
+        self.emit('')
+
+        # next(gen_frame) -> i64 (returns 0 when exhausted)
+        self.emit('define i64 @nxl_generator_next(i8* %gen) {')
+        self.emit('entry:')
+        self.emit('  %frame = bitcast i8* %gen to { i64*, i64, i64 }*')
+        self.emit('  %size_ptr = getelementptr inbounds { i64*, i64, i64 }, { i64*, i64, i64 }* %frame, i32 0, i32 1')
+        self.emit('  %size = load i64, i64* %size_ptr, align 8')
+        self.emit('  %index_ptr = getelementptr inbounds { i64*, i64, i64 }, { i64*, i64, i64 }* %frame, i32 0, i32 2')
+        self.emit('  %index = load i64, i64* %index_ptr, align 8')
+        self.emit('  %in_range = icmp slt i64 %index, %size')
+        self.emit('  br i1 %in_range, label %load_value, label %exhausted')
+        self.emit('')
+        self.emit('load_value:')
+        self.emit('  %data_ptr_ptr = getelementptr inbounds { i64*, i64, i64 }, { i64*, i64, i64 }* %frame, i32 0, i32 0')
+        self.emit('  %data_ptr = load i64*, i64** %data_ptr_ptr, align 8')
+        self.emit('  %value_ptr = getelementptr inbounds i64, i64* %data_ptr, i64 %index')
+        self.emit('  %value = load i64, i64* %value_ptr, align 8')
+        self.emit('  %next_index = add i64 %index, 1')
+        self.emit('  store i64 %next_index, i64* %index_ptr, align 8')
+        self.emit('  ret i64 %value')
+        self.emit('')
+        self.emit('exhausted:')
+        self.emit('  ret i64 0')
+        self.emit('}')
+        self.emit('')
     
     def _define_additional_string_helper_functions(self):
         """Define additional NexusLang string helper functions."""
@@ -2256,7 +2354,10 @@ class LLVMIRGenerator(CodeGenerator):
         else:
             # Infer from value
             if hasattr(node, 'value') and node.value:
-                llvm_type = self._infer_expression_type(node.value)
+                if type(node.value).__name__ == 'ReceiveExpression' and hasattr(node.value, 'channel'):
+                    llvm_type = self._infer_channel_payload_type(node.value.channel)
+                else:
+                    llvm_type = self._infer_expression_type(node.value)
             else:
                 llvm_type = 'i64'  # Default
         
@@ -2269,6 +2370,24 @@ class LLVMIRGenerator(CodeGenerator):
         
         global_name = f'@{var_name}'
         self.global_vars[var_name] = (llvm_type, global_name)
+
+        ownership = self._get_channel_payload_ownership(getattr(node, 'value', None))
+        if ownership is not None:
+            self.rc_variables[var_name] = {
+                'kind': ownership['kind'],
+                'inner_type': ownership['inner_type'],
+                'ptr': global_name
+            }
+
+    def _collect_channel_send_metadata(self, stmt) -> None:
+        """Collect top-level channel payload type and ownership metadata."""
+        if type(getattr(stmt, 'channel', None)).__name__ != 'Identifier':
+            return
+
+        channel_name = stmt.channel.name
+        payload_type = self._infer_expression_type(stmt.value)
+        self.channel_payload_types.setdefault(channel_name, payload_type)
+        self._record_channel_payload_ownership(channel_name, stmt.value)
     
     def _collect_extern_function(self, node):
         """Collect extern function declaration for FFI."""
@@ -3327,6 +3446,8 @@ class LLVMIRGenerator(CodeGenerator):
         value_reg = self._generate_expression(stmt.value, indent)
         value_type = self._infer_expression_type(stmt.value)
 
+        value_reg = self._retain_channel_payload_if_needed(stmt, value_reg, indent)
+
         payload_type = value_type
         if type(getattr(stmt, 'channel', None)).__name__ == 'Identifier':
             channel_name = stmt.channel.name
@@ -3336,6 +3457,8 @@ class LLVMIRGenerator(CodeGenerator):
                     value_reg = self._convert_type(value_reg, value_type, payload_type, indent)
             else:
                 self.channel_payload_types[channel_name] = payload_type
+
+            self._record_channel_payload_ownership(channel_name, stmt.value)
 
         i64_value = self._encode_channel_payload(value_reg, payload_type, indent)
 
@@ -3350,6 +3473,10 @@ class LLVMIRGenerator(CodeGenerator):
         """Encode a typed value into i64 transport storage for channel runtime calls."""
         if value_type == 'i64':
             return value_reg
+        if value_type.endswith('*'):
+            encoded = self._new_temp()
+            self.emit(f'{indent}{encoded} = ptrtoint {value_type} {value_reg} to i64')
+            return encoded
         if value_type == 'double':
             encoded = self._new_temp()
             self.emit(f'{indent}{encoded} = bitcast double {value_reg} to i64')
@@ -3374,16 +3501,16 @@ class LLVMIRGenerator(CodeGenerator):
                 encoded = self._new_temp()
                 self.emit(f'{indent}{encoded} = trunc {value_type} {value_reg} to i64')
                 return encoded
-        if value_type.endswith('*'):
-            encoded = self._new_temp()
-            self.emit(f'{indent}{encoded} = ptrtoint {value_type} {value_reg} to i64')
-            return encoded
         return self._convert_type(value_reg, value_type, 'i64', indent)
 
     def _decode_channel_payload(self, raw_reg: str, target_type: str, indent='') -> str:
         """Decode an i64 channel payload transport value back into target_type."""
         if target_type == 'i64':
             return raw_reg
+        if target_type.endswith('*'):
+            decoded = self._new_temp()
+            self.emit(f'{indent}{decoded} = inttoptr i64 {raw_reg} to {target_type}')
+            return decoded
         if target_type == 'double':
             decoded = self._new_temp()
             self.emit(f'{indent}{decoded} = bitcast i64 {raw_reg} to double')
@@ -3408,10 +3535,6 @@ class LLVMIRGenerator(CodeGenerator):
                 decoded = self._new_temp()
                 self.emit(f'{indent}{decoded} = sext i64 {raw_reg} to {target_type}')
                 return decoded
-        if target_type.endswith('*'):
-            decoded = self._new_temp()
-            self.emit(f'{indent}{decoded} = inttoptr i64 {raw_reg} to {target_type}')
-            return decoded
         return self._convert_type(raw_reg, 'i64', target_type, indent)
 
     def _infer_channel_payload_type(self, channel_expr) -> str:
@@ -3419,6 +3542,75 @@ class LLVMIRGenerator(CodeGenerator):
         if type(channel_expr).__name__ == 'Identifier':
             return self.channel_payload_types.get(channel_expr.name, 'i64')
         return 'i64'
+
+    def _get_channel_payload_ownership(self, expr):
+        """Infer smart-pointer ownership metadata for a channel payload expression."""
+        expr_type = type(expr).__name__
+
+        if expr_type == 'Identifier':
+            return self.rc_variables.get(expr.name)
+
+        if expr_type == 'RcCreation':
+            self.has_rc_types = True
+            return {
+                'kind': expr.rc_kind,
+                'inner_type': expr.inner_type,
+            }
+
+        if expr_type == 'DowngradeExpression':
+            if hasattr(expr, 'rc_expr') and type(expr.rc_expr).__name__ == 'Identifier':
+                source_info = self.rc_variables.get(expr.rc_expr.name)
+                if source_info is not None:
+                    self.has_rc_types = True
+                    return {
+                        'kind': 'weak',
+                        'inner_type': source_info['inner_type'],
+                    }
+
+        if expr_type == 'UpgradeExpression':
+            if hasattr(expr, 'weak_expr') and type(expr.weak_expr).__name__ == 'Identifier':
+                source_info = self.rc_variables.get(expr.weak_expr.name)
+                if source_info is not None:
+                    self.has_rc_types = True
+                    return {
+                        'kind': 'rc',
+                        'inner_type': source_info['inner_type'],
+                    }
+
+        return None
+
+    def _record_channel_payload_ownership(self, channel_name: str, value_expr) -> None:
+        """Record smart-pointer payload ownership metadata for a channel."""
+        ownership = self._get_channel_payload_ownership(value_expr)
+        if ownership is None:
+            return
+
+        existing = self.channel_payload_ownership.get(channel_name)
+        if existing is None:
+            self.channel_payload_ownership[channel_name] = dict(ownership)
+
+    def _retain_channel_payload_if_needed(self, stmt, value_reg: str, indent: str) -> str:
+        """Retain smart-pointer payloads when sending an existing owned handle through a channel."""
+        value_expr = getattr(stmt, 'value', None)
+        ownership = self._get_channel_payload_ownership(value_expr)
+        if ownership is None or type(value_expr).__name__ != 'Identifier':
+            return value_reg
+
+        rc_kind = ownership['kind']
+        retained_ptr = self._new_temp()
+        self.has_rc_types = True
+
+        if rc_kind == 'rc':
+            self.emit(f'{indent}{retained_ptr} = call i8* @rc_retain(i8* {value_reg})')
+            return retained_ptr
+        if rc_kind == 'arc':
+            self.emit(f'{indent}{retained_ptr} = call i8* @arc_retain(i8* {value_reg})')
+            return retained_ptr
+        if rc_kind == 'weak':
+            self.emit(f'{indent}{retained_ptr} = call i8* @rc_downgrade(i8* {value_reg})')
+            return retained_ptr
+
+        return value_reg
     
     def _generate_variable_declaration(self, node, indent=''):
         """Generate variable declaration with optional initialization."""
@@ -3480,6 +3672,7 @@ class LLVMIRGenerator(CodeGenerator):
                 llvm_type, global_name = self.global_vars[var_name]
                 value_reg = self._generate_expression(node.value, indent)
                 value_type = self._infer_expression_type(node.value)
+                value_reg = self._track_rc_variable_assignment(node, var_name, value_reg, indent)
                 
                 # Track if this is a closure assignment (lambda expression) for GLOBALS
                 if type(node.value).__name__ == 'LambdaExpression':
@@ -3639,6 +3832,24 @@ class LLVMIRGenerator(CodeGenerator):
                     }
 
                     # Add to cleanup stack (uses rc_release)
+                    if self.current_function_name:
+                        if self.current_function_name not in self.rc_cleanup_stack:
+                            self.rc_cleanup_stack[self.current_function_name] = []
+                        self.rc_cleanup_stack[self.current_function_name].append(var_name)
+
+        # Track receive expression results when the channel carries owned smart pointers
+        elif value_node_type == 'ReceiveExpression':
+            if hasattr(node.value, 'channel') and type(node.value.channel).__name__ == 'Identifier':
+                channel_name = node.value.channel.name
+                ownership = self.channel_payload_ownership.get(channel_name)
+                if ownership is not None:
+                    self.has_rc_types = True
+                    self.rc_variables[var_name] = {
+                        'kind': ownership['kind'],
+                        'inner_type': ownership['inner_type'],
+                        'ptr': value_reg
+                    }
+
                     if self.current_function_name:
                         if self.current_function_name not in self.rc_cleanup_stack:
                             self.rc_cleanup_stack[self.current_function_name] = []
@@ -8336,20 +8547,8 @@ class LLVMIRGenerator(CodeGenerator):
 
         return iterable_ptr, list_size, is_global_array
 
-    def _generate_list_comprehension_expression(self, expr, indent='') -> str:
-        """
-        Generate list comprehension: [expr for target in iterable if condition]
-        
-        Compiles to:
-        1. Allocate list storage (array)
-        2. Loop over iterable
-        3. Check optional condition
-        4. Evaluate expression and append to list
-        5. Return list pointer
-        
-        For simplicity, we'll use a fixed-size array and track count.
-        Real implementation would use dynamic arrays/vectors.
-        """
+    def _generate_list_comprehension_expression_with_count(self, expr, indent=''):
+        """Generate a list comprehension and return both the data pointer and produced element count."""
         # Determine target variable name
         target_name = expr.target.name if hasattr(expr.target, 'name') else str(expr.target)
         
@@ -8379,10 +8578,8 @@ class LLVMIRGenerator(CodeGenerator):
         
         # Get list size (handle both compile-time and runtime sizes)
         if isinstance(list_size, int):
-            # Compile-time known size
             list_size_val = str(list_size)
         else:
-            # Runtime size - already have the register
             list_size_val = list_size
         
         self.emit(f'{indent}br label %{loop_start_label}')
@@ -8399,18 +8596,13 @@ class LLVMIRGenerator(CodeGenerator):
         self.emit(f'{loop_body_label}:')
         
         # Load actual element from iterable[index]
-        # Get pointer to element in array
         elem_ptr = self._new_temp()
         
-        # For global arrays (loaded as i64*) or runtime-sized arrays, use simple pointer arithmetic
         if is_global_array or not isinstance(list_size, int):
-            # iterable_ptr is i64*, use direct getelementptr
             self.emit(f'{indent}    {elem_ptr} = getelementptr inbounds i64, i64* {iterable_ptr}, i64 {index_val}')
         else:
-            # Local array with compile-time size: iterable_ptr is [N x i64]*
             self.emit(f'{indent}    {elem_ptr} = getelementptr inbounds [{list_size} x i64], [{list_size} x i64]* {iterable_ptr}, i64 0, i64 {index_val}')
         
-        # Load the element value
         element_val = self._new_temp()
         self.emit(f'{indent}    {element_val} = load i64, i64* {elem_ptr}, align 8')
         
@@ -8427,13 +8619,11 @@ class LLVMIRGenerator(CodeGenerator):
         if expr.condition:
             cond_reg = self._generate_expression(expr.condition, indent + '    ')
             
-            # Convert to i1 if needed
             if self._infer_expression_type(expr.condition) != 'i1':
                 cond_bool = self._new_temp()
                 self.emit(f'{indent}    {cond_bool} = icmp ne i64 {cond_reg}, 0')
                 cond_reg = cond_bool
             
-            # Conditional append
             append_label = f'comp_append_{self.label_counter}'
             skip_label = f'comp_skip_{self.label_counter}'
             self.label_counter += 1
@@ -8446,7 +8636,6 @@ class LLVMIRGenerator(CodeGenerator):
             self.emit(f'{indent}      br label %{skip_label}')
             self.emit(f'{skip_label}:')
         else:
-            # No condition - always append
             self._generate_comprehension_append(expr.expr, count_ptr, result_list, max_size, indent + '    ')
         
         # Restore local vars (remove target variable)
@@ -8459,11 +8648,31 @@ class LLVMIRGenerator(CodeGenerator):
         self.emit(f'{indent}    br label %{loop_start_label}')
         
         self.emit(f'{loop_end_label}:')
+
+        final_count = self._new_temp()
+        self.emit(f'{indent}{final_count} = load i64, i64* {count_ptr}, align 8')
         
         # Return pointer to first element (same as list expression)
         result_ptr = self._new_temp()
         self.emit(f'{indent}{result_ptr} = getelementptr inbounds [{max_size} x i64], [{max_size} x i64]* {result_list}, i64 0, i64 0')
         
+        return result_ptr, final_count
+
+    def _generate_list_comprehension_expression(self, expr, indent='') -> str:
+        """
+        Generate list comprehension: [expr for target in iterable if condition]
+        
+        Compiles to:
+        1. Allocate list storage (array)
+        2. Loop over iterable
+        3. Check optional condition
+        4. Evaluate expression and append to list
+        5. Return list pointer
+        
+        For simplicity, we'll use a fixed-size array and track count.
+        Real implementation would use dynamic arrays/vectors.
+        """
+        result_ptr, _ = self._generate_list_comprehension_expression_with_count(expr, indent)
         return result_ptr
     
 
@@ -8660,25 +8869,23 @@ class LLVMIRGenerator(CodeGenerator):
         # For now, generate as list comprehension and wrap in generator struct
         # A generator struct could be: {i64* data, i64 size, i64 current_index}
         
-        # Use list comprehension implementation
-        list_ptr = self._generate_list_comprehension_expression(expr, indent)
+        # Use list comprehension implementation and preserve the actual produced count
+        list_ptr, list_count = self._generate_list_comprehension_expression_with_count(expr, indent)
         
-        # Create generator struct
+        # Create a heap-backed generator frame for pull/resume semantics.
+        gen_alloc = self._new_temp()
+        self.emit(f'{indent}{gen_alloc} = call i8* @malloc(i64 24)')
         gen_struct = self._new_temp()
-        self.emit(f'{indent}{gen_struct} = alloca {{ i64*, i64, i64 }}, align 8')
+        self.emit(f'{indent}{gen_struct} = bitcast i8* {gen_alloc} to {{ i64*, i64, i64 }}*')
         
         # Store data pointer
         data_field_ptr = self._new_temp()
         self.emit(f'{indent}{data_field_ptr} = getelementptr inbounds {{ i64*, i64, i64 }}, {{ i64*, i64, i64 }}* {gen_struct}, i32 0, i32 0')
         self.emit(f'{indent}store i64* {list_ptr}, i64** {data_field_ptr}, align 8')
         
-        # Store size (would need to track from comprehension - for now use placeholder)
-        # In a real implementation, we'd return the actual computed size from comprehension
-        size_val = self._new_temp()
-        self.emit(f'{indent}{size_val} = add i64 0, 100')  # Placeholder
         size_field_ptr = self._new_temp()
         self.emit(f'{indent}{size_field_ptr} = getelementptr inbounds {{ i64*, i64, i64 }}, {{ i64*, i64, i64 }}* {gen_struct}, i32 0, i32 1')
-        self.emit(f'{indent}store i64 {size_val}, i64* {size_field_ptr}, align 8')
+        self.emit(f'{indent}store i64 {list_count}, i64* {size_field_ptr}, align 8')
         
         # Initialize current_index to 0
         index_field_ptr = self._new_temp()

@@ -55,6 +55,9 @@ class TypeEnvironment:
         self.variables: Dict[str, Type] = {}
         self.functions: Dict[str, FunctionType] = {}
         self.return_type: Optional[Type] = None
+        self.is_generator_function: bool = False
+        self.expected_yield_type: Optional[Type] = None
+        self.yielded_types: List[Type] = []
         
         # Generic support
         self.generic_context: Optional[GenericContext] = None
@@ -133,6 +136,14 @@ class TypeEnvironment:
         if self.parent:
             return self.parent.get_return_type()
         
+        return None
+
+    def get_generator_context(self) -> Optional['TypeEnvironment']:
+        """Get the nearest enclosing generator-function scope, if any."""
+        if self.is_generator_function:
+            return self
+        if self.parent:
+            return self.parent.get_generator_context()
         return None
 
 class TypeRegistry(dict):
@@ -685,6 +696,7 @@ class TypeChecker:
         """Check the type of a function definition (with generic support)."""
         # Check if this is a generic function
         is_generic = bool(definition.type_parameters)
+        contains_yield = any(self._statement_contains_yield(stmt) for stmt in definition.body)
         
         if is_generic:
             # Store generic function template for later instantiation
@@ -773,18 +785,34 @@ class TypeChecker:
                     min_params += 1
         
         # Set return type
-        return_type = ANY_TYPE
+        declared_return_type = ANY_TYPE
+        has_explicit_return_type = bool(definition.return_type)
         if definition.return_type:
-            # Check if return type is a type parameter
             if env.is_type_parameter(definition.return_type):
-                return_type = GenericParameter(definition.return_type)
+                declared_return_type = GenericParameter(definition.return_type)
             else:
-                return_type = get_type_by_name(definition.return_type)
+                declared_return_type = get_type_by_name(definition.return_type)
         else:
-            # Use type inference to determine return type if not specified
             inferred_return_type = self.type_inference.infer_function_return_type(definition, env.variables)
             if inferred_return_type != ANY_TYPE:
-                return_type = inferred_return_type
+                declared_return_type = inferred_return_type
+
+        return_type = declared_return_type
+        function_env.is_generator_function = contains_yield
+        if contains_yield:
+            if has_explicit_return_type:
+                if isinstance(declared_return_type, ListType):
+                    function_env.expected_yield_type = declared_return_type.element_type
+                    return_type = declared_return_type
+                else:
+                    self.errors.append(
+                        f"Type error: Function '{definition.name}' is a generator function and must declare a list-like return type, got '{self._type_name(declared_return_type)}'"
+                    )
+                    function_env.expected_yield_type = ANY_TYPE
+                    return_type = ListType(ANY_TYPE)
+            else:
+                function_env.expected_yield_type = ANY_TYPE
+                return_type = ListType(ANY_TYPE)
         
         function_env.set_return_type(return_type)
         
@@ -801,10 +829,22 @@ class TypeChecker:
         # Check the function body
         for statement in definition.body:
             self.check_statement(statement, function_env)
+
+        if contains_yield:
+            inferred_yield_type = self._infer_generator_yield_type(function_env.yielded_types, definition.name)
+            if not has_explicit_return_type:
+                return_type = ListType(inferred_yield_type)
+            elif isinstance(declared_return_type, ListType):
+                return_type = declared_return_type
+
+            function_env.set_return_type(return_type)
         
         if is_generic:
             # Exit generic scope
             env.exit_generic_scope()
+
+        function_type.return_type = return_type
+        env.define_function(definition.name, function_type)
         
         return function_type
     
@@ -1060,6 +1100,15 @@ class TypeChecker:
     
     def check_return_statement(self, statement: ReturnStatement, env: TypeEnvironment) -> Type:
         """Check a return statement."""
+        generator_env = env.get_generator_context()
+        if generator_env is not None:
+            if statement.value is not None:
+                value_type = self.check_statement(statement.value, env)
+                self.errors.append(
+                    f"Type error: Generator function cannot return a value of type '{self._type_name(value_type)}'; use bare return or yield"
+                )
+            return NULL_TYPE
+
         if statement.value:
             value_type = self.check_statement(statement.value, env)
         else:
@@ -1593,18 +1642,72 @@ class TypeChecker:
         if getattr(yield_expr, 'value', None) is not None:
             yielded_type = self.check_statement(yield_expr.value, env)
 
-        expected_return_type = env.get_return_type()
-        if expected_return_type is None:
+        generator_env = env.get_generator_context()
+        if generator_env is None:
             self.errors.append("Type error: 'yield' can only be used inside a function")
             return yielded_type
 
-        if not yielded_type.is_compatible_with(expected_return_type):
+        generator_env.yielded_types.append(yielded_type)
+
+        expected_yield_type = generator_env.expected_yield_type
+        if expected_yield_type is None:
+            return yielded_type
+
+        if not yielded_type.is_compatible_with(expected_yield_type):
             self.errors.append(
                 f"Type error: Yield value of type '{self._type_name(yielded_type)}' is not compatible "
-                f"with expected return type '{self._type_name(expected_return_type)}'"
+                f"with generator element type '{self._type_name(expected_yield_type)}'"
             )
 
         return yielded_type
+
+    def _statement_contains_yield(self, node: Any) -> bool:
+        """Return True when *node* contains a yield in the current function scope."""
+        if node is None:
+            return False
+
+        node_type = type(node).__name__
+        if node_type == 'YieldExpression':
+            return True
+        if node_type in {'FunctionDefinition', 'AsyncFunctionDefinition', 'LambdaExpression', 'ClassDefinition', 'MethodDefinition'}:
+            return False
+
+        if isinstance(node, list):
+            return any(self._statement_contains_yield(item) for item in node)
+
+        if not hasattr(node, '__dict__'):
+            return False
+
+        for value in vars(node).values():
+            if isinstance(value, list):
+                if any(self._statement_contains_yield(item) for item in value):
+                    return True
+            elif hasattr(value, '__dict__') and self._statement_contains_yield(value):
+                return True
+
+        return False
+
+    def _infer_generator_yield_type(self, yielded_types: List[Type], function_name: str) -> Type:
+        """Infer a stable generator element type or report incompatible yields."""
+        if not yielded_types:
+            return ANY_TYPE
+
+        current_type = yielded_types[0]
+        for next_type in yielded_types[1:]:
+            if isinstance(current_type, AnyType) or isinstance(next_type, AnyType):
+                current_type = ANY_TYPE
+                continue
+
+            common_type = current_type.get_common_supertype(next_type)
+            compatible = current_type.is_compatible_with(next_type) or next_type.is_compatible_with(current_type)
+            if isinstance(common_type, AnyType) and not compatible:
+                self.errors.append(
+                    f"Type error: Function '{function_name}' has incompatible yield types '{self._type_name(current_type)}' and '{self._type_name(next_type)}'"
+                )
+                return ANY_TYPE
+            current_type = common_type
+
+        return current_type
 
     def check_class_definition(self, definition: ClassDefinition, env: TypeEnvironment) -> Type:
         """Check the type of a class definition."""

@@ -67,3 +67,40 @@ def test_llvm_lowers_close_statement_to_runtime_call():
 
     assert "declare void @nxl_channel_close(i8*)" in llvm_ir
     assert "call void @nxl_channel_close(i8* " in llvm_ir
+
+
+def test_llvm_channel_send_retains_rc_payload_and_tracks_received_owner():
+    code = """
+    set ptr to Rc of Integer with 7
+    set ch to create channel
+    send ptr to ch
+    set received to receive from ch
+    """
+
+    ast = _parse(code)
+    generator = LLVMIRGenerator()
+    llvm_ir = generator.generate(ast)
+
+    assert "call i8* @rc_retain(i8* " in llvm_ir
+    assert "call void @nxl_channel_send(i8*" in llvm_ir
+    assert "ptrtoint i8*" in llvm_ir
+    assert "inttoptr i64" in llvm_ir
+    assert generator.channel_payload_ownership["ch"]["kind"] == "rc"
+    assert generator.rc_variables["received"]["kind"] == "rc"
+
+
+def test_llvm_channel_send_retains_arc_payload_and_tracks_received_owner():
+    code = """
+    set ptr to Arc of Integer with 7
+    set ch to create channel
+    send ptr to ch
+    set received to receive from ch
+    """
+
+    ast = _parse(code)
+    generator = LLVMIRGenerator()
+    llvm_ir = generator.generate(ast)
+
+    assert "call i8* @arc_retain(i8* " in llvm_ir
+    assert generator.channel_payload_ownership["ch"]["kind"] == "arc"
+    assert generator.rc_variables["received"]["kind"] == "arc"
