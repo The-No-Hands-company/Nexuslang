@@ -1389,36 +1389,52 @@ class Interpreter:
         
     def execute_switch_statement(self, node):
         """Execute a switch statement for multi-way branching.
-        
+
         Evaluates the switch expression once and compares it against each case value.
-        Executes the matching case body and stops (no fallthrough by default).
-        Executes default case if no match found.
+        Executes the matching case body.  When a case body ends with a ``fallthrough``
+        statement, execution continues into the next case's body without re-evaluating
+        the condition (C-style fallthrough semantics).  Without a ``fallthrough``,
+        execution stops after the first matching case.  The default case runs when no
+        case matches.
         """
-        # Evaluate the switch expression once
         switch_value = self.execute(node.expression)
-        
-        # Try to match against each case
-        for case in node.cases:
+
+        # Find the first matching case index.
+        matched_index = None
+        for i, case in enumerate(node.cases):
             case_value = self.execute(case.value)
-            
-            # Check if values match (using Python equality)
             if switch_value == case_value:
-                # Execute the case body
+                matched_index = i
+                break
+
+        if matched_index is None:
+            # No case matched — run default if present.
+            if node.default_case:
                 result = None
+                for statement in node.default_case:
+                    result = self.execute(statement)
+                return result
+            return None
+
+        # Execute matched case and handle fallthrough into subsequent cases.
+        result = None
+        for case in node.cases[matched_index:]:
+            fell_through = False
+            try:
                 for statement in case.body:
                     result = self.execute(statement)
-                # No fallthrough - return after first match
+            except FallthroughException:
+                fell_through = True
+            if not fell_through:
                 return result
-        
-        # No case matched - execute default case if present
+        # Fell through all remaining cases — run default if present.
         if node.default_case:
-            result = None
-            for statement in node.default_case:
-                result = self.execute(statement)
-            return result
-        
-        # No match and no default - return None
-        return None
+            try:
+                for statement in node.default_case:
+                    result = self.execute(statement)
+            except FallthroughException:
+                pass
+        return result
     
     def execute_match_expression(self, node):
         """Execute a pattern matching expression.

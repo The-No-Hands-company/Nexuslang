@@ -25,6 +25,8 @@ from ..parser.ast import (
     SizeofExpression, AddressOfExpression, DereferenceExpression,
     # Allocator hint
     AllocatorHint,
+    # Switch statement
+    SwitchStatement,
 )
 from ..typesystem.types import (
     Type, PrimitiveType, ListType, DictionaryType, ClassType, 
@@ -250,6 +252,8 @@ class TypeChecker:
             return self.check_for_loop(statement, env)
         elif isinstance(statement, ParallelForLoop):
             return self.check_parallel_for_loop(statement, env)
+        elif isinstance(statement, SwitchStatement):
+            return self.check_switch_statement(statement, env)
         elif isinstance(statement, ExpectStatement):
             return self.check_expect_statement(statement, env)
         elif isinstance(statement, RequireStatement):
@@ -270,7 +274,7 @@ class TypeChecker:
             return self.check_repeat_while_loop(statement, env)
         elif isinstance(statement, ReturnStatement):
             return self.check_return_statement(statement, env)
-        elif statement.__class__.__name__ in ('BreakStatement', 'ContinueStatement'):
+        elif statement.__class__.__name__ in ('BreakStatement', 'ContinueStatement', 'FallthroughStatement'):
             return ANY_TYPE
         elif isinstance(statement, Block):
             return self.check_block(statement, env)
@@ -952,6 +956,71 @@ class TypeChecker:
             result_type = self.check_statement(stmt, loop_env)
 
         return result_type
+
+    def check_switch_statement(self, statement: SwitchStatement, env: TypeEnvironment) -> Type:
+        """Check a switch statement for multi-way branching.
+
+        Verifies:
+        - The switch expression has a valid type.
+        - Each case value type is compatible with the switch expression type.
+        - All case bodies are well-typed.
+        - Flags unreachable duplicate cases (same constant value appearing twice).
+        - Fallthrough statements are accepted without error (they are typed as ANY_TYPE
+          via the FallthroughStatement dispatch in check_statement).
+
+        Returns the union of all branch body types (including the default branch).
+        """
+        switch_type = self.check_expression(statement.expression, env)
+
+        case_types: List[Type] = []
+        seen_case_values: List[Any] = []
+
+        for case in statement.cases:
+            case_val_type = self.check_expression(case.value, env)
+
+            # Warn when a case value type is clearly incompatible with the switch
+            # expression type (e.g. switching on Integer but case is a String literal).
+            if (
+                not isinstance(switch_type, AnyType)
+                and not isinstance(case_val_type, AnyType)
+                and not case_val_type.is_compatible_with(switch_type)
+                and not switch_type.is_compatible_with(case_val_type)
+            ):
+                self.errors.append(
+                    f"Type error: case value type '{self._type_name(case_val_type)}' is "
+                    f"incompatible with switch expression type '{self._type_name(switch_type)}'"
+                )
+
+            # Duplicate constant detection (best-effort for Literal nodes).
+            literal_value = None
+            if hasattr(case.value, 'value'):
+                literal_value = case.value.value
+            if literal_value is not None:
+                if literal_value in seen_case_values:
+                    self.errors.append(
+                        f"Type error: duplicate case value {literal_value!r} in switch statement"
+                    )
+                else:
+                    seen_case_values.append(literal_value)
+
+            # Type-check the case body in a fresh child environment.
+            case_env = TypeEnvironment(env)
+            body_type = NULL_TYPE
+            for stmt in case.body:
+                body_type = self.check_statement(stmt, case_env)
+            case_types.append(body_type)
+
+        # Type-check the default case body (if present).
+        if statement.default_case:
+            default_env = TypeEnvironment(env)
+            default_type = NULL_TYPE
+            for stmt in statement.default_case:
+                default_type = self.check_statement(stmt, default_env)
+            case_types.append(default_type)
+
+        if not case_types:
+            return NULL_TYPE
+        return UnionType(case_types)
 
     def _check_contract_condition(self, condition: Any, env: TypeEnvironment, kind: str) -> Type:
         """Validate a contract/assertion condition expression type."""
