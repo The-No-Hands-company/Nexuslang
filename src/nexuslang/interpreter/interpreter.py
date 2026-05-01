@@ -212,6 +212,20 @@ class Interpreter:
         # Coverage collector (optional) — set by CoverageCollector.attach()
         self._coverage_collector = None
 
+        # Inline assembly interpreter policy.
+        # Supported values:
+        # - "error": raise NxlRuntimeError when asm is encountered.
+        # - "warn": print warning once and skip asm block.
+        # - "skip": silently skip asm block.
+        #
+        # Default is strict when type checking is enabled (CLI default), and
+        # warning mode otherwise for compatibility with non-strict test runs.
+        runtime_policy = getattr(runtime, "inline_asm_policy", None)
+        if runtime_policy is not None:
+            self.inline_asm_policy = str(runtime_policy).strip().lower()
+        else:
+            self.inline_asm_policy = "error" if enable_type_checking else "warn"
+
         # Pre-call value map for old(expr) postcondition capture.
         # Keyed by id(OldExpression node) → pre-call evaluated value.
         # Populated before each user-function body and cleared after.
@@ -3130,21 +3144,44 @@ class Interpreter:
     
     def execute_inline_assembly(self, node):
         """Execute inline assembly block.
-        
-        Note: Inline assembly is primarily supported in compiled mode.
-        In interpreter mode, we skip execution with a warning (printed once).
-        
-        For limited interpreter support of hardcoded x86 instructions,
-        use the execute_asm() stdlib function from nexuslang.stdlib.asm
+
+        Inline assembly is primarily supported in compiled mode. In the
+        interpreter, behavior is controlled by `inline_asm_policy`:
+
+        - "error": raise runtime error (strict mode)
+        - "warn": print warning once, then skip block
+        - "skip": silently skip block
+
+        For limited interpreter support of hardcoded x86 instructions, use the
+        execute_asm() stdlib function from nexuslang.stdlib.asm.
         """
-        # Print warning once
-        if not hasattr(self, '_inline_asm_warned'):
-            print("Warning: Inline assembly is only fully supported in compiled mode.")
-            print("         Assembly blocks are skipped in interpreter mode.")
-            print("         Compile with 'nlplc' to generate actual inline assembly.")
-            self._inline_asm_warned = True
-        
-        # Skip execution - inline assembly requires compiled native code
+        policy = getattr(self, "inline_asm_policy", "error")
+
+        if policy not in {"error", "warn", "skip"}:
+            raise NxlRuntimeError(
+                f"Invalid inline_asm_policy '{policy}'. Expected one of: error, warn, skip",
+                line=getattr(node, 'line_number', None),
+                error_type_key="runtime_error",
+                full_source=self.source,
+            )
+
+        if policy == "error":
+            raise NxlRuntimeError(
+                "Inline assembly is not executed in interpreter mode. "
+                "Compile with 'nlplc' or set runtime.inline_asm_policy to 'warn' or 'skip'.",
+                line=getattr(node, 'line_number', None),
+                error_type_key="runtime_error",
+                full_source=self.source,
+            )
+
+        if policy == "warn":
+            if not hasattr(self, '_inline_asm_warned'):
+                print("Warning: Inline assembly is only fully supported in compiled mode.")
+                print("         Assembly blocks are skipped in interpreter mode.")
+                print("         Compile with 'nlplc' to generate actual inline assembly.")
+                self._inline_asm_warned = True
+
+        # Skip execution - inline assembly requires compiled native code.
         return None
             
     def execute_print_statement(self, node):
