@@ -18,6 +18,8 @@ from nexuslang.parser.ast import (
     ExpectStatement,
     TryCatch,
     RaiseStatement,
+    TryCatchBlock,
+    Block,
 )
 
 
@@ -80,3 +82,33 @@ def test_c_uncaught_raise_emits_abort_path():
 
     assert "fprintf(stderr, \"%s\\n\", (const char*)(\"fatal\"));" in c_code
     assert "exit(1);" in c_code
+
+
+def test_c_nested_try_catch_multiple_rethrows_emit_nested_longjmp_paths():
+    ast = Program([
+        TryCatch(
+            try_block=[
+                TryCatch(
+                    try_block=[RaiseStatement(message=Literal("string", "inner"))],
+                    catch_block=[RaiseStatement(message=Literal("string", "rethrow1"))],
+                    exception_var="inner_err",
+                )
+            ],
+            catch_block=[
+                TryCatchBlock(
+                    try_block=Block([RaiseStatement(message=Literal("string", "rethrow2"))]),
+                    catch_block=Block([PrintStatement(Identifier("outer_err2"))]),
+                    exception_var="outer_err2",
+                )
+            ],
+            exception_var="outer_err",
+        )
+    ])
+
+    generator = CCodeGenerator(target="c")
+    c_code = generator.generate(ast)
+
+    assert c_code.count("if (setjmp(") >= 3
+    assert c_code.count("longjmp(") >= 3
+    assert "const char* outer_err = nxl_current_exception_message ? nxl_current_exception_message : \"Error occurred\";" in c_code
+    assert "const char* outer_err2 = nxl_current_exception_message ? nxl_current_exception_message : \"Error occurred\";" in c_code

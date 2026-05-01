@@ -387,10 +387,18 @@ class CCodeGenerator(CodeGenerator):
             self._generate_for_loop(node)
         elif isinstance(node, ParallelForLoop):
             self._generate_parallel_for_loop(node)
+        elif isinstance(node, SwitchStatement):
+            self._generate_switch_statement(node)
         elif isinstance(node, (TryCatch, TryCatchBlock)):
             self._generate_try_catch(node)
         elif isinstance(node, RaiseStatement):
             self._generate_raise_statement(node)
+        elif isinstance(node, BreakStatement):
+            self.emit("break;")
+        elif isinstance(node, ContinueStatement):
+            self.emit("continue;")
+        elif isinstance(node, FallthroughStatement):
+            self.emit("/* fallthrough */")
         elif isinstance(node, SendStatement):
             channel_expr = self._generate_expression(node.channel)
             value_expr = self._generate_expression(node.value)
@@ -1156,6 +1164,50 @@ class CCodeGenerator(CodeGenerator):
         # Uncaught raise falls back to process termination with message.
         self.emit(f"fprintf(stderr, \"%s\\n\", (const char*)({message}));")
         self.emit("exit(1);")
+
+    def _generate_switch_statement(self, node: SwitchStatement) -> None:
+        """Generate C switch/case lowering including explicit fallthrough semantics."""
+        switch_expr = self._generate_expression(node.expression)
+        self.emit(f"switch ({switch_expr}) {{")
+        self.indent()
+
+        for case in node.cases:
+            case_value = self._generate_expression(case.value)
+            self.emit(f"case {case_value}:")
+            self.indent()
+
+            case_terminated = False
+            has_fallthrough = False
+            for stmt in case.body:
+                self._generate_statement(stmt)
+                stmt_name = type(stmt).__name__
+                if stmt_name in ("BreakStatement", "ContinueStatement", "ReturnStatement"):
+                    case_terminated = True
+                elif stmt_name == "FallthroughStatement":
+                    has_fallthrough = True
+                    case_terminated = True
+
+            if not case_terminated and not has_fallthrough:
+                self.emit("break;")
+
+            self.dedent()
+
+        self.emit("default:")
+        self.indent()
+        if node.default_case:
+            default_terminated = False
+            for stmt in node.default_case:
+                self._generate_statement(stmt)
+                if type(stmt).__name__ in ("BreakStatement", "ContinueStatement", "ReturnStatement"):
+                    default_terminated = True
+            if not default_terminated:
+                self.emit("break;")
+        else:
+            self.emit("break;")
+        self.dedent()
+
+        self.dedent()
+        self.emit("}")
     
     def _generate_expression(self, node: Any) -> str:
         """Generate C expression code."""

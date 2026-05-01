@@ -17,6 +17,7 @@ from nexuslang.parser.ast import (
     RequireStatement,
     ExpectStatement,
     TryCatchBlock,
+    TryCatch,
     RaiseStatement,
     Block,
 )
@@ -71,3 +72,32 @@ def test_llvm_try_catch_block_lowers_with_landingpad_and_raise():
     assert "call i8* @__cxa_begin_catch(i8*" in llvm_ir
     assert "store i8*" in llvm_ir
     assert "@__nxl_throw" in llvm_ir or "@__cxa_throw" in llvm_ir
+
+
+def test_llvm_nested_try_catch_multiple_rethrows_emit_nested_landingpads():
+    ast = Program([
+        TryCatch(
+            try_block=[
+                TryCatchBlock(
+                    try_block=Block([RaiseStatement(message=Literal("string", "inner"))]),
+                    catch_block=Block([RaiseStatement(message=Literal("string", "rethrow1"))]),
+                    exception_var="inner_err",
+                )
+            ],
+            catch_block=[
+                TryCatch(
+                    try_block=[RaiseStatement(message=Literal("string", "rethrow2"))],
+                    catch_block=[PrintStatement(Identifier("outer_err2"))],
+                    exception_var="outer_err2",
+                )
+            ],
+            exception_var="outer_err",
+        )
+    ])
+
+    generator = LLVMIRGenerator()
+    llvm_ir = generator.generate(ast)
+
+    assert llvm_ir.count("landingpad { i8*, i32 }") >= 3
+    assert llvm_ir.count("@__nxl_throw") >= 3 or llvm_ir.count("@__cxa_throw") >= 3
+    assert llvm_ir.count("@__cxa_begin_catch") >= 3

@@ -168,6 +168,7 @@ class LLVMIRGenerator(CodeGenerator):
         self.has_generator_ops = False
         # Names of variables that store generator frame pointers.
         self.generator_vars: Set[str] = set()
+        self.generator_function_state_globals: Set[str] = set()
         
         # Type mapping cache
         self.type_cache: Dict[str, str] = {}
@@ -2528,6 +2529,12 @@ class LLVMIRGenerator(CodeGenerator):
             mangled_name = func_name
         
         ret_type, param_types, param_names = self.functions[func_name]
+
+        # Function-body yield lowering: build a suspension-state machine for
+        # top-level yields inside regular functions.
+        if self._has_top_level_yield(node):
+            self._generate_generator_function_definition(node, mangled_name, param_types, param_names)
+            return
         
         # Set context
         self.current_function_name = func_name
@@ -2596,6 +2603,93 @@ class LLVMIRGenerator(CodeGenerator):
                 # Integer types can use 0 directly
                 self.emit(f'  ret {ret_type} 0')
         
+        self.emit('}')
+        self.emit('')
+
+    def _has_top_level_yield(self, node) -> bool:
+        """Return True when a function body contains top-level YieldExpression nodes."""
+        if not hasattr(node, 'body') or not isinstance(node.body, list):
+            return False
+        for stmt in node.body:
+            if type(stmt).__name__ == 'YieldExpression':
+                return True
+        return False
+
+    def _create_generator_state_global(self, mangled_name: str) -> str:
+        """Create (once) a singleton generator state global for a yielded function."""
+        state_global = f'@.yield_state.{mangled_name}'
+        if state_global not in self.generator_function_state_globals:
+            self.generator_function_state_globals.add(state_global)
+            self.emit(f'{state_global} = internal global i64 0, align 8')
+        return state_global
+
+    def _generate_generator_function_definition(self, node, mangled_name: str, param_types: List[str], param_names: List[str]) -> None:
+        """Generate a state-machine function for top-level function-body yields.
+
+        This is a suspension-state frame (singleton state slot per function),
+        not a pre-materialized list. Each call resumes from the saved state,
+        executes until the next yield, stores next state, and returns yielded value.
+        """
+        state_global = self._create_generator_state_global(mangled_name)
+
+        # Generator/yield functions return the yielded scalar for now.
+        ret_type = 'i64'
+
+        self.current_function_name = node.name
+        self.current_return_type = ret_type
+        self.local_vars = {}
+        self.temp_counter = 0
+        self.label_counter = 0
+
+        # Ensure signature table reflects the lowered return type.
+        self.functions[node.name] = (ret_type, param_types, param_names)
+
+        params = ', '.join(f'{pt} %{pn}' for pt, pn in zip(param_types, param_names))
+        self.emit(f'define {ret_type} @{mangled_name}({params}) personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*) {{')
+        self.emit('entry:')
+
+        for ptype, pname in zip(param_types, param_names):
+            alloca_name = f'%{pname}.addr'
+            self.emit(f'  {alloca_name} = alloca {ptype}, align 8')
+            self.emit(f'  store {ptype} %{pname}, {ptype}* {alloca_name}, align 8')
+            self.local_vars[pname] = (ptype, alloca_name)
+
+        # Collect top-level yield points.
+        yield_points = []
+        for i, stmt in enumerate(node.body):
+            if type(stmt).__name__ == 'YieldExpression':
+                yield_points.append((i, stmt))
+
+        done_label = self._new_label('yield.done')
+        state_labels = [self._new_label(f'yield.state.{i}') for i in range(len(yield_points) + 1)]
+
+        state_val = self._new_temp()
+        self.emit(f'  {state_val} = load i64, i64* {state_global}, align 8')
+        self.emit(f'  switch i64 {state_val}, label %{done_label} [')
+        for i, label in enumerate(state_labels):
+            self.emit(f'    i64 {i}, label %{label}')
+        self.emit('  ]')
+
+        cursor = 0
+        for i, (yield_idx, yield_stmt) in enumerate(yield_points):
+            self.emit(f'{state_labels[i]}:')
+            for stmt in node.body[cursor:yield_idx]:
+                self._generate_statement(stmt, indent='  ')
+
+            yield_val = self._generate_expression(yield_stmt.value, indent='  ') if getattr(yield_stmt, 'value', None) is not None else '0'
+            self.emit(f'  store i64 {i + 1}, i64* {state_global}, align 8')
+            self.emit(f'  ret i64 {yield_val}')
+            cursor = yield_idx + 1
+
+        # Resume state after final yield: execute tail once, then mark done.
+        self.emit(f'{state_labels[-1]}:')
+        for stmt in node.body[cursor:]:
+            self._generate_statement(stmt, indent='  ')
+        self.emit(f'  store i64 -1, i64* {state_global}, align 8')
+        self.emit('  ret i64 0')
+
+        self.emit(f'{done_label}:')
+        self.emit('  ret i64 0')
         self.emit('}')
         self.emit('')
     
@@ -5032,9 +5126,15 @@ class LLVMIRGenerator(CodeGenerator):
                     has_fallthrough = True
                     case_terminated = True
             # Branch to next case if fallthrough, otherwise to end
-            if has_fallthrough and i < len(node.cases) - 1:
-                # Fallthrough to next case
-                self.emit(f'{indent}  br label %{case_labels[i + 1]}')
+            if has_fallthrough:
+                if i < len(node.cases) - 1:
+                    # Fallthrough to next case
+                    self.emit(f'{indent}  br label %{case_labels[i + 1]}')
+                elif node.default_case:
+                    # Final case can fallthrough into default block.
+                    self.emit(f'{indent}  br label %{default_label}')
+                else:
+                    self.emit(f'{indent}  br label %{end_label}')
             elif not case_terminated:
                 # Normal case - branch to end
                 self.emit(f'{indent}  br label %{end_label}')
@@ -5155,12 +5255,20 @@ class LLVMIRGenerator(CodeGenerator):
             # Case body
             self.emit(f'{then_label}:')
             case_terminated = False
+            has_fallthrough = False
             for stmt in case.body:
                 self._generate_statement(stmt, indent + '  ')
                 stmt_type = type(stmt).__name__
                 if stmt_type in ('ReturnStatement', 'BreakStatement', 'ContinueStatement'):
                     case_terminated = True
-            if not case_terminated:
+                elif stmt_type == 'FallthroughStatement':
+                    has_fallthrough = True
+                    case_terminated = True
+            if has_fallthrough:
+                # In if-chain mode we continue evaluation with the next case path.
+                # (Integer-switch mode handles direct case-to-case fallthrough labels.)
+                self.emit(f'{indent}  br label %{next_label}')
+            elif not case_terminated:
                 self.emit(f'{indent}  br label %{end_label}')
             
             # Next case
