@@ -169,6 +169,7 @@ class LLVMIRGenerator(CodeGenerator):
         # Names of variables that store generator frame pointers.
         self.generator_vars: Set[str] = set()
         self.generator_function_state_globals: Set[str] = set()
+        self.generator_function_spill_globals: Set[str] = set()
         
         # Type mapping cache
         self.type_cache: Dict[str, str] = {}
@@ -2533,7 +2534,7 @@ class LLVMIRGenerator(CodeGenerator):
         # Function-body yield lowering: build a suspension-state machine for
         # top-level yields inside regular functions.
         if self._has_top_level_yield(node):
-            self._generate_generator_function_definition(node, mangled_name, param_types, param_names)
+            self._generate_generator_function_definition(node, mangled_name, ret_type, param_types, param_names)
             return
         
         # Set context
@@ -2623,7 +2624,65 @@ class LLVMIRGenerator(CodeGenerator):
             self.emit(f'{state_global} = internal global i64 0, align 8')
         return state_global
 
-    def _generate_generator_function_definition(self, node, mangled_name: str, param_types: List[str], param_names: List[str]) -> None:
+    def _default_llvm_initializer(self, llvm_type: str) -> str:
+        """Return a zero/null initializer literal for an LLVM type."""
+        if llvm_type.endswith('*'):
+            return 'null'
+        if llvm_type == 'double':
+            return '0.0'
+        if llvm_type == 'float':
+            return '0.0'
+        return '0'
+
+    def _create_generator_spill_global(self, mangled_name: str, var_name: str, llvm_type: str, kind: str) -> str:
+        """Create a persistent spill global for yielded-function state."""
+        spill_global = f'@.yield_{kind}.{mangled_name}.{var_name}'
+        if spill_global not in self.generator_function_spill_globals:
+            self.generator_function_spill_globals.add(spill_global)
+            init = self._default_llvm_initializer(llvm_type)
+            self.emit(f'{spill_global} = internal global {llvm_type} {init}, align 8')
+        return spill_global
+
+    def _collect_generator_local_spills(self, node, mangled_name: str, param_types: List[str], param_names: List[str]) -> Dict[str, Tuple[str, str]]:
+        """Collect top-level local variables that must persist across yields."""
+        saved_local_vars = self.local_vars.copy()
+        self.local_vars = {name: (ptype, '%dummy') for ptype, name in zip(param_types, param_names)}
+
+        spills: Dict[str, Tuple[str, str]] = {}
+        for stmt in getattr(node, 'body', []):
+            if type(stmt).__name__ != 'VariableDeclaration':
+                continue
+            if not isinstance(stmt.name, str) or stmt.name in spills:
+                continue
+
+            if getattr(stmt, 'var_type', None):
+                llvm_type = self._map_nxl_type_to_llvm(stmt.var_type)
+            elif getattr(stmt, 'value', None) is not None:
+                llvm_type = self._infer_expression_type(stmt.value)
+            else:
+                llvm_type = 'i64'
+
+            spill_global = self._create_generator_spill_global(mangled_name, stmt.name, llvm_type, 'spill')
+            spills[stmt.name] = (llvm_type, spill_global)
+            self.local_vars[stmt.name] = (llvm_type, spill_global)
+
+        self.local_vars = saved_local_vars
+        return spills
+
+    def _emit_generator_default_return(self, ret_type: str, indent: str = '  ') -> None:
+        """Emit the exhausted/default return for a yielded function."""
+        if ret_type == 'void':
+            self.emit(f'{indent}ret void')
+        elif ret_type.endswith('*'):
+            self.emit(f'{indent}ret {ret_type} null')
+        elif ret_type == 'double':
+            self.emit(f'{indent}ret double 0.0')
+        elif ret_type == 'float':
+            self.emit(f'{indent}ret float 0.0')
+        else:
+            self.emit(f'{indent}ret {ret_type} 0')
+
+    def _generate_generator_function_definition(self, node, mangled_name: str, ret_type: str, param_types: List[str], param_names: List[str]) -> None:
         """Generate a state-machine function for top-level function-body yields.
 
         This is a suspension-state frame (singleton state slot per function),
@@ -2632,8 +2691,11 @@ class LLVMIRGenerator(CodeGenerator):
         """
         state_global = self._create_generator_state_global(mangled_name)
 
-        # Generator/yield functions return the yielded scalar for now.
-        ret_type = 'i64'
+        param_spills: Dict[str, Tuple[str, str]] = {}
+        for ptype, pname in zip(param_types, param_names):
+            param_spills[pname] = (ptype, self._create_generator_spill_global(mangled_name, pname, ptype, 'param'))
+
+        local_spills = self._collect_generator_local_spills(node, mangled_name, param_types, param_names)
 
         self.current_function_name = node.name
         self.current_return_type = ret_type
@@ -2641,18 +2703,14 @@ class LLVMIRGenerator(CodeGenerator):
         self.temp_counter = 0
         self.label_counter = 0
 
-        # Ensure signature table reflects the lowered return type.
         self.functions[node.name] = (ret_type, param_types, param_names)
 
         params = ', '.join(f'{pt} %{pn}' for pt, pn in zip(param_types, param_names))
         self.emit(f'define {ret_type} @{mangled_name}({params}) personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*) {{')
         self.emit('entry:')
 
-        for ptype, pname in zip(param_types, param_names):
-            alloca_name = f'%{pname}.addr'
-            self.emit(f'  {alloca_name} = alloca {ptype}, align 8')
-            self.emit(f'  store {ptype} %{pname}, {ptype}* {alloca_name}, align 8')
-            self.local_vars[pname] = (ptype, alloca_name)
+        self.local_vars.update(param_spills)
+        self.local_vars.update(local_spills)
 
         # Collect top-level yield points.
         yield_points = []
@@ -2670,26 +2728,43 @@ class LLVMIRGenerator(CodeGenerator):
             self.emit(f'    i64 {i}, label %{label}')
         self.emit('  ]')
 
+        # Initial entry stores incoming parameters into persistent spill slots.
+        self.emit(f'{state_labels[0]}:')
+        for ptype, pname in zip(param_types, param_names):
+            spill_global = param_spills[pname][1]
+            self.emit(f'  store {ptype} %{pname}, {ptype}* {spill_global}, align 8')
+
         cursor = 0
         for i, (yield_idx, yield_stmt) in enumerate(yield_points):
-            self.emit(f'{state_labels[i]}:')
+            if i > 0:
+                self.emit(f'{state_labels[i]}:')
             for stmt in node.body[cursor:yield_idx]:
                 self._generate_statement(stmt, indent='  ')
 
             yield_val = self._generate_expression(yield_stmt.value, indent='  ') if getattr(yield_stmt, 'value', None) is not None else '0'
+            yield_type = self._infer_expression_type(yield_stmt.value) if getattr(yield_stmt, 'value', None) is not None else ret_type
+            if yield_type != ret_type:
+                yield_val = self._convert_type(yield_val, yield_type, ret_type, '  ')
             self.emit(f'  store i64 {i + 1}, i64* {state_global}, align 8')
-            self.emit(f'  ret i64 {yield_val}')
+            self.emit(f'  ret {ret_type} {yield_val}')
             cursor = yield_idx + 1
 
         # Resume state after final yield: execute tail once, then mark done.
         self.emit(f'{state_labels[-1]}:')
+        tail_terminated = False
         for stmt in node.body[cursor:]:
+            if type(stmt).__name__ == 'ReturnStatement':
+                self.emit(f'  store i64 -1, i64* {state_global}, align 8')
+                self._generate_return_statement(stmt, indent='  ')
+                tail_terminated = True
+                break
             self._generate_statement(stmt, indent='  ')
-        self.emit(f'  store i64 -1, i64* {state_global}, align 8')
-        self.emit('  ret i64 0')
+        if not tail_terminated:
+            self.emit(f'  store i64 -1, i64* {state_global}, align 8')
+            self._emit_generator_default_return(ret_type, '  ')
 
         self.emit(f'{done_label}:')
-        self.emit('  ret i64 0')
+        self._emit_generator_default_return(ret_type, '  ')
         self.emit('}')
         self.emit('')
     

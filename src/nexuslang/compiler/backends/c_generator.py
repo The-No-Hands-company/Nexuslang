@@ -42,6 +42,7 @@ class CCodeGenerator(CodeGenerator):
         self.try_counter = 0
         self.exception_message_slot = "nxl_current_exception_message"
         self.uses_exceptions = False
+        self.symbol_aliases: Dict[str, str] = {}
         
     def generate(self, ast: Program) -> str:
         """Generate complete C program from AST."""
@@ -134,6 +135,10 @@ class CCodeGenerator(CodeGenerator):
     
     def _generate_function_declaration(self, node: FunctionDefinition) -> None:
         """Generate function declaration."""
+        if self._has_top_level_yield(node):
+            self._generate_yield_function_declaration(node)
+            return
+
         # Determine return type
         if node.return_type:
             return_type = self._map_type(node.return_type)
@@ -180,6 +185,141 @@ class CCodeGenerator(CodeGenerator):
             for param in node.parameters:
                 if param.name in self.symbol_table:
                     del self.symbol_table[param.name]
+
+    def _has_top_level_yield(self, node: FunctionDefinition) -> bool:
+        """Return True when a function body contains top-level yield statements."""
+        if not getattr(node, 'body', None):
+            return False
+        return any(type(stmt).__name__ == 'YieldExpression' for stmt in node.body)
+
+    def _resolve_symbol_name(self, name: str) -> str:
+        """Resolve a logical symbol name to its emitted C identifier."""
+        return self.symbol_aliases.get(name, name)
+
+    def _collect_yield_locals(self, node: FunctionDefinition) -> Dict[str, str]:
+        """Collect top-level local variables and their inferred C types."""
+        local_types: Dict[str, str] = {}
+        for stmt in getattr(node, 'body', []):
+            if type(stmt).__name__ != 'VariableDeclaration':
+                continue
+            if not isinstance(stmt.name, str) or stmt.name in local_types:
+                continue
+            if getattr(stmt, 'var_type', None):
+                local_types[stmt.name] = self._map_type(stmt.var_type)
+            elif getattr(stmt, 'value', None) is not None:
+                local_types[stmt.name] = self._infer_type(stmt.value)
+            else:
+                local_types[stmt.name] = 'int'
+        return local_types
+
+    def _emit_c_default_return(self, return_type: str) -> None:
+        """Emit default return for exhausted yielded functions."""
+        if return_type == 'void':
+            self.emit("return;")
+        elif return_type == 'double':
+            self.emit("return 0.0;")
+        elif return_type == 'const char*':
+            self.emit('return "";')
+        elif return_type == 'bool':
+            self.emit("return false;")
+        else:
+            self.emit("return 0;")
+
+    def _generate_yield_function_declaration(self, node: FunctionDefinition) -> None:
+        """Generate function-body yield lowering as a resumable C state machine."""
+        return_type = self._map_type(node.return_type) if node.return_type else 'int'
+        self.function_types[node.name] = return_type
+
+        params = []
+        param_types: Dict[str, str] = {}
+        for param in node.parameters or []:
+            if hasattr(param, 'type_annotation') and param.type_annotation:
+                param_type = self._map_type(param.type_annotation)
+            else:
+                param_type = self._infer_parameter_type(param.name, node.body, node.return_type)
+            params.append(f"{param_type} {param.name}")
+            param_types[param.name] = param_type
+        param_str = ", ".join(params) if params else "void"
+
+        state_name = f"__yield_state_{node.name}"
+        param_aliases = {name: f"__yield_param_{node.name}_{name}" for name in param_types}
+        local_types = self._collect_yield_locals(node)
+        local_aliases = {name: f"__yield_local_{node.name}_{name}" for name in local_types}
+
+        saved_symbol_table = dict(self.symbol_table)
+        saved_aliases = dict(self.symbol_aliases)
+
+        self.symbol_table.update(param_types)
+        self.symbol_table.update(local_types)
+        self.symbol_aliases.update(param_aliases)
+        self.symbol_aliases.update(local_aliases)
+
+        self.emit_raw(f"{return_type} {node.name}({param_str}) {{")
+        self.indent()
+        self.emit(f"static int {state_name} = 0;")
+        for name, c_type in param_types.items():
+            self.emit(f"static {c_type} {param_aliases[name]};")
+        for name, c_type in local_types.items():
+            self.emit(f"static {c_type} {local_aliases[name]};")
+
+        yield_points = [(i, stmt) for i, stmt in enumerate(node.body or []) if type(stmt).__name__ == 'YieldExpression']
+
+        self.emit(f"switch ({state_name}) {{")
+        self.indent()
+        for i in range(len(yield_points) + 1):
+            self.emit(f"case {i}: goto yield_state_{i};")
+        self.emit("default: goto yield_done;")
+        self.dedent()
+        self.emit("}")
+
+        self.emit("yield_state_0:")
+        self.indent()
+        for name in param_types:
+            self.emit(f"{param_aliases[name]} = {name};")
+        self.dedent()
+
+        cursor = 0
+        for i, (yield_idx, yield_stmt) in enumerate(yield_points):
+            if i > 0:
+                self.emit(f"yield_state_{i}:")
+            self.indent()
+            for stmt in node.body[cursor:yield_idx]:
+                self._generate_statement(stmt)
+            yield_value = self._generate_expression(yield_stmt.value) if getattr(yield_stmt, 'value', None) is not None else '0'
+            self.emit(f"{state_name} = {i + 1};")
+            self.emit(f"return {yield_value};")
+            self.dedent()
+            cursor = yield_idx + 1
+
+        self.emit(f"yield_state_{len(yield_points)}:")
+        self.indent()
+        tail_terminated = False
+        for stmt in node.body[cursor:]:
+            if isinstance(stmt, ReturnStatement):
+                expr = self._generate_expression(stmt.value) if stmt.value is not None else None
+                self.emit(f"{state_name} = -1;")
+                if expr is not None:
+                    self.emit(f"return {expr};")
+                else:
+                    self.emit("return;")
+                tail_terminated = True
+                break
+            self._generate_statement(stmt)
+        if not tail_terminated:
+            self.emit(f"{state_name} = -1;")
+            self._emit_c_default_return(return_type)
+        self.dedent()
+
+        self.emit("yield_done:")
+        self.indent()
+        self._emit_c_default_return(return_type)
+        self.dedent()
+        self.dedent()
+        self.emit_raw("}")
+        self.emit_raw("")
+
+        self.symbol_table = saved_symbol_table
+        self.symbol_aliases = saved_aliases
     
     def _generate_class_definition(self, node: ClassDefinition) -> None:
         """Generate C struct and methods for a class definition."""
@@ -467,11 +607,21 @@ class CCodeGenerator(CodeGenerator):
             self.emit(f"{lhs} = {value_expr};")
             return
         
+        emitted_name = self._resolve_symbol_name(node.name)
+
+        # Spilled yielded-function locals already have storage; emit assignment only.
+        if isinstance(node.name, str) and node.name in self.symbol_aliases:
+            value_expr = self._generate_expression(node.value)
+            if node.name not in self.symbol_table:
+                self.symbol_table[node.name] = self._infer_type(node.value)
+            self.emit(f"{emitted_name} = {value_expr};")
+            return
+
         # Check if variable already exists in symbol table
         if node.name in self.symbol_table:
             # Variable exists - generate assignment only
             value_expr = self._generate_expression(node.value)
-            self.emit(f"{node.name} = {value_expr};")
+            self.emit(f"{emitted_name} = {value_expr};")
         else:
             # New variable - generate declaration with type
             value_expr = self._generate_expression(node.value)
@@ -501,15 +651,15 @@ class CCodeGenerator(CodeGenerator):
                         # 2D array - determine inner dimension size
                         inner_size = len(node.value.elements[0].elements)
                         outer_size = len(node.value.elements)
-                        self.emit(f"{base_type} {node.name}[{outer_size}][{inner_size}] = {value_expr};")
+                        self.emit(f"{base_type} {emitted_name}[{outer_size}][{inner_size}] = {value_expr};")
                     else:
                         # 1D array
-                        self.emit(f"{base_type} {node.name}{dims} = {value_expr};")
+                        self.emit(f"{base_type} {emitted_name}{dims} = {value_expr};")
                 else:
-                    self.emit(f"{base_type} {node.name}{dims} = {value_expr};")
+                    self.emit(f"{base_type} {emitted_name}{dims} = {value_expr};")
             else:
                 # Regular type
-                self.emit(f"{var_type} {node.name} = {value_expr};")
+                self.emit(f"{var_type} {emitted_name} = {value_expr};")
     
     def _infer_parameter_type(self, param_name: str, body: List[Any], return_type: Any = None) -> str:
         """
@@ -1219,7 +1369,7 @@ class CCodeGenerator(CodeGenerator):
             if self.current_class and self.current_class in self.class_properties:
                 if node.name in self.class_properties[self.current_class]:
                     return f"this->{node.name}"
-            return node.name
+            return self._resolve_symbol_name(node.name)
         
         elif isinstance(node, ObjectInstantiation):
             return self._generate_object_instantiation(node)

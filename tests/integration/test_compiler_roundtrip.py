@@ -242,6 +242,44 @@ end
         assert rc == 0
         assert out == "42\n"
 
+    def test_yielded_function_preserves_spilled_locals_across_calls(self):
+        src = """
+function generate_values with start as Integer returns Integer
+    set current to start
+    set delta to 3
+    yield current
+    set current to current plus delta
+    yield current
+    return current plus delta
+end
+
+function main returns Integer
+    print text generate_values with 5
+    print text generate_values with 999
+    print text generate_values with 123
+    return 0
+end
+"""
+        rc, out, _ = compile_and_run(src)
+        assert rc == 0
+        assert out == "5\n8\n11\n"
+
+    def test_yielded_function_returns_zero_after_exhaustion(self):
+        src = """
+function emit_once with start as Integer returns Integer
+    yield start
+end
+
+function main returns Integer
+    print text emit_once with 7
+    print text emit_once with 99
+    return 0
+end
+"""
+        rc, out, _ = compile_and_run(src)
+        assert rc == 0
+        assert out == "7\n0\n"
+
     def test_function_returns_value(self):
         src = """
 function add with a as Integer and b as Integer returns Integer
