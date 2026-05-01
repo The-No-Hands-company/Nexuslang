@@ -84,5 +84,89 @@ class TestContractProgramming:
 
 # ============================================================
 # Section 18 - ControlFlowChecker
+
+
+# ============================================================
+# Section 19 - Contract side-effect restrictions (typechecker)
+# ============================================================
+
+class TestContractSideEffectRestrictions:
+    """Typechecker must reject side-effecting expressions inside contract conditions."""
+
+    def _check_ast(self, *statements):
+        from nexuslang.typesystem.typechecker import TypeChecker
+        from nexuslang.parser.ast import Program
+        prog = Program(list(statements))
+        tc = TypeChecker()
+        tc.check_program(prog)
+        return tc.errors
+
+    def test_assignment_in_require_condition_is_rejected(self):
+        from nexuslang.parser.ast import VariableDeclaration, RequireStatement, Literal
+        cond = VariableDeclaration('x', Literal('integer', 5))
+        errors = self._check_ast(RequireStatement(condition=cond))
+        assert any("must not contain assignments" in e for e in errors), \
+            f"Expected side-effect error, got: {errors}"
+
+    def test_assignment_in_ensure_condition_is_rejected(self):
+        from nexuslang.parser.ast import VariableDeclaration, EnsureStatement, Literal
+        cond = VariableDeclaration('y', Literal('integer', 0))
+        errors = self._check_ast(EnsureStatement(condition=cond))
+        assert any("must not contain assignments" in e for e in errors), \
+            f"Expected side-effect error, got: {errors}"
+
+    def test_assignment_in_guarantee_condition_is_rejected(self):
+        from nexuslang.parser.ast import VariableDeclaration, GuaranteeStatement, Literal
+        cond = VariableDeclaration('z', Literal('integer', 1))
+        errors = self._check_ast(GuaranteeStatement(condition=cond))
+        assert any("must not contain assignments" in e for e in errors), \
+            f"Expected side-effect error, got: {errors}"
+
+    def test_assignment_in_invariant_condition_is_rejected(self):
+        from nexuslang.parser.ast import VariableDeclaration, InvariantStatement, Literal
+        cond = VariableDeclaration('w', Literal('integer', 2))
+        errors = self._check_ast(InvariantStatement(condition=cond))
+        assert any("must not contain assignments" in e for e in errors), \
+            f"Expected side-effect error, got: {errors}"
+
+    def test_index_assignment_in_require_condition_is_rejected(self):
+        from nexuslang.parser.ast import IndexAssignment, RequireStatement, Literal, Identifier
+        cond = IndexAssignment(
+            target=Identifier('arr'),
+            value=Literal('integer', 1),
+        )
+        errors = self._check_ast(RequireStatement(condition=cond))
+        assert any("must not contain assignments" in e for e in errors), \
+            f"Expected side-effect error, got: {errors}"
+
+    def test_member_assignment_in_require_condition_is_rejected(self):
+        from nexuslang.parser.ast import MemberAssignment, RequireStatement, Literal, Identifier
+        cond = MemberAssignment(
+            target=Identifier('obj'),
+            value=Literal('integer', 5),
+        )
+        errors = self._check_ast(RequireStatement(condition=cond))
+        assert any("must not contain assignments" in e for e in errors), \
+            f"Expected side-effect error, got: {errors}"
+
+    def test_pure_boolean_condition_no_side_effect_error(self):
+        """A boolean identifier as condition should not trigger side-effect error."""
+        from nexuslang.parser.ast import VariableDeclaration, RequireStatement, Literal, Identifier
+        errors = self._check_ast(
+            VariableDeclaration('flag', Literal('boolean', True)),
+            RequireStatement(condition=Identifier('flag')),
+        )
+        assert not any("must not contain assignments" in e for e in errors), \
+            f"Unexpected side-effect error on pure condition: {errors}"
+
+    def test_non_boolean_condition_still_gives_type_error(self):
+        """A non-boolean, non-assignment condition raises a type error."""
+        from nexuslang.parser.ast import VariableDeclaration, RequireStatement, Literal, Identifier
+        errors = self._check_ast(
+            VariableDeclaration('n', Literal('integer', 5)),
+            RequireStatement(condition=Identifier('n')),
+        )
+        assert any("must be a boolean" in e for e in errors), \
+            f"Expected boolean type error, got: {errors}"
 # ============================================================
 

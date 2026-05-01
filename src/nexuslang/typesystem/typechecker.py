@@ -27,6 +27,8 @@ from ..parser.ast import (
     AllocatorHint,
     # Switch statement
     SwitchStatement,
+    # Mutation/assignment nodes (used for contract side-effect detection)
+    IndexAssignment, DereferenceAssignment,
 )
 from ..typesystem.types import (
     Type, PrimitiveType, ListType, DictionaryType, ClassType, 
@@ -1084,8 +1086,40 @@ class TypeChecker:
             return NULL_TYPE
         return UnionType(case_types)
 
+    def _has_side_effects(self, node: Any) -> bool:
+        """Return True if an AST node contains side-effecting sub-expressions.
+
+        Side effects forbidden in contract conditions: variable assignments,
+        index assignments, member assignments, and dereference assignments.
+        Function calls are allowed because pure observation calls are common
+        in contracts (e.g. require list_length(items) > 0).
+        """
+        if node is None:
+            return False
+        if isinstance(node, (VariableDeclaration, IndexAssignment,
+                             MemberAssignment, DereferenceAssignment)):
+            return True
+        # Recurse into common compound node fields
+        for attr in ('left', 'right', 'operand', 'value', 'condition',
+                     'actual_expr', 'expected_expr'):
+            child = getattr(node, attr, None)
+            if child is not None and self._has_side_effects(child):
+                return True
+        # Recurse into list-valued fields (e.g. arguments)
+        for attr in ('arguments', 'body', 'elements'):
+            children = getattr(node, attr, None)
+            if isinstance(children, list):
+                for child in children:
+                    if self._has_side_effects(child):
+                        return True
+        return False
+
     def _check_contract_condition(self, condition: Any, env: TypeEnvironment, kind: str) -> Type:
         """Validate a contract/assertion condition expression type."""
+        if self._has_side_effects(condition):
+            self.errors.append(
+                f"Type error: {kind} condition must not contain assignments or mutations"
+            )
         condition_type = self.check_statement(condition, env)
         if (not isinstance(condition_type, AnyType)
                 and not condition_type.is_compatible_with(BOOLEAN_TYPE)):
@@ -1254,14 +1288,29 @@ class TypeChecker:
         
         return value_type
     
+    def _is_terminal_statement(self, stmt: Any) -> bool:
+        """Return True if stmt unconditionally transfers control (raise, return)."""
+        return isinstance(stmt, RaiseStatement) or isinstance(stmt, ReturnStatement)
+
+    def _check_statements_for_unreachable(self, statements: list, env: TypeEnvironment) -> Type:
+        """Type-check a statement list and emit an error for unreachable code after raise/return."""
+        result_type = NULL_TYPE
+        for i, stmt in enumerate(statements):
+            result_type = self.check_statement(stmt, env)
+            if self._is_terminal_statement(stmt) and i < len(statements) - 1:
+                self.errors.append(
+                    f"Line {getattr(statements[i + 1], 'line_number', '?')}: "
+                    f"Unreachable code after '{stmt.__class__.__name__}'"
+                )
+                break
+        return result_type
+
     def check_block(self, block: Block, env: TypeEnvironment) -> Type:
         """Check a block of statements."""
         block_env = TypeEnvironment(env)
         result_type = NULL_TYPE
-        
         for stmt in block.statements:
             result_type = self.check_statement(stmt, block_env)
-        
         return result_type
     
     def check_concurrent_block(self, block: ConcurrentBlock, env: TypeEnvironment) -> Type:
@@ -1277,42 +1326,41 @@ class TypeChecker:
     
     def check_try_catch_block(self, block: TryCatchBlock, env: TypeEnvironment) -> Type:
         """Check a try-catch block."""
-        # Check the try block
         try_env = TypeEnvironment(env)
         try_type = self.check_block(block.try_block, try_env)
-        
-        # Check the catch block
+
         catch_env = TypeEnvironment(env)
-        
-        # Define the exception variable if it exists
         if block.exception_var:
-            catch_env.define_variable(block.exception_var, STRING_TYPE)
-        
+            # Use declared exception type annotation when available, fall back to string
+            exc_type: Type
+            if block.exception_type:
+                exc_type = ClassType(block.exception_type, {}, {})
+            else:
+                exc_type = STRING_TYPE
+            catch_env.define_variable(block.exception_var, exc_type)
+
         catch_type = self.check_block(block.catch_block, catch_env)
-        
-        # The type of a try-catch block is the union of the try and catch block types
         return UnionType([try_type, catch_type])
     
     def check_try_catch(self, node: TryCatch, env: TypeEnvironment) -> Type:
-        """Check a TryCatch node (alternative try-catch AST form).
-        
-        try_block and catch_block may be Block objects or plain lists of statements.
-        """
+        """Check a TryCatch node (alternative try-catch AST form)."""
         def check_body(body, local_env):
             if body is None:
                 return ANY_TYPE
             if isinstance(body, list):
-                last = ANY_TYPE
-                for stmt in body:
-                    last = self.check_statement(stmt, local_env)
-                return last
+                return self._check_statements_for_unreachable(body, local_env)
             return self.check_block(body, local_env)
 
         try_env = TypeEnvironment(env)
         try_type = check_body(node.try_block, try_env)
         catch_env = TypeEnvironment(env)
         if node.exception_var:
-            catch_env.define_variable(node.exception_var, STRING_TYPE)
+            exc_type: Type
+            if node.exception_type:
+                exc_type = ClassType(node.exception_type, {}, {})
+            else:
+                exc_type = STRING_TYPE
+            catch_env.define_variable(node.exception_var, exc_type)
         catch_type = check_body(node.catch_block, catch_env)
         return UnionType([try_type, catch_type])
 
