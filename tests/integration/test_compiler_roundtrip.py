@@ -280,6 +280,24 @@ end
         assert rc == 0
         assert out == "7\n0\n"
 
+    def test_top_level_comptime_const_initializes_before_user_main(self):
+        src = """
+comptime const LIMIT is 5
+comptime assert LIMIT is equal to 5
+
+function add_limit with n as Integer returns Integer
+    return n plus LIMIT
+end
+
+function main returns Integer
+    print text add_limit with 3
+    return 0
+end
+"""
+        rc, out, _ = compile_and_run(src)
+        assert rc == 0
+        assert out == "8\n"
+
     def test_function_returns_value(self):
         src = """
 function add with a as Integer and b as Integer returns Integer

@@ -48,6 +48,8 @@ class LLVMIRGenerator(CodeGenerator):
         self.functions: Dict[str, Tuple[str, List[str], List[str]]] = {}  # name -> (ret_type, param_types, param_names)
         self.local_vars: Dict[str, Tuple[str, str]] = {}  # var_name -> (llvm_type, %alloca_name)
         self.array_sizes: Dict[str, int] = {}  # var_name -> array_size (for tracking lengths)
+        self.top_level_statements: List[Any] = []
+        self.comptime_constant_values: Dict[str, Any] = {}
         self.runtime_array_sizes: Dict[str, str] = {}  # var_name -> size_register (runtime size tracking)
         self.array_size_allocas: Dict[str, str] = {}  # var_name -> alloca_name (persistent size alloca for dynamically-grown arrays)
         self.entry_block_end_idx: int = 0  # Index in ir_lines right after entry block parameter allocas
@@ -798,6 +800,16 @@ class LLVMIRGenerator(CodeGenerator):
         
         source_dir = os.path.dirname(source_file) if source_file else "."
         self._process_imports(ast, source_dir)
+        self.top_level_statements = [
+            stmt for stmt in ast.statements
+            if type(stmt).__name__ not in {
+                'FunctionDefinition', 'AsyncFunctionDefinition',
+                'ClassDefinition', 'InterfaceDefinition', 'EnumDefinition',
+                'StructDefinition', 'UnionDefinition',
+                'ExternFunctionDeclaration', 'ExternVariableDeclaration',
+                'ExternTypeDeclaration', 'ExportStatement', 'ImportStatement',
+            }
+        ]
         
         self._emit_module_header()
         self._emit_exception_infrastructure()
@@ -865,6 +877,8 @@ class LLVMIRGenerator(CodeGenerator):
                 self._collect_enum_definition(stmt)
             elif stmt_type == 'VariableDeclaration':
                 self._collect_global_variable(stmt)
+            elif stmt_type == 'ComptimeConst':
+                self._collect_global_comptime_const(stmt)
             elif stmt_type == 'SendStatement':
                 self._collect_channel_send_metadata(stmt)
             elif stmt_type == 'ExternVariableDeclaration':
@@ -2383,6 +2397,21 @@ class LLVMIRGenerator(CodeGenerator):
                 'ptr': global_name
             }
 
+    def _collect_global_comptime_const(self, node) -> None:
+        """Collect a top-level comptime constant as a real global variable."""
+        class _ConstShim:
+            pass
+
+        shim = _ConstShim()
+        shim.name = node.name
+        shim.value = node.expr
+        shim.var_type = None
+        self._collect_global_variable(shim)
+
+        const_value = self._evaluate_constant_expr(node.expr)
+        if const_value is not None:
+            self.comptime_constant_values[node.name] = const_value
+
     def _collect_channel_send_metadata(self, stmt) -> None:
         """Collect top-level channel payload type and ownership metadata."""
         if type(getattr(stmt, 'channel', None)).__name__ != 'Identifier':
@@ -3294,6 +3323,8 @@ class LLVMIRGenerator(CodeGenerator):
         self.array_size_allocas = {}
         
         if has_nxl_main:
+            for stmt in self.top_level_statements:
+                self._generate_statement(stmt, indent='  ')
             # Wrap NexusLang main call in try-catch for uncaught exception handling
             self.emit('  br label %main.try')
             self.emit('main.try:')
@@ -3445,6 +3476,12 @@ class LLVMIRGenerator(CodeGenerator):
             self._generate_contract_statement(stmt, indent)
         elif stmt_type == 'ExpectStatement':
             self._generate_expect_statement(stmt, indent)
+        elif stmt_type == 'ComptimeExpression':
+            self._generate_comptime_expression(stmt, indent)
+        elif stmt_type == 'ComptimeConst':
+            self._generate_comptime_const(stmt, indent)
+        elif stmt_type == 'ComptimeAssert':
+            self._generate_comptime_assert(stmt, indent)
         # Add more statement types as needed
 
     def _coerce_to_i1(self, value_reg: str, value_type: str, indent='') -> str:
@@ -3595,6 +3632,47 @@ class LLVMIRGenerator(CodeGenerator):
         msg_reg = self._contract_message_ptr(
             getattr(stmt, 'message_expr', None),
             f"expect assertion failed ({matcher})",
+            indent,
+        )
+        self._emit_contract_assert(cond_reg, cond_type, msg_reg, indent)
+
+    def _generate_comptime_expression(self, stmt, indent='') -> None:
+        """Lower comptime eval as expression evaluation with discarded result."""
+        self._generate_expression(stmt.expr, indent)
+
+    def _generate_comptime_const(self, stmt, indent='') -> None:
+        """Lower comptime const using the existing variable declaration machinery."""
+        class _ConstShim:
+            pass
+
+        shim = _ConstShim()
+        shim.name = stmt.name
+        shim.value = stmt.expr
+        shim.var_type = None
+        self._generate_variable_declaration(shim, indent)
+
+        const_value = self._evaluate_constant_expr(stmt.expr)
+        if const_value is not None:
+            self.comptime_constant_values[stmt.name] = const_value
+
+    def _generate_comptime_assert(self, stmt, indent='') -> None:
+        """Lower comptime assert with compile-time folding when possible."""
+        constant_value = self._evaluate_constant_expr(stmt.condition)
+        if constant_value is not None:
+            if bool(constant_value):
+                return
+            message = "Compile-time assertion failed"
+            if getattr(stmt, 'message_expr', None) is not None:
+                message_value = self._evaluate_constant_expr(stmt.message_expr)
+                if message_value is not None:
+                    message = f"Compile-time assertion failed: {message_value}"
+            raise RuntimeError(message)
+
+        cond_reg = self._generate_expression(stmt.condition, indent)
+        cond_type = self._infer_expression_type(stmt.condition)
+        msg_reg = self._contract_message_ptr(
+            getattr(stmt, 'message_expr', None),
+            'Compile-time assertion failed',
             indent,
         )
         self._emit_contract_assert(cond_reg, cond_type, msg_reg, indent)
@@ -3875,6 +3953,7 @@ class LLVMIRGenerator(CodeGenerator):
         (globals are handled during module-level code generation, not here).
         """
         if self.current_function_name is None:
+            var_name = node.name
             # Global scope - already collected, just initialize if needed
             if hasattr(node, 'value') and node.value and var_name in self.global_vars:
                 llvm_type, global_name = self.global_vars[var_name]
@@ -12681,13 +12760,17 @@ class LLVMIRGenerator(CodeGenerator):
     
     def _evaluate_constant_expr(self, expr):
         """Try to evaluate expression to constant value at compile time."""
+        from ...parser.lexer import TokenType
+
         if expr is None:
             return None
         
         # Literal values
         if type(expr).__name__ == 'Literal':
-            if isinstance(expr.value, int):
-                return expr.value
+            return expr.value
+
+        if type(expr).__name__ == 'Identifier':
+            return self.comptime_constant_values.get(expr.name)
         
         # Unary operations (e.g., -5)
         elif type(expr).__name__ == 'UnaryOperation':
@@ -12700,6 +12783,40 @@ class LLVMIRGenerator(CodeGenerator):
                         return -operand_val
                     elif op_str in ('+', 'plus'):
                         return operand_val
+
+        elif type(expr).__name__ == 'BinaryOperation':
+            left_val = self._evaluate_constant_expr(getattr(expr, 'left', None))
+            right_val = self._evaluate_constant_expr(getattr(expr, 'right', None))
+            if left_val is None or right_val is None:
+                return None
+
+            op = getattr(expr, 'operator', None)
+            op_str = getattr(op, 'lexeme', str(op))
+            op_type = getattr(op, 'type', None)
+            if op_type == TokenType.PLUS or op_str in ('+', 'plus'):
+                return left_val + right_val
+            if op_type == TokenType.MINUS or op_str in ('-', 'minus'):
+                return left_val - right_val
+            if op_type == TokenType.TIMES or op_str in ('*', 'times'):
+                return left_val * right_val
+            if op_type == TokenType.DIVIDED_BY or op_str in ('/', 'divided_by'):
+                return left_val / right_val
+            if op_type == TokenType.EQUAL_TO or op_str in ('==', 'equal', 'is equal to'):
+                return left_val == right_val
+            if op_type == TokenType.NOT_EQUAL_TO or op_str in ('!=', 'not equal', 'is not equal to'):
+                return left_val != right_val
+            if op_type == TokenType.LESS_THAN or op_str in ('<', 'less_than', 'is less than'):
+                return left_val < right_val
+            if op_type == TokenType.LESS_THAN_OR_EQUAL_TO or op_str in ('<=', 'less_than_or_equal_to', 'is less than or equal to'):
+                return left_val <= right_val
+            if op_type == TokenType.GREATER_THAN or op_str in ('>', 'greater_than', 'is greater than'):
+                return left_val > right_val
+            if op_type == TokenType.GREATER_THAN_OR_EQUAL_TO or op_str in ('>=', 'greater_than_or_equal_to', 'is greater than or equal to'):
+                return left_val >= right_val
+            if op_type == TokenType.AND or op_str in ('and', '&&'):
+                return bool(left_val) and bool(right_val)
+            if op_type == TokenType.OR or op_str in ('or', '||'):
+                return bool(left_val) or bool(right_val)
         
         return None
     

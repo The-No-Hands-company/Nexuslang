@@ -20,6 +20,7 @@ from ..parser.ast import (
     ParallelForLoop,
     ExpectStatement, RequireStatement, EnsureStatement,
     GuaranteeStatement, InvariantStatement,
+    ComptimeExpression, ComptimeConst, ComptimeAssert,
     # Low-level constructs
     StructDefinition, UnionDefinition, ObjectInstantiation, MemberAssignment,
     SizeofExpression, AddressOfExpression, DereferenceExpression,
@@ -266,6 +267,12 @@ class TypeChecker:
             return self.check_guarantee_statement(statement, env)
         elif isinstance(statement, InvariantStatement):
             return self.check_invariant_statement(statement, env)
+        elif isinstance(statement, ComptimeExpression):
+            return self.check_comptime_expression(statement, env)
+        elif isinstance(statement, ComptimeConst):
+            return self.check_comptime_const(statement, env)
+        elif isinstance(statement, ComptimeAssert):
+            return self.check_comptime_assert(statement, env)
         elif isinstance(statement, MemoryAllocation):
             return self.check_memory_allocation(statement, env)
         elif isinstance(statement, MemoryDeallocation):
@@ -1156,6 +1163,27 @@ class TypeChecker:
     def check_invariant_statement(self, node: InvariantStatement, env: TypeEnvironment) -> Type:
         self._check_contract_condition(node.condition, env, "Invariant")
         self._check_contract_message(getattr(node, 'message_expr', None), env, "Invariant")
+        return BOOLEAN_TYPE
+
+    def check_comptime_expression(self, node: ComptimeExpression, env: TypeEnvironment) -> Type:
+        """Type-check a comptime eval expression."""
+        return self.check_statement(node.expr, env)
+
+    def check_comptime_const(self, node: ComptimeConst, env: TypeEnvironment) -> Type:
+        """Type-check and bind a comptime constant."""
+        expr_type = self.check_statement(node.expr, env)
+        env.define_variable(node.name, expr_type)
+        return expr_type
+
+    def check_comptime_assert(self, node: ComptimeAssert, env: TypeEnvironment) -> Type:
+        """Type-check a comptime assertion."""
+        condition_type = self.check_statement(node.condition, env)
+        if not isinstance(condition_type, AnyType) and not condition_type.is_compatible_with(BOOLEAN_TYPE):
+            self.errors.append(
+                f"Type error: comptime assert condition must be boolean, got '{self._type_name(condition_type)}'"
+            )
+
+        self._check_contract_message(getattr(node, 'message_expr', None), env, "Comptime assert")
         return BOOLEAN_TYPE
 
     def check_expect_statement(self, node: ExpectStatement, env: TypeEnvironment) -> Type:

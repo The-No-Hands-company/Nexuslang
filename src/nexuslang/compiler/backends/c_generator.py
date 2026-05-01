@@ -43,6 +43,9 @@ class CCodeGenerator(CodeGenerator):
         self.exception_message_slot = "nxl_current_exception_message"
         self.uses_exceptions = False
         self.symbol_aliases: Dict[str, str] = {}
+        self.top_level_statements: List[Any] = []
+        self.top_level_init_name = "__nxl_top_level_init"
+        self.comptime_constant_values: Dict[str, Any] = {}
         
     def generate(self, ast: Program) -> str:
         """Generate complete C program from AST."""
@@ -55,6 +58,11 @@ class CCodeGenerator(CodeGenerator):
         self.includes.add("<stdbool.h>")
         self.includes.add("<stdint.h>")
         
+        self.top_level_statements = [
+            stmt for stmt in ast.statements
+            if not isinstance(stmt, (FunctionDefinition, ClassDefinition, ExternFunctionDeclaration, ExternVariableDeclaration))
+        ]
+
         # Generate program statements (this will add more includes as needed)
         # First pass: collect classes, globals and function definitions
         for stmt in ast.statements:
@@ -70,9 +78,16 @@ class CCodeGenerator(CodeGenerator):
                 self.forward_declarations.append(f"extern {var_type} {stmt.name};")
                 # Track in symbol table for type inference
                 self.symbol_table[stmt.name] = var_type
+            elif isinstance(stmt, ComptimeConst):
+                const_type = self._infer_type(stmt.expr)
+                self.global_variables[stmt.name] = const_type
+                self.symbol_table[stmt.name] = const_type
         
         # Check if user defined a main function
         has_user_main = any(isinstance(stmt, FunctionDefinition) and stmt.name == "main" for stmt in ast.statements)
+
+        if has_user_main and self.top_level_statements:
+            self.forward_declarations.append(f"static void {self.top_level_init_name}(void);")
         
         if not has_user_main:
             # Generate default main function for top-level statements
@@ -91,7 +106,8 @@ class CCodeGenerator(CodeGenerator):
             # User defined main, just emit top-level statements (global init) if needed
             # For now, warn if there are regular statements outside functions
             # In a real compiler, we might put these in an _init function called by start
-            pass
+            if self.top_level_statements:
+                self._generate_top_level_init_function()
         
         # Now prepend header and includes to the generated code
         header_lines = [
@@ -110,6 +126,11 @@ class CCodeGenerator(CodeGenerator):
         # Add forward declarations if any
         if self.forward_declarations:
             header_lines.extend(self.forward_declarations)
+            header_lines.append("")
+
+        if self.global_variables:
+            for name, c_type in self.global_variables.items():
+                header_lines.append(f"static {c_type} {name};")
             header_lines.append("")
 
         if self.uses_exceptions:
@@ -169,6 +190,9 @@ class CCodeGenerator(CodeGenerator):
         # Function signature
         self.emit_raw(f"{return_type} {node.name}({param_str}) {{")
         self.indent()
+
+        if node.name == "main" and self.top_level_statements:
+            self.emit(f"{self.top_level_init_name}();")
         
         # Generate function body
         if node.body:
@@ -185,6 +209,16 @@ class CCodeGenerator(CodeGenerator):
             for param in node.parameters:
                 if param.name in self.symbol_table:
                     del self.symbol_table[param.name]
+
+    def _generate_top_level_init_function(self) -> None:
+        """Emit initialization for top-level statements before user main runs."""
+        self.emit_raw(f"static void {self.top_level_init_name}(void) {{")
+        self.indent()
+        for stmt in self.top_level_statements:
+            self._generate_statement(stmt)
+        self.dedent()
+        self.emit_raw("}")
+        self.emit_raw("")
 
     def _has_top_level_yield(self, node: FunctionDefinition) -> bool:
         """Return True when a function body contains top-level yield statements."""
@@ -560,6 +594,12 @@ class CCodeGenerator(CodeGenerator):
             self._generate_contract_statement(node)
         elif isinstance(node, ExpectStatement):
             self._generate_expect_statement(node)
+        elif isinstance(node, ComptimeExpression):
+            self._generate_comptime_expression(node)
+        elif isinstance(node, ComptimeConst):
+            self._generate_comptime_const(node)
+        elif isinstance(node, ComptimeAssert):
+            self._generate_comptime_assert(node)
         elif isinstance(node, MemberAssignment):
             # Member assignment: object.field = value
             target_expr = self._generate_expression(node.target)
@@ -1234,6 +1274,51 @@ class CCodeGenerator(CodeGenerator):
             f"expect assertion failed ({matcher})",
         )
 
+    def _generate_comptime_expression(self, node: ComptimeExpression) -> None:
+        """Lower comptime eval as normal expression evaluation."""
+        expr = self._generate_expression(node.expr)
+        if expr and not expr.startswith("/*"):
+            self.emit(f"(void)({expr});")
+
+    def _generate_comptime_const(self, node: ComptimeConst) -> None:
+        """Lower comptime const to either global init or local declaration."""
+        value_expr = self._generate_expression(node.expr)
+        const_value = self._evaluate_constant_expr(node.expr)
+        if const_value is not None:
+            self.comptime_constant_values[node.name] = const_value
+
+        if node.name in self.global_variables:
+            self.emit(f"{node.name} = {value_expr};")
+            return
+
+        emitted_name = self._resolve_symbol_name(node.name)
+        var_type = self._infer_type(node.expr)
+        if node.name in self.symbol_table:
+            self.emit(f"{emitted_name} = {value_expr};")
+        else:
+            self.symbol_table[node.name] = var_type
+            self.emit(f"{var_type} {emitted_name} = {value_expr};")
+
+    def _generate_comptime_assert(self, node: ComptimeAssert) -> None:
+        """Lower comptime assert with compile-time folding when possible."""
+        constant_value = self._evaluate_constant_expr(node.condition)
+        if constant_value is not None:
+            if bool(constant_value):
+                return
+            message = "Compile-time assertion failed"
+            if getattr(node, 'message_expr', None) is not None:
+                message_value = self._evaluate_constant_expr(node.message_expr)
+                if message_value is not None:
+                    message = f"Compile-time assertion failed: {message_value}"
+            raise RuntimeError(message)
+
+        condition = self._generate_expression(node.condition)
+        self._emit_contract_guard(
+            condition,
+            getattr(node, "message_expr", None),
+            "Compile-time assertion failed",
+        )
+
     def _emit_contract_guard(self, condition_expr: str, message_expr: Any, default_message: str) -> None:
         """Emit C runtime guard that aborts execution on failed contract/assertion."""
         if message_expr is not None:
@@ -1438,6 +1523,59 @@ class CCodeGenerator(CodeGenerator):
             return "true" if node.value else "false"
         else:
             return f"{node.value}"
+
+    def _evaluate_constant_expr(self, expr: Any):
+        """Try to evaluate an expression to a Python constant."""
+        from ...parser.lexer import TokenType
+
+        if expr is None:
+            return None
+        if isinstance(expr, Literal):
+            return expr.value
+        if isinstance(expr, Identifier):
+            return self.comptime_constant_values.get(expr.name)
+        if isinstance(expr, UnaryOperation):
+            operand_val = self._evaluate_constant_expr(expr.operand)
+            if operand_val is None:
+                return None
+            op = getattr(expr.operator, 'lexeme', str(expr.operator))
+            if op in ('-', 'minus', 'negate'):
+                return -operand_val
+            if op in ('+', 'plus'):
+                return operand_val
+            return None
+        if isinstance(expr, BinaryOperation):
+            left_val = self._evaluate_constant_expr(expr.left)
+            right_val = self._evaluate_constant_expr(expr.right)
+            if left_val is None or right_val is None:
+                return None
+            op = getattr(expr.operator, 'lexeme', str(expr.operator))
+            op_type = getattr(expr.operator, 'type', None)
+            if op_type == TokenType.PLUS or op in ('+', 'plus'):
+                return left_val + right_val
+            if op_type == TokenType.MINUS or op in ('-', 'minus'):
+                return left_val - right_val
+            if op_type == TokenType.TIMES or op in ('*', 'times'):
+                return left_val * right_val
+            if op_type == TokenType.DIVIDED_BY or op in ('/', 'divided_by'):
+                return left_val / right_val
+            if op_type == TokenType.EQUAL_TO or op in ('==', 'equal', 'is equal to'):
+                return left_val == right_val
+            if op_type == TokenType.NOT_EQUAL_TO or op in ('!=', 'not equal', 'is not equal to'):
+                return left_val != right_val
+            if op_type == TokenType.LESS_THAN or op in ('<', 'less_than', 'is less than'):
+                return left_val < right_val
+            if op_type == TokenType.LESS_THAN_OR_EQUAL_TO or op in ('<=', 'less_than_or_equal_to', 'is less than or equal to'):
+                return left_val <= right_val
+            if op_type == TokenType.GREATER_THAN or op in ('>', 'greater_than', 'is greater than'):
+                return left_val > right_val
+            if op_type == TokenType.GREATER_THAN_OR_EQUAL_TO or op in ('>=', 'greater_than_or_equal_to', 'is greater than or equal to'):
+                return left_val >= right_val
+            if op_type == TokenType.AND or op in ('and', '&&'):
+                return bool(left_val) and bool(right_val)
+            if op_type == TokenType.OR or op in ('or', '||'):
+                return bool(left_val) or bool(right_val)
+        return None
     
     def _generate_binary_operation(self, node: BinaryOperation) -> str:
         """Generate binary operation."""
