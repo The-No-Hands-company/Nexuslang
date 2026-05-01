@@ -16,6 +16,8 @@ from nexuslang.parser.ast import (
     Identifier,
     RequireStatement,
     ExpectStatement,
+    TryCatch,
+    RaiseStatement,
 )
 
 
@@ -46,4 +48,35 @@ def test_c_contracts_and_expect_emit_abort_guards():
 
     assert "if (!(false))" in c_code
     assert "fprintf(stderr, \"%s\\n\"" in c_code
+    assert "exit(1);" in c_code
+
+
+def test_c_try_catch_and_raise_emit_setjmp_longjmp_flow():
+    ast = Program([
+        TryCatch(
+            try_block=[RaiseStatement(message=Literal("string", "boom"))],
+            catch_block=[PrintStatement(Identifier("err"))],
+            exception_var="err",
+        )
+    ])
+
+    generator = CCodeGenerator(target="c")
+    c_code = generator.generate(ast)
+
+    assert "#include <setjmp.h>" in c_code
+    assert "if (setjmp(" in c_code
+    assert "longjmp(" in c_code
+    assert "nxl_current_exception_message" in c_code
+    assert "const char* err = nxl_current_exception_message ? nxl_current_exception_message : \"Error occurred\";" in c_code
+
+
+def test_c_uncaught_raise_emits_abort_path():
+    ast = Program([
+        RaiseStatement(message=Literal("string", "fatal")),
+    ])
+
+    generator = CCodeGenerator(target="c")
+    c_code = generator.generate(ast)
+
+    assert "fprintf(stderr, \"%s\\n\", (const char*)(\"fatal\"));" in c_code
     assert "exit(1);" in c_code

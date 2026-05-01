@@ -38,6 +38,10 @@ class CCodeGenerator(CodeGenerator):
         self.array_sizes = {}  # Track known array sizes: var_name -> size
         self.interface_types = {}  # Map interface_name -> {'methods': [...]}
         self.class_interfaces = {}  # Map class_name -> list of implemented interface names
+        self.try_stack: List[str] = []  # Active jmp_buf names for nested try/catch blocks
+        self.try_counter = 0
+        self.exception_message_slot = "nxl_current_exception_message"
+        self.uses_exceptions = False
         
     def generate(self, ast: Program) -> str:
         """Generate complete C program from AST."""
@@ -105,6 +109,10 @@ class CCodeGenerator(CodeGenerator):
         # Add forward declarations if any
         if self.forward_declarations:
             header_lines.extend(self.forward_declarations)
+            header_lines.append("")
+
+        if self.uses_exceptions:
+            header_lines.append(f"static const char* {self.exception_message_slot} = NULL;")
             header_lines.append("")
         
         # Add runtime helper functions if needed
@@ -379,8 +387,10 @@ class CCodeGenerator(CodeGenerator):
             self._generate_for_loop(node)
         elif isinstance(node, ParallelForLoop):
             self._generate_parallel_for_loop(node)
-        elif isinstance(node, TryCatch):
+        elif isinstance(node, (TryCatch, TryCatchBlock)):
             self._generate_try_catch(node)
+        elif isinstance(node, RaiseStatement):
+            self._generate_raise_statement(node)
         elif isinstance(node, SendStatement):
             channel_expr = self._generate_expression(node.channel)
             value_expr = self._generate_expression(node.value)
@@ -1084,23 +1094,24 @@ class CCodeGenerator(CodeGenerator):
         """Generate C code for try-catch error handling using setjmp/longjmp."""
         # Include setjmp.h for error handling
         self.includes.add("<setjmp.h>")
+        self.uses_exceptions = True
         
         # Generate unique label for this try-catch block
-        import random
-        label_id = random.randint(1000, 9999)
-        jmp_buf_name = f"err_jmp_buf_{label_id}"
+        self.try_counter += 1
+        jmp_buf_name = f"nxl_try_jmp_{self.try_counter}"
         
         # Declare jump buffer for this try-catch block
         self.emit(f"jmp_buf {jmp_buf_name};")
         self.emit(f"if (setjmp({jmp_buf_name}) == 0) {{")
         self.indent()
+
+        self.try_stack.append(jmp_buf_name)
         
         # Generate try block code
-        if isinstance(node.try_block, list):
-            for stmt in node.try_block:
-                self._generate_statement(stmt)
-        else:
-            self._generate_statement(node.try_block)
+        for stmt in self._iter_block_statements(node.try_block):
+            self._generate_statement(stmt)
+
+        self.try_stack.pop()
         
         self.dedent()
         self.emit("} else {")
@@ -1109,16 +1120,42 @@ class CCodeGenerator(CodeGenerator):
         # Generate catch block code
         # If there's an exception variable, declare it
         if hasattr(node, 'exception_var') and node.exception_var:
-            self.emit(f"const char* {node.exception_var} = \"Error occurred\";")
+            self.emit(
+                f"const char* {node.exception_var} = "
+                f"{self.exception_message_slot} ? {self.exception_message_slot} : \"Error occurred\";"
+            )
         
-        if isinstance(node.catch_block, list):
-            for stmt in node.catch_block:
-                self._generate_statement(stmt)
-        else:
-            self._generate_statement(node.catch_block)
+        for stmt in self._iter_block_statements(node.catch_block):
+            self._generate_statement(stmt)
         
         self.dedent()
         self.emit("}")
+
+    def _iter_block_statements(self, block_like: Any) -> List[Any]:
+        """Return a statement list from list-based or Block-based AST nodes."""
+        if block_like is None:
+            return []
+        if isinstance(block_like, list):
+            return block_like
+        if hasattr(block_like, "statements") and isinstance(block_like.statements, list):
+            return block_like.statements
+        return [block_like]
+
+    def _generate_raise_statement(self, node: RaiseStatement) -> None:
+        """Generate C raise/throw lowering with setjmp/longjmp parity."""
+        message = self._generate_expression(node.message) if getattr(node, "message", None) is not None else '"Error raised"'
+
+        if self.try_stack:
+            self.includes.add("<setjmp.h>")
+            self.uses_exceptions = True
+            active_jmp = self.try_stack[-1]
+            self.emit(f"{self.exception_message_slot} = (const char*)({message});")
+            self.emit(f"longjmp({active_jmp}, 1);")
+            return
+
+        # Uncaught raise falls back to process termination with message.
+        self.emit(f"fprintf(stderr, \"%s\\n\", (const char*)({message}));")
+        self.emit("exit(1);")
     
     def _generate_expression(self, node: Any) -> str:
         """Generate C expression code."""

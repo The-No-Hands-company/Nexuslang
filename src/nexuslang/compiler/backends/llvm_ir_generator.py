@@ -166,6 +166,8 @@ class LLVMIRGenerator(CodeGenerator):
 
         # Generator runtime support (pull-style frame/next semantics)
         self.has_generator_ops = False
+        # Names of variables that store generator frame pointers.
+        self.generator_vars: Set[str] = set()
         
         # Type mapping cache
         self.type_cache: Dict[str, str] = {}
@@ -3226,7 +3228,7 @@ class LLVMIRGenerator(CodeGenerator):
             self._generate_continue_statement(stmt, indent)
         elif stmt_type == 'FallthroughStatement':
             self._generate_fallthrough_statement(stmt, indent)
-        elif stmt_type == 'TryCatch':
+        elif stmt_type in ('TryCatch', 'TryCatchBlock'):
             self._generate_try_catch(stmt, indent)
         elif stmt_type == 'RaiseStatement':
             self._generate_raise_statement(stmt, indent)
@@ -3673,6 +3675,9 @@ class LLVMIRGenerator(CodeGenerator):
                 value_reg = self._generate_expression(node.value, indent)
                 value_type = self._infer_expression_type(node.value)
                 value_reg = self._track_rc_variable_assignment(node, var_name, value_reg, indent)
+
+                if type(node.value).__name__ == 'GeneratorExpression':
+                    self.generator_vars.add(var_name)
                 
                 # Track if this is a closure assignment (lambda expression) for GLOBALS
                 if type(node.value).__name__ == 'LambdaExpression':
@@ -3886,6 +3891,9 @@ class LLVMIRGenerator(CodeGenerator):
         if hasattr(node, 'value') and node.value:
             value_reg = self._generate_expression(node.value, indent)
             value_type = self._infer_expression_type(node.value)
+
+            if type(node.value).__name__ == 'GeneratorExpression':
+                self.generator_vars.add(var_name)
             
             value_reg = self._track_rc_variable_assignment(node, var_name, value_reg, indent)
             
@@ -3958,6 +3966,16 @@ class LLVMIRGenerator(CodeGenerator):
         # Call nxl_panic
         self.emit(f'{indent}call void @nxl_panic(i8* {msg_reg})')
         self.emit(f'{indent}unreachable')
+
+    def _iter_block_statements(self, block_like):
+        """Return a statement list from either list-based or Block-based AST nodes."""
+        if block_like is None:
+            return []
+        if isinstance(block_like, list):
+            return block_like
+        if hasattr(block_like, 'statements') and isinstance(block_like.statements, list):
+            return block_like.statements
+        return [block_like]
     
     def _prepare_asm_instructions(self, node):
         """Extract, validate, and return list of assembly instruction strings from an InlineAssembly node."""
@@ -5537,6 +5555,9 @@ class LLVMIRGenerator(CodeGenerator):
                 array_ptr = self._new_temp()
                 self.emit(f'{indent}{array_ptr} = load {array_type}, {array_type}* {array_alloca}, align 8')
 
+                if array_var_name in self.generator_vars:
+                    return array_ptr, 'generator.frame', None, None
+
                 # Get array size from tracking
                 if array_var_name in self.array_sizes:
                     array_size = self.array_sizes[array_var_name]
@@ -5546,6 +5567,9 @@ class LLVMIRGenerator(CodeGenerator):
                 array_ptr = self._new_temp()
                 self.emit(f'{indent}{array_ptr} = load {array_type}, {array_type}* {global_name}, align 8')
 
+                if array_var_name in self.generator_vars:
+                    return array_ptr, 'generator.frame', None, None
+
                 # Try to get size from tracking
                 if array_var_name in self.array_sizes:
                     array_size = self.array_sizes[array_var_name]
@@ -5553,6 +5577,9 @@ class LLVMIRGenerator(CodeGenerator):
             # Arbitrary expression - evaluate it
             iterable_reg = self._generate_expression(node.iterable, indent)
             iterable_type = self._infer_expression_type(node.iterable)
+
+            if type(node.iterable).__name__ == 'GeneratorExpression':
+                return iterable_reg, 'generator.frame', None, None
 
             # For list types, extract length and data pointer
             if iterable_type.startswith('{'):
@@ -5633,6 +5660,59 @@ class LLVMIRGenerator(CodeGenerator):
         
         # If we couldn't determine the array pointer, skip
         if array_ptr is None:
+            return
+
+        # Generator frame iteration (pull semantics via runtime helpers).
+        if array_type == 'generator.frame':
+            iter_alloca = self._new_temp()
+            self.emit(f'{indent}{iter_alloca} = alloca i64, align 8')
+            self.local_vars[iterator_name] = ('i64', iter_alloca)
+
+            cond_label = self._new_label('gen.cond')
+            body_label = self._new_label('gen.body')
+
+            has_else = hasattr(node, 'else_body') and node.else_body
+            if has_else:
+                else_label = self._new_label('gen.else')
+                end_label = self._new_label('gen.end')
+            else:
+                end_label = self._new_label('gen.end')
+
+            # continue should re-check has_next, break should leave loop.
+            self.loop_stack.append((cond_label, end_label))
+            if hasattr(node, 'label') and node.label:
+                self.labeled_loops[node.label] = (cond_label, end_label)
+
+            self.emit(f'{indent}br label %{cond_label}')
+            self.emit(f'{cond_label}:')
+            has_next_reg = self._new_temp()
+            self.emit(f'{indent}{has_next_reg} = call i1 @nxl_generator_has_next(i8* {array_ptr})')
+            self.emit(f'{indent}br i1 {has_next_reg}, label %{body_label}, label %{end_label if not has_else else else_label}')
+
+            self.emit(f'{body_label}:')
+            next_val_reg = self._new_temp()
+            self.emit(f'{indent}{next_val_reg} = call i64 @nxl_generator_next(i8* {array_ptr})')
+            self.emit(f'{indent}store i64 {next_val_reg}, i64* {iter_alloca}, align 8')
+
+            if hasattr(node, 'body') and node.body:
+                for stmt in node.body:
+                    self._generate_statement(stmt, indent)
+
+            self.emit(f'{indent}br label %{cond_label}')
+
+            if has_else:
+                self.emit(f'{else_label}:')
+                for stmt in node.else_body:
+                    self._generate_statement(stmt, indent)
+                self.emit(f'{indent}br label %{end_label}')
+
+            self.emit(f'{end_label}:')
+
+            self.loop_stack.pop()
+            if hasattr(node, 'label') and node.label and node.label in self.labeled_loops:
+                del self.labeled_loops[node.label]
+            if iterator_name in self.local_vars:
+                del self.local_vars[iterator_name]
             return
         
         # Create index variable
@@ -5987,7 +6067,7 @@ class LLVMIRGenerator(CodeGenerator):
         
         # Execute try block statements
         # Note: Calls within will be converted to invoke if they can throw
-        for stmt in node.try_block:
+        for stmt in self._iter_block_statements(node.try_block):
             self._generate_statement(stmt, indent + '  ')
         
         # After try block completes normally, jump to success label
@@ -6055,7 +6135,7 @@ class LLVMIRGenerator(CodeGenerator):
             self.local_vars[exc_var] = ('i8*', exc_alloca)
         
         # Execute catch block statements
-        for stmt in node.catch_block:
+        for stmt in self._iter_block_statements(node.catch_block):
             self._generate_statement(stmt, indent + '  ')
         
         # End catch - cleanup exception state
@@ -12066,6 +12146,9 @@ class LLVMIRGenerator(CodeGenerator):
             if hasattr(expr, 'value') and expr.value is not None:
                 return self._infer_expression_type(expr.value)
             return 'i64'
+        elif expr_type == 'GeneratorExpression':
+            # Generator expressions lower to opaque generator frame pointers.
+            return 'i8*'
         
         return 'i64'  # Default
     

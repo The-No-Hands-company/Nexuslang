@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../../src'))
 
 from nexuslang.parser.lexer import Lexer
 from nexuslang.parser.parser import Parser
-from nexuslang.parser.ast import GeneratorExpression, Identifier, ListExpression, Literal, Program, VariableDeclaration
+from nexuslang.parser.ast import GeneratorExpression, Identifier, ListExpression, Literal, Program, VariableDeclaration, ForLoop, PrintStatement
 from nexuslang.compiler.backends.llvm_ir_generator import LLVMIRGenerator
 
 
@@ -127,6 +127,40 @@ class TestGeneratorExpressions:
         assert "define i1 @nxl_generator_has_next(i8* %gen)" in llvm_ir
         assert "define i64 @nxl_generator_next(i8* %gen)" in llvm_ir
         assert "call i8* @malloc(i64 24)" in llvm_ir
+
+    def test_foreach_over_generator_uses_pull_runtime_helpers(self):
+        """Foreach over generator variable should consume frame via has_next/next calls."""
+        ast = Program([
+            VariableDeclaration(
+                "numbers",
+                ListExpression([
+                    Literal("integer", 1),
+                    Literal("integer", 2),
+                    Literal("integer", 3),
+                ]),
+            ),
+            VariableDeclaration(
+                "gen",
+                GeneratorExpression(
+                    Identifier("x"),
+                    Identifier("x"),
+                    Identifier("numbers"),
+                    None,
+                ),
+            ),
+            ForLoop(
+                iterator="item",
+                iterable=Identifier("gen"),
+                body=[PrintStatement(Identifier("item"))],
+            ),
+        ])
+
+        generator = LLVMIRGenerator()
+        llvm_ir = generator.generate(ast)
+
+        assert "call i1 @nxl_generator_has_next(i8*" in llvm_ir
+        assert "call i64 @nxl_generator_next(i8*" in llvm_ir
+        assert "gen.cond" in llvm_ir
 
 
 class TestComprehensionHelpers:

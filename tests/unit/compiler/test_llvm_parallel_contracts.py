@@ -16,6 +16,9 @@ from nexuslang.parser.ast import (
     Identifier,
     RequireStatement,
     ExpectStatement,
+    TryCatchBlock,
+    RaiseStatement,
+    Block,
 )
 
 
@@ -46,3 +49,25 @@ def test_llvm_contracts_and_expect_emit_runtime_panic_guards():
 
     assert "call void @nxl_panic(i8*" in llvm_ir
     assert "contract.fail" in llvm_ir
+
+
+def test_llvm_try_catch_block_lowers_with_landingpad_and_raise():
+    ast = Program([
+        TryCatchBlock(
+            try_block=Block([
+                RaiseStatement(message=Literal("string", "boom")),
+            ]),
+            catch_block=Block([
+                PrintStatement(Identifier("err")),
+            ]),
+            exception_var="err",
+        )
+    ])
+
+    generator = LLVMIRGenerator()
+    llvm_ir = generator.generate(ast)
+
+    assert "landingpad { i8*, i32 }" in llvm_ir
+    assert "call i8* @__cxa_begin_catch(i8*" in llvm_ir
+    assert "store i8*" in llvm_ir
+    assert "@__nxl_throw" in llvm_ir or "@__cxa_throw" in llvm_ir
