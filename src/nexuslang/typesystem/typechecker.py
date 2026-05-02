@@ -22,6 +22,7 @@ from ..parser.ast import (
     ExpectStatement, RequireStatement, EnsureStatement,
     GuaranteeStatement, InvariantStatement,
     ComptimeExpression, ComptimeConst, ComptimeAssert,
+    MacroDefinition, MacroExpansion,
     # Low-level constructs
     StructDefinition, UnionDefinition, ObjectInstantiation, MemberAssignment,
     SizeofExpression, AddressOfExpression, DereferenceExpression,
@@ -224,6 +225,7 @@ class TypeChecker:
         self.monomorphizer = Monomorphizer()
         self.generic_inference = GenericTypeInference()
         self.generic_functions: Dict[str, FunctionDefinition] = {}  # Track generic function templates
+        self.macro_definitions: Dict[str, MacroDefinition] = {}
 
         # HKT registry: used to validate higher-kinded type constraints
         self.hkt_registry = GLOBAL_HKT_REGISTRY
@@ -274,6 +276,10 @@ class TypeChecker:
             return self.check_comptime_const(statement, env)
         elif isinstance(statement, ComptimeAssert):
             return self.check_comptime_assert(statement, env)
+        elif isinstance(statement, MacroDefinition):
+            return self.check_macro_definition(statement, env)
+        elif isinstance(statement, MacroExpansion):
+            return self.check_macro_expansion(statement, env)
         elif isinstance(statement, MemoryAllocation):
             return self.check_memory_allocation(statement, env)
         elif isinstance(statement, MemoryDeallocation):
@@ -1258,6 +1264,22 @@ class TypeChecker:
 
         self._check_contract_message(getattr(node, 'message_expr', None), env, "Comptime assert")
         return BOOLEAN_TYPE
+
+    def check_macro_definition(self, node: MacroDefinition, env: TypeEnvironment) -> Type:
+        """Register macro definitions for later expansion checks."""
+        self.macro_definitions[node.name] = node
+        return ANY_TYPE
+
+    def check_macro_expansion(self, node: MacroExpansion, env: TypeEnvironment) -> Type:
+        """Type-check macro expansion arguments and validate macro existence."""
+        if node.name not in self.macro_definitions:
+            self.errors.append(f"Undefined macro: {node.name}")
+            return ANY_TYPE
+
+        for arg_expr in (node.arguments or {}).values():
+            self.check_statement(arg_expr, env)
+
+        return ANY_TYPE
 
     def check_expect_statement(self, node: ExpectStatement, env: TypeEnvironment) -> Type:
         """Type-check an expect assertion statement."""
