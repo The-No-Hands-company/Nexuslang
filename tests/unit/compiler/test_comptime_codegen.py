@@ -97,3 +97,26 @@ end
     assert "value must be positive" in c_code
     assert "fprintf(stderr" in c_code
     assert "exit(1);" in c_code
+
+
+def test_c_top_level_variable_state_materialized_for_user_main():
+    ast = _parse(
+        """
+set base to 10
+function add_limit with n as Integer returns Integer
+    return n plus base
+end
+
+function main returns Integer
+    print text add_limit with 5
+    return 0
+end
+"""
+    )
+
+    c_code = CCodeGenerator(target="c").generate(ast)
+
+    assert "static int base;" in c_code
+    assert "static void __nxl_top_level_init(void)" in c_code
+    assert "base = 10;" in c_code
+    assert "__nxl_top_level_init();" in c_code

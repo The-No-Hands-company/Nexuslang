@@ -298,6 +298,38 @@ end
         assert rc == 0
         assert out == "8\n"
 
+    def test_top_level_variable_initializes_before_user_main(self):
+        src = """
+set base to 10
+
+function add_limit with n as Integer returns Integer
+    return n plus base
+end
+
+function main returns Integer
+    print text add_limit with 5
+    return 0
+end
+"""
+        rc, out, _ = compile_and_run(src)
+        assert rc == 0
+        assert out == "15\n"
+
+    def test_macro_expansion_runs_in_compiled_path(self):
+        src = """
+macro GREET
+    print text "hello from macro"
+end
+
+function main returns Integer
+    expand GREET
+    return 0
+end
+"""
+        rc, out, _ = compile_and_run(src)
+        assert rc == 0
+        assert out == "hello from macro\n"
+
     def test_function_returns_value(self):
         src = """
 function add with a as Integer and b as Integer returns Integer

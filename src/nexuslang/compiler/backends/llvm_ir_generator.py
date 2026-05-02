@@ -25,6 +25,7 @@ import os
 import tempfile
 import struct
 import platform
+from copy import deepcopy
 
 
 class LLVMIRGenerator(CodeGenerator):
@@ -50,6 +51,7 @@ class LLVMIRGenerator(CodeGenerator):
         self.array_sizes: Dict[str, int] = {}  # var_name -> array_size (for tracking lengths)
         self.top_level_statements: List[Any] = []
         self.comptime_constant_values: Dict[str, Any] = {}
+        self.macro_definitions: Dict[str, Any] = {}
         self.runtime_array_sizes: Dict[str, str] = {}  # var_name -> size_register (runtime size tracking)
         self.array_size_allocas: Dict[str, str] = {}  # var_name -> alloca_name (persistent size alloca for dynamically-grown arrays)
         self.entry_block_end_idx: int = 0  # Index in ir_lines right after entry block parameter allocas
@@ -889,8 +891,14 @@ class LLVMIRGenerator(CodeGenerator):
                 self._collect_extern_type(stmt)
             elif stmt_type == 'FunctionDefinition':
                 self._collect_function_signature(stmt)
+            elif stmt_type == 'MacroDefinition':
+                self._collect_macro_definition(stmt)
             elif stmt_type == 'ExportStatement':
                 self._collect_export_statement(stmt)
+
+    def _collect_macro_definition(self, node) -> None:
+        """Collect a macro definition for compile-time expansion."""
+        self.macro_definitions[node.name] = node
 
     def _emit_type_declarations(self) -> None:
         """Emit LLVM struct, union and class type declarations."""
@@ -3476,6 +3484,10 @@ class LLVMIRGenerator(CodeGenerator):
             self._generate_contract_statement(stmt, indent)
         elif stmt_type == 'ExpectStatement':
             self._generate_expect_statement(stmt, indent)
+        elif stmt_type == 'MacroDefinition':
+            self._collect_macro_definition(stmt)
+        elif stmt_type == 'MacroExpansion':
+            self._generate_macro_expansion(stmt, indent)
         elif stmt_type == 'ComptimeExpression':
             self._generate_comptime_expression(stmt, indent)
         elif stmt_type == 'ComptimeConst':
@@ -3676,6 +3688,54 @@ class LLVMIRGenerator(CodeGenerator):
             indent,
         )
         self._emit_contract_assert(cond_reg, cond_type, msg_reg, indent)
+
+    def _substitute_macro_node(self, node: Any, argument_map: Dict[str, Any]) -> Any:
+        """Recursively substitute macro argument identifiers in an AST node."""
+        if node is None:
+            return None
+        if isinstance(node, list):
+            return [self._substitute_macro_node(item, argument_map) for item in node]
+
+        node_type = type(node).__name__
+        if node_type == 'Identifier' and getattr(node, 'name', None) in argument_map:
+            return deepcopy(argument_map[node.name])
+
+        if not hasattr(node, '__dict__'):
+            return node
+
+        cloned = deepcopy(node)
+        for attr_name, attr_value in vars(cloned).items():
+            setattr(cloned, attr_name, self._substitute_macro_node(attr_value, argument_map))
+        return cloned
+
+    def _expand_macro_body(self, expansion_stmt, indent='') -> None:
+        """Expand and emit macro body statements at compile time."""
+        macro_name = expansion_stmt.name
+        if macro_name not in self.macro_definitions:
+            raise RuntimeError(f"Undefined macro: {macro_name}")
+
+        macro_def = self.macro_definitions[macro_name]
+        argument_map = getattr(expansion_stmt, 'arguments', {}) or {}
+
+        for param in getattr(macro_def, 'parameters', []):
+            if param not in argument_map:
+                raise RuntimeError(f"Macro '{macro_name}' requires argument '{param}'")
+
+        saved_locals = dict(self.local_vars)
+        saved_rc_vars = dict(self.rc_variables)
+        try:
+            for macro_stmt in getattr(macro_def, 'body', []):
+                expanded_stmt = self._substitute_macro_node(macro_stmt, argument_map)
+                self._generate_statement(expanded_stmt, indent)
+        finally:
+            # Preserve macro hygiene: local declarations inside macro body
+            # do not become visible after expansion.
+            self.local_vars = saved_locals
+            self.rc_variables = saved_rc_vars
+
+    def _generate_macro_expansion(self, stmt, indent='') -> None:
+        """Generate code for a macro expansion statement."""
+        self._expand_macro_body(stmt, indent)
 
     def _generate_parallel_for_loop(self, node, indent=''):
         """Lower parallel for to foreach loop in compiled backends (sequential fallback)."""

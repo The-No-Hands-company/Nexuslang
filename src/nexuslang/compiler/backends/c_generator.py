@@ -13,6 +13,7 @@ Strategy:
 """
 
 from typing import Any, Dict, List
+from copy import deepcopy
 from nexuslang.compiler import CodeGenerator
 from nexuslang.parser.ast import *
 
@@ -43,7 +44,9 @@ class CCodeGenerator(CodeGenerator):
         self.exception_message_slot = "nxl_current_exception_message"
         self.uses_exceptions = False
         self.symbol_aliases: Dict[str, str] = {}
-        self.top_level_statements: List[Any] = []
+        self.top_level_statements: List[Any] = []        
+        self.macro_definitions: Dict[str, MacroDefinition] = {}
+        self.inside_top_level_init = False
         self.top_level_init_name = "__nxl_top_level_init"
         self.comptime_constant_values: Dict[str, Any] = {}
         
@@ -60,8 +63,21 @@ class CCodeGenerator(CodeGenerator):
         
         self.top_level_statements = [
             stmt for stmt in ast.statements
-            if not isinstance(stmt, (FunctionDefinition, ClassDefinition, ExternFunctionDeclaration, ExternVariableDeclaration))
+            if not isinstance(stmt, (FunctionDefinition, ClassDefinition, ExternFunctionDeclaration, ExternVariableDeclaration, MacroDefinition))
         ]
+
+        # Pre-collect compile-time metadata used while emitting function bodies.
+        for stmt in ast.statements:
+            if isinstance(stmt, MacroDefinition):
+                self._collect_macro_definition(stmt)
+            elif isinstance(stmt, VariableDeclaration):
+                if self._can_materialize_global_variable(stmt):
+                    self.global_variables[stmt.name] = self._infer_type(stmt.value)
+            elif isinstance(stmt, ComptimeConst):
+                const_type = self._infer_type(stmt.expr)
+                self.global_variables[stmt.name] = const_type
+
+        self.symbol_table.update(self.global_variables)
 
         # Generate program statements (this will add more includes as needed)
         # First pass: collect classes, globals and function definitions
@@ -78,10 +94,14 @@ class CCodeGenerator(CodeGenerator):
                 self.forward_declarations.append(f"extern {var_type} {stmt.name};")
                 # Track in symbol table for type inference
                 self.symbol_table[stmt.name] = var_type
+            elif isinstance(stmt, MacroDefinition):
+                self._collect_macro_definition(stmt)
+            elif isinstance(stmt, VariableDeclaration):
+                if self._can_materialize_global_variable(stmt):
+                    self.global_variables[stmt.name] = self._infer_type(stmt.value)
             elif isinstance(stmt, ComptimeConst):
                 const_type = self._infer_type(stmt.expr)
                 self.global_variables[stmt.name] = const_type
-                self.symbol_table[stmt.name] = const_type
         
         # Check if user defined a main function
         has_user_main = any(isinstance(stmt, FunctionDefinition) and stmt.name == "main" for stmt in ast.statements)
@@ -214,11 +234,26 @@ class CCodeGenerator(CodeGenerator):
         """Emit initialization for top-level statements before user main runs."""
         self.emit_raw(f"static void {self.top_level_init_name}(void) {{")
         self.indent()
-        for stmt in self.top_level_statements:
-            self._generate_statement(stmt)
+        self.inside_top_level_init = True
+        try:
+            for stmt in self.top_level_statements:
+                self._generate_statement(stmt)
+        finally:
+            self.inside_top_level_init = False
         self.dedent()
         self.emit_raw("}")
         self.emit_raw("")
+
+    def _can_materialize_global_variable(self, stmt: VariableDeclaration) -> bool:
+        """Return True when a top-level variable can be represented as static storage."""
+        if not isinstance(stmt.name, str) or getattr(stmt, 'value', None) is None:
+            return False
+        inferred_type = self._infer_type(stmt.value)
+        return not inferred_type.endswith("[]")
+
+    def _collect_macro_definition(self, node: MacroDefinition) -> None:
+        """Collect macro definitions for compile-time expansion."""
+        self.macro_definitions[node.name] = node
 
     def _has_top_level_yield(self, node: FunctionDefinition) -> bool:
         """Return True when a function body contains top-level yield statements."""
@@ -541,6 +576,9 @@ class CCodeGenerator(CodeGenerator):
             # Functions are generated separately, not inline
             # They should be handled at the top level
             pass
+        elif isinstance(node, PrintStatement):
+            expr = self._generate_expression(node)
+            self.emit(f"{expr};")
         elif isinstance(node, InterfaceDefinition):
             # Interfaces are compile-time metadata only, no runtime code needed
             # Interface compliance is checked at compile-time
@@ -600,6 +638,10 @@ class CCodeGenerator(CodeGenerator):
             self._generate_comptime_const(node)
         elif isinstance(node, ComptimeAssert):
             self._generate_comptime_assert(node)
+        elif isinstance(node, MacroDefinition):
+            self._collect_macro_definition(node)
+        elif isinstance(node, MacroExpansion):
+            self._generate_macro_expansion(node)
         elif isinstance(node, MemberAssignment):
             # Member assignment: object.field = value
             target_expr = self._generate_expression(node.target)
@@ -655,6 +697,11 @@ class CCodeGenerator(CodeGenerator):
             if node.name not in self.symbol_table:
                 self.symbol_table[node.name] = self._infer_type(node.value)
             self.emit(f"{emitted_name} = {value_expr};")
+            return
+
+        if self.inside_top_level_init and isinstance(node.name, str) and node.name in self.global_variables:
+            value_expr = self._generate_expression(node.value)
+            self.emit(f"{node.name} = {value_expr};")
             return
 
         # Check if variable already exists in symbol table
@@ -963,6 +1010,8 @@ class CCodeGenerator(CodeGenerator):
         # Look up variable type from symbol table
         if expr.name in self.symbol_table:
             return self.symbol_table[expr.name]
+        if expr.name in self.global_variables:
+            return self.global_variables[expr.name]
         return "int"
 
     def _infer_list_expression_type(self, expr: ListExpression) -> str:
@@ -1319,6 +1368,48 @@ class CCodeGenerator(CodeGenerator):
             "Compile-time assertion failed",
         )
 
+    def _substitute_macro_node(self, node: Any, argument_map: Dict[str, Any]) -> Any:
+        """Recursively substitute macro argument identifiers in an AST node."""
+        if node is None:
+            return None
+        if isinstance(node, list):
+            return [self._substitute_macro_node(item, argument_map) for item in node]
+        if isinstance(node, Identifier) and node.name in argument_map:
+            return deepcopy(argument_map[node.name])
+        if not hasattr(node, '__dict__'):
+            return node
+
+        cloned = deepcopy(node)
+        for attr_name, attr_value in vars(cloned).items():
+            setattr(cloned, attr_name, self._substitute_macro_node(attr_value, argument_map))
+        return cloned
+
+    def _generate_macro_expansion(self, node: MacroExpansion) -> None:
+        """Generate code for macro expansion via compile-time AST substitution."""
+        if node.name not in self.macro_definitions:
+            raise RuntimeError(f"Undefined macro: {node.name}")
+
+        macro_def = self.macro_definitions[node.name]
+        argument_map = node.arguments or {}
+        for param in macro_def.parameters:
+            if param not in argument_map:
+                raise RuntimeError(f"Macro '{node.name}' requires argument '{param}'")
+
+        saved_symbol_table = dict(self.symbol_table)
+        saved_aliases = dict(self.symbol_aliases)
+
+        self.emit("{")
+        self.indent()
+        try:
+            for macro_stmt in macro_def.body:
+                expanded_stmt = self._substitute_macro_node(macro_stmt, argument_map)
+                self._generate_statement(expanded_stmt)
+        finally:
+            self.symbol_table = saved_symbol_table
+            self.symbol_aliases = saved_aliases
+        self.dedent()
+        self.emit("}")
+
     def _emit_contract_guard(self, condition_expr: str, message_expr: Any, default_message: str) -> None:
         """Emit C runtime guard that aborts execution on failed contract/assertion."""
         if message_expr is not None:
@@ -1479,6 +1570,29 @@ class CCodeGenerator(CodeGenerator):
         
         elif isinstance(node, FunctionCall):
             return self._generate_function_call(node)
+
+        elif isinstance(node, PrintStatement):
+            expr_node = node.expression
+            if isinstance(expr_node, list):
+                if not expr_node:
+                    return 'printf("\\n")'
+                expr_node = expr_node[0]
+
+            if expr_node is None:
+                return 'printf("\\n")'
+
+            arg_expr = self._generate_expression(expr_node)
+            arg_type = self._infer_type(expr_node)
+
+            if arg_type == "const char*":
+                return f'printf("%s\\n", {arg_expr})'
+            if arg_type == "double":
+                return f'printf("%f\\n", {arg_expr})'
+            if arg_type == "bool":
+                return f'printf("%s\\n", ({arg_expr}) ? "true" : "false")'
+            if arg_type.endswith('*'):
+                return f'printf("%p\\n", {arg_expr})'
+            return f'printf("%d\\n", {arg_expr})'
 
         elif isinstance(node, ChannelCreation):
             self.includes.add("<pthread.h>")
