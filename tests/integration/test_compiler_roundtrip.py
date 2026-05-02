@@ -26,6 +26,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src"))
 
 from nexuslang.parser.lexer import Lexer
 from nexuslang.parser.parser import Parser
+from nexuslang.parser.ast import MatchExpression, OptionPattern, ResultPattern
 from nexuslang.compiler.backends.llvm_ir_generator import LLVMIRGenerator
 
 
@@ -77,6 +78,43 @@ def compile_and_run(source: str) -> tuple[int, str, str]:
 
         result = subprocess.run([exe], capture_output=True, text=True, timeout=15)
         return result.returncode, result.stdout, result.stderr
+
+
+def compile_ast_and_run(ast) -> tuple[int, str, str]:
+    """Compile an already-parsed AST to native code and execute it."""
+    gen = LLVMIRGenerator()
+    gen.generate(ast, source_file="test.nxl")
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        exe = os.path.join(tmpdir, "test_prog")
+
+        import io
+        saved = sys.stdout
+        sys.stdout = io.StringIO()
+        try:
+            ok = gen.compile_to_executable(exe, opt_level=0)
+        finally:
+            sys.stdout = saved
+
+        if not ok or not os.path.exists(exe):
+            raise CompilationFailed("compile_to_executable() returned False")
+
+        result = subprocess.run([exe], capture_output=True, text=True, timeout=15)
+        return result.returncode, result.stdout, result.stderr
+
+
+def _parse_program(source: str):
+    tokens = Lexer(source).tokenize()
+    return Parser(tokens).parse()
+
+
+def _first_match_expression(ast) -> MatchExpression:
+    for stmt in getattr(ast, "statements", []):
+        body = getattr(stmt, "body", None) or []
+        for body_stmt in body:
+            if isinstance(body_stmt, MatchExpression):
+                return body_stmt
+    raise AssertionError("Expected at least one match expression")
 
 
 class CompilationFailed(Exception):
@@ -706,6 +744,113 @@ end
         rc, out, _ = compile_and_run(src)
         assert rc == 0
         assert out == "small\n"
+
+
+@skip_no_llvm
+class TestRuntimeBackedPatternRoundtrip:
+    """Executable roundtrip coverage for runtime-backed advanced match patterns.
+
+    These tests intentionally lock current behavior for Option/Result/Tuple/List
+    runtime-backed matching in the native pipeline.
+    """
+
+    @pytest.mark.xfail(
+        raises=CompilationFailed,
+        reason="OptionPattern executable roundtrip still lacks linked runtime helper parity",
+        strict=False,
+    )
+    def test_option_pattern_runtime_backed_roundtrip(self):
+        src = """
+function main returns Integer
+    set opt to 0
+    match opt with
+        case payload
+            print text payload
+        case _
+            print text 0
+    end
+    return 0
+end
+"""
+        ast = _parse_program(src)
+        match_stmt = _first_match_expression(ast)
+        match_stmt.cases[0].pattern = OptionPattern("Some", "payload")
+        match_stmt.cases[1].pattern = OptionPattern("None", None)
+
+        rc, out, _ = compile_ast_and_run(ast)
+        assert rc == 0
+        assert out != ""
+
+    @pytest.mark.xfail(
+        raises=CompilationFailed,
+        reason="ResultPattern executable roundtrip still lacks linked runtime helper parity",
+        strict=False,
+    )
+    def test_result_pattern_runtime_backed_roundtrip(self):
+        src = """
+function main returns Integer
+    set res to 0
+    match res with
+        case item
+            print text item
+        case _
+            print text 0
+    end
+    return 0
+end
+"""
+        ast = _parse_program(src)
+        match_stmt = _first_match_expression(ast)
+        match_stmt.cases[0].pattern = ResultPattern("Ok", "value")
+        match_stmt.cases[1].pattern = ResultPattern("Err", "error_msg")
+
+        rc, out, _ = compile_ast_and_run(ast)
+        assert rc == 0
+        assert out != ""
+
+    @pytest.mark.xfail(
+        raises=CompilationFailed,
+        reason="TuplePattern executable roundtrip layout parity is not fully wired",
+        strict=False,
+    )
+    def test_tuple_pattern_runtime_backed_roundtrip(self):
+        src = """
+function main returns Integer
+    set pair to [2, 3]
+    match pair with
+        case (x, y)
+            print text x
+        case _
+            print text 0
+    end
+    return 0
+end
+"""
+        rc, out, _ = compile_and_run(src)
+        assert rc == 0
+        assert out == "2\n"
+
+    @pytest.mark.xfail(
+        raises=CompilationFailed,
+        reason="ListPattern executable roundtrip rest-binding layout parity is not fully wired",
+        strict=False,
+    )
+    def test_list_pattern_runtime_backed_roundtrip(self):
+        src = """
+function main returns Integer
+    set nums to [1, 2, 3]
+    match nums with
+        case [head, ...tail]
+            print text head
+        case _
+            print text 0
+    end
+    return 0
+end
+"""
+        rc, out, _ = compile_and_run(src)
+        assert rc == 0
+        assert out == "1\n"
 
 
 @skip_no_llvm
