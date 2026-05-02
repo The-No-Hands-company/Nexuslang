@@ -2,6 +2,7 @@
 
 import os
 import sys
+import pytest
 
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
@@ -97,6 +98,45 @@ end
     assert "value must be positive" in c_code
     assert "fprintf(stderr" in c_code
     assert "exit(1);" in c_code
+
+
+def test_llvm_comptime_assert_constant_false_uses_folded_const_message():
+    ast = _parse(
+        """
+comptime const DETAIL is "details"
+comptime assert 1 is equal to 2 message "prefix: " plus DETAIL
+"""
+    )
+
+    with pytest.raises(RuntimeError, match="Compile-time assertion failed: prefix: details"):
+        LLVMIRGenerator().generate(ast)
+
+
+def test_c_comptime_assert_constant_false_uses_folded_const_message():
+    ast = _parse(
+        """
+comptime const DETAIL is "details"
+comptime assert 1 is equal to 2 message "prefix: " plus DETAIL
+"""
+    )
+
+    with pytest.raises(RuntimeError, match="Compile-time assertion failed: prefix: details"):
+        CCodeGenerator(target="c").generate(ast)
+
+
+def test_llvm_comptime_assert_non_foldable_message_falls_back_to_default_error():
+    ast = _parse(
+        """
+function dynamic_message with n as Integer returns String
+    return "n=" plus n
+end
+
+comptime assert 1 is equal to 2 message dynamic_message with 7
+"""
+    )
+
+    with pytest.raises(RuntimeError, match="Compile-time assertion failed"):
+        LLVMIRGenerator().generate(ast)
 
 
 def test_c_top_level_variable_state_materialized_for_user_main():

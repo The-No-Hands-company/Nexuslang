@@ -52,6 +52,7 @@ class LLVMIRGenerator(CodeGenerator):
         self.top_level_statements: List[Any] = []
         self.comptime_constant_values: Dict[str, Any] = {}
         self.macro_definitions: Dict[str, Any] = {}
+        self.macro_expansion_counter = 0
         self.runtime_array_sizes: Dict[str, str] = {}  # var_name -> size_register (runtime size tracking)
         self.array_size_allocas: Dict[str, str] = {}  # var_name -> alloca_name (persistent size alloca for dynamically-grown arrays)
         self.entry_block_end_idx: int = 0  # Index in ir_lines right after entry block parameter allocas
@@ -3689,23 +3690,57 @@ class LLVMIRGenerator(CodeGenerator):
         )
         self._emit_contract_assert(cond_reg, cond_type, msg_reg, indent)
 
-    def _substitute_macro_node(self, node: Any, argument_map: Dict[str, Any]) -> Any:
+    def _collect_macro_declared_names(self, node: Any, names: Set[str]) -> None:
+        """Collect variable names declared within a macro body."""
+        if node is None:
+            return
+        if isinstance(node, list):
+            for item in node:
+                self._collect_macro_declared_names(item, names)
+            return
+
+        node_type = type(node).__name__
+        if node_type == 'VariableDeclaration' and isinstance(getattr(node, 'name', None), str):
+            names.add(node.name)
+
+        if node_type in {'FunctionDefinition', 'AsyncFunctionDefinition', 'LambdaExpression', 'ClassDefinition', 'MethodDefinition'}:
+            return
+
+        if not hasattr(node, '__dict__'):
+            return
+
+        for value in vars(node).values():
+            self._collect_macro_declared_names(value, names)
+
+    def _substitute_macro_node(self, node: Any, argument_map: Dict[str, Any], local_renames: Dict[str, str]) -> Any:
         """Recursively substitute macro argument identifiers in an AST node."""
         if node is None:
             return None
+        if isinstance(node, dict):
+            return {
+                key: self._substitute_macro_node(value, argument_map, local_renames)
+                for key, value in node.items()
+            }
         if isinstance(node, list):
-            return [self._substitute_macro_node(item, argument_map) for item in node]
+            return [self._substitute_macro_node(item, argument_map, local_renames) for item in node]
 
         node_type = type(node).__name__
         if node_type == 'Identifier' and getattr(node, 'name', None) in argument_map:
             return deepcopy(argument_map[node.name])
+        if node_type == 'Identifier' and getattr(node, 'name', None) in local_renames:
+            cloned_identifier = deepcopy(node)
+            cloned_identifier.name = local_renames[node.name]
+            return cloned_identifier
 
         if not hasattr(node, '__dict__'):
             return node
 
         cloned = deepcopy(node)
+        if node_type == 'VariableDeclaration' and isinstance(getattr(cloned, 'name', None), str):
+            if cloned.name in local_renames:
+                cloned.name = local_renames[cloned.name]
         for attr_name, attr_value in vars(cloned).items():
-            setattr(cloned, attr_name, self._substitute_macro_node(attr_value, argument_map))
+            setattr(cloned, attr_name, self._substitute_macro_node(attr_value, argument_map, local_renames))
         return cloned
 
     def _expand_macro_body(self, expansion_stmt, indent='') -> None:
@@ -3721,11 +3756,19 @@ class LLVMIRGenerator(CodeGenerator):
             if param not in argument_map:
                 raise RuntimeError(f"Macro '{macro_name}' requires argument '{param}'")
 
+        declared_names: Set[str] = set()
+        self._collect_macro_declared_names(getattr(macro_def, 'body', []), declared_names)
+        self.macro_expansion_counter += 1
+        local_renames = {
+            name: f"__macro_{macro_name}_{self.macro_expansion_counter}_{name}"
+            for name in declared_names
+        }
+
         saved_locals = dict(self.local_vars)
         saved_rc_vars = dict(self.rc_variables)
         try:
             for macro_stmt in getattr(macro_def, 'body', []):
-                expanded_stmt = self._substitute_macro_node(macro_stmt, argument_map)
+                expanded_stmt = self._substitute_macro_node(macro_stmt, argument_map, local_renames)
                 self._generate_statement(expanded_stmt, indent)
         finally:
             # Preserve macro hygiene: local declarations inside macro body
@@ -12853,30 +12896,35 @@ class LLVMIRGenerator(CodeGenerator):
             op = getattr(expr, 'operator', None)
             op_str = getattr(op, 'lexeme', str(op))
             op_type = getattr(op, 'type', None)
-            if op_type == TokenType.PLUS or op_str in ('+', 'plus'):
-                return left_val + right_val
-            if op_type == TokenType.MINUS or op_str in ('-', 'minus'):
-                return left_val - right_val
-            if op_type == TokenType.TIMES or op_str in ('*', 'times'):
-                return left_val * right_val
-            if op_type == TokenType.DIVIDED_BY or op_str in ('/', 'divided_by'):
-                return left_val / right_val
-            if op_type == TokenType.EQUAL_TO or op_str in ('==', 'equal', 'is equal to'):
-                return left_val == right_val
-            if op_type == TokenType.NOT_EQUAL_TO or op_str in ('!=', 'not equal', 'is not equal to'):
-                return left_val != right_val
-            if op_type == TokenType.LESS_THAN or op_str in ('<', 'less_than', 'is less than'):
-                return left_val < right_val
-            if op_type == TokenType.LESS_THAN_OR_EQUAL_TO or op_str in ('<=', 'less_than_or_equal_to', 'is less than or equal to'):
-                return left_val <= right_val
-            if op_type == TokenType.GREATER_THAN or op_str in ('>', 'greater_than', 'is greater than'):
-                return left_val > right_val
-            if op_type == TokenType.GREATER_THAN_OR_EQUAL_TO or op_str in ('>=', 'greater_than_or_equal_to', 'is greater than or equal to'):
-                return left_val >= right_val
-            if op_type == TokenType.AND or op_str in ('and', '&&'):
-                return bool(left_val) and bool(right_val)
-            if op_type == TokenType.OR or op_str in ('or', '||'):
-                return bool(left_val) or bool(right_val)
+            try:
+                if op_type == TokenType.PLUS or op_str in ('+', 'plus'):
+                    if isinstance(left_val, str) or isinstance(right_val, str):
+                        return f"{left_val}{right_val}"
+                    return left_val + right_val
+                if op_type == TokenType.MINUS or op_str in ('-', 'minus'):
+                    return left_val - right_val
+                if op_type == TokenType.TIMES or op_str in ('*', 'times'):
+                    return left_val * right_val
+                if op_type == TokenType.DIVIDED_BY or op_str in ('/', 'divided_by'):
+                    return left_val / right_val
+                if op_type == TokenType.EQUAL_TO or op_str in ('==', 'equal', 'is equal to'):
+                    return left_val == right_val
+                if op_type == TokenType.NOT_EQUAL_TO or op_str in ('!=', 'not equal', 'is not equal to'):
+                    return left_val != right_val
+                if op_type == TokenType.LESS_THAN or op_str in ('<', 'less_than', 'is less than'):
+                    return left_val < right_val
+                if op_type == TokenType.LESS_THAN_OR_EQUAL_TO or op_str in ('<=', 'less_than_or_equal_to', 'is less than or equal to'):
+                    return left_val <= right_val
+                if op_type == TokenType.GREATER_THAN or op_str in ('>', 'greater_than', 'is greater than'):
+                    return left_val > right_val
+                if op_type == TokenType.GREATER_THAN_OR_EQUAL_TO or op_str in ('>=', 'greater_than_or_equal_to', 'is greater than or equal to'):
+                    return left_val >= right_val
+                if op_type == TokenType.AND or op_str in ('and', '&&'):
+                    return bool(left_val) and bool(right_val)
+                if op_type == TokenType.OR or op_str in ('or', '||'):
+                    return bool(left_val) or bool(right_val)
+            except Exception:
+                return None
         
         return None
     

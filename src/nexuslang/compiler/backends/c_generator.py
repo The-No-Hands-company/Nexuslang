@@ -49,6 +49,7 @@ class CCodeGenerator(CodeGenerator):
         self.inside_top_level_init = False
         self.top_level_init_name = "__nxl_top_level_init"
         self.comptime_constant_values: Dict[str, Any] = {}
+        self.macro_expansion_counter = 0
         
     def generate(self, ast: Program) -> str:
         """Generate complete C program from AST."""
@@ -1368,20 +1369,53 @@ class CCodeGenerator(CodeGenerator):
             "Compile-time assertion failed",
         )
 
-    def _substitute_macro_node(self, node: Any, argument_map: Dict[str, Any]) -> Any:
+    def _collect_macro_declared_names(self, node: Any, names: set) -> None:
+        """Collect variable names declared within a macro body."""
+        if node is None:
+            return
+        if isinstance(node, list):
+            for item in node:
+                self._collect_macro_declared_names(item, names)
+            return
+
+        if isinstance(node, VariableDeclaration) and isinstance(getattr(node, 'name', None), str):
+            names.add(node.name)
+
+        if isinstance(node, (FunctionDefinition, AsyncFunctionDefinition, LambdaExpression, ClassDefinition, MethodDefinition)):
+            return
+
+        if not hasattr(node, '__dict__'):
+            return
+
+        for value in vars(node).values():
+            self._collect_macro_declared_names(value, names)
+
+    def _substitute_macro_node(self, node: Any, argument_map: Dict[str, Any], local_renames: Dict[str, str]) -> Any:
         """Recursively substitute macro argument identifiers in an AST node."""
         if node is None:
             return None
+        if isinstance(node, dict):
+            return {
+                key: self._substitute_macro_node(value, argument_map, local_renames)
+                for key, value in node.items()
+            }
         if isinstance(node, list):
-            return [self._substitute_macro_node(item, argument_map) for item in node]
+            return [self._substitute_macro_node(item, argument_map, local_renames) for item in node]
         if isinstance(node, Identifier) and node.name in argument_map:
             return deepcopy(argument_map[node.name])
+        if isinstance(node, Identifier) and node.name in local_renames:
+            cloned_identifier = deepcopy(node)
+            cloned_identifier.name = local_renames[node.name]
+            return cloned_identifier
         if not hasattr(node, '__dict__'):
             return node
 
         cloned = deepcopy(node)
+        if isinstance(cloned, VariableDeclaration) and isinstance(getattr(cloned, 'name', None), str):
+            if cloned.name in local_renames:
+                cloned.name = local_renames[cloned.name]
         for attr_name, attr_value in vars(cloned).items():
-            setattr(cloned, attr_name, self._substitute_macro_node(attr_value, argument_map))
+            setattr(cloned, attr_name, self._substitute_macro_node(attr_value, argument_map, local_renames))
         return cloned
 
     def _generate_macro_expansion(self, node: MacroExpansion) -> None:
@@ -1395,6 +1429,14 @@ class CCodeGenerator(CodeGenerator):
             if param not in argument_map:
                 raise RuntimeError(f"Macro '{node.name}' requires argument '{param}'")
 
+        declared_names = set()
+        self._collect_macro_declared_names(macro_def.body, declared_names)
+        self.macro_expansion_counter += 1
+        local_renames = {
+            name: f"__macro_{node.name}_{self.macro_expansion_counter}_{name}"
+            for name in declared_names
+        }
+
         saved_symbol_table = dict(self.symbol_table)
         saved_aliases = dict(self.symbol_aliases)
 
@@ -1402,7 +1444,7 @@ class CCodeGenerator(CodeGenerator):
         self.indent()
         try:
             for macro_stmt in macro_def.body:
-                expanded_stmt = self._substitute_macro_node(macro_stmt, argument_map)
+                expanded_stmt = self._substitute_macro_node(macro_stmt, argument_map, local_renames)
                 self._generate_statement(expanded_stmt)
         finally:
             self.symbol_table = saved_symbol_table
@@ -1665,30 +1707,35 @@ class CCodeGenerator(CodeGenerator):
                 return None
             op = getattr(expr.operator, 'lexeme', str(expr.operator))
             op_type = getattr(expr.operator, 'type', None)
-            if op_type == TokenType.PLUS or op in ('+', 'plus'):
-                return left_val + right_val
-            if op_type == TokenType.MINUS or op in ('-', 'minus'):
-                return left_val - right_val
-            if op_type == TokenType.TIMES or op in ('*', 'times'):
-                return left_val * right_val
-            if op_type == TokenType.DIVIDED_BY or op in ('/', 'divided_by'):
-                return left_val / right_val
-            if op_type == TokenType.EQUAL_TO or op in ('==', 'equal', 'is equal to'):
-                return left_val == right_val
-            if op_type == TokenType.NOT_EQUAL_TO or op in ('!=', 'not equal', 'is not equal to'):
-                return left_val != right_val
-            if op_type == TokenType.LESS_THAN or op in ('<', 'less_than', 'is less than'):
-                return left_val < right_val
-            if op_type == TokenType.LESS_THAN_OR_EQUAL_TO or op in ('<=', 'less_than_or_equal_to', 'is less than or equal to'):
-                return left_val <= right_val
-            if op_type == TokenType.GREATER_THAN or op in ('>', 'greater_than', 'is greater than'):
-                return left_val > right_val
-            if op_type == TokenType.GREATER_THAN_OR_EQUAL_TO or op in ('>=', 'greater_than_or_equal_to', 'is greater than or equal to'):
-                return left_val >= right_val
-            if op_type == TokenType.AND or op in ('and', '&&'):
-                return bool(left_val) and bool(right_val)
-            if op_type == TokenType.OR or op in ('or', '||'):
-                return bool(left_val) or bool(right_val)
+            try:
+                if op_type == TokenType.PLUS or op in ('+', 'plus'):
+                    if isinstance(left_val, str) or isinstance(right_val, str):
+                        return f"{left_val}{right_val}"
+                    return left_val + right_val
+                if op_type == TokenType.MINUS or op in ('-', 'minus'):
+                    return left_val - right_val
+                if op_type == TokenType.TIMES or op in ('*', 'times'):
+                    return left_val * right_val
+                if op_type == TokenType.DIVIDED_BY or op in ('/', 'divided_by'):
+                    return left_val / right_val
+                if op_type == TokenType.EQUAL_TO or op in ('==', 'equal', 'is equal to'):
+                    return left_val == right_val
+                if op_type == TokenType.NOT_EQUAL_TO or op in ('!=', 'not equal', 'is not equal to'):
+                    return left_val != right_val
+                if op_type == TokenType.LESS_THAN or op in ('<', 'less_than', 'is less than'):
+                    return left_val < right_val
+                if op_type == TokenType.LESS_THAN_OR_EQUAL_TO or op in ('<=', 'less_than_or_equal_to', 'is less than or equal to'):
+                    return left_val <= right_val
+                if op_type == TokenType.GREATER_THAN or op in ('>', 'greater_than', 'is greater than'):
+                    return left_val > right_val
+                if op_type == TokenType.GREATER_THAN_OR_EQUAL_TO or op in ('>=', 'greater_than_or_equal_to', 'is greater than or equal to'):
+                    return left_val >= right_val
+                if op_type == TokenType.AND or op in ('and', '&&'):
+                    return bool(left_val) and bool(right_val)
+                if op_type == TokenType.OR or op in ('or', '||'):
+                    return bool(left_val) or bool(right_val)
+            except Exception:
+                return None
         return None
     
     def _generate_binary_operation(self, node: BinaryOperation) -> str:

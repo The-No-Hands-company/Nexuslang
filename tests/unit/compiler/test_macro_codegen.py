@@ -79,3 +79,52 @@ end
 
     assert "greetings" in llvm_ir
     assert "greetings" in c_code
+
+
+def test_nested_macro_expansion_is_lowered_in_both_backends():
+    ast = _parse(
+        """
+macro INNER with msg
+    print text msg
+end
+
+macro OUTER with value
+    expand INNER with msg value
+end
+
+function main returns Integer
+    expand OUTER with value "nested macro"
+    return 0
+end
+"""
+    )
+
+    llvm_ir = LLVMIRGenerator().generate(ast)
+    c_code = CCodeGenerator(target="c").generate(ast)
+
+    assert "nested macro" in llvm_ir
+    assert "nested macro" in c_code
+
+
+def test_macro_hygiene_renames_local_collisions_in_both_backends():
+    ast = _parse(
+        """
+macro SHOW_LOCAL with value
+    set temp to value
+    print text temp
+end
+
+function main returns Integer
+    set temp to 100
+    expand SHOW_LOCAL with value 7
+    print text temp
+    return 0
+end
+"""
+    )
+
+    llvm_ir = LLVMIRGenerator().generate(ast)
+    c_code = CCodeGenerator(target="c").generate(ast)
+
+    assert "__macro_SHOW_LOCAL_" in llvm_ir
+    assert "__macro_SHOW_LOCAL_" in c_code

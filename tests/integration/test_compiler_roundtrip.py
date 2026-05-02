@@ -330,6 +330,43 @@ end
         assert rc == 0
         assert out == "hello from macro\n"
 
+    def test_nested_macro_expansion_runs_in_compiled_path(self):
+        src = """
+macro INNER with msg
+    print text msg
+end
+
+macro OUTER with value
+    expand INNER with msg value
+end
+
+function main returns Integer
+    expand OUTER with value "nested hello"
+    return 0
+end
+"""
+        rc, out, _ = compile_and_run(src)
+        assert rc == 0
+        assert out == "nested hello\n"
+
+    def test_macro_local_name_collision_is_hygienic(self):
+        src = """
+macro SHOW_LOCAL with value
+    set temp to value
+    print text temp
+end
+
+function main returns Integer
+    set temp to 100
+    expand SHOW_LOCAL with value 7
+    print text temp
+    return 0
+end
+"""
+        rc, out, _ = compile_and_run(src)
+        assert rc == 0
+        assert out == "7\n100\n"
+
     def test_function_returns_value(self):
         src = """
 function add with a as Integer and b as Integer returns Integer
