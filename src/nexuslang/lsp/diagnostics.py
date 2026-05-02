@@ -119,6 +119,7 @@ class DiagnosticsProvider:
         
         # Additional static checks
         diagnostics.extend(self._check_channel_operations(text))
+        diagnostics.extend(self._check_macro_comptime_operations(text))
         diagnostics.extend(self._check_unused_vars(text))
         
         # Cache diagnostics for this file
@@ -632,6 +633,66 @@ class DiagnosticsProvider:
                             source="nexuslang",
                             error_code="E201",
                             error_type_key="type_mismatch",
+                        )
+                    )
+
+        return diagnostics
+
+    def _check_macro_comptime_operations(self, text: str) -> List[Dict]:
+        """Check obvious macro/comptime misuse patterns in-document."""
+        diagnostics = []
+        lines = text.split('\n')
+
+        macro_def_pattern = re.compile(r'^\s*macro\s+(\w+)\b', re.IGNORECASE)
+        expand_pattern = re.compile(r'\bexpand\s+(\w+)\b', re.IGNORECASE)
+        comptime_const_pattern = re.compile(r'^\s*comptime\s+const\s+(\w+)\s+is\b', re.IGNORECASE)
+        reassignment_pattern = re.compile(r'^\s*set\s+(\w+)\s+to\b', re.IGNORECASE)
+
+        defined_macros = set()
+        comptime_consts = set()
+
+        for i, line in enumerate(lines):
+            macro_def_match = macro_def_pattern.match(line)
+            if macro_def_match:
+                defined_macros.add(macro_def_match.group(1))
+
+            const_match = comptime_const_pattern.match(line)
+            if const_match:
+                comptime_consts.add(const_match.group(1))
+
+            expand_match = expand_pattern.search(line)
+            if expand_match:
+                macro_name = expand_match.group(1)
+                if macro_name not in defined_macros:
+                    start = expand_match.start(1)
+                    diagnostics.append(
+                        self._build_diagnostic(
+                            line=i,
+                            start_char=start,
+                            end_char=start + len(macro_name),
+                            severity=1,
+                            message=f"Cannot expand undefined macro '{macro_name}'",
+                            source="nexuslang",
+                            error_code="E101",
+                            error_type_key="undefined_function",
+                        )
+                    )
+
+            reassign_match = reassignment_pattern.match(line)
+            if reassign_match:
+                var_name = reassign_match.group(1)
+                if var_name in comptime_consts:
+                    start = reassign_match.start(1)
+                    diagnostics.append(
+                        self._build_diagnostic(
+                            line=i,
+                            start_char=start,
+                            end_char=start + len(var_name),
+                            severity=1,
+                            message=f"Cannot reassign comptime constant '{var_name}'",
+                            source="nexuslang",
+                            error_code="E201",
+                            error_type_key="invalid_operation",
                         )
                     )
 

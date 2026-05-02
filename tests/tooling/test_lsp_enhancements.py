@@ -225,6 +225,34 @@ set counter as Integer to 0
         assert "counter" in content, "Should contain variable name"
         assert "Integer" in content, "Should show type"
 
+    def test_hover_macro_keyword_docs(self):
+        """Test hover docs for macro keyword."""
+        server = NLPLLanguageServer()
+        provider = HoverProvider(server)
+
+        code = "macro MY_MACRO\n    set x to 1\nend"
+        position = Position(0, 1)  # on "macro"
+
+        hover = provider.get_hover(code, position)
+
+        assert hover is not None, "Should provide hover info for macro"
+        content = hover["contents"]["value"]
+        assert "Define a macro" in content
+
+    def test_hover_comptime_keyword_docs(self):
+        """Test hover docs for comptime keyword."""
+        server = NLPLLanguageServer()
+        provider = HoverProvider(server)
+
+        code = "comptime eval 1 plus 2"
+        position = Position(0, 1)  # on "comptime"
+
+        hover = provider.get_hover(code, position)
+
+        assert hover is not None, "Should provide hover info for comptime"
+        content = hover["contents"]["value"]
+        assert "Compile-time execution" in content
+
 
 class TestEnhancedCompletions:
     """Test enhanced auto-completion."""
@@ -358,6 +386,38 @@ set p to new Per
         completions = provider.get_completions(code, position)
         labels = [c["label"] for c in completions]
         assert "Channel" in labels, "Should suggest Channel type"
+
+    def test_expand_completion_suggests_known_macro_names(self):
+        """Test macro name completions after 'expand'."""
+        server = NLPLLanguageServer()
+        provider = CompletionProvider(server)
+
+        code = """
+macro GREET
+    print text "Hello"
+end
+
+expand 
+"""
+        position = Position(5, 7)  # after "expand "
+
+        completions = provider.get_completions(code, position)
+        labels = [c["label"] for c in completions]
+        assert "GREET" in labels, "Should suggest locally defined macro names"
+
+    def test_comptime_completion_suggests_forms(self):
+        """Test completions after bare 'comptime'."""
+        server = NLPLLanguageServer()
+        provider = CompletionProvider(server)
+
+        code = "comptime "
+        position = Position(0, len(code))
+
+        completions = provider.get_completions(code, position)
+        labels = [c["label"] for c in completions]
+        assert "eval" in labels, "Should suggest comptime eval"
+        assert "const" in labels, "Should suggest comptime const"
+        assert "assert" in labels, "Should suggest comptime assert"
 
     def test_channel_hover_keyword_docs(self):
         """Test hover docs for channel keyword."""

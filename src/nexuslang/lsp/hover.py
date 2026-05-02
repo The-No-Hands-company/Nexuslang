@@ -39,6 +39,11 @@ class HoverProvider:
             "create": "Create runtime values such as channels and collections.\n\nChannel example:\n```nlpl\nset ch to create channel\n```",
             "send": "Send a value to a channel.\n\nSyntax:\n```nlpl\nsend value to channel_var\n```",
             "receive": "Receive a value from a channel.\n\nSyntax:\n```nlpl\nset value to receive from channel_var\n```",
+            "macro": "Define a macro for reusable compile-time expansion.\n\nSyntax:\n```nlpl\nmacro NAME with arg1, arg2\n    # body\nend\n```",
+            "expand": "Expand a macro invocation in the current scope.\n\nSyntax:\n```nlpl\nexpand NAME\nexpand NAME with arg1 value1\n```",
+            "comptime": "Compile-time execution surface.\n\nForms:\n```nlpl\ncomptime eval EXPR\ncomptime const NAME is EXPR\ncomptime assert COND\ncomptime assert COND message \"reason\"\n```",
+            "eval": "Evaluate expression during compile time.\n\nSyntax:\n```nlpl\ncomptime eval EXPR\n```",
+            "const": "Define immutable compile-time constant.\n\nSyntax:\n```nlpl\ncomptime const NAME is EXPR\n```",
             
             # Math module
             "sqrt": "**sqrt** - Square root\n\n**From**: math\n\n**Syntax**: `sqrt with number`\n\n**Returns**: Float\n\n**Example**:\n```nlpl\nset result to sqrt with 16  # 4.0\n```",

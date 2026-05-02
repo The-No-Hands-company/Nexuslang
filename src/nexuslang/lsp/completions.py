@@ -50,6 +50,7 @@ class CompletionProvider:
             "new", "delete", "sizeof", "typeof",
             "true", "false", "null",
             "create", "channel", "send", "receive", "close",
+            "macro", "expand", "comptime", "eval", "const",
             
             # Error handling
             "Ok", "Error", "panic", "assert",
@@ -174,6 +175,41 @@ class CompletionProvider:
                         "detail": "Module",
                         "insertText": module
                     })
+
+        # After "expand" - suggest known macro names from document
+        elif re.search(r'\bexpand\s*$', prefix, re.IGNORECASE):
+            for macro_name in self._extract_macro_names(text):
+                if macro_name.lower().startswith(current_word.lower()):
+                    completions.append({
+                        "label": macro_name,
+                        "kind": 3,  # Function-like symbol
+                        "detail": "Macro",
+                        "insertText": macro_name,
+                        "documentation": "Expand macro"
+                    })
+
+        # After "comptime" - suggest comptime forms
+        elif re.search(r'\bcomptime\s*$', prefix, re.IGNORECASE):
+            completions.extend([
+                {
+                    "label": "eval",
+                    "kind": 14,
+                    "insertText": "eval ${1:expression}",
+                    "documentation": "Evaluate expression at compile time"
+                },
+                {
+                    "label": "const",
+                    "kind": 14,
+                    "insertText": "const ${1:NAME} is ${2:expression}",
+                    "documentation": "Define immutable compile-time constant"
+                },
+                {
+                    "label": "assert",
+                    "kind": 14,
+                    "insertText": "assert ${1:condition}",
+                    "documentation": "Assert compile-time condition"
+                },
+            ])
         
         # After "create" - suggest collection types
         elif re.search(r'\bcreate\s*$', prefix, re.IGNORECASE):
@@ -438,5 +474,14 @@ class CompletionProvider:
 
         return list(channels)
 
+    def _extract_macro_names(self, text: str) -> List[str]:
+        """Extract macro names from local document for expand completions."""
+        names = set()
+        pattern = re.compile(r'^\s*macro\s+(\w+)\b', re.IGNORECASE)
+        for line in text.split('\n'):
+            m = pattern.match(line)
+            if m:
+                names.add(m.group(1))
+        return sorted(names)
 
 __all__ = ['CompletionProvider']

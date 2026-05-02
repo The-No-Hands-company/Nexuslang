@@ -18,6 +18,7 @@
 Recent implementation work closed several previously documented "missing" core-language gaps. Current reality in the main codebase:
 
 - Macro/comptime: compiler + typechecker support exists in LLVM/C paths, including comptime const/assert lowering and macro expansion support.
+- Macro/comptime tooling: LSP hover/completion/diagnostics now include macro/comptime-aware behavior (expand suggestions, comptime forms, undefined expand and const-mutation checks).
 - Pattern matching: interpreter + LLVM support existed; C backend now has statement-level guarded/bound lowering, including Option/Result/Variant/Tuple/List pattern-family handling.
 - Match behavior validation: executable compiled roundtrip coverage now includes guarded and bound case behavior, not only simple literal matching.
 - Channels/parallel-for/contracts: these are no longer interpreter-only surfaces; parser/typechecker/compiler paths include active handling.
@@ -475,7 +476,7 @@ analyzer = StaticAnalyzer(
 - Solid build system
 
 **What We're Building:**
-- nlpllint (static analyzer) - IN PROGRESS
+- nxllint (static analyzer) - IN PROGRESS
 - Enhanced debug mode - NEXT
 - Sanitizer integration - NEXT
 
@@ -483,7 +484,7 @@ analyzer = StaticAnalyzer(
 Turn C/C++/Assembly's 90% debugging nightmare into NLPL's 90% development dream.
 
 **Timeline:**
-- Week 1-2: nlpllint v1.0 + debug mode
+- Week 1-2: nxllint v1.0 + debug mode
 - Month 1: Sanitizers + testing
 - Q1 2026: All priority 1-3 tools complete
 - Q2-Q4 2026: Advanced tools (debugger, profiler, etc.)
