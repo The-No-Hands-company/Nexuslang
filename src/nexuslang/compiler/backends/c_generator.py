@@ -1412,6 +1412,27 @@ class CCodeGenerator(CodeGenerator):
             return list_type[:-2] or "intptr_t"
         return "intptr_t"
 
+    def _is_pointer_like_c_type(self, c_type: str) -> bool:
+        """Return True for pointer/array C types."""
+        if not isinstance(c_type, str):
+            return False
+        return "*" in c_type or c_type.endswith("[]")
+
+    def _supports_scalar_variant_match(self, c_type: str) -> bool:
+        """Return True for scalar integer-like C types used in fallback Option/Result matching."""
+        if not isinstance(c_type, str):
+            return False
+        if self._is_pointer_like_c_type(c_type):
+            return False
+        normalized = c_type.replace("const", "").replace("volatile", "").strip()
+        integer_like = {
+            "bool", "char", "signed char", "unsigned char",
+            "short", "unsigned short", "int", "unsigned int",
+            "long", "unsigned long", "long long", "unsigned long long",
+            "intptr_t", "uintptr_t", "size_t"
+        }
+        return normalized in integer_like
+
     def _generate_match_condition(self, pattern: Any, match_var: str, match_type: str, source_name: str | None) -> str | None:
         """Return a C condition expression for supported pattern kinds."""
         if isinstance(pattern, WildcardPattern):
@@ -1426,24 +1447,36 @@ class CCodeGenerator(CodeGenerator):
             return f"{match_var} == {literal_expr}"
 
         if isinstance(pattern, OptionPattern):
-            self._ensure_forward_declaration("extern bool NLPL_Optional_has_value(void* opt);")
-            has_value = f"NLPL_Optional_has_value((void*)({match_var}))"
+            if self._supports_scalar_variant_match(match_type):
+                has_value = f"(((intptr_t)({match_var})) != 0)"
+            else:
+                self._ensure_forward_declaration("extern bool NLPL_Optional_has_value(void* opt);")
+                has_value = f"NLPL_Optional_has_value((void*)({match_var}))"
             return has_value if pattern.variant == "Some" else f"(!{has_value})"
 
         if isinstance(pattern, ResultPattern):
-            self._ensure_forward_declaration("extern bool NLPL_Result_is_ok(void* res);")
-            is_ok = f"NLPL_Result_is_ok((void*)({match_var}))"
+            if self._supports_scalar_variant_match(match_type):
+                is_ok = f"(((intptr_t)({match_var})) >= 0)"
+            else:
+                self._ensure_forward_declaration("extern bool NLPL_Result_is_ok(void* res);")
+                is_ok = f"NLPL_Result_is_ok((void*)({match_var}))"
             return is_ok if pattern.variant == "Ok" else f"(!{is_ok})"
 
         if isinstance(pattern, VariantPattern):
             variant = self._variant_suffix(pattern.variant_name)
             if variant in ("Some", "None"):
-                self._ensure_forward_declaration("extern bool NLPL_Optional_has_value(void* opt);")
-                has_value = f"NLPL_Optional_has_value((void*)({match_var}))"
+                if self._supports_scalar_variant_match(match_type):
+                    has_value = f"(((intptr_t)({match_var})) != 0)"
+                else:
+                    self._ensure_forward_declaration("extern bool NLPL_Optional_has_value(void* opt);")
+                    has_value = f"NLPL_Optional_has_value((void*)({match_var}))"
                 return has_value if variant == "Some" else f"(!{has_value})"
             if variant in ("Ok", "Err"):
-                self._ensure_forward_declaration("extern bool NLPL_Result_is_ok(void* res);")
-                is_ok = f"NLPL_Result_is_ok((void*)({match_var}))"
+                if self._supports_scalar_variant_match(match_type):
+                    is_ok = f"(((intptr_t)({match_var})) >= 0)"
+                else:
+                    self._ensure_forward_declaration("extern bool NLPL_Result_is_ok(void* res);")
+                    is_ok = f"NLPL_Result_is_ok((void*)({match_var}))"
                 return is_ok if variant == "Ok" else f"(!{is_ok})"
             return None
 
@@ -1495,12 +1528,15 @@ class CCodeGenerator(CodeGenerator):
             return
 
         if isinstance(pattern, OptionPattern) and pattern.binding:
-            self._ensure_forward_declaration("extern intptr_t NLPL_Optional_get_value(void* opt);")
             bound_name = pattern.binding
             emitted_name = f"__match_bind_{bound_name}_{len(self.symbol_aliases)}_{len(self.output_buffer)}"
             self.symbol_table[bound_name] = "intptr_t"
             self.symbol_aliases[bound_name] = emitted_name
-            self.emit(f"intptr_t {emitted_name} = NLPL_Optional_get_value((void*)({match_var}));")
+            if self._supports_scalar_variant_match(match_type):
+                self.emit(f"intptr_t {emitted_name} = (intptr_t)({match_var});")
+            else:
+                self._ensure_forward_declaration("extern intptr_t NLPL_Optional_get_value(void* opt);")
+                self.emit(f"intptr_t {emitted_name} = NLPL_Optional_get_value((void*)({match_var}));")
             return
 
         if isinstance(pattern, ResultPattern) and pattern.binding:
@@ -1508,15 +1544,21 @@ class CCodeGenerator(CodeGenerator):
             bound_name = pattern.binding
             emitted_name = f"__match_bind_{bound_name}_{len(self.symbol_aliases)}_{len(self.output_buffer)}"
             if variant == "Ok":
-                self._ensure_forward_declaration("extern intptr_t NLPL_Result_get_value(void* res);")
                 self.symbol_table[bound_name] = "intptr_t"
                 self.symbol_aliases[bound_name] = emitted_name
-                self.emit(f"intptr_t {emitted_name} = NLPL_Result_get_value((void*)({match_var}));")
+                if self._supports_scalar_variant_match(match_type):
+                    self.emit(f"intptr_t {emitted_name} = (intptr_t)({match_var});")
+                else:
+                    self._ensure_forward_declaration("extern intptr_t NLPL_Result_get_value(void* res);")
+                    self.emit(f"intptr_t {emitted_name} = NLPL_Result_get_value((void*)({match_var}));")
             else:
-                self._ensure_forward_declaration("extern const char* NLPL_Result_get_error(void* res);")
                 self.symbol_table[bound_name] = "const char*"
                 self.symbol_aliases[bound_name] = emitted_name
-                self.emit(f"const char* {emitted_name} = NLPL_Result_get_error((void*)({match_var}));")
+                if self._supports_scalar_variant_match(match_type):
+                    self.emit(f"const char* {emitted_name} = \"error\";")
+                else:
+                    self._ensure_forward_declaration("extern const char* NLPL_Result_get_error(void* res);")
+                    self.emit(f"const char* {emitted_name} = NLPL_Result_get_error((void*)({match_var}));")
             return
 
         if isinstance(pattern, VariantPattern) and pattern.bindings:
@@ -1524,20 +1566,29 @@ class CCodeGenerator(CodeGenerator):
             bound_name = pattern.bindings[0]
             emitted_name = f"__match_bind_{bound_name}_{len(self.symbol_aliases)}_{len(self.output_buffer)}"
             if variant == "Some":
-                self._ensure_forward_declaration("extern intptr_t NLPL_Optional_get_value(void* opt);")
                 self.symbol_table[bound_name] = "intptr_t"
                 self.symbol_aliases[bound_name] = emitted_name
-                self.emit(f"intptr_t {emitted_name} = NLPL_Optional_get_value((void*)({match_var}));")
+                if self._supports_scalar_variant_match(match_type):
+                    self.emit(f"intptr_t {emitted_name} = (intptr_t)({match_var});")
+                else:
+                    self._ensure_forward_declaration("extern intptr_t NLPL_Optional_get_value(void* opt);")
+                    self.emit(f"intptr_t {emitted_name} = NLPL_Optional_get_value((void*)({match_var}));")
             elif variant == "Ok":
-                self._ensure_forward_declaration("extern intptr_t NLPL_Result_get_value(void* res);")
                 self.symbol_table[bound_name] = "intptr_t"
                 self.symbol_aliases[bound_name] = emitted_name
-                self.emit(f"intptr_t {emitted_name} = NLPL_Result_get_value((void*)({match_var}));")
+                if self._supports_scalar_variant_match(match_type):
+                    self.emit(f"intptr_t {emitted_name} = (intptr_t)({match_var});")
+                else:
+                    self._ensure_forward_declaration("extern intptr_t NLPL_Result_get_value(void* res);")
+                    self.emit(f"intptr_t {emitted_name} = NLPL_Result_get_value((void*)({match_var}));")
             elif variant == "Err":
-                self._ensure_forward_declaration("extern const char* NLPL_Result_get_error(void* res);")
                 self.symbol_table[bound_name] = "const char*"
                 self.symbol_aliases[bound_name] = emitted_name
-                self.emit(f"const char* {emitted_name} = NLPL_Result_get_error((void*)({match_var}));")
+                if self._supports_scalar_variant_match(match_type):
+                    self.emit(f"const char* {emitted_name} = \"error\";")
+                else:
+                    self._ensure_forward_declaration("extern const char* NLPL_Result_get_error(void* res);")
+                    self.emit(f"const char* {emitted_name} = NLPL_Result_get_error((void*)({match_var}));")
             return
 
         if isinstance(pattern, TuplePattern):

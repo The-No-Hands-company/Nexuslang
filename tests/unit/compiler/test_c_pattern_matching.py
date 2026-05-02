@@ -121,8 +121,14 @@ end
 
     c_code = CCodeGenerator(target="c").generate(ast)
 
-    assert "NLPL_Optional_has_value" in c_code
-    assert "NLPL_Optional_get_value" in c_code
+    assert (
+        "NLPL_Optional_has_value" in c_code
+        or "((intptr_t)(opt)) != 0" in c_code
+    )
+    assert (
+        "NLPL_Optional_get_value" in c_code
+        or "= (intptr_t)(opt);" in c_code
+    )
     assert "__match_bind_payload_" in c_code
 
 
@@ -148,11 +154,80 @@ end
 
     c_code = CCodeGenerator(target="c").generate(ast)
 
-    assert "NLPL_Result_is_ok" in c_code
-    assert "NLPL_Result_get_value" in c_code
-    assert "NLPL_Result_get_error" in c_code
+    assert (
+        "NLPL_Result_is_ok" in c_code
+        or "((intptr_t)(res)) >= 0" in c_code
+    )
+    assert (
+        "NLPL_Result_get_value" in c_code
+        or "= (intptr_t)(res);" in c_code
+    )
+    assert (
+        "NLPL_Result_get_error" in c_code
+        or '"error"' in c_code
+    )
     assert "__match_bind_value_" in c_code
     assert "__match_bind_message_" in c_code
+
+
+def test_c_match_expression_uses_scalar_option_fallback_without_runtime_helpers():
+    ast = _parse(
+        """
+function main returns Integer
+    set opt to 42
+    match opt with
+        case payload
+            print text payload
+        case _
+            print text 0
+    end
+    return 0
+end
+"""
+    )
+
+    match_stmt = _find_first_match(ast)
+    match_stmt.cases[0].pattern = OptionPattern("Some", "payload")
+    match_stmt.cases[1].pattern = OptionPattern("None", None)
+
+    c_code = CCodeGenerator(target="c").generate(ast)
+
+    assert "((intptr_t)(opt)) != 0" in c_code
+    assert "NLPL_Optional_has_value" not in c_code
+    assert "NLPL_Optional_get_value" not in c_code
+    assert "__match_bind_payload_" in c_code
+    assert "= (intptr_t)(opt);" in c_code
+
+
+def test_c_match_expression_uses_scalar_result_fallback_without_runtime_helpers():
+    ast = _parse(
+        """
+function main returns Integer
+    set res to -1
+    match res with
+        case e
+            print text e
+        case v
+            print text v
+    end
+    return 0
+end
+"""
+    )
+
+    match_stmt = _find_first_match(ast)
+    match_stmt.cases[0].pattern = ResultPattern("Err", "message")
+    match_stmt.cases[1].pattern = ResultPattern("Ok", "value")
+
+    c_code = CCodeGenerator(target="c").generate(ast)
+
+    assert "((intptr_t)(res)) >= 0" in c_code
+    assert "NLPL_Result_is_ok" not in c_code
+    assert "NLPL_Result_get_value" not in c_code
+    assert "NLPL_Result_get_error" not in c_code
+    assert '__match_bind_message_' in c_code
+    assert '"error"' in c_code
+    assert "__match_bind_value_" in c_code
 
 
 def test_c_match_expression_lowers_variant_patterns_and_binding():
@@ -173,7 +248,10 @@ end
 
     c_code = CCodeGenerator(target="c").generate(ast)
 
-    assert "NLPL_Result_is_ok" in c_code
+    assert (
+        "NLPL_Result_is_ok" in c_code
+        or "((intptr_t)(res)) >= 0" in c_code
+    )
     assert "__match_bind_v_" in c_code
     assert "__match_bind_e_" in c_code
 
