@@ -49,6 +49,7 @@ class LLVMIRGenerator(CodeGenerator):
         self.functions: Dict[str, Tuple[str, List[str], List[str]]] = {}  # name -> (ret_type, param_types, param_names)
         self.local_vars: Dict[str, Tuple[str, str]] = {}  # var_name -> (llvm_type, %alloca_name)
         self.array_sizes: Dict[str, int] = {}  # var_name -> array_size (for tracking lengths)
+        self.current_match_source_name: Optional[str] = None  # source variable currently being matched
         self.top_level_statements: List[Any] = []
         self.comptime_constant_values: Dict[str, Any] = {}
         self.macro_definitions: Dict[str, Any] = {}
@@ -6613,12 +6614,19 @@ class LLVMIRGenerator(CodeGenerator):
         first_case_label = f"match.case.{match_id}.0"
         
         # Evaluate expression to match against
+        previous_match_source_name = self.current_match_source_name
+        if type(node.expression).__name__ == 'Identifier':
+            self.current_match_source_name = node.expression.name
+        else:
+            self.current_match_source_name = None
+
         match_value_reg = self._generate_expression(node.expression, indent)
         match_value_type = self._infer_expression_type(node.expression)
         
         # Optimization: Check if all cases are integer literals (use switch)
         if self._can_optimize_to_switch(node.cases, match_value_type):
             self._generate_optimized_switch(node, match_value_reg, match_id, indent)
+            self.current_match_source_name = previous_match_source_name
             return
         
         # Branch to first case
@@ -6677,6 +6685,7 @@ class LLVMIRGenerator(CodeGenerator):
         
         # Emit end label
         self.emit(f'\n{end_label}:')
+        self.current_match_source_name = previous_match_source_name
     
     def _generate_pattern_match(self, pattern, value_reg, value_type, case_label, indent=''):
         """Generate code to check if a pattern matches a value.
@@ -6784,15 +6793,27 @@ class LLVMIRGenerator(CodeGenerator):
         # Check if it's Some or None variant
         variant = getattr(pattern, 'variant', None)
         is_some = (variant == 'Some') or bool(getattr(pattern, 'is_some', False))
+
+        if value_type.endswith('*'):
+            has_value = self._new_temp()
+            self.emit(f'{indent}{has_value} = ptrtoint {value_type} {value_reg} to i64')
+            has_value_i1 = self._new_temp()
+            self.emit(f'{indent}{has_value_i1} = icmp ne i64 {has_value}, 0')
+            if is_some:
+                return has_value_i1
+            is_none = self._new_temp()
+            self.emit(f'{indent}{is_none} = xor i1 {has_value_i1}, true')
+            return is_none
+
         if is_some:
             # Match Some(inner)
             has_value = self._new_temp()
-            self.emit(f'{indent}{has_value} = call i1 @NLPL_Optional_has_value({value_type}* {value_reg})')
+            self.emit(f'{indent}{has_value} = icmp ne {value_type} {value_reg}, 0')
             return has_value
         else:
             # Match None
             has_value = self._new_temp()
-            self.emit(f'{indent}{has_value} = call i1 @NLPL_Optional_has_value({value_type}* {value_reg})')
+            self.emit(f'{indent}{has_value} = icmp ne {value_type} {value_reg}, 0')
             is_none = self._new_temp()
             self.emit(f'{indent}{is_none} = xor i1 {has_value}, true')
             return is_none
@@ -6803,15 +6824,27 @@ class LLVMIRGenerator(CodeGenerator):
         # Check if it's Ok or Err variant
         variant = getattr(pattern, 'variant', None)
         is_ok_variant = (variant == 'Ok') or bool(getattr(pattern, 'is_ok', False))
+
+        if value_type.endswith('*'):
+            value_i64 = self._new_temp()
+            self.emit(f'{indent}{value_i64} = ptrtoint {value_type} {value_reg} to i64')
+            is_ok = self._new_temp()
+            self.emit(f'{indent}{is_ok} = icmp sge i64 {value_i64}, 0')
+            if is_ok_variant:
+                return is_ok
+            is_err = self._new_temp()
+            self.emit(f'{indent}{is_err} = xor i1 {is_ok}, true')
+            return is_err
+
         if is_ok_variant:
             # Match Ok(value)
             is_ok = self._new_temp()
-            self.emit(f'{indent}{is_ok} = call i1 @NLPL_Result_is_ok({value_type}* {value_reg})')
+            self.emit(f'{indent}{is_ok} = icmp sge {value_type} {value_reg}, 0')
             return is_ok
         else:
             # Match Err(error)
             is_ok = self._new_temp()
-            self.emit(f'{indent}{is_ok} = call i1 @NLPL_Result_is_ok({value_type}* {value_reg})')
+            self.emit(f'{indent}{is_ok} = icmp sge {value_type} {value_reg}, 0')
             is_err = self._new_temp()
             self.emit(f'{indent}{is_err} = xor i1 {is_ok}, true')
             return is_err
@@ -6820,6 +6853,37 @@ class LLVMIRGenerator(CodeGenerator):
         """Generate match code for TuplePattern."""
         # Tuples are represented as structs: { elem0_type, elem1_type, ... }
         # Match each element pattern against corresponding tuple element
+
+        if value_type.endswith('*'):
+            elem_type = value_type[:-1]
+            source_name = self.current_match_source_name
+            if source_name and source_name in self.array_sizes:
+                expected_len = len(pattern.patterns)
+                actual_len = self.array_sizes[source_name]
+                length_match = self._new_temp()
+                self.emit(f'{indent}{length_match} = icmp eq i64 {actual_len}, {expected_len}')
+                if actual_len < expected_len:
+                    return length_match
+            else:
+                length_match = 'true'
+
+            match_results = [length_match]
+            for i, elem_pattern in enumerate(pattern.patterns):
+                elem_ptr = self._new_temp()
+                self.emit(f'{indent}{elem_ptr} = getelementptr inbounds {elem_type}, {value_type} {value_reg}, i64 {i}')
+                elem_reg = self._new_temp()
+                self.emit(f'{indent}{elem_reg} = load {elem_type}, {elem_type}* {elem_ptr}, align 8')
+                elem_match = self._generate_pattern_match(
+                    elem_pattern, elem_reg, elem_type, case_label, indent
+                )
+                match_results.append(elem_match)
+
+            combined_reg = match_results[0]
+            for next_result in match_results[1:]:
+                and_reg = self._new_temp()
+                self.emit(f'{indent}{and_reg} = and i1 {combined_reg}, {next_result}')
+                combined_reg = and_reg
+            return combined_reg
         
         match_results = []
         
@@ -6857,6 +6921,46 @@ class LLVMIRGenerator(CodeGenerator):
         # Structure: { i64 length, element_type* data }
         
         patterns = pattern.patterns
+
+        if value_type.endswith('*'):
+            elem_type = value_type[:-1]
+            min_length = len(patterns)
+            source_name = self.current_match_source_name
+
+            if source_name and source_name in self.array_sizes:
+                known_len = self.array_sizes[source_name]
+                length_check_reg = self._new_temp()
+                if hasattr(pattern, 'rest_binding') and pattern.rest_binding:
+                    self.emit(f'{indent}{length_check_reg} = icmp uge i64 {known_len}, {min_length}')
+                else:
+                    self.emit(f'{indent}{length_check_reg} = icmp eq i64 {known_len}, {min_length}')
+            elif source_name and source_name in self.runtime_array_sizes:
+                runtime_len = self.runtime_array_sizes[source_name]
+                length_check_reg = self._new_temp()
+                if hasattr(pattern, 'rest_binding') and pattern.rest_binding:
+                    self.emit(f'{indent}{length_check_reg} = icmp uge i64 {runtime_len}, {min_length}')
+                else:
+                    self.emit(f'{indent}{length_check_reg} = icmp eq i64 {runtime_len}, {min_length}')
+            else:
+                length_check_reg = 'true'
+
+            match_results = [length_check_reg]
+            for i, elem_pattern in enumerate(patterns):
+                elem_ptr_reg = self._new_temp()
+                self.emit(f'{indent}{elem_ptr_reg} = getelementptr inbounds {elem_type}, {value_type} {value_reg}, i64 {i}')
+                elem_val_reg = self._new_temp()
+                self.emit(f'{indent}{elem_val_reg} = load {elem_type}, {elem_type}* {elem_ptr_reg}, align 8')
+                elem_match = self._generate_pattern_match(
+                    elem_pattern, elem_val_reg, elem_type, case_label, indent
+                )
+                match_results.append(elem_match)
+
+            combined_reg = match_results[0]
+            for next_result in match_results[1:]:
+                and_reg = self._new_temp()
+                self.emit(f'{indent}{and_reg} = and i1 {combined_reg}, {next_result}')
+                combined_reg = and_reg
+            return combined_reg
         
         # Extract list length
         length_reg = self._new_temp()
@@ -6998,6 +7102,68 @@ class LLVMIRGenerator(CodeGenerator):
         patterns = pattern.patterns
         rest_binding = pattern.rest_binding
 
+        if value_type.endswith('*'):
+            elem_type = value_type[:-1]
+            min_length = len(patterns)
+            source_name = self.current_match_source_name
+
+            if source_name and source_name in self.array_sizes:
+                known_len = self.array_sizes[source_name]
+                length_check_reg = self._new_temp()
+                if rest_binding:
+                    self.emit(f'{indent}{length_check_reg} = icmp sge i64 {known_len}, {min_length}')
+                else:
+                    self.emit(f'{indent}{length_check_reg} = icmp eq i64 {known_len}, {min_length}')
+                remaining_count_value = max(known_len - len(patterns), 0)
+            elif source_name and source_name in self.runtime_array_sizes:
+                runtime_len = self.runtime_array_sizes[source_name]
+                length_check_reg = self._new_temp()
+                if rest_binding:
+                    self.emit(f'{indent}{length_check_reg} = icmp sge i64 {runtime_len}, {min_length}')
+                else:
+                    self.emit(f'{indent}{length_check_reg} = icmp eq i64 {runtime_len}, {min_length}')
+                remaining_count_value = None
+            else:
+                length_check_reg = 'true'
+                remaining_count_value = None
+
+            match_results = [length_check_reg]
+            for i, elem_pattern in enumerate(patterns):
+                elem_ptr_reg = self._new_temp()
+                self.emit(f'{indent}{elem_ptr_reg} = getelementptr inbounds {elem_type}, {value_type} {value_reg}, i64 {i}')
+                elem_value_reg = self._new_temp()
+                self.emit(f'{indent}{elem_value_reg} = load {elem_type}, {elem_type}* {elem_ptr_reg}, align 8')
+
+                elem_match = self._generate_pattern_match(
+                    elem_pattern, elem_value_reg, elem_type, case_label, indent
+                )
+                match_results.append(elem_match)
+                self._generate_pattern_bindings(elem_pattern, elem_value_reg, elem_type, indent, case_label)
+
+            if rest_binding:
+                rest_var_addr = self._new_temp()
+                self.emit(f'{indent}{rest_var_addr} = alloca {value_type}')
+
+                rest_data_ptr = self._new_temp()
+                self.emit(f'{indent}{rest_data_ptr} = getelementptr inbounds {elem_type}, {value_type} {value_reg}, i64 {len(patterns)}')
+                self.emit(f'{indent}store {value_type} {rest_data_ptr}, {value_type}* {rest_var_addr}, align 8')
+                self.local_vars[rest_binding] = (value_type, rest_var_addr)
+
+                if remaining_count_value is not None:
+                    self.array_sizes[rest_binding] = remaining_count_value
+                elif source_name and source_name in self.runtime_array_sizes:
+                    source_len = self.runtime_array_sizes[source_name]
+                    remaining_count_reg = self._new_temp()
+                    self.emit(f'{indent}{remaining_count_reg} = sub i64 {source_len}, {len(patterns)}')
+                    self.runtime_array_sizes[rest_binding] = remaining_count_reg
+
+            combined_reg = match_results[0]
+            for next_result in match_results[1:]:
+                and_reg = self._new_temp()
+                self.emit(f'{indent}{and_reg} = and i1 {combined_reg}, {next_result}')
+                combined_reg = and_reg
+            return combined_reg
+
         # Extract list length
         length_reg = self._new_temp()
         self.emit(f'{indent}{length_reg} = extractvalue {value_type} {value_reg}, 0')
@@ -7125,6 +7291,16 @@ class LLVMIRGenerator(CodeGenerator):
             # Tuples are represented as structs: { elem0_type, elem1_type, ... }
             # Match each element pattern against corresponding tuple element
 
+            if value_type.endswith('*'):
+                elem_type = value_type[:-1]
+                for i, elem_pattern in enumerate(pattern.patterns):
+                    elem_ptr = self._new_temp()
+                    self.emit(f'{indent}{elem_ptr} = getelementptr inbounds {elem_type}, {value_type} {value_reg}, i64 {i}')
+                    elem_reg = self._new_temp()
+                    self.emit(f'{indent}{elem_reg} = load {elem_type}, {elem_type}* {elem_ptr}, align 8')
+                    self._generate_pattern_bindings(elem_pattern, elem_reg, elem_type, indent, case_label)
+                return 'true'
+
             match_results = []
 
             for i, elem_pattern in enumerate(pattern.patterns):
@@ -7167,12 +7343,12 @@ class LLVMIRGenerator(CodeGenerator):
         if bind_name is None and not inner_pattern:
             return
         
-        # Extract inner value from Optional<T>
-        # Call NLPL_Optional_get_value to extract the value
-        inner_val = self._new_temp()
-        # Assume inner type is i64 for simplicity (can be enhanced with type inference)
         inner_type = 'i64'
-        self.emit(f'{indent}{inner_val} = call {inner_type} @NLPL_Optional_get_value({value_type}* {value_reg})')
+        if value_type.endswith('*'):
+            inner_val = self._new_temp()
+            self.emit(f'{indent}{inner_val} = ptrtoint {value_type} {value_reg} to i64')
+        else:
+            inner_val = value_reg
         
         # Direct binding form: OptionPattern("Some", "value")
         if bind_name:
@@ -7205,14 +7381,18 @@ class LLVMIRGenerator(CodeGenerator):
         is_ok_variant = (variant == 'Ok') or bool(getattr(pattern, 'is_ok', False))
         if is_ok_variant:
             # Extract value from Result.Ok
-            inner_val = self._new_temp()
             inner_type = 'i64'  # Can be enhanced with type inference
-            self.emit(f'{indent}{inner_val} = call {inner_type} @NLPL_Result_get_value({value_type}* {value_reg})')
+            if value_type.endswith('*'):
+                inner_val = self._new_temp()
+                self.emit(f'{indent}{inner_val} = ptrtoint {value_type} {value_reg} to i64')
+            else:
+                inner_val = value_reg
         else:
             # Extract error from Result.Err
-            inner_val = self._new_temp()
             inner_type = 'i8*'  # Error is typically a string
-            self.emit(f'{indent}{inner_val} = call {inner_type} @NLPL_Result_get_error({value_type}* {value_reg})')
+            str_name, str_len = self._get_or_create_string_constant('error')
+            inner_val = self._new_temp()
+            self.emit(f'{indent}{inner_val} = getelementptr inbounds [{str_len} x i8], [{str_len} x i8]* {str_name}, i64 0, i64 0')
         
         # Direct binding form: ResultPattern("Ok"|"Err", "name")
         if bind_name:

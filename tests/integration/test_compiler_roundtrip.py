@@ -754,11 +754,6 @@ class TestRuntimeBackedPatternRoundtrip:
     runtime-backed matching in the native pipeline.
     """
 
-    @pytest.mark.xfail(
-        raises=CompilationFailed,
-        reason="OptionPattern executable roundtrip still lacks linked runtime helper parity",
-        strict=False,
-    )
     def test_option_pattern_runtime_backed_roundtrip(self):
         src = """
 function main returns Integer
@@ -781,11 +776,6 @@ end
         assert rc == 0
         assert out != ""
 
-    @pytest.mark.xfail(
-        raises=CompilationFailed,
-        reason="ResultPattern executable roundtrip still lacks linked runtime helper parity",
-        strict=False,
-    )
     def test_result_pattern_runtime_backed_roundtrip(self):
         src = """
 function main returns Integer
@@ -808,11 +798,6 @@ end
         assert rc == 0
         assert out != ""
 
-    @pytest.mark.xfail(
-        raises=CompilationFailed,
-        reason="TuplePattern executable roundtrip layout parity is not fully wired",
-        strict=False,
-    )
     def test_tuple_pattern_runtime_backed_roundtrip(self):
         src = """
 function main returns Integer
@@ -830,11 +815,6 @@ end
         assert rc == 0
         assert out == "2\n"
 
-    @pytest.mark.xfail(
-        raises=CompilationFailed,
-        reason="ListPattern executable roundtrip rest-binding layout parity is not fully wired",
-        strict=False,
-    )
     def test_list_pattern_runtime_backed_roundtrip(self):
         src = """
 function main returns Integer
