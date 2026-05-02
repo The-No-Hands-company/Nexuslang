@@ -1328,19 +1328,30 @@ class CCodeGenerator(CodeGenerator):
 
     def _generate_match_expression(self, node: MatchExpression) -> None:
         """Generate statement-level pattern matching as a guarded case chain."""
-        match_value_expr = self._generate_expression(node.expression)
         match_value_type = self._infer_type(node.expression)
         unique_suffix = f"{len(self.symbol_aliases)}_{len(self.output_buffer)}"
-        match_var = f"__nxl_match_value_{unique_suffix}"
         done_var = f"__nxl_match_done_{unique_suffix}"
+        source_name = node.expression.name if isinstance(node.expression, Identifier) else None
+
+        if isinstance(node.expression, Identifier):
+            match_var = self._resolve_symbol_name(node.expression.name)
+            emit_match_decl = False
+        else:
+            match_var = f"__nxl_match_value_{unique_suffix}"
+            emit_match_decl = "[]" not in match_value_type
 
         self.emit("{")
         self.indent()
-        self.emit(f"{match_value_type} {match_var} = {match_value_expr};")
+        if emit_match_decl:
+            match_value_expr = self._generate_expression(node.expression)
+            self.emit(f"{match_value_type} {match_var} = {match_value_expr};")
+        elif not isinstance(node.expression, Identifier):
+            raise RuntimeError("C backend cannot match directly on non-identifier array/list expressions")
+
         self.emit(f"bool {done_var} = false;")
 
         for case_index, case in enumerate(node.cases):
-            condition_expr = self._generate_match_condition(case.pattern, match_var)
+            condition_expr = self._generate_match_condition(case.pattern, match_var, match_value_type, source_name)
             if condition_expr is None:
                 raise RuntimeError(
                     f"C backend does not yet support pattern type '{type(case.pattern).__name__}'"
@@ -1355,7 +1366,7 @@ class CCodeGenerator(CodeGenerator):
             try:
                 self.emit(f"if (__nxl_case_match_{case_index}) {{")
                 self.indent()
-                self._generate_pattern_bindings(case.pattern, match_var, match_value_type)
+                self._generate_pattern_bindings(case.pattern, match_var, match_value_type, source_name)
                 if getattr(case, 'guard', None) is not None:
                     guard_expr = self._generate_expression(case.guard)
                     self.emit(f"__nxl_case_match_{case_index} = ({guard_expr});")
@@ -1384,9 +1395,28 @@ class CCodeGenerator(CodeGenerator):
         self.dedent()
         self.emit("}")
 
-    def _generate_match_condition(self, pattern: Any, match_var: str) -> str | None:
+    def _variant_suffix(self, variant_name: str) -> str:
+        """Return normalized suffix for dotted variant names."""
+        if not variant_name:
+            return ""
+        return variant_name.split('.')[-1]
+
+    def _ensure_forward_declaration(self, declaration: str) -> None:
+        """Add a forward declaration once."""
+        if declaration not in self.forward_declarations:
+            self.forward_declarations.append(declaration)
+
+    def _list_element_type(self, list_type: str) -> str:
+        """Infer element type from list type notation like int[] or int[][]."""
+        if isinstance(list_type, str) and list_type.endswith("[]"):
+            return list_type[:-2] or "intptr_t"
+        return "intptr_t"
+
+    def _generate_match_condition(self, pattern: Any, match_var: str, match_type: str, source_name: str | None) -> str | None:
         """Return a C condition expression for supported pattern kinds."""
-        if isinstance(pattern, (WildcardPattern, IdentifierPattern)):
+        if isinstance(pattern, WildcardPattern):
+            return "true"
+        if isinstance(pattern, IdentifierPattern):
             return "true"
         if isinstance(pattern, LiteralPattern):
             literal_expr = self._generate_expression(pattern.value)
@@ -1394,9 +1424,67 @@ class CCodeGenerator(CodeGenerator):
             if literal_type == "const char*":
                 return f"strcmp({match_var}, {literal_expr}) == 0"
             return f"{match_var} == {literal_expr}"
+
+        if isinstance(pattern, OptionPattern):
+            self._ensure_forward_declaration("extern bool NLPL_Optional_has_value(void* opt);")
+            has_value = f"NLPL_Optional_has_value((void*)({match_var}))"
+            return has_value if pattern.variant == "Some" else f"(!{has_value})"
+
+        if isinstance(pattern, ResultPattern):
+            self._ensure_forward_declaration("extern bool NLPL_Result_is_ok(void* res);")
+            is_ok = f"NLPL_Result_is_ok((void*)({match_var}))"
+            return is_ok if pattern.variant == "Ok" else f"(!{is_ok})"
+
+        if isinstance(pattern, VariantPattern):
+            variant = self._variant_suffix(pattern.variant_name)
+            if variant in ("Some", "None"):
+                self._ensure_forward_declaration("extern bool NLPL_Optional_has_value(void* opt);")
+                has_value = f"NLPL_Optional_has_value((void*)({match_var}))"
+                return has_value if variant == "Some" else f"(!{has_value})"
+            if variant in ("Ok", "Err"):
+                self._ensure_forward_declaration("extern bool NLPL_Result_is_ok(void* res);")
+                is_ok = f"NLPL_Result_is_ok((void*)({match_var}))"
+                return is_ok if variant == "Ok" else f"(!{is_ok})"
+            return None
+
+        if isinstance(pattern, TuplePattern):
+            if source_name is None or source_name not in self.array_sizes:
+                return None
+            tuple_len = self.array_sizes[source_name]
+            if tuple_len != len(pattern.patterns):
+                return "false"
+            conditions = []
+            elem_type = self._list_element_type(match_type)
+            for index, elem_pattern in enumerate(pattern.patterns):
+                element_expr = f"{match_var}[{index}]"
+                element_cond = self._generate_match_condition(elem_pattern, element_expr, elem_type, None)
+                if element_cond is None:
+                    return None
+                conditions.append(f"({element_cond})")
+            return " && ".join(conditions) if conditions else "true"
+
+        if isinstance(pattern, ListPattern):
+            if source_name is None or source_name not in self.array_sizes:
+                return None
+            list_len = self.array_sizes[source_name]
+            min_len = len(pattern.patterns)
+            if pattern.rest_binding:
+                length_cond = f"({list_len} >= {min_len})"
+            else:
+                length_cond = f"({list_len} == {min_len})"
+            conditions = [length_cond]
+            elem_type = self._list_element_type(match_type)
+            for index, elem_pattern in enumerate(pattern.patterns):
+                element_expr = f"{match_var}[{index}]"
+                element_cond = self._generate_match_condition(elem_pattern, element_expr, elem_type, None)
+                if element_cond is None:
+                    return None
+                conditions.append(f"({element_cond})")
+            return " && ".join(conditions)
+
         return None
 
-    def _generate_pattern_bindings(self, pattern: Any, match_var: str, match_type: str) -> None:
+    def _generate_pattern_bindings(self, pattern: Any, match_var: str, match_type: str, source_name: str | None) -> None:
         """Emit local bindings for supported pattern variables."""
         if isinstance(pattern, IdentifierPattern):
             bound_name = pattern.name
@@ -1404,6 +1492,72 @@ class CCodeGenerator(CodeGenerator):
             self.symbol_table[bound_name] = match_type
             self.symbol_aliases[bound_name] = emitted_name
             self.emit(f"{match_type} {emitted_name} = {match_var};")
+            return
+
+        if isinstance(pattern, OptionPattern) and pattern.binding:
+            self._ensure_forward_declaration("extern intptr_t NLPL_Optional_get_value(void* opt);")
+            bound_name = pattern.binding
+            emitted_name = f"__match_bind_{bound_name}_{len(self.symbol_aliases)}_{len(self.output_buffer)}"
+            self.symbol_table[bound_name] = "intptr_t"
+            self.symbol_aliases[bound_name] = emitted_name
+            self.emit(f"intptr_t {emitted_name} = NLPL_Optional_get_value((void*)({match_var}));")
+            return
+
+        if isinstance(pattern, ResultPattern) and pattern.binding:
+            variant = pattern.variant
+            bound_name = pattern.binding
+            emitted_name = f"__match_bind_{bound_name}_{len(self.symbol_aliases)}_{len(self.output_buffer)}"
+            if variant == "Ok":
+                self._ensure_forward_declaration("extern intptr_t NLPL_Result_get_value(void* res);")
+                self.symbol_table[bound_name] = "intptr_t"
+                self.symbol_aliases[bound_name] = emitted_name
+                self.emit(f"intptr_t {emitted_name} = NLPL_Result_get_value((void*)({match_var}));")
+            else:
+                self._ensure_forward_declaration("extern const char* NLPL_Result_get_error(void* res);")
+                self.symbol_table[bound_name] = "const char*"
+                self.symbol_aliases[bound_name] = emitted_name
+                self.emit(f"const char* {emitted_name} = NLPL_Result_get_error((void*)({match_var}));")
+            return
+
+        if isinstance(pattern, VariantPattern) and pattern.bindings:
+            variant = self._variant_suffix(pattern.variant_name)
+            bound_name = pattern.bindings[0]
+            emitted_name = f"__match_bind_{bound_name}_{len(self.symbol_aliases)}_{len(self.output_buffer)}"
+            if variant == "Some":
+                self._ensure_forward_declaration("extern intptr_t NLPL_Optional_get_value(void* opt);")
+                self.symbol_table[bound_name] = "intptr_t"
+                self.symbol_aliases[bound_name] = emitted_name
+                self.emit(f"intptr_t {emitted_name} = NLPL_Optional_get_value((void*)({match_var}));")
+            elif variant == "Ok":
+                self._ensure_forward_declaration("extern intptr_t NLPL_Result_get_value(void* res);")
+                self.symbol_table[bound_name] = "intptr_t"
+                self.symbol_aliases[bound_name] = emitted_name
+                self.emit(f"intptr_t {emitted_name} = NLPL_Result_get_value((void*)({match_var}));")
+            elif variant == "Err":
+                self._ensure_forward_declaration("extern const char* NLPL_Result_get_error(void* res);")
+                self.symbol_table[bound_name] = "const char*"
+                self.symbol_aliases[bound_name] = emitted_name
+                self.emit(f"const char* {emitted_name} = NLPL_Result_get_error((void*)({match_var}));")
+            return
+
+        if isinstance(pattern, TuplePattern):
+            elem_type = self._list_element_type(match_type)
+            for index, elem_pattern in enumerate(pattern.patterns):
+                self._generate_pattern_bindings(elem_pattern, f"{match_var}[{index}]", elem_type, None)
+            return
+
+        if isinstance(pattern, ListPattern):
+            elem_type = self._list_element_type(match_type)
+            for index, elem_pattern in enumerate(pattern.patterns):
+                self._generate_pattern_bindings(elem_pattern, f"{match_var}[{index}]", elem_type, None)
+            if pattern.rest_binding and source_name in self.array_sizes:
+                bound_name = pattern.rest_binding
+                emitted_name = f"__match_bind_{bound_name}_{len(self.symbol_aliases)}_{len(self.output_buffer)}"
+                offset = len(pattern.patterns)
+                self.symbol_table[bound_name] = f"{elem_type}*"
+                self.symbol_aliases[bound_name] = emitted_name
+                self.emit(f"{elem_type}* {emitted_name} = &{match_var}[{offset}];")
+            return
 
     def _generate_comptime_expression(self, node: ComptimeExpression) -> None:
         """Lower comptime eval as normal expression evaluation."""

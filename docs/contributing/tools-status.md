@@ -1,6 +1,6 @@
 # NexusLang Development Tools Implementation Status
 
-**Date:** January 2, 2026 
+**Date:** May 2, 2026
 **Goal:** Transform NexusLang from "90% debugging" to "90% development"
 
 ---
@@ -9,9 +9,20 @@
 
 **Mission:** Turn C/C++/Assembly's pain points into NLPL's competitive advantages.
 
-**Status:** Foundation complete, production tooling in progress
+**Status:** Foundation complete, production tooling and cross-toolchain parity hardening in progress
 
 **Key Achievement:** Documented comprehensive competitive strategy in `NLPL_COMPETITIVE_ADVANTAGES.md` (1200+ lines)
+
+## Reality Check (May 2026)
+
+Recent implementation work closed several previously documented "missing" core-language gaps. Current reality in the main codebase:
+
+- Macro/comptime: compiler + typechecker support exists in LLVM/C paths, including comptime const/assert lowering and macro expansion support.
+- Pattern matching: interpreter + LLVM support existed; C backend now has statement-level guarded/bound lowering, including Option/Result/Variant/Tuple/List pattern-family handling.
+- Match behavior validation: executable compiled roundtrip coverage now includes guarded and bound case behavior, not only simple literal matching.
+- Channels/parallel-for/contracts: these are no longer interpreter-only surfaces; parser/typechecker/compiler paths include active handling.
+
+Remaining high-value work is now less about "feature missing" and more about deep semantic parity, diagnostics depth, and tooling polish.
 
 ---
 

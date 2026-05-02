@@ -7099,10 +7099,10 @@ class LLVMIRGenerator(CodeGenerator):
             var_name = pattern.name
             # Generate alloca for variable
             var_addr = self._new_temp()
-            self.emit(f'{indent}{var_addr} = alloca {self._map_type(value_type)}')
-            self.emit(f'{indent}store {self._map_type(value_type)} {value_reg}, {self._map_type(value_type)}* {var_addr}')
+            self.emit(f'{indent}{var_addr} = alloca {value_type}')
+            self.emit(f'{indent}store {value_type} {value_reg}, {value_type}* {var_addr}')
             # Update symbol table
-            self.local_vars[var_name] = (self._map_type(value_type), var_addr)
+            self.local_vars[var_name] = (value_type, var_addr)
 
         elif pattern_type == 'VariantPattern':
             self._generate_variant_pattern_binding(pattern, value_reg, value_type, indent)

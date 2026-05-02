@@ -675,6 +675,38 @@ end
         assert rc == 0
         assert out == "two\n"
 
+    def test_match_identifier_binding_executes_bound_value(self):
+        src = """
+function main returns Integer
+    set x to 9
+    match x with
+        case n
+            print text n
+    end
+    return 0
+end
+"""
+        rc, out, _ = compile_and_run(src)
+        assert rc == 0
+        assert out == "9\n"
+
+    def test_match_guard_selects_correct_case(self):
+        src = """
+function main returns Integer
+    set x to 2
+    match x with
+        case n if n is greater than 3
+            print text "big"
+        case _
+            print text "small"
+    end
+    return 0
+end
+"""
+        rc, out, _ = compile_and_run(src)
+        assert rc == 0
+        assert out == "small\n"
+
 
 @skip_no_llvm
 class TestLoops:
