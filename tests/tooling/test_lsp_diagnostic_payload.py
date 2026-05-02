@@ -75,11 +75,11 @@ class TestBuildDiagnosticShape:
                                     severity=sev, message="m")
             assert d["severity"] == sev
 
-    def test_no_code_field_when_no_type_key(self):
+    def test_fallback_code_when_no_type_key(self):
         p = make_provider()
         d = p._build_diagnostic(line=0, start_char=0, end_char=1,
                                 severity=1, message="no code")
-        assert "code" not in d
+        assert d.get("code") == "E309"
 
     def test_no_data_field_when_registry_has_no_suggestions_and_none_given(self):
         """If a code resolves but the registry entry has no fixes, data may be omitted."""

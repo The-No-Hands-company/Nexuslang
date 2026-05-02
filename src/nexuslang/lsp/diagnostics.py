@@ -47,7 +47,13 @@ class DiagnosticsProvider:
     ) -> Dict:
         """Build normalized LSP diagnostic payload with NexusLang error metadata."""
         resolved_code = error_code or (get_error_code_for_type(error_type_key) if error_type_key else None)
+        if not resolved_code:
+            resolved_code = get_error_code_for_type("runtime_error")
         error_info = get_error_info(resolved_code) if resolved_code else None
+
+        normalized_source = source
+        if source in {"nexuslang", "parser", "typechecker", "nlpl-parser", "nlpl-typechecker"}:
+            normalized_source = "nlpl"
 
         resolved_title = title or (error_info.title if error_info else None)
         resolved_category = category or (error_info.category if error_info else None)
@@ -61,7 +67,7 @@ class DiagnosticsProvider:
             },
             "severity": severity,
             "message": message,
-            "source": source,
+            "source": normalized_source,
         }
 
         if resolved_code:
@@ -81,6 +87,80 @@ class DiagnosticsProvider:
             diagnostic["data"] = payload_data
 
         return diagnostic
+
+    def _diagnostic_sort_key(self, diagnostic: Dict) -> tuple:
+        """Return a stable sort key for deterministic diagnostics ordering."""
+        rng = diagnostic.get("range", {})
+        start = rng.get("start", {})
+        end = rng.get("end", {})
+        return (
+            start.get("line", 0),
+            start.get("character", 0),
+            end.get("line", 0),
+            end.get("character", 0),
+            diagnostic.get("severity", 1),
+            str(diagnostic.get("code", "E309")),
+            str(diagnostic.get("source", "nlpl")),
+            str(diagnostic.get("message", "")),
+        )
+
+    def _normalize_diagnostic(self, diagnostic: Dict) -> Dict:
+        """Normalize incoming diagnostic payload to stable source/code/data contract."""
+        normalized = dict(diagnostic)
+
+        source = normalized.get("source", "nlpl")
+        if source in {"nexuslang", "parser", "typechecker", "nlpl-parser", "nlpl-typechecker"}:
+            normalized["source"] = "nlpl"
+        elif not source:
+            normalized["source"] = "nlpl"
+
+        code = normalized.get("code")
+        if not code:
+            code = get_error_code_for_type("runtime_error")
+            normalized["code"] = code
+
+        info = get_error_info(str(code))
+        data = dict(normalized.get("data", {}))
+        if info:
+            data.setdefault("title", info.title)
+            data.setdefault("category", info.category)
+            if info.fixes:
+                data.setdefault("fixes", info.fixes[:3])
+            if info.doc_link:
+                data.setdefault("docLink", info.doc_link)
+        data.setdefault("explainHint", f"nxl --explain {code}")
+        normalized["data"] = {k: v for k, v in data.items() if v not in (None, [], "")}
+
+        return normalized
+
+    def merge_and_dedupe_diagnostics(self, *streams: List[Dict]) -> List[Dict]:
+        """Deterministically merge multiple diagnostic streams with payload normalization and deduplication."""
+        merged: List[Dict] = []
+        for stream in streams:
+            if not stream:
+                continue
+            for diagnostic in stream:
+                merged.append(self._normalize_diagnostic(diagnostic))
+
+        deduped: List[Dict] = []
+        seen = set()
+        for diagnostic in sorted(merged, key=self._diagnostic_sort_key):
+            identity = (
+                diagnostic.get("range", {}).get("start", {}).get("line", 0),
+                diagnostic.get("range", {}).get("start", {}).get("character", 0),
+                diagnostic.get("range", {}).get("end", {}).get("line", 0),
+                diagnostic.get("range", {}).get("end", {}).get("character", 0),
+                diagnostic.get("severity", 1),
+                str(diagnostic.get("code", "E309")),
+                str(diagnostic.get("source", "nlpl")),
+                str(diagnostic.get("message", "")),
+            )
+            if identity in seen:
+                continue
+            seen.add(identity)
+            deduped.append(diagnostic)
+
+        return deduped
     
     def get_diagnostics(self, uri: str, text: str, check_imports: bool = True) -> List[Dict]:
         """
@@ -94,7 +174,12 @@ class DiagnosticsProvider:
         Returns:
             List of diagnostics
         """
-        diagnostics = []
+        parser_diagnostics: List[Dict] = []
+        type_diagnostics: List[Dict] = []
+        import_diagnostics: List[Dict] = []
+        channel_diagnostics: List[Dict] = []
+        macro_comptime_diagnostics: List[Dict] = []
+        unused_var_diagnostics: List[Dict] = []
         
         # Track this file in workspace
         self.workspace_files.add(uri)
@@ -102,25 +187,31 @@ class DiagnosticsProvider:
         # Try parser-based syntax checking first
         parser_diagnostics = self._check_parser_syntax_enhanced(text, uri)
         if parser_diagnostics:
-            diagnostics.extend(parser_diagnostics)
+            pass
         else:
             # Fallback to basic syntax checks
-            diagnostics.extend(self._check_syntax(text))
+            parser_diagnostics = self._check_syntax(text)
         
         # Try type checker diagnostics with enhanced positioning
         type_diagnostics = self._check_type_errors_enhanced(text, uri)
-        if type_diagnostics:
-            diagnostics.extend(type_diagnostics)
         
         # Check for import errors (multi-file)
         if check_imports:
             import_diagnostics = self._check_imports(text, uri)
-            diagnostics.extend(import_diagnostics)
         
         # Additional static checks
-        diagnostics.extend(self._check_channel_operations(text))
-        diagnostics.extend(self._check_macro_comptime_operations(text))
-        diagnostics.extend(self._check_unused_vars(text))
+        channel_diagnostics = self._check_channel_operations(text)
+        macro_comptime_diagnostics = self._check_macro_comptime_operations(text)
+        unused_var_diagnostics = self._check_unused_vars(text)
+
+        diagnostics = self.merge_and_dedupe_diagnostics(
+            parser_diagnostics,
+            type_diagnostics,
+            import_diagnostics,
+            channel_diagnostics,
+            macro_comptime_diagnostics,
+            unused_var_diagnostics,
+        )
         
         # Cache diagnostics for this file
         self.file_diagnostics_cache[uri] = diagnostics

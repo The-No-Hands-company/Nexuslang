@@ -385,7 +385,10 @@ class NLPLLanguageServer:
         # Send diagnostics (syntax + type errors merged with dead-code warnings)
         diagnostics = self.diagnostics_provider.get_diagnostics(uri, text)
         try:
-            diagnostics += self.dead_code_provider.get_diagnostics(uri, text)
+            diagnostics = self.diagnostics_provider.merge_and_dedupe_diagnostics(
+                diagnostics,
+                self.dead_code_provider.get_diagnostics(uri, text),
+            )
         except Exception as e:
             logger.error(f"Dead code analysis error for {uri}: {e}", exc_info=True)
         self._publish_diagnostics(uri, diagnostics)
@@ -411,7 +414,10 @@ class NLPLLanguageServer:
             # Send diagnostics (syntax + dead-code warnings)
             diagnostics = self.diagnostics_provider.get_diagnostics(uri, changes[0]['text'])
             try:
-                diagnostics += self.dead_code_provider.get_diagnostics(uri, changes[0]['text'])
+                diagnostics = self.diagnostics_provider.merge_and_dedupe_diagnostics(
+                    diagnostics,
+                    self.dead_code_provider.get_diagnostics(uri, changes[0]['text']),
+                )
             except Exception as e:
                 logger.error(f"Dead code analysis error for {uri}: {e}", exc_info=True)
             self._publish_diagnostics(uri, diagnostics)
