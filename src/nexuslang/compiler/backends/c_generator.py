@@ -50,6 +50,9 @@ class CCodeGenerator(CodeGenerator):
         self.top_level_init_name = "__nxl_top_level_init"
         self.comptime_constant_values: Dict[str, Any] = {}
         self.macro_expansion_counter = 0
+        self.loop_label_counter = 0
+        self.loop_control_stack: List[tuple] = []  # (continue_label, break_label, loop_name)
+        self.labeled_loop_controls: Dict[str, tuple] = {}  # label -> (continue_label, break_label)
         
     def generate(self, ast: Program) -> str:
         """Generate complete C program from AST."""
@@ -607,9 +610,9 @@ class CCodeGenerator(CodeGenerator):
         elif isinstance(node, RaiseStatement):
             self._generate_raise_statement(node)
         elif isinstance(node, BreakStatement):
-            self.emit("break;")
+            self._generate_break_statement(node)
         elif isinstance(node, ContinueStatement):
-            self.emit("continue;")
+            self._generate_continue_statement(node)
         elif isinstance(node, FallthroughStatement):
             self.emit("/* fallthrough */")
         elif isinstance(node, SendStatement):
@@ -1150,6 +1153,12 @@ class CCodeGenerator(CodeGenerator):
     def _generate_while_loop(self, node: WhileLoop) -> None:
         """Generate while loop."""
         condition = self._generate_expression(node.condition)
+
+        loop_id = self.loop_label_counter
+        self.loop_label_counter += 1
+        continue_label = f"__nxl_loop_continue_{loop_id}"
+        break_label = f"__nxl_loop_break_{loop_id}"
+        self._push_loop_control_context(getattr(node, 'label', None), continue_label, break_label)
         
         self.emit(f"while ({condition}) {{")
         self.indent()
@@ -1157,9 +1166,14 @@ class CCodeGenerator(CodeGenerator):
         if node.body:
             for stmt in node.body:
                 self._generate_statement(stmt)
+
+        # Target for labeled continue statements in this loop.
+        self.emit(f"{continue_label}: ;")
         
         self.dedent()
         self.emit("}")
+        self._pop_loop_control_context()
+        self.emit(f"{break_label}: ;")
     
     def _generate_for_loop(self, node: ForLoop) -> None:
         """Generate for loop."""
@@ -1167,6 +1181,11 @@ class CCodeGenerator(CodeGenerator):
         # Generate as C for loop with index
         
         iterator = node.iterator
+        loop_id = self.loop_label_counter
+        self.loop_label_counter += 1
+        continue_label = f"__nxl_loop_continue_{loop_id}"
+        break_label = f"__nxl_loop_break_{loop_id}"
+        self._push_loop_control_context(getattr(node, 'label', None), continue_label, break_label)
         
         # Determine the collection type and how to get its length
         collection_type = self._infer_type(node.iterable)
@@ -1231,9 +1250,54 @@ class CCodeGenerator(CodeGenerator):
         if node.body:
             for stmt in node.body:
                 self._generate_statement(stmt)
+
+        # Target for labeled continue statements in this loop.
+        self.emit(f"{continue_label}: ;")
         
         self.dedent()
         self.emit("}")
+        self._pop_loop_control_context()
+        self.emit(f"{break_label}: ;")
+
+    def _push_loop_control_context(self, loop_name: str, continue_label: str, break_label: str) -> None:
+        """Track loop control labels for labeled break/continue lowering."""
+        self.loop_control_stack.append((continue_label, break_label, loop_name))
+        if loop_name:
+            self.labeled_loop_controls[loop_name] = (continue_label, break_label)
+
+    def _pop_loop_control_context(self) -> None:
+        """Pop loop control labels when loop emission is complete."""
+        if not self.loop_control_stack:
+            return
+        _, _, loop_name = self.loop_control_stack.pop()
+        if loop_name and loop_name in self.labeled_loop_controls:
+            del self.labeled_loop_controls[loop_name]
+
+    def _generate_break_statement(self, node: BreakStatement) -> None:
+        """Generate break statement with optional loop label support."""
+        if getattr(node, 'label', None):
+            target = self.labeled_loop_controls.get(node.label)
+            if target is None:
+                self.emit(f'/* ERROR: Label "{node.label}" not found */')
+                return
+            _, break_label = target
+            self.emit(f"goto {break_label};")
+            return
+
+        self.emit("break;")
+
+    def _generate_continue_statement(self, node: ContinueStatement) -> None:
+        """Generate continue statement with optional loop label support."""
+        if getattr(node, 'label', None):
+            target = self.labeled_loop_controls.get(node.label)
+            if target is None:
+                self.emit(f'/* ERROR: Label "{node.label}" not found */')
+                return
+            continue_label, _ = target
+            self.emit(f"goto {continue_label};")
+            return
+
+        self.emit("continue;")
 
     def _generate_parallel_for_loop(self, node: ParallelForLoop) -> None:
         """Generate parallel-for loop (sequential fallback in C backend)."""

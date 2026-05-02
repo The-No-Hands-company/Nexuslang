@@ -125,6 +125,10 @@ class LLVMIRGenerator(CodeGenerator):
         # Loop context stack for break/continue
         # Each entry: (continue_label, break_label)
         self.loop_stack: List[Tuple[str, str]] = []
+
+        # Switch context stack for unlabeled break inside switch blocks.
+        # Each entry stores the switch-end label to target.
+        self.switch_stack: List[str] = []
         
         # Labeled loops for labeled break/continue
         # Maps label -> (continue_label, break_label)
@@ -5350,24 +5354,27 @@ class LLVMIRGenerator(CodeGenerator):
         
         default_label = self._new_label('switch.default')
         end_label = self._new_label('switch.end')
+
+        # All case values must be compile-time constants for LLVM switch.
+        case_consts = []
+        for case in node.cases:
+            case_const = self._extract_constant_value(case.value)
+            if case_const is None:
+                self._generate_switch_as_if_chain(node, indent)
+                return
+            case_consts.append(case_const)
         
         # Generate switch instruction
         self.emit(f'{indent}switch {value_type} {value_reg}, label %{default_label} [')
         
         # Generate case entries
-        for i, case in enumerate(node.cases):
-            # Evaluate case value (must be constant for LLVM switch)
-            # Extract constant value from case expression
-            case_const = self._extract_constant_value(case.value)
-            
-            if case_const is None:
-                # Non-constant case - fall back to if-else
-                self._generate_switch_as_if_chain(node, indent)
-                return
-            
+        for i, case_const in enumerate(case_consts):
             self.emit(f'{indent}  {value_type} {case_const}, label %{case_labels[i]}')
         
         self.emit(f'{indent}]')
+
+        # In switch context, unlabeled break targets switch end.
+        self.switch_stack.append(end_label)
         
         # Generate case blocks
         for i, (case, label) in enumerate(zip(node.cases, case_labels)):
@@ -5414,6 +5421,7 @@ class LLVMIRGenerator(CodeGenerator):
         
         # End block
         self.emit(f'{end_label}:')
+        self.switch_stack.pop()
     
     def _extract_constant_value(self, expr):
         """Extract a constant value from an expression for use in switch cases.
@@ -5483,6 +5491,7 @@ class LLVMIRGenerator(CodeGenerator):
         
         # Create end label
         end_label = self._new_label('switch.end')
+        self.switch_stack.append(end_label)
         
         # Generate if-else chain for each case
         for i, case in enumerate(node.cases):
@@ -5542,6 +5551,7 @@ class LLVMIRGenerator(CodeGenerator):
         
         # End block
         self.emit(f'{end_label}:')
+        self.switch_stack.pop()
     
     def _generate_while_loop(self, node, indent=''):
         """Generate while loop with optional else block and label support.
@@ -6338,6 +6348,12 @@ class LLVMIRGenerator(CodeGenerator):
             _, break_label = self.labeled_loops[node.label]
             self.emit(f'{indent}br label %{break_label}')
         else:
+            # Break inside switch exits innermost switch, not enclosing loop.
+            if self.switch_stack:
+                break_label = self.switch_stack[-1]
+                self.emit(f'{indent}br label %{break_label}')
+                return
+
             # Regular break - break innermost loop
             if not self.loop_stack:
                 # Break outside loop - error, but generate nop
