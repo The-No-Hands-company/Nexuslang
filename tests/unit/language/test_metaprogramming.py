@@ -28,6 +28,16 @@ def run_raises(src, exc_type=None):
         run(src)
     return exc_info.value
 
+def _fixture_text(name: str) -> str:
+    fixture = (
+        Path(__file__).resolve().parent.parent.parent.parent
+        / "test_programs"
+        / "regression"
+        / "metaprogramming"
+        / name
+    )
+    return fixture.read_text(encoding="utf-8")
+
 
 # ---------------------------------------------------------------------------
 # 1. Basic Macros
@@ -1085,3 +1095,10 @@ class TestParsingComptime:
         except Exception:
             # If parser requires 'eval' keyword, that's also acceptable
             pass
+
+class TestMacroComptimeRegressionFixtures:
+    def test_valid_fixture_executes_and_prints_expected_values(self, capsys):
+        run(_fixture_text("macro_comptime_regression_valid.nxl"))
+        out = capsys.readouterr().out
+        assert "15" in out
+        assert "12" in out

@@ -4,6 +4,7 @@ This module provides type checking functionality for NexusLang programs.
 """
 
 from typing import Dict, List, Optional, Set, Union, Any, Tuple, Type
+import re
 from ..parser.ast import (
     Program, VariableDeclaration, FunctionDefinition, Parameter,
     IfStatement, WhileLoop, ForLoop, MemoryAllocation, MemoryDeallocation,
@@ -545,10 +546,82 @@ class TypeChecker:
         """Handle inline assembly nodes. Returns (handled, type)."""
         if statement.__class__.__name__ != 'InlineAssembly':
             return False, None
+        line = getattr(statement, 'line_number', '?')
+
         if hasattr(statement, 'inputs'):
-            for _constraint, expr in statement.inputs:
+            for constraint, expr in statement.inputs:
+                normalized = self._normalize_asm_token(constraint)
+                if not self._is_valid_asm_constraint(normalized, is_output=False):
+                    self.errors.append(
+                        f"Line {line}: Invalid inline assembly input constraint '{normalized}'"
+                    )
                 self.check_expression(expr, env)
+
+        if hasattr(statement, 'outputs'):
+            for constraint, target in statement.outputs:
+                normalized = self._normalize_asm_token(constraint)
+                if not self._is_valid_asm_constraint(normalized, is_output=True):
+                    self.errors.append(
+                        f"Line {line}: Invalid inline assembly output constraint '{normalized}'"
+                    )
+                if not isinstance(target, Identifier):
+                    self.errors.append(
+                        f"Line {line}: Inline assembly output operand must be an identifier"
+                    )
+                else:
+                    try:
+                        env.get_variable_type(target.name)
+                    except TypeCheckError:
+                        self.errors.append(
+                            f"Line {line}: Undefined output variable in inline assembly: {target.name}"
+                        )
+
+        seen_clobbers: Set[str] = set()
+        if hasattr(statement, 'clobbers'):
+            for clobber in statement.clobbers:
+                normalized = self._normalize_asm_token(clobber)
+                if not self._is_valid_asm_clobber(normalized):
+                    self.errors.append(
+                        f"Line {line}: Invalid inline assembly clobber '{normalized}'"
+                    )
+                    continue
+                if normalized in seen_clobbers:
+                    self.errors.append(
+                        f"Line {line}: Duplicate inline assembly clobber '{normalized}'"
+                    )
+                seen_clobbers.add(normalized)
+
         return True, INTEGER_TYPE
+
+    def _normalize_asm_token(self, token: Any) -> str:
+        """Normalize parser-provided asm token strings (strip quotes/whitespace)."""
+        text = str(token).strip()
+        if len(text) >= 2 and text[0] == '"' and text[-1] == '"':
+            text = text[1:-1]
+        return text.strip()
+
+    def _is_valid_asm_constraint(self, constraint: str, is_output: bool) -> bool:
+        """Validate inline asm operand constraints using common GCC-style forms."""
+        if not constraint or any(ch.isspace() for ch in constraint):
+            return False
+
+        # Output constraints must include write marker ('=' or '+').
+        if is_output and ('=' not in constraint and '+' not in constraint):
+            return False
+
+        # Common token grammar: optional modifiers + body (register/memory/immediate classes).
+        if not re.fullmatch(r'[=+&%]*[A-Za-z0-9_{}(),|<>\-]+', constraint):
+            return False
+
+        return True
+
+    def _is_valid_asm_clobber(self, clobber: str) -> bool:
+        """Validate inline asm clobber names."""
+        if not clobber or any(ch.isspace() for ch in clobber):
+            return False
+        if clobber in ('memory', 'cc'):
+            return True
+        return re.fullmatch(r'%?[A-Za-z][A-Za-z0-9_]*', clobber) is not None
 
     def _check_match_expression_statement(self, statement: Any, env: TypeEnvironment) -> Tuple[bool, Any]:
         """Handle match/case expression nodes. Returns (handled, type)."""

@@ -13,7 +13,17 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../../src'))
 
 from nexuslang.parser.lexer import Lexer
 from nexuslang.parser.parser import Parser
+from nexuslang.parser.ast import MatchExpression, OptionPattern, ResultPattern
 from nexuslang.compiler.backends.llvm_ir_generator import LLVMIRGenerator
+
+
+def _find_first_match(ast):
+    for stmt in ast.statements:
+        body = getattr(stmt, "body", None) or []
+        for body_stmt in body:
+            if isinstance(body_stmt, MatchExpression):
+                return body_stmt
+    raise AssertionError("Expected at least one match expression in parsed AST")
 
 
 class TestOptionPatternMatching:
@@ -49,6 +59,31 @@ end
         # Should compile successfully
         assert 'define' in llvm_ir
 
+    def test_option_pattern_runtime_value_extraction_binding(self):
+        """OptionPattern(Some value) should call runtime value extractor and bind local."""
+        code = """function unwrap_opt that takes opt as Option returns Integer
+    match opt with
+        case Some payload
+            return payload
+        case None
+            return 0
+end
+"""
+
+        lexer = Lexer(code)
+        tokens = lexer.scan_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+
+        match_stmt = _find_first_match(ast)
+        match_stmt.cases[0].pattern = OptionPattern("Some", "payload")
+        match_stmt.cases[1].pattern = OptionPattern("None", None)
+
+        llvm_ir = LLVMIRGenerator().generate(ast)
+
+        assert '@NLPL_Optional_has_value' in llvm_ir
+        assert '@NLPL_Optional_get_value' in llvm_ir
+
 
 class TestResultPatternMatching:
     """Test Result<T, E> pattern matching compilation."""
@@ -80,6 +115,33 @@ end
         
         # Should compile successfully
         assert 'define' in llvm_ir
+
+    def test_result_pattern_runtime_error_extraction_binding(self):
+        """ResultPattern(Err e) should call runtime error extractor and bind local."""
+        code = """function read_error that takes res as Result returns Integer
+    match res with
+        case Err message
+            print text message
+            return 1
+        case Ok value
+            return 0
+end
+"""
+
+        lexer = Lexer(code)
+        tokens = lexer.scan_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+
+        match_stmt = _find_first_match(ast)
+        match_stmt.cases[0].pattern = ResultPattern("Err", "message")
+        match_stmt.cases[1].pattern = ResultPattern("Ok", "value")
+
+        llvm_ir = LLVMIRGenerator().generate(ast)
+
+        assert '@NLPL_Result_is_ok' in llvm_ir
+        assert '@NLPL_Result_get_error' in llvm_ir
+        assert '@NLPL_Result_get_value' in llvm_ir
 
 
 class TestTuplePatternMatching:
@@ -171,6 +233,27 @@ end
         
         # Should compile fixed-length list pattern
         assert 'define' in llvm_ir
+
+    def test_list_pattern_rest_binding_emits_tail_copy_path(self):
+        """List pattern with rest binding should allocate/copy remaining tail values."""
+        code = """function split_head that takes lst as List returns Integer
+    match lst with
+        case [head, ...tail]
+            return head
+        case _
+            return 0
+end
+"""
+
+        lexer = Lexer(code)
+        tokens = lexer.scan_tokens()
+        parser = Parser(tokens)
+        ast = parser.parse()
+
+        llvm_ir = LLVMIRGenerator().generate(ast)
+
+        assert '@malloc' in llvm_ir
+        assert '@llvm.memcpy.p0i8.p0i8.i64' in llvm_ir
 
 
 class TestPatternMatchingHelpers:

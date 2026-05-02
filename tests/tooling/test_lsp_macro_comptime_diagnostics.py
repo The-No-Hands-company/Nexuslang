@@ -1,5 +1,6 @@
 """Tooling diagnostics coverage for macro/comptime misuse cases."""
 
+from pathlib import Path
 from unittest.mock import MagicMock
 
 from nexuslang.lsp.diagnostics import DiagnosticsProvider
@@ -7,6 +8,17 @@ from nexuslang.lsp.diagnostics import DiagnosticsProvider
 
 def _provider() -> DiagnosticsProvider:
     return DiagnosticsProvider(server=MagicMock())
+
+
+def _fixture_text(name: str) -> str:
+    fixture = (
+        Path(__file__).resolve().parent.parent.parent
+        / "test_programs"
+        / "regression"
+        / "metaprogramming"
+        / name
+    )
+    return fixture.read_text(encoding="utf-8")
 
 
 def test_expand_undefined_macro_reports_diagnostic():
@@ -49,3 +61,13 @@ expand GREET
         d for d in diagnostics if d.get("code") == "E101" and "undefined macro" in d.get("message", "").lower()
     ]
     assert not undefined_macro_errors, "Did not expect undefined-macro diagnostics for a defined macro"
+
+
+def test_invalid_fixture_reports_expected_macro_comptime_diagnostics():
+    code = _fixture_text("macro_comptime_regression_invalid.nxl")
+
+    diagnostics = _provider().get_diagnostics("file:///macro_comptime_regression_invalid.nxl", code)
+
+    codes = {d.get("code") for d in diagnostics}
+    assert "E101" in codes
+    assert "E201" in codes

@@ -6782,7 +6782,9 @@ class LLVMIRGenerator(CodeGenerator):
         """Generate match code for OptionPattern (Some/None specific)."""
         # OptionPattern is specifically for Optional<T> types
         # Check if it's Some or None variant
-        if hasattr(pattern, 'is_some') and pattern.is_some:
+        variant = getattr(pattern, 'variant', None)
+        is_some = (variant == 'Some') or bool(getattr(pattern, 'is_some', False))
+        if is_some:
             # Match Some(inner)
             has_value = self._new_temp()
             self.emit(f'{indent}{has_value} = call i1 @NLPL_Optional_has_value({value_type}* {value_reg})')
@@ -6799,7 +6801,9 @@ class LLVMIRGenerator(CodeGenerator):
         """Generate match code for ResultPattern (Ok/Err specific)."""
         # ResultPattern is specifically for Result<T, E> types
         # Check if it's Ok or Err variant
-        if hasattr(pattern, 'is_ok') and pattern.is_ok:
+        variant = getattr(pattern, 'variant', None)
+        is_ok_variant = (variant == 'Ok') or bool(getattr(pattern, 'is_ok', False))
+        if is_ok_variant:
             # Match Ok(value)
             is_ok = self._new_temp()
             self.emit(f'{indent}{is_ok} = call i1 @NLPL_Result_is_ok({value_type}* {value_reg})')
@@ -7035,6 +7039,9 @@ class LLVMIRGenerator(CodeGenerator):
             )
             match_results.append(elem_match)
 
+            # Bind identifiers/nested bindings for this matched element.
+            self._generate_pattern_bindings(elem_pattern, elem_value_reg, 'i64', indent, case_label)
+
         # Handle rest binding
         if rest_binding:
             # Create a new list with remaining elements
@@ -7128,11 +7135,8 @@ class LLVMIRGenerator(CodeGenerator):
                 # Determine element type
                 elem_type = self._get_tuple_element_type(value_type, i)
 
-                # Recursively match element pattern
-                elem_match = self._generate_pattern_match(
-                    elem_pattern, elem_reg, elem_type, case_label, indent
-                )
-                match_results.append(elem_match)
+                # Recursively bind tuple element pattern variables
+                self._generate_pattern_bindings(elem_pattern, elem_reg, elem_type, indent, case_label)
 
             # Combine all element matches with AND
             if len(match_results) == 0:
@@ -7158,7 +7162,9 @@ class LLVMIRGenerator(CodeGenerator):
     
     def _generate_option_pattern_binding(self, pattern, value_reg, value_type, indent):
         """Generate bindings for OptionPattern (Some(value) extraction)."""
-        if not hasattr(pattern, 'inner_pattern') or not pattern.inner_pattern:
+        bind_name = getattr(pattern, 'binding', None)
+        inner_pattern = getattr(pattern, 'inner_pattern', None)
+        if bind_name is None and not inner_pattern:
             return
         
         # Extract inner value from Optional<T>
@@ -7168,24 +7174,36 @@ class LLVMIRGenerator(CodeGenerator):
         inner_type = 'i64'
         self.emit(f'{indent}{inner_val} = call {inner_type} @NLPL_Optional_get_value({value_type}* {value_reg})')
         
-        # Recursively bind inner pattern
-        if type(pattern.inner_pattern).__name__ == 'IdentifierPattern':
-            var_name = pattern.inner_pattern.name
+        # Direct binding form: OptionPattern("Some", "value")
+        if bind_name:
+            var_addr = self._new_temp()
+            self.emit(f'{indent}{var_addr} = alloca {inner_type}')
+            self.emit(f'{indent}store {inner_type} {inner_val}, {inner_type}* {var_addr}')
+            self.local_vars[bind_name] = (inner_type, var_addr)
+            return
+
+        # Legacy nested pattern form (inner_pattern)
+        if type(inner_pattern).__name__ == 'IdentifierPattern':
+            var_name = inner_pattern.name
             var_addr = self._new_temp()
             self.emit(f'{indent}{var_addr} = alloca {inner_type}')
             self.emit(f'{indent}store {inner_type} {inner_val}, {inner_type}* {var_addr}')
             self.local_vars[var_name] = (inner_type, var_addr)
         else:
             # Recursively handle complex inner patterns
-            self._generate_pattern_bindings(pattern.inner_pattern, inner_val, inner_type, indent)
+            self._generate_pattern_bindings(inner_pattern, inner_val, inner_type, indent)
     
     def _generate_result_pattern_binding(self, pattern, value_reg, value_type, indent):
         """Generate bindings for ResultPattern (Ok(value) or Err(error) extraction)."""
-        if not hasattr(pattern, 'inner_pattern') or not pattern.inner_pattern:
+        bind_name = getattr(pattern, 'binding', None)
+        inner_pattern = getattr(pattern, 'inner_pattern', None)
+        if bind_name is None and not inner_pattern:
             return
         
         # Determine which field to extract based on Ok vs Err
-        if hasattr(pattern, 'is_ok') and pattern.is_ok:
+        variant = getattr(pattern, 'variant', None)
+        is_ok_variant = (variant == 'Ok') or bool(getattr(pattern, 'is_ok', False))
+        if is_ok_variant:
             # Extract value from Result.Ok
             inner_val = self._new_temp()
             inner_type = 'i64'  # Can be enhanced with type inference
@@ -7196,16 +7214,24 @@ class LLVMIRGenerator(CodeGenerator):
             inner_type = 'i8*'  # Error is typically a string
             self.emit(f'{indent}{inner_val} = call {inner_type} @NLPL_Result_get_error({value_type}* {value_reg})')
         
-        # Recursively bind inner pattern
-        if type(pattern.inner_pattern).__name__ == 'IdentifierPattern':
-            var_name = pattern.inner_pattern.name
+        # Direct binding form: ResultPattern("Ok"|"Err", "name")
+        if bind_name:
+            var_addr = self._new_temp()
+            self.emit(f'{indent}{var_addr} = alloca {inner_type}')
+            self.emit(f'{indent}store {inner_type} {inner_val}, {inner_type}* {var_addr}')
+            self.local_vars[bind_name] = (inner_type, var_addr)
+            return
+
+        # Legacy nested pattern form (inner_pattern)
+        if type(inner_pattern).__name__ == 'IdentifierPattern':
+            var_name = inner_pattern.name
             var_addr = self._new_temp()
             self.emit(f'{indent}{var_addr} = alloca {inner_type}')
             self.emit(f'{indent}store {inner_type} {inner_val}, {inner_type}* {var_addr}')
             self.local_vars[var_name] = (inner_type, var_addr)
         else:
             # Recursively handle complex inner patterns
-            self._generate_pattern_bindings(pattern.inner_pattern, inner_val, inner_type, indent)
+            self._generate_pattern_bindings(inner_pattern, inner_val, inner_type, indent)
     
     def _get_variant_tag(self, variant_name):
         """Map variant name to numeric tag."""
