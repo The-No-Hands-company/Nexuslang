@@ -633,6 +633,8 @@ class CCodeGenerator(CodeGenerator):
             self._generate_contract_statement(node)
         elif isinstance(node, ExpectStatement):
             self._generate_expect_statement(node)
+        elif isinstance(node, MatchExpression):
+            self._generate_match_expression(node)
         elif isinstance(node, ComptimeExpression):
             self._generate_comptime_expression(node)
         elif isinstance(node, ComptimeConst):
@@ -1323,6 +1325,85 @@ class CCodeGenerator(CodeGenerator):
             getattr(node, "message_expr", None),
             f"expect assertion failed ({matcher})",
         )
+
+    def _generate_match_expression(self, node: MatchExpression) -> None:
+        """Generate statement-level pattern matching as a guarded case chain."""
+        match_value_expr = self._generate_expression(node.expression)
+        match_value_type = self._infer_type(node.expression)
+        unique_suffix = f"{len(self.symbol_aliases)}_{len(self.output_buffer)}"
+        match_var = f"__nxl_match_value_{unique_suffix}"
+        done_var = f"__nxl_match_done_{unique_suffix}"
+
+        self.emit("{")
+        self.indent()
+        self.emit(f"{match_value_type} {match_var} = {match_value_expr};")
+        self.emit(f"bool {done_var} = false;")
+
+        for case_index, case in enumerate(node.cases):
+            condition_expr = self._generate_match_condition(case.pattern, match_var)
+            if condition_expr is None:
+                raise RuntimeError(
+                    f"C backend does not yet support pattern type '{type(case.pattern).__name__}'"
+                )
+
+            self.emit(f"if (!{done_var}) {{")
+            self.indent()
+            self.emit(f"bool __nxl_case_match_{case_index} = {condition_expr};")
+
+            saved_symbol_table = dict(self.symbol_table)
+            saved_aliases = dict(self.symbol_aliases)
+            try:
+                self.emit(f"if (__nxl_case_match_{case_index}) {{")
+                self.indent()
+                self._generate_pattern_bindings(case.pattern, match_var, match_value_type)
+                if getattr(case, 'guard', None) is not None:
+                    guard_expr = self._generate_expression(case.guard)
+                    self.emit(f"__nxl_case_match_{case_index} = ({guard_expr});")
+                self.emit(f"if (__nxl_case_match_{case_index}) {{")
+                self.indent()
+                for stmt in case.body:
+                    self._generate_statement(stmt)
+                self.emit(f"{done_var} = true;")
+                self.dedent()
+                self.emit("}")
+                self.dedent()
+                self.emit("}")
+            finally:
+                self.symbol_table = saved_symbol_table
+                self.symbol_aliases = saved_aliases
+
+            self.dedent()
+            self.emit("}")
+
+        self.emit(f"if (!{done_var}) {{")
+        self.indent()
+        self.emit('fprintf(stderr, "%s\\n", "Non-exhaustive pattern match");')
+        self.emit("exit(1);")
+        self.dedent()
+        self.emit("}")
+        self.dedent()
+        self.emit("}")
+
+    def _generate_match_condition(self, pattern: Any, match_var: str) -> str | None:
+        """Return a C condition expression for supported pattern kinds."""
+        if isinstance(pattern, (WildcardPattern, IdentifierPattern)):
+            return "true"
+        if isinstance(pattern, LiteralPattern):
+            literal_expr = self._generate_expression(pattern.value)
+            literal_type = self._infer_type(pattern.value)
+            if literal_type == "const char*":
+                return f"strcmp({match_var}, {literal_expr}) == 0"
+            return f"{match_var} == {literal_expr}"
+        return None
+
+    def _generate_pattern_bindings(self, pattern: Any, match_var: str, match_type: str) -> None:
+        """Emit local bindings for supported pattern variables."""
+        if isinstance(pattern, IdentifierPattern):
+            bound_name = pattern.name
+            emitted_name = f"__match_bind_{bound_name}_{len(self.symbol_aliases)}_{len(self.output_buffer)}"
+            self.symbol_table[bound_name] = match_type
+            self.symbol_aliases[bound_name] = emitted_name
+            self.emit(f"{match_type} {emitted_name} = {match_var};")
 
     def _generate_comptime_expression(self, node: ComptimeExpression) -> None:
         """Lower comptime eval as normal expression evaluation."""
