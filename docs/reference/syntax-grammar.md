@@ -218,6 +218,17 @@ Create a class called Person.
 End class.
 ```
 
+Canonical forms:
+
+```ebnf
+classDef            ::= "class" IDENTIFIER [genericParams] ["extends" typeList] ["implements" typeList] classBody "end"
+classBody           ::= classMember*
+classMember         ::= classMemberModifier* (propertyDecl | methodDef | operatorMethodDef | constructorDef)
+classMemberModifier ::= "public" | "private" | "protected" | "static" | "abstract"
+propertyDecl        ::= ["property"] IDENTIFIER "as" typeAnnotation ["default" "to" expression]
+methodDef           ::= functionDef | "abstract" "function" IDENTIFIER [genericParams] ["with" parameterList] ["returns" typeAnnotation]
+```
+
 #### Object Creation and Usage
 
 ```

@@ -241,10 +241,18 @@ classBody
     ;
 
 classMember
-    : propertyDeclaration
+    : classMemberModifier* (propertyDeclaration
     | methodDefinition
     | operatorMethodDefinition
-    | constructorDefinition
+    | constructorDefinition)
+    ;
+
+classMemberModifier
+    : PUBLIC
+    | PRIVATE
+    | PROTECTED
+    | STATIC
+    | ABSTRACT
     ;
 
 propertyDeclaration
