@@ -1,4 +1,4 @@
-# nlpl.toml Specification
+# `nexuslang.toml` Specification
 
 **Version**: 1.0  
 **Date**: February 14, 2026  
@@ -6,14 +6,14 @@
 
 ## Overview
 
-The `nlpl.toml` manifest file is the heart of every NexusLang project. It defines project metadata, dependencies, build configuration, and targets. Inspired by Cargo.toml but adapted for NLPL's unique requirements.
+The `nexuslang.toml` manifest file is the heart of every NexusLang project. It defines project metadata, dependencies, build configuration, and targets.
 
 ---
 
 ## File Location
 
-- **Project Root**: `nlpl.toml` must be in the project root directory
-- **Workspace Root**: For multi-package workspaces, root `nlpl.toml` defines workspace configuration
+- **Project Root**: `nexuslang.toml` must be in the project root directory
+- **Workspace Root**: For multi-package workspaces, root `nexuslang.toml` defines package configuration
 
 ---
 
@@ -460,7 +460,7 @@ nlpl-common = "1.0"
 
 **Workspace Members** inherit `[workspace.dependencies]`:
 ```toml
-# In crates/core/nlpl.toml
+# In crates/core/nexuslang.toml
 [dependencies]
 nlpl-common = { workspace = true }  # Uses workspace version
 ```
@@ -489,7 +489,7 @@ image = "nlpl/cross:x86_64-unknown-linux-gnu"
 ## Complete Example
 
 ```toml
-# nlpl.toml - Example game engine project
+# nexuslang.toml - Example project manifest
 
 [package]
 name = "phoenix-engine"
@@ -638,7 +638,7 @@ Most fields compatible. Changes:
 
 Becomes:
 ```toml
-# nlpl.toml
+# nexuslang.toml
 [package]
 name = "my-project"
 version = "1.0.0"

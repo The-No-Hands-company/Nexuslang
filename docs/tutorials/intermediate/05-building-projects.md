@@ -1,4 +1,4 @@
-# Tutorial 10: Building Projects with nlpl build
+# Tutorial 10: Building Projects with `nlpl`
 
 **Time:** ~30 minutes  
 **Prerequisites:** [Modules and Imports](../beginner/05-modules-and-imports.md)
@@ -7,22 +7,22 @@
 
 ## Part 1 — Project Structure
 
-A NexusLang project is a directory containing a manifest file (`nlpl.toml`) and
-one or more `.nlpl` source files.
+A NexusLang project is a directory containing a manifest file (`nexuslang.toml`) and
+one or more `.nxl` source files.
 
 ```
 my-project/
-  nlpl.toml        -- project manifest
+  nexuslang.toml   -- project manifest
   src/
-    main.nlpl      -- entry point
-    utils.nlpl     -- helper module
+    main.nxl       -- entry point
+    utils.nxl      -- helper module
   tests/
-    test_utils.nlpl
+    test_utils.nxl
 ```
 
 ---
 
-## Part 2 — The nlpl.toml Manifest
+## Part 2 — The `nexuslang.toml` Manifest
 
 ```toml
 [package]
@@ -32,12 +32,13 @@ authors = ["Your Name <you@example.com>"]
 license = "MIT"
 edition = "2026"
 
+[build]
+source_dir = "src"
+output_dir = "build"
+target = "c"
+
 [dependencies]
 nlpl-math = "1.0"
-
-[[bin]]
-name = "my-project"
-path = "src/main.nxl"
 ```
 
 | Key | Meaning |
@@ -45,34 +46,33 @@ path = "src/main.nxl"
 | `[package]` | Package metadata |
 | `[dependencies]` | Runtime library dependencies |
 | `[dev-dependencies]` | Test / benchmark dependencies |
-| `[[bin]]` | Executable entry point definition |
-| `[lib]` | Library target (omit for apps) |
+| `[build]` | Build output and compiler settings |
 
 ---
 
 ## Part 3 — Common Build Commands
 
 ```bash
-# Run the project (interprets src/main.nxl)
-nlpl build run
+# Build the project
+nlpl build
 
-# Run with capabilities
-nlpl build run -- --allow-read=./data --allow-net=api.example.com
+# Run the project
+nlpl run
+
+# Run with arguments
+nlpl run -- input.csv --verbose
 
 # Run tests
-nlpl build test
+nlpl test
 
-# Run a specific test file
-nlpl build test tests/test_utils.nlpl
+# Run tests matching a name fragment
+nlpl test utils
 
 # Check for errors without running
-nlpl build check
-
-# Format all source files
-nlpl build fmt
+nlpl check
 
 # Lint
-nlpl build lint
+nlpl lint
 ```
 
 ---
@@ -94,10 +94,10 @@ strip      = true   # Strip debug symbols
 
 ```bash
 # Run under dev profile (default)
-nlpl build run
+nlpl run
 
 # Run under release profile
-nlpl build run --profile release
+nlpl run --release
 ```
 
 ---
@@ -120,45 +120,38 @@ set rows to nxl_csv.parse_file with "data.csv"
 set response to nxl_http.get with "https://api.example.com"
 ```
 
-Install dependencies (fetches from the registry):
+Lock dependencies and refresh the lock file:
 
 ```bash
-nlpl build fetch
+nlpl lock
 ```
 
 ---
 
 ## Part 6 — Multiple Binaries
 
-A single project can produce several executables:
+A single project can expose several entry-point source files, but the current
+CLI build flow is centered on the project’s configured default target.
 
 ```toml
-[[bin]]
-name = "server"
-path = "src/server.nxl"
-
-[[bin]]
-name = "worker"
-path = "src/worker.nxl"
-
-[[bin]]
-name = "cli"
-path = "src/cli.nxl"
+[build]
+source_dir = "src"
+output_dir = "build"
 ```
 
 ```bash
-nlpl build run --bin server
-nlpl build run --bin worker
+nlpl build
+nlpl run
 ```
 
 ---
 
 ## Part 7 — Writing Tests
 
-Test files live in `tests/` and start with `test_`:
+Test files live in `tests/` and commonly start with `test_`:
 
 ```nlpl
-# tests/test_math.nlpl
+# tests/test_math.nxl
 import math
 
 function test_sqrt
@@ -174,13 +167,13 @@ end
 Run them:
 
 ```bash
-nlpl build test
+nlpl test
 ```
 
 Output:
 
 ```
-Running tests/test_math.nlpl
+Running tests/test_math.nxl
   test_sqrt ... ok
   test_abs  ... ok
 2 tests passed
@@ -192,11 +185,11 @@ Running tests/test_math.nlpl
 
 | Command | Effect |
 |---------|--------|
-| `nlpl build run` | Interpret + run `src/main.nlpl` |
-| `nlpl build test` | Run all test files |
-| `nlpl build check` | Type-check without running |
-| `nlpl build fmt` | Auto-format source files |
-| `nlpl build fetch` | Download declared dependencies |
+| `nlpl build` | Build the current project |
+| `nlpl run` | Build and run the current project |
+| `nlpl test` | Run discovered tests |
+| `nlpl check` | Type-check without producing output |
+| `nlpl lint` | Run the static analyzer |
 
 **You have completed the Intermediate Track!**
 

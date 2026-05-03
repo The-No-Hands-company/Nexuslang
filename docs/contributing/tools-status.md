@@ -44,8 +44,8 @@ Remaining high-value work is now less about "feature missing" and more about dee
  - Platform chaos Cross-platform by default
 
 - Part 2: NexusLang Tooling Ecosystem Design
- - `nlplbuild` - Unified build system
- - `nlpllint` - Static analyzer (100+ checks)
+ - `nlpl build` - Unified build system
+ - `nlpl lint` - Static analyzer (100+ checks)
  - `nlpltest` - Testing framework
  - `nlpldb` - Time-travel debugger
  - `nlplprofile` - Profiler
@@ -66,7 +66,7 @@ Remaining high-value work is now less about "feature missing" and more about dee
 ---
 
 ### 2. Static Analyzer Infrastructure (In Progress)
-**Location:** `src/nlpl/tooling/analyzer/`
+**Location:** `src/nexuslang/tooling/analyzer/`
 
 **Completed:**
 - `report.py` - Issue reporting system
@@ -100,13 +100,13 @@ Remaining high-value work is now less about "feature missing" and more about dee
 
 | Tool | Location | Status | Capabilities |
 |------|----------|--------|--------------|
-| **Enhanced Errors** | `src/nlpl/errors.py` | Production | Caret pointers, fuzzy matching, suggestions |
-| **Null Safety** | `src/nlpl/safety/null_safety.py` | Production | Uninitialized detection, null checks |
-| **Basic Linter** | `dev_tools/nxl_lint.py` | Functional | Style checks, undefined vars |
-| **Memory Manager** | `src/nlpl/runtime/memory.py` | Production | alloc, dealloc, tracking |
-| **LSP Diagnostics** | `src/nlpl/lsp/diagnostics.py` | Production | Real-time error checking |
-| **Build System** | `src/nlpl/tooling/builder.py` | Production | LLVM compilation |
-| **CLI** | `src/nlpl/cli.py` | Production | Main command interface |
+| **Enhanced Errors** | `src/nexuslang/errors.py` | Production | Caret pointers, fuzzy matching, suggestions |
+| **Null Safety** | `src/nexuslang/safety/null_safety.py` | Production | Uninitialized detection, null checks |
+| **Static Analyzer** | `src/nexuslang/tooling/analyzer/` | Production | Style, type, security, data-flow checks |
+| **Memory Manager** | `src/nexuslang/runtime/memory.py` | Production | alloc, dealloc, tracking |
+| **LSP Diagnostics** | `src/nexuslang/lsp/diagnostics.py` | Production | Real-time error checking |
+| **Build System** | `src/nexuslang/tooling/builder.py` | Production | LLVM compilation |
+| **CLI** | `src/nexuslang/cli/__init__.py` | Production | Main command interface |
 
 ---
 
@@ -127,7 +127,7 @@ Remaining high-value work is now less about "feature missing" and more about dee
  - [ ] Type safety (type mismatches)
  - [ ] Dead code (unreachable statements)
  - [ ] Style (code conventions)
-- [ ] CLI tool (`src/nlpl/cli/nlpllint.py`)
+- [ ] CLI tool (`src/nexuslang/cli/nlpllint.py`)
 - [ ] Auto-fix capability
 - [ ] JSON output for IDE integration
 
@@ -161,7 +161,7 @@ Formatted output with suggestions
 **Goal:** Better runtime error messages
 
 **Components:**
-- [ ] Extend `src/nlpl/runtime/memory.py`
+- [ ] Extend `src/nexuslang/runtime/memory.py`
  - Track allocation source locations
  - Detect double-free
  - Poison freed memory (0xDD pattern)
@@ -184,7 +184,7 @@ Formatted output with suggestions
 - [ ] MemorySanitizer (uninitialized reads)
 - [ ] UndefinedBehaviorSanitizer (UB detection)
 - [ ] Runtime wrapper for readable output
-- [ ] `nlplbuild --sanitize=address` interface
+- [ ] `nlpl build --sanitize=address` interface
 
 **Estimated effort:** 1 week
 
@@ -361,27 +361,27 @@ analyzer = StaticAnalyzer(
 
 ### With Existing Systems
 
-1. **Parser/AST** (`src/nlpl/parser/`)
+1. **Parser/AST** (`src/nexuslang/parser/`)
  - Static analyzer uses existing parser
  - No changes needed to parser
  - AST already has line numbers
 
-2. **Error System** (`src/nlpl/errors.py`)
+2. **Error System** (`src/nexuslang/errors.py`)
  - Reuse enhanced error formatting
  - Same fuzzy matching logic
  - Consistent user experience
 
-3. **Null Safety** (`src/nlpl/safety/null_safety.py`)
+3. **Null Safety** (`src/nexuslang/safety/null_safety.py`)
  - Integrate existing checker
  - Extend with new patterns
  - Unified reporting
 
-4. **Build System** (`src/nlpl/tooling/builder.py`)
+4. **Build System** (`src/nexuslang/tooling/builder.py`)
  - Run nlpllint before compilation
  - Block build on errors (configurable)
  - Show analysis in build output
 
-5. **LSP** (`src/nlpl/lsp/`)
+5. **LSP** (`src/nexuslang/lsp/`)
  - Real-time analysis in editor
  - Show issues as you type
  - Quick fixes via code actions
@@ -451,9 +451,9 @@ analyzer = StaticAnalyzer(
 - `docs/MULTI_LEVEL_*.md` - Multi-level architecture
 
 ### Code References
-- `src/nlpl/errors.py` - Error formatting patterns
-- `src/nlpl/safety/null_safety.py` - Existing null checker
-- `dev_tools/nxl_lint.py` - Basic linter patterns
+- `src/nexuslang/errors.py` - Error formatting patterns
+- `src/nexuslang/safety/null_safety.py` - Existing null checker
+- `src/nexuslang/tooling/analyzer/` - Analyzer patterns
 - `utility/include/voltron/utility/memory/` - C++ memory debug tools
 
 ### External Inspiration

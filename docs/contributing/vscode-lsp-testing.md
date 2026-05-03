@@ -95,7 +95,7 @@ Open VS Code settings (Ctrl+,) and search for "NexusLang":
 }
 ```
 
-**Note:** If `path` is empty, extension automatically finds `src/nlpl/lsp/server.py` in workspace.
+**Note:** If `path` is empty, extension automatically finds `src/nexuslang/lsp/server.py` in workspace.
 
 ### Verify LSP Server is Running
 
@@ -463,7 +463,7 @@ Open VS Code settings (Ctrl+,) and search for "NexusLang":
 4. Check activation time and memory usage
 
 **Method 2: LSP Trace Logs**
-1. Set `"nexuslang.lsp.trace.server": "verbose"`
+1. Set `"nexuslang.trace.server": "verbose"`
 2. Open Output panel → "NLPL LSP Trace"
 3. Observe request/response times:
    ```
@@ -493,7 +493,7 @@ Open VS Code settings (Ctrl+,) and search for "NexusLang":
 
 2. Test LSP server manually:
    ```bash
-   python3 src/nlpl/lsp/server.py
+   python3 -m nexuslang.lsp --stdio
    ```
    Type `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}` + Enter
    Expected: JSON response with server capabilities
@@ -519,7 +519,7 @@ Open VS Code settings (Ctrl+,) and search for "NexusLang":
 
 2. Enable trace logging:
    ```json
-   "nexuslang.lsp.trace.server": "verbose"
+   "nexuslang.trace.server": "verbose"
    ```
    Check for repeated re-indexing
 

@@ -13,7 +13,7 @@ pip install toml
 ### Create a New Project
 
 ```bash
-./nlplbuild init my_project
+nlpl new my_project
 cd my_project
 ```
 
@@ -21,11 +21,10 @@ This creates:
 ```
 my_project/
  src/
- main.nlpl # Main source file
+ main.nxl # Main source file
  build/ # Build artifacts
- bin/ # Compiled executables
  tests/ # Test files
- nlpl.toml # Project configuration
+ nexuslang.toml # Project configuration
  .gitignore # Git ignore file
 ```
 
@@ -33,44 +32,35 @@ my_project/
 
 ```bash
 # Build all targets
-./nlplbuild build
-
-# Build specific target
-./nlplbuild build main
+nlpl build
 
 # Build with optimization
-./nlplbuild build -O3
+nlpl build -O 3
 
-# Build with debug info
-./nlplbuild build -g
+# Build with release profile
+nlpl build --release
 
 # Verbose output
-./nlplbuild build -v
-
-# Use release profile
-./nlplbuild build --profile release
+nlpl build -v
 ```
 
 ### Run Your Project
 
 ```bash
 # Build and run
-./nlplbuild run
+nlpl run
 
 # Run with arguments
-./nlplbuild run -- arg1 arg2
-
-# Run with optimization
-./nlplbuild run -O2
+nlpl run -- arg1 arg2
 ```
 
 ### Clean Build Artifacts
 
 ```bash
-./nlplbuild clean
+nlpl clean
 ```
 
-## Project Configuration (nlpl.toml)
+## Project Configuration (`nexuslang.toml`)
 
 ### Basic Configuration
 
@@ -84,8 +74,8 @@ license = "MIT"
 
 [build]
 source_dir = "src"
-build_dir = "build"
-output_dir = "bin"
+output_dir = "build"
+target = "c"
 ```
 
 ### Adding Dependencies
@@ -307,62 +297,50 @@ any_dep = "*"
 
 ```bash
 # Create project
-./nlplbuild init my_app
+nlpl new my_app
 cd my_app
 
-# Edit src/main.nlpl
+# Edit src/main.nxl
 # ... make changes ...
 
 # Build and run
-./nlplbuild run
+nlpl run
 
 # Make more changes
 # ... edit files ...
 
 # Incremental rebuild (fast!)
-./nlplbuild run
+nlpl run
 ```
 
 ### Release Build Workflow
 
 ```bash
 # Build optimized release
-./nlplbuild build --profile release
+nlpl build --release
 
 # Or with explicit optimization
-./nlplbuild build -O3
+nlpl build -O 3
 
 # Run release build
-./bin/main
+nlpl run --release
 ```
 
 ### Multi-Target Project
 
-```nlpl.toml
-[target.server]
-source = "src/server.nxl"
-type = "executable"
-
-[target.client]
-source = "src/client.nxl"
-type = "executable"
-
-[target.common]
-source = "src/common.nxl"
-type = "library"
-dependencies = []
+```toml
+[build]
+source_dir = "src"
+output_dir = "build"
+target = "c"
 ```
 
 ```bash
-# Build all targets
-./nlplbuild build
+# Build the project
+nlpl build
 
-# Build specific target
-./nlplbuild build server
-./nlplbuild build client
-
-# Run specific target
-./nlplbuild run server
+# Run the project
+nlpl run
 ```
 
 ## Troubleshooting
@@ -371,15 +349,15 @@ dependencies = []
 
 ```bash
 # Clean and rebuild
-./nlplbuild clean
-./nlplbuild build -v # Verbose output shows details
+nlpl clean
+nlpl build -v
 ```
 
 ### Incremental Build Issues
 
 ```bash
 # Force full rebuild
-./nlplbuild build --no-incremental
+nlpl build --clean
 ```
 
 ### Cache Problems
@@ -387,7 +365,7 @@ dependencies = []
 ```bash
 # Clear cache
 rm -rf build/.cache
-./nlplbuild build
+nlpl build
 ```
 
 ## Tips & Tricks

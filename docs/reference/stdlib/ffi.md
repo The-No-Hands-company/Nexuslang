@@ -453,10 +453,10 @@ printf("Name: %s, Age: %d, Score: %f\n", name, age, score)
 - `test_programs/ffi/test_strings.nlpl`
 
 ### Source Files
-- `src/nlpl/compiler/ffi.py` - FFI code generation
-- `src/nlpl/parser/parser.py` - extern_declaration()
-- `src/nlpl/parser/ast.py` - FFI AST nodes
-- `src/nlpl/stdlib/ffi/` - Runtime FFI support
+- `src/nexuslang/compiler/ffi.py` - FFI code generation
+- `src/nexuslang/parser/parser.py` - extern_declaration()
+- `src/nexuslang/parser/ast.py` - FFI AST nodes
+- `src/nexuslang/stdlib/ffi/` - Runtime FFI support
 
 ---
 

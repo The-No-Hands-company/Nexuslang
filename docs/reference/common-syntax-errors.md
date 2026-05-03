@@ -298,7 +298,7 @@ Follow consistent naming conventions to avoid confusion with reserved keywords:
 - Read the documentation: `docs/`
 - Look for similar examples: `grep -r "pattern" examples/`
 - Use the error system's suggestions - they often point to the solution
-- Review the BNF grammar: `src/nlpl/parser/bnf_grammar.txt`
+- Review the BNF grammar: `src/nexuslang/parser/bnf_grammar.txt`
 
 ---
 

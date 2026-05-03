@@ -1,4 +1,4 @@
-# NexusLang Build Tool (nxl_build.py)
+# NexusLang Build Tool (`nlpl`)
 
 **Status**: ✅ Complete - Build Tool CLI + Incremental Compilation
 
@@ -6,39 +6,35 @@
 
 ## Overview
 
-`nxl_build.py` is a Cargo-inspired build tool for NexusLang projects. It provides project-aware compilation, build orchestration, feature flag management, and profile support through `nlpl.toml` manifests.
+The NexusLang build tool is exposed through the main `nlpl` CLI. It provides project-aware compilation, build orchestration, feature flag management, and profile support through `nexuslang.toml` manifests.
 
 **Key Features**:
-- **Manifest-driven builds**: Reads `nlpl.toml` for project configuration
+- **Manifest-driven builds**: Reads `nexuslang.toml` for project configuration
 - **Incremental compilation**: Smart rebuilds only recompile changed files (see [INCREMENTAL_COMPILATION.md](INCREMENTAL_COMPILATION.md))
 - **Build profiles**: Support for dev, release, and custom profiles
 - **Feature flags**: Enable/disable capabilities at compile time
 - **Multiple targets**: Build libraries and multiple binaries
-- **Integrated testing**: Run test suites with `nxl_build.py test`
-- **Clean builds**: Remove artifacts with `nxl_build.py clean`
+- **Integrated testing**: Run test suites with `nlpl test`
+- **Clean builds**: Remove artifacts with `nlpl clean`
 - **Syntax checking**: Fast error checking without compilation
 
 ---
 
 ## Installation
 
-The build tool is located at `dev_tools/nxl_build.py` and requires:
+The build tool is available through the main `nlpl` command and requires:
 - Python 3.8+
-- NexusLang compiler (`nlplc`)
+- NexusLang runtime/compiler dependencies
 - Access to `src/nexuslang/` modules
 
-**Make executable**:
+**Development invocation**:
 ```bash
-chmod +x dev_tools/nxl_build.py
+PYTHONPATH=src python -m nexuslang.cli --help
 ```
 
-**Optional: Add to PATH**:
+**Typical installed usage**:
 ```bash
-# Add to ~/.bashrc or ~/.zshrc
-export PATH="$PATH:/path/to/NexusLang/dev_tools"
-
-# Create alias
-alias nlpl-build="python3 /path/to/NexusLang/dev_tools/nxl_build.py"
+nlpl --help
 ```
 
 ---
@@ -47,63 +43,75 @@ alias nlpl-build="python3 /path/to/NexusLang/dev_tools/nxl_build.py"
 
 ### `build` - Compile Project
 
-Build all targets defined in `nlpl.toml`.
+Build the current project described by `nexuslang.toml`.
 
 **Usage**:
 ```bash
-nxl_build.py build                    # Build with dev profile
-nxl_build.py build --release          # Build with release profile
-nxl_build.py build --profile custom   # Build with custom profile
-nxl_build.py build --features f1,f2   # Enable specific features
-nxl_build.py build --bin processor    # Build specific binary
+nlpl build                               # Build with dev profile
+nlpl build --release                     # Build with release profile
+nlpl build --profile custom              # Build with custom profile
+nlpl build --features f1 f2              # Enable specific features
+nlpl build --jobs 8                      # Control parallelism
+nlpl build --lint --lint-strict          # Run lint as part of the build
+nlpl build -O 3 --lto                    # Override optimisation / enable LTO
 ```
 
 **Options**:
 - `--release` - Build with release profile (optimized)
 - `--profile NAME` - Build with custom profile
-- `--features LIST` - Comma-separated feature flags
-- `--bin NAME` - Build specific binary (can be repeated)
-- `--no-incremental` - Disable incremental compilation (force full rebuild)
+- `--features FEATURE [FEATURE ...]` - Enable named features
+- `--jobs N` - Control parallel compilation workers
+- `--clean` - Remove cached artefacts before building
+- `--optimize-bounds-checks` - Enable compile-time bounds-check elimination
 - `--verbose` - Show detailed build information and rebuild reasons
+- `--quiet` - Suppress informational output
+- `--target TRIPLE` - Cross-compilation target triple
+- `-O, --opt-level LEVEL` - Optimisation override: `0`, `1`, `2`, `3`, or `s`
+- `--lto` - Enable link-time optimisation
+- `--pgo-use FILE` - Use a merged PGO profile
+- `--lint`, `--no-lint` - Override `[build].lint_on_build`
+- `--lint-strict` - Use strict lint profile during build
+- `--lint-errors-only` - Suppress lint warnings
+- `--lint-fail-on-warnings` - Promote lint warnings to build-breaking
 
 **Examples**:
 ```bash
 # Development build
-nxl_build.py build
+nlpl build
 
 # Production-optimized build
-nxl_build.py build --release
+nlpl build --release
 
 # Build with specific features
-nxl_build.py build --features data-analytics,storage-backend
+nlpl build --features data-analytics storage-backend
 
-# Build specific binary
-nxl_build.py build --bin analyzer
+# Build with lint integration enabled
+nlpl build --lint --lint-fail-on-warnings
 ```
 
 **Incremental Compilation**:
 
-By default, `nxl_build.py build` uses incremental compilation to skip recompiling unchanged files. This dramatically improves build times for large projects.
+By default, `nlpl build` uses incremental compilation to skip recompiling unchanged files. This dramatically improves build times for large projects.
 
 ```bash
 # First build - compiles everything
-nxl_build.py build --verbose
+nlpl build --verbose
 # Output: "Finished build [profile: dev] (5 compiled, 0 up-to-date)"
 
 # Second build - skips unchanged files
-nxl_build.py build --verbose
+nlpl build --verbose
 # Output: "Finished build [profile: dev] (0 compiled, 5 up-to-date)"
 
 # After modifying a file
-echo '# Modified' >> src/utils.nlpl
-nxl_build.py build --verbose
-# Output: "Rebuild reason: Dependency utils.nlpl changed"
+echo '# Modified' >> src/utils.nxl
+nlpl build --verbose
+# Output: "Rebuild reason: Dependency utils.nxl changed"
 #         "Finished build [profile: dev] (2 compiled, 3 up-to-date)"
 ```
 
-**Disable incremental builds** (force full rebuild):
+**Force a clean rebuild**:
 ```bash
-nxl_build.py build --no-incremental
+nlpl build --clean
 ```
 
 See [INCREMENTAL_COMPILATION.md](INCREMENTAL_COMPILATION.md) for detailed documentation on the incremental compilation system.
@@ -132,7 +140,7 @@ Remove all build outputs and intermediate files.
 
 **Usage**:
 ```bash
-nxl_build.py clean
+nlpl clean
 ```
 
 **Removes**:
@@ -149,8 +157,8 @@ Fast syntax checking without compilation. Useful for rapid feedback during devel
 
 **Usage**:
 ```bash
-nxl_build.py check                    # Check all sources
-nxl_build.py check --features f1,f2   # Check with features enabled
+nlpl check
+nlpl check --features f1 f2
 ```
 
 **Checks**:
@@ -169,32 +177,26 @@ Build and immediately run a binary target.
 
 **Usage**:
 ```bash
-nxl_build.py run                      # Run default binary
-nxl_build.py run --bin analyzer       # Run specific binary
-nxl_build.py run --release            # Run release build
-nxl_build.py run -- arg1 arg2         # Pass arguments to binary
+nlpl run
+nlpl run --release
+nlpl run --features data-analytics -- input.csv
 ```
 
 **Options**:
-- `--bin NAME` - Which binary to run (default: first in manifest)
 - `--release` - Run release build
-- `--profile NAME` - Run with custom profile
-- `--features LIST` - Enable features
+- `--features FEATURE [FEATURE ...]` - Enable features
 - `-- ARGS` - Arguments to pass to binary (after `--`)
 
 **Examples**:
 ```bash
 # Run default binary (dev profile)
-nxl_build.py run
+nlpl run
 
 # Run optimized binary
-nxl_build.py run --release
+nlpl run --release
 
 # Run with features and arguments
-nxl_build.py run --features data-analytics -- input.csv
-
-# Run specific binary
-nxl_build.py run --bin analyzer -- --verbose
+nlpl run --features data-analytics -- input.csv
 ```
 
 ---
@@ -205,14 +207,15 @@ Run all tests in the project.
 
 **Usage**:
 ```bash
-nxl_build.py test                     # Run tests (dev profile)
-nxl_build.py test --release           # Run tests (release profile)
-nxl_build.py test --features f1,f2    # Run tests with features
+nlpl test
+nlpl test --release
+nlpl test --features f1 f2
+nlpl test parser --jobs 8
 ```
 
 **Test Discovery**:
 - Searches `tests/` directory
-- Compiles all `*.nlpl` files
+- Compiles all `*.nxl` files
 - Runs each test binary
 - Reports pass/fail status
 
@@ -231,13 +234,13 @@ Test result: 4 passed, 1 failed
 
 **Test Conventions**:
 - Place tests in `tests/` directory
-- Name files `test_*.nlpl`
+- Name files `test_*.nxl`
 - Exit code 0 = pass, non-zero = fail
 - Use `assert` statements or explicit error handling
 
 ---
 
-## nlpl.toml Configuration
+## `nexuslang.toml` Configuration
 
 ### Package Metadata
 
@@ -335,10 +338,10 @@ scripting = []                          # Embedded scripting
 **Using Features**:
 ```bash
 # Enable single feature
-nxl_build.py build --features data-analytics
+nlpl build --features data-analytics
 
 # Enable multiple features
-nxl_build.py build --features data-analytics,storage-backend
+nlpl build --features data-analytics storage-backend
 
 # Features are transitive (dependencies enabled automatically)
 ```
@@ -350,16 +353,13 @@ nxl_build.py build --features data-analytics,storage-backend
 **Expected Project Layout**:
 ```
 my-project/
-  nlpl.toml                 # Project manifest (required)
+   nexuslang.toml            # Project manifest (required)
   src/
-    main.nlpl               # Default binary entry point
-    lib.nlpl                # Library entry point (if [lib] defined)
-    bin/
-      tool1.nlpl            # Additional binaries
-      tool2.nlpl
+      main.nxl                # Default entry point
+      utils.nxl               # Additional project sources
   tests/
-    test_module1.nlpl       # Test files
-    test_module2.nlpl
+      test_module1.nxl        # Test files
+      test_module2.nxl
   build/                    # Build artifacts (auto-generated)
     dev/
       binary_name
@@ -371,22 +371,17 @@ my-project/
 
 ## Integration with Compiler
 
-`nxl_build.py` integrates with the existing `nlplc` compiler:
+The `nlpl` CLI integrates with the current NexusLang toolchain:
 
-1. **Parsing**: Uses `nlpl.parser.lexer.Lexer` and `nlpl.parser.parser.Parser`
-2. **Compilation**: Shells out to `dev_tools/nlplc` for code generation
-3. **Build Profiles**: Maps manifest profiles to compiler flags
+1. **Manifest loading**: Reads `nexuslang.toml` through `ConfigLoader`
+2. **Build orchestration**: Delegates to `BuildSystem`
+3. **Profiles and features**: Applies CLI overrides for profiles, optimisation, linting, and enabled features
 
-**Compiler Invocation**:
+**Development invocation**:
 ```bash
-# Internal call (dev profile)
-nlplc source.nlpl -o output -O0 --debug
-
-# Internal call (release profile)
-nlplc source.nlpl -o output -O2
+PYTHONPATH=src python -m nexuslang.cli build
+PYTHONPATH=src python -m nexuslang.cli run -- --help
 ```
-
-**Future Enhancement**: Direct API integration with `nlpl.compiler.Compiler` class.
 
 ---
 
@@ -394,15 +389,16 @@ nlplc source.nlpl -o output -O2
 
 ### Example 1: Simple Hello World
 
-**nlpl.toml**:
+**`nexuslang.toml`**:
 ```toml
 [package]
 name = "hello"
 version = "0.1.0"
 
-[[bin]]
-name = "hello"
-path = "main.nxl"
+[build]
+source_dir = "src"
+output_dir = "build"
+target = "c"
 
 [profile.dev]
 opt-level = 0
@@ -412,41 +408,38 @@ debug = true
 opt-level = 2
 ```
 
-**main.nlpl**:
+**`src/main.nxl`**:
 ```nlpl
-print text "Hello from NLPL!"
+function main
+      print text "Hello from NexusLang!"
+end
 ```
 
 **Build and Run**:
 ```bash
-$ nxl_build.py build
+$ nlpl build
 Building hello [profile: dev, features: none]
-  Compiling binary hello...
+   Compiling project sources...
 Finished build [profile: dev]
 
-$ nxl_build.py run
-Running hello...
-Hello from NLPL!
+$ nlpl run
+Hello from NexusLang!
 ```
 
 ---
 
 ### Example 2: Data Processing Tool
 
-**nlpl.toml**:
+**`nexuslang.toml`**:
 ```toml
 [package]
 name = "data-tool"
 version = "1.0.0"
 
-[[bin]]
-name = "processor"
-path = "src/main.nxl"
-
-[[bin]]
-name = "analyzer"
-path = "src/bin/analyzer.nxl"
-required-features = ["data-analytics"]
+[build]
+source_dir = "src"
+output_dir = "build"
+target = "c"
 
 [dependencies]
 nlpl-csv = "1.0"
@@ -465,40 +458,32 @@ lto = true
 
 **Build Commands**:
 ```bash
-# Build default binary (text-processing enabled)
-nxl_build.py build
+# Build the project
+nlpl build
 
-# Build with analytics (includes analyzer binary)
-nxl_build.py build --features data-analytics
+# Build with analytics enabled
+nlpl build --features data-analytics
 
 # Production build
-nxl_build.py build --release --features data-analytics,storage-backend
+nlpl build --release --features data-analytics storage-backend
 
-# Run specific binary
-nxl_build.py run --bin analyzer --features data-analytics -- input.csv
+# Run with features and runtime arguments
+nlpl run --features data-analytics -- input.csv
 ```
 
 ---
 
 ### Example 3: Library + Binaries
 
-**nlpl.toml**:
+**`nexuslang.toml`**:
 ```toml
 [package]
 name = "my-lib"
 version = "0.2.0"
 
-[lib]
-name = "my_lib"
-path = "src/lib.nxl"
-
-[[bin]]
-name = "cli-tool"
-path = "src/bin/cli.nxl"
-
-[[bin]]
-name = "benchmark"
-path = "src/bin/bench.nxl"
+[build]
+source_dir = "src"
+output_dir = "build"
 
 [features]
 default = []
@@ -514,17 +499,14 @@ opt-level = 3
 
 **Build Commands**:
 ```bash
-# Build library + all binaries
-nxl_build.py build
+# Build the project
+nlpl build
 
-# Build only specific binary
-nxl_build.py build --bin cli-tool
-
-# Check library without building
-nxl_build.py check
+# Run type checking without producing output
+nlpl check
 
 # Clean everything
-nxl_build.py clean
+nlpl clean
 ```
 
 ---
@@ -533,18 +515,17 @@ nxl_build.py clean
 
 **Common Errors**:
 
-1. **No nlpl.toml found**:
+1. **No `nexuslang.toml` found**:
    ```
-   Error: Could not find nlpl.toml in current directory or any parent directory
-   Run this command from a directory containing nlpl.toml
+   error: nexuslang.toml not found. Are you in an NexusLang project root?
    ```
-   **Solution**: Create `nlpl.toml` or `cd` to project directory.
+   **Solution**: Create `nexuslang.toml` or run the command from the project root.
 
 2. **Source file not found**:
    ```
-   Error: Source file not found: src/main.nlpl
+   Error: Source file not found: src/main.nxl
    ```
-   **Solution**: Create missing file or fix path in `[[bin]]` section.
+   **Solution**: Create the missing file or fix the source path in `[build]`.
 
 3. **Unknown feature**:
    ```
@@ -552,21 +533,15 @@ nxl_build.py clean
    ```
    **Solution**: Check feature name spelling in `[features]` section.
 
-4. **Unknown binary**:
+4. **Missing feature dependencies**:
    ```
-   Error: Binary 'unknown' not found
-   ```
-   **Solution**: Check binary name in `[[bin]]` sections.
-
-5. **Missing feature dependencies**:
-   ```
-   Skipping analyzer (missing features: data-analytics)
+   Warning: feature dependency requirements not satisfied
    ```
    **Solution**: Add `--features data-analytics` to command.
 
-6. **Compilation failed**:
+5. **Compilation failed**:
    ```
-   Error compiling source.nlpl: Parse error: ...
+   Error compiling source.nxl: Parse error: ...
    Build failed
    ```
    **Solution**: Fix syntax errors in source code.
@@ -577,18 +552,18 @@ nxl_build.py clean
 
 1. **Use `check` for rapid feedback**: 10-100x faster than full build
    ```bash
-   nxl_build.py check  # Fast syntax checking
+   nlpl check
    ```
 
-2. **Incremental builds**: Only recompile changed files (future)
+2. **Incremental builds**: Only recompile changed files
    ```bash
-   nxl_build.py build  # Smart rebuild
+   nlpl build
    ```
 
 3. **Profile-specific builds**: Keep dev and release separate
    ```bash
-   nxl_build.py build               # Fast dev build
-   nxl_build.py build --release     # Optimized release
+   nlpl build
+   nlpl build --release
    ```
 
 4. **Feature flags**: Disable unused features
@@ -599,39 +574,21 @@ nxl_build.py clean
 
 ---
 
-## Future Enhancements
+## Further Enhancements
 
-**Planned Features** (Task 4+):
+Active areas for expansion include:
 
-1. **Incremental Compilation**:
-   - Track file modification times
-   - Build dependency graph
-   - Only recompile changed files
+1. **Richer documentation tooling**:
+   - Extract API documentation from project sources
+   - Generate publishable reference output
 
-2. **Dependency Resolution**:
-   - Parse version constraints (`^1.0`, `~0.5`, `>=2.0`)
-   - Validate compatibility
-   - Detect conflicts
+2. **Broader package-management maturity**:
+   - Expand registry workflows beyond the current dependency and publish commands
+   - Improve lockfile and offline workflows
 
-3. **Package Registry Integration**:
-   - Download dependencies
-   - Cache packages locally
-   - Lock file support
-
-4. **Workspace Support**:
-   - Multi-project workspaces
-   - Shared dependencies
-   - Unified builds
-
-5. **Documentation Generation**:
-   - Extract doc comments
-   - Generate API docs
-   - Publish to registry
-
-6. **Code Coverage**:
-   - Instrument tests
-   - Generate coverage reports
-   - CI/CD integration
+3. **Additional build orchestration features**:
+   - More granular target selection and packaging flows
+   - Deeper integration with profiling and release pipelines
 
 ---
 
@@ -640,26 +597,24 @@ nxl_build.py clean
 ### Implementation
 
 **Language**: Python 3.8+  
-**Size**: ~700 lines  
+**Primary implementation**: `src/nexuslang/cli/__init__.py`, `src/nexuslang/tooling/config.py`, `src/nexuslang/tooling/builder.py`  
 **Dependencies**:
-- `nlpl.build.manifest` - Manifest parsing
-- `nlpl.parser.lexer` - Tokenization
-- `nlpl.parser.parser` - AST generation
-- `nlpl.compiler` - Code generation (future)
+- `nexuslang.tooling.config` - Manifest parsing
+- `nexuslang.tooling.builder` - Build orchestration
+- `nexuslang.tooling.workspace` - Workspace operations
+- `nexuslang.tooling.dependency_manager` - Dependency add/remove/lock flows
 
 **Architecture**:
 ```
-BuildTool
-  ├── build()          # Build orchestration
-  ├── clean()          # Artifact removal
-  ├── check()          # Syntax checking
-  ├── run()            # Build + execute
-  ├── test()           # Test runner
-  ├── _resolve_features()    # Feature dependency resolution
-  ├── _build_binary()        # Binary compilation
-  ├── _build_library()       # Library compilation
-  ├── _compile_single_file() # File compilation
-  └── _check_file()          # Syntax validation
+nlpl CLI
+   ├── ConfigLoader.load()    # Manifest parsing
+   ├── BuildSystem.build()    # Project builds
+   ├── BuildSystem.run()      # Build + execute
+   ├── BuildSystem.check()    # Type checking
+   ├── BuildSystem.test()     # Test discovery/execution
+   ├── cmd_lint()             # Static analysis
+   ├── cmd_pgo()              # PGO workflow
+   └── workspace/deps commands
 ```
 
 ### Build Context
@@ -683,24 +638,24 @@ resolved = ["data-analytics", "nlpl-math/statistics"]  # Includes deps
 
 ## Comparison with Cargo
 
-| Feature | nxl_build.py | Cargo |
-|---------|---------------|-------|
-| Manifest format | `nlpl.toml` | `Cargo.toml` |
+| Feature | `nlpl` | Cargo |
+|---------|--------|-------|
+| Manifest format | `nexuslang.toml` | `Cargo.toml` |
 | Build profiles | ✅ dev, release, custom | ✅ dev, release, custom |
-| Feature flags | ✅ Transitive | ✅ Transitive |
-| Multiple targets | ✅ Bins + lib | ✅ Bins + lib |
-| Incremental compilation | ⏳ Planned | ✅ |
-| Dependency resolution | ⏳ Planned | ✅ |
-| Package registry | ⏳ Planned | ✅ crates.io |
-| Workspace support | ⏳ Planned | ✅ |
-| Documentation | ⏳ Planned | ✅ cargo doc |
-| Testing | ✅ Basic | ✅ Advanced |
+| Feature flags | ✅ | ✅ |
+| Incremental compilation | ✅ | ✅ |
+| Test runner | ✅ | ✅ |
+| Coverage command | ✅ basic | ✅ advanced |
+| Workspace commands | ✅ | ✅ |
+| Dependency add/remove/lock | ✅ | ✅ |
+| Registry search/publish | ✅ basic | ✅ crates.io |
+| Documentation generation | ⏳ partial ecosystem docs | ✅ cargo doc |
 
 ---
 
 ## See Also
 
-- **Manifest Specification**: `docs/build/NLPL_TOML_SPECIFICATION.md`
+- **Manifest Specification**: `docs/tooling/nlpl-toml.md`
 - **Compiler Guide**: `COMPILER_GUIDE.md`
 - **Development Guide**: `docs/7_development/`
 - **Build System Architecture**: `docs/4_architecture/`
@@ -709,15 +664,16 @@ resolved = ["data-analytics", "nlpl-math/statistics"]  # Includes deps
 
 ## Status
 
-✅ **Task 3 Complete** - Build Tool CLI (February 14, 2026)
+✅ **Implemented** - Build Tool CLI
 
 **Implemented**:
-- ✅ All 5 commands: build, clean, check, run, test
+- ✅ Core commands: build, run, check, clean, test, lint
 - ✅ Build profile support (dev, release, custom)
 - ✅ Feature flag resolution (transitive dependencies)
-- ✅ Multiple binary targets
-- ✅ Library target support
-- ✅ Integration with nlplc compiler
+- ✅ Incremental compilation
+- ✅ Coverage and profiling commands
+- ✅ Workspace commands and dependency workflows
+- ✅ Integration with the NexusLang build/runtime toolchain
 - ✅ Comprehensive error handling
 - ✅ Verbose mode for debugging
 
@@ -729,4 +685,4 @@ resolved = ["data-analytics", "nlpl-math/statistics"]  # Includes deps
 - ✅ Run binaries
 - ✅ Check syntax without compilation
 
-**Next Steps**: Task 4 - Incremental Compilation System
+**Next Steps**: Continue aligning higher-level package/build documentation with the current CLI surface as the tooling evolves.

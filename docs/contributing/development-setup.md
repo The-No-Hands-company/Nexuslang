@@ -88,7 +88,7 @@ pytest tests/test_interpreter.py -v
 ### With Coverage
 
 ```bash
-pytest tests/ --cov=src/nlpl --cov-report=html
+pytest tests/ --cov=src/nexuslang --cov-report=html
 # Open htmlcov/index.html in a browser
 ```
 
@@ -120,14 +120,14 @@ black src/ tests/ && isort src/ tests/
 flake8 src/ tests/
 
 # Check specific file
-flake8 src/nlpl/parser/parser.py
+flake8 src/nexuslang/parser/parser.py
 ```
 
 ## Development Workflow
 
 ### 1. Make Changes
 
-Edit files in `src/nlpl/`
+Edit files in `src/nexuslang/`
 
 ### 2. Test Your Changes
 
@@ -160,7 +160,7 @@ pytest tests/ -v
 
 ```
 NexusLang/
- src/nlpl/ # Main source code
+ src/nexuslang/ # Main source code
  parser/ # Lexer, parser, AST
  interpreter/ # Interpreter implementation
  runtime/ # Runtime environment
