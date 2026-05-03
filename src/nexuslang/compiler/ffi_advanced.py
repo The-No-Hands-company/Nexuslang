@@ -168,18 +168,53 @@ class StringConverter:
     def _implement_strlen(self, func: ir.Function):
         """Implement nxl_strlen helper."""
         entry = func.append_basic_block(name="entry")
+        loop = func.append_basic_block(name="loop")
+        count_block = func.append_basic_block(name="count")
+        advance = func.append_basic_block(name="advance")
+        end = func.append_basic_block(name="end")
+
         builder = ir.IRBuilder(entry)
-        
-        # Just call libc strlen for now
-        # TODO: Implement UTF-8 aware length calculation
-        i8_ptr = ir.IntType(8).as_pointer()
+
+        i8 = ir.IntType(8)
         i64 = ir.IntType(64)
-        
-        strlen_type = ir.FunctionType(i64, [i8_ptr])
-        strlen_func = ir.Function(self.module, strlen_type, name='strlen')
-        strlen_func.linkage = 'external'
-        
-        result = builder.call(strlen_func, [func.args[0]])
+        c_str = func.args[0]
+
+        # idx tracks byte offset, chars tracks Unicode code point count.
+        idx_ptr = builder.alloca(i64, name='idx_ptr')
+        chars_ptr = builder.alloca(i64, name='chars_ptr')
+        builder.store(ir.Constant(i64, 0), idx_ptr)
+        builder.store(ir.Constant(i64, 0), chars_ptr)
+        builder.branch(loop)
+
+        builder.position_at_start(loop)
+        idx = builder.load(idx_ptr, name='idx')
+        byte_ptr = builder.gep(c_str, [idx], name='byte_ptr')
+        byte = builder.load(byte_ptr, name='byte')
+
+        is_null = builder.icmp_unsigned('==', byte, ir.Constant(i8, 0), name='is_null')
+        builder.cbranch(is_null, end, count_block)
+
+        builder.position_at_start(count_block)
+        # UTF-8 continuation bytes have prefix 10xxxxxx (0x80..0xBF).
+        masked = builder.and_(byte, ir.Constant(i8, 0xC0), name='masked')
+        is_continuation = builder.icmp_unsigned('==', masked, ir.Constant(i8, 0x80), name='is_continuation')
+        chars = builder.load(chars_ptr, name='chars')
+        next_chars = builder.select(
+            is_continuation,
+            chars,
+            builder.add(chars, ir.Constant(i64, 1), name='chars_inc'),
+            name='next_chars'
+        )
+        builder.store(next_chars, chars_ptr)
+        builder.branch(advance)
+
+        builder.position_at_start(advance)
+        next_idx = builder.add(idx, ir.Constant(i64, 1), name='idx_inc')
+        builder.store(next_idx, idx_ptr)
+        builder.branch(loop)
+
+        builder.position_at_start(end)
+        result = builder.load(chars_ptr, name='result')
         builder.ret(result)
     
     def _implement_strdup(self, func: ir.Function):
@@ -304,21 +339,13 @@ class CallbackManager:
         Returns:
             Function pointer that C code can call
         """
-        raise NotImplementedError(
-            "Compiler-side FFI callback trampolines are not implemented safely yet. "
-            "Use the interpreter/ctypes FFI callback path or implement full argument "
-            "conversion and NexusLang invocation before enabling compiled callbacks."
-        )
-
         signature = CallbackSignature(
             name=name,
             param_types=param_types,
             return_type=return_type,
             nxl_function=nxl_function
         )
-        
-        # This code is intentionally unreachable until compiler-side callbacks
-        # are fully implemented.
+
         trampoline = self._generate_trampoline(signature)
         signature.trampoline_func = trampoline
         self.callbacks[name] = signature
@@ -361,20 +388,28 @@ class CallbackManager:
         entry = trampoline.append_basic_block(name="entry")
         builder = ir.IRBuilder(entry)
         
-        # TODO: Implement actual parameter conversion and NexusLang function call
-        # For now, just return a default value
+        # Resolve/create callback target and emit direct call-through.
+        target = self.module.globals.get(sig.nxl_function)
+        if target is None:
+            target = ir.Function(self.module, func_type, name=sig.nxl_function)
+            target.linkage = 'external'
+        elif not isinstance(target, ir.Function):
+            raise TypeError(
+                f"Callback target '{sig.nxl_function}' exists but is not callable"
+            )
+        elif target.function_type != func_type:
+            raise TypeError(
+                f"Callback target '{sig.nxl_function}' signature mismatch: "
+                f"expected {func_type}, got {target.function_type}"
+            )
+
+        call_args = list(trampoline.args)
         if sig.return_type == 'Void':
+            builder.call(target, call_args)
             builder.ret_void()
-        elif sig.return_type in ['Integer', 'Int', 'Int32', 'Int64']:
-            builder.ret(ir.Constant(return_llvm_type, 0))
-        elif sig.return_type in ['Float', 'Double']:
-            builder.ret(ir.Constant(return_llvm_type, 0.0))
-        elif sig.return_type in ['Pointer', 'String']:
-            null_ptr = ir.Constant(return_llvm_type, None)
-            builder.ret(null_ptr)
         else:
-            # Fallback
-            builder.ret_void()
+            result = builder.call(target, call_args, name='callback_result')
+            builder.ret(result)
         
         return trampoline
     

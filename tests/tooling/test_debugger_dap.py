@@ -10,6 +10,7 @@ requiring a live subprocess or a real NexusLang program.
 import json
 import sys
 import io
+import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch, call, PropertyMock
 from dataclasses import asdict
@@ -19,6 +20,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from nexuslang.debugger.dap_server import DAPServer, DAPCapabilities
+from nexuslang.debugger import dap_server as dap_server_module
 from nexuslang.debugger.debugger import Debugger, DebuggerState, Breakpoint, CallFrame
 
 
@@ -46,6 +48,10 @@ def _make_server() -> DAPServer:
 
 
 class TestDAPCapabilities:
+    def test_supports_attach_request(self):
+        caps = DAPCapabilities()
+        assert caps.supportsAttachRequest is True
+
     def test_supports_conditional_breakpoints(self):
         caps = DAPCapabilities()
         assert caps.supportsConditionalBreakpoints is True
@@ -133,6 +139,49 @@ class TestHandleInitialize:
         server._handle_initialize(1, {"clientID": "vscode", "clientName": "VS Code"})
         assert server.client_id == "vscode"
         assert server.client_name == "VS Code"
+
+
+class TestHandleAttach:
+    def test_attach_requires_program_path(self):
+        server = DAPServer()
+
+        with pytest.raises(ValueError, match="requires 'program'"):
+            server._handle_attach(1, {})
+
+    def test_attach_delegates_to_launch_with_program(self):
+        server = DAPServer()
+
+        with patch.object(server, "_handle_launch", return_value={"ok": True}) as launch_mock:
+            result = server._handle_attach(1, {"target": "/tmp/sample.nxl"})
+
+        assert result == {"ok": True}
+        launch_mock.assert_called_once()
+        _seq, attach_args = launch_mock.call_args[0]
+        assert attach_args["program"] == "/tmp/sample.nxl"
+
+    def test_attach_by_process_id_binds_registered_debuggee(self):
+        dap_server_module._DEBUGGEE_REGISTRY.clear()
+        owner = _make_server()
+        owner.runtime = MagicMock(name="runtime")
+        owner.ast = MagicMock(name="ast")
+        owner._register_debuggee(os.getpid())
+
+        server = DAPServer()
+        result = server._handle_attach(1, {"processId": os.getpid()})
+
+        assert result == {}
+        assert server.runtime is owner.runtime
+        assert server.interpreter is owner.interpreter
+        assert server.debugger is owner.debugger
+        assert server.ast is owner.ast
+        assert server._attached_process_id == os.getpid()
+
+    def test_attach_by_process_id_errors_when_missing(self):
+        dap_server_module._DEBUGGEE_REGISTRY.clear()
+        server = DAPServer()
+
+        with pytest.raises(ValueError, match="No attachable NexusLang debug session"):
+            server._handle_attach(1, {"processId": 987654})
 
 
 # ---------------------------------------------------------------------------

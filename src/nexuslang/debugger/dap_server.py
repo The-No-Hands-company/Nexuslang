@@ -1,5 +1,5 @@
 """
-NLPL Debug Adapter Protocol (DAP) Server
+NexusLang Debug Adapter Protocol (DAP) Server
 =========================================
 
 Implements Microsoft's Debug Adapter Protocol to enable debugging NexusLang programs
@@ -27,6 +27,7 @@ import json
 import sys
 import logging
 import os
+import threading
 from typing import Dict, List, Optional, Any
 from pathlib import Path
 from dataclasses import dataclass, asdict
@@ -36,17 +37,23 @@ from .debugger import Debugger, DebuggerState, Breakpoint, CallFrame
 
 # Configure logging
 logging.basicConfig(
-    filename='/tmp/nlpl-dap.log',
+    filename='/tmp/nexuslang-dap.log',
     level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-logger = logging.getLogger('nlpl-dap')
+logger = logging.getLogger('nexuslang-dap')
+
+# In-process debuggee registry keyed by process id. This enables attach-by-pid
+# semantics for sessions started by launch in this process.
+_DEBUGGEE_REGISTRY_LOCK = threading.RLock()
+_DEBUGGEE_REGISTRY: Dict[int, Dict[str, Any]] = {}
 
 
 @dataclass
 class DAPCapabilities:
     """DAP server capabilities."""
     supportsConfigurationDoneRequest: bool = True
+    supportsAttachRequest: bool = True
     supportsFunctionBreakpoints: bool = False  # Future
     supportsConditionalBreakpoints: bool = True
     supportsHitConditionalBreakpoints: bool = False  # Future
@@ -106,6 +113,7 @@ class DAPServer:
         # Variable references (for complex objects)
         self.variable_ref_counter = 1
         self.variable_refs: Dict[int, Any] = {}
+        self._attached_process_id: Optional[int] = None
         
         logger.info("DAP Server initialized")
     
@@ -284,15 +292,51 @@ class DAPServer:
         tokens = lexer.tokenize()
         parser = Parser(tokens)
         self.ast = parser.parse()
+
+        # Make this debuggee attachable by process id for other DAP sessions
+        # in the same process.
+        self._register_debuggee(os.getpid())
         
         logger.info("Program parsed successfully")
         
         return {}
     
     def _handle_attach(self, seq: int, args: Dict[str, Any]) -> Dict[str, Any]:
-        """Attach request - attach to running program."""
-        # Not implemented yet
-        raise NotImplementedError("Attach mode not yet supported")
+        """Attach request - attach to a debug target.
+
+        Current implementation supports file-based attach by accepting a
+        NexusLang source path and preparing it exactly like launch mode.
+        """
+        process_id = args.get('processId')
+        if process_id is not None:
+            try:
+                pid = int(process_id)
+            except (TypeError, ValueError) as exc:
+                raise ValueError("Attach mode requires numeric processId") from exc
+
+            if pid <= 0:
+                raise ValueError("Attach mode requires processId > 0")
+
+            if self._attach_to_registered_debuggee(pid):
+                logger.info(f"Attached to existing debuggee process: {pid}")
+                return {}
+
+            raise ValueError(
+                f"No attachable NexusLang debug session found for processId={pid}. "
+                "Launch a program first or provide a source program path for file-based attach."
+            )
+
+        program = args.get('program') or args.get('processPath') or args.get('target')
+        if not program:
+            raise ValueError(
+                "Attach mode requires 'program' (or processPath/target) to point to a NexusLang source file"
+            )
+
+        logger.info(f"Attach request using program source: {program}")
+
+        attach_args = dict(args)
+        attach_args['program'] = program
+        return self._handle_launch(seq, attach_args)
     
     def _handle_configurationDone(self, seq: int, args: Dict[str, Any]) -> Dict[str, Any]:
         """Configuration done - all breakpoints set, ready to run."""
@@ -527,6 +571,8 @@ class DAPServer:
         
         if self.debugger:
             self.debugger.state = DebuggerState.FINISHED
+
+        self._unregister_debuggee()
         
         return {}
     
@@ -536,6 +582,8 @@ class DAPServer:
         
         if self.debugger:
             self.debugger.state = DebuggerState.FINISHED
+
+        self._unregister_debuggee()
         
         self.send_event('terminated')
         
@@ -606,14 +654,63 @@ class DAPServer:
         
         return ref
 
+    def _register_debuggee(self, process_id: int) -> None:
+        """Register this server's debuggee state for attach-by-pid requests."""
+        with _DEBUGGEE_REGISTRY_LOCK:
+            _DEBUGGEE_REGISTRY[process_id] = {
+                'runtime': self.runtime,
+                'interpreter': self.interpreter,
+                'debugger': self.debugger,
+                'ast': getattr(self, 'ast', None),
+            }
+        self._attached_process_id = process_id
+
+    def _attach_to_registered_debuggee(self, process_id: int) -> bool:
+        """Attach this DAP session to a previously launched in-process debuggee."""
+        with _DEBUGGEE_REGISTRY_LOCK:
+            debuggee = _DEBUGGEE_REGISTRY.get(process_id)
+
+        if not debuggee:
+            return False
+
+        self.runtime = debuggee.get('runtime')
+        self.interpreter = debuggee.get('interpreter')
+        self.debugger = debuggee.get('debugger')
+        self.ast = debuggee.get('ast')
+
+        if self.debugger is not None:
+            # Redirect debugger callbacks to this DAP session.
+            self.debugger.on_breakpoint = self._on_breakpoint
+            self.debugger.on_step = self._on_step
+            self.debugger.on_exception = self._on_exception
+
+        if self.interpreter is not None and self.debugger is not None:
+            self.interpreter.debugger = self.debugger
+
+        self._attached_process_id = process_id
+        return True
+
+    def _unregister_debuggee(self) -> None:
+        """Remove this server's registered debuggee when the session ends."""
+        pid = self._attached_process_id
+        if pid is None:
+            return
+
+        with _DEBUGGEE_REGISTRY_LOCK:
+            current = _DEBUGGEE_REGISTRY.get(pid)
+            if current and current.get('debugger') is self.debugger:
+                _DEBUGGEE_REGISTRY.pop(pid, None)
+
+        self._attached_process_id = None
+
 
 def main():
     """Entry point for DAP server."""
     import argparse
     
-    parser = argparse.ArgumentParser(description='NLPL Debug Adapter Protocol Server')
+    parser = argparse.ArgumentParser(description='NexusLang Debug Adapter Protocol Server')
     parser.add_argument('--debug', action='store_true', help='Enable debug logging')
-    parser.add_argument('--log-file', default='/tmp/nlpl-dap.log', 
+    parser.add_argument('--log-file', default='/tmp/nexuslang-dap.log', 
                        help='Log file path')
     
     args = parser.parse_args()
