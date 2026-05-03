@@ -179,6 +179,7 @@ class DiagnosticsProvider:
         import_diagnostics: List[Dict] = []
         channel_diagnostics: List[Dict] = []
         macro_comptime_diagnostics: List[Dict] = []
+        exception_diagnostics: List[Dict] = []
         unused_var_diagnostics: List[Dict] = []
         
         # Track this file in workspace
@@ -202,6 +203,7 @@ class DiagnosticsProvider:
         # Additional static checks
         channel_diagnostics = self._check_channel_operations(text)
         macro_comptime_diagnostics = self._check_macro_comptime_operations(text)
+        exception_diagnostics = self._check_exception_scope_and_unreachable_catch(text)
         unused_var_diagnostics = self._check_unused_vars(text)
 
         diagnostics = self.merge_and_dedupe_diagnostics(
@@ -210,6 +212,7 @@ class DiagnosticsProvider:
             import_diagnostics,
             channel_diagnostics,
             macro_comptime_diagnostics,
+            exception_diagnostics,
             unused_var_diagnostics,
         )
         
@@ -786,6 +789,116 @@ class DiagnosticsProvider:
                             error_type_key="invalid_operation",
                         )
                     )
+
+        return diagnostics
+
+    def _check_exception_scope_and_unreachable_catch(self, text: str) -> List[Dict]:
+        """Check catch-variable scope misuse and likely unreachable catch blocks."""
+        diagnostics: List[Dict] = []
+        lines = text.split('\n')
+
+        try_pattern = re.compile(r'^\s*try\b', re.IGNORECASE)
+        catch_pattern = re.compile(r'^\s*catch\s+([A-Za-z_][A-Za-z0-9_]*)\b', re.IGNORECASE)
+        end_pattern = re.compile(r'^\s*end\b', re.IGNORECASE)
+        return_pattern = re.compile(r'^\s*return\b', re.IGNORECASE)
+
+        def _indent(line_text: str) -> int:
+            return len(line_text) - len(line_text.lstrip(' '))
+
+        contexts: List[Dict] = []
+        catch_scopes: List[Dict] = []
+
+        for i, raw_line in enumerate(lines):
+            line = raw_line.strip()
+            if not line or line.startswith('#') or line.startswith('//'):
+                continue
+
+            indent = _indent(raw_line)
+
+            if try_pattern.match(raw_line):
+                contexts.append({
+                    'try_indent': indent,
+                    'try_terminal_line': None,
+                    'try_terminal_kind': None,
+                    'catch_var': None,
+                    'catch_line': None,
+                    'catch_indent': None,
+                })
+                continue
+
+            if contexts:
+                current = contexts[-1]
+
+                if current['catch_var'] is None and current['try_terminal_line'] is None:
+                    if return_pattern.match(raw_line):
+                        current['try_terminal_line'] = i
+                        current['try_terminal_kind'] = 'return'
+
+                catch_match = catch_pattern.match(raw_line)
+                if catch_match and current['catch_var'] is None:
+                    catch_var = catch_match.group(1)
+                    current['catch_var'] = catch_var
+                    current['catch_line'] = i
+                    current['catch_indent'] = indent
+
+                    if current['try_terminal_kind'] == 'return':
+                        start_char = raw_line.lower().find('catch')
+                        diagnostics.append(
+                            self._build_diagnostic(
+                                line=i,
+                                start_char=max(0, start_char),
+                                end_char=max(5, start_char + 5),
+                                severity=2,
+                                message="Likely unreachable catch block: try body returns before catch",
+                                source="nexuslang",
+                                error_code="E309",
+                                error_type_key="runtime_error",
+                            )
+                        )
+                    continue
+
+                if end_pattern.match(raw_line) and indent <= current['try_indent']:
+                    finished = contexts.pop()
+                    if finished['catch_var'] is not None and finished['catch_line'] is not None:
+                        catch_scopes.append({
+                            'var': finished['catch_var'],
+                            'decl_line': finished['catch_line'],
+                            'scope_start': finished['catch_line'] + 1,
+                            'scope_end': i - 1,
+                        })
+
+        for scope in catch_scopes:
+            var_name = scope['var']
+            var_pattern = re.compile(rf'\b{re.escape(var_name)}\b')
+
+            for i, raw_line in enumerate(lines):
+                if i == scope['decl_line']:
+                    continue
+
+                in_scope = scope['scope_start'] <= i <= scope['scope_end']
+                if in_scope:
+                    continue
+
+                stripped = raw_line.strip()
+                if not stripped or stripped.startswith('#') or stripped.startswith('//'):
+                    continue
+
+                match = var_pattern.search(raw_line)
+                if not match:
+                    continue
+
+                diagnostics.append(
+                    self._build_diagnostic(
+                        line=i,
+                        start_char=match.start(),
+                        end_char=match.end(),
+                        severity=1,
+                        message=f"Catch variable '{var_name}' is only defined inside its catch block",
+                        source="nexuslang",
+                        error_code="E100",
+                        error_type_key="undefined_variable",
+                    )
+                )
 
         return diagnostics
 
