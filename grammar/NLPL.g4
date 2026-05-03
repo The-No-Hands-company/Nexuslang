@@ -53,6 +53,7 @@ statement
     | repeatNTimes
     | repeatWhileLoop
     | forEachLoop
+    | switchStatement
     | matchStatement
     | returnStatement
     | breakStatement
@@ -415,7 +416,7 @@ elseClause
     ;
 
 whileLoop
-    : WHILE expression
+        : labelPrefix? WHILE expression
         statement*
       END
     ;
@@ -433,9 +434,29 @@ repeatWhileLoop
     ;
 
 forEachLoop
-        : FOR EACH IDENTIFIER (WITH INDEX IDENTIFIER)? IN expression
+        : labelPrefix? FOR EACH IDENTIFIER (WITH INDEX IDENTIFIER)? IN expression
         statement*
       END
+    ;
+
+labelPrefix
+    : LABEL IDENTIFIER ':'
+    ;
+
+switchStatement
+    : SWITCH expression
+        switchCase+
+        defaultCase?
+    ;
+
+switchCase
+    : CASE expression
+        statement*
+    ;
+
+defaultCase
+    : DEFAULT
+        statement*
     ;
 
 // --------------------------------------------------------------------------
@@ -491,11 +512,11 @@ returnStatement
     ;
 
 breakStatement
-    : BREAK
+    : BREAK IDENTIFIER?
     ;
 
 continueStatement
-    : CONTINUE
+    : CONTINUE IDENTIFIER?
     ;
 
 panicStatement
@@ -986,6 +1007,7 @@ INDEX      : 'index' ;
 INTERFACE  : 'interface' ;
 INVARIANT  : 'invariant' ;
 IS         : 'is' ;
+LABEL      : 'label' ;
 LEFT       : 'left' ;
 LENGTH     : 'length' ;
 LESS       : 'less' ;
@@ -1026,6 +1048,7 @@ SIZEOF     : 'sizeof' ;
 SPAWN      : 'spawn' ;
 STATIC     : 'static' ;
 STRUCT     : 'struct' ;
+SWITCH     : 'switch' ;
 TEST       : 'test' ;
 TEXT       : 'text' ;
 THE        : 'the' ;

@@ -141,6 +141,37 @@ Repeat 5 times
 End repeat.
 ```
 
+#### Switch, Labels, and Fallthrough
+
+The parser supports indentation-scoped switch blocks and optional loop labels.
+
+```nlpl
+label outer: while counter is less than 10
+    switch counter
+        case 0
+            set counter to counter plus 1
+            continue outer
+        case 1
+            set counter to counter plus 1
+            fallthrough
+        case 2
+            break outer
+        default
+            break
+end
+```
+
+Canonical forms:
+
+```ebnf
+whileLoop      ::= ["label" IDENTIFIER ":"] "while" expression block "end"
+forEachLoop    ::= ["label" IDENTIFIER ":"] "for" "each" IDENTIFIER ["with" "index" IDENTIFIER] "in" expression block "end"
+switchStmt     ::= "switch" expression ("case" expression block)+ ["default" block]
+breakStmt      ::= "break" [IDENTIFIER]
+continueStmt   ::= "continue" [IDENTIFIER]
+fallthroughStmt::= "fallthrough"
+```
+
 ### 5. Functions and Procedures
 
 Functions are defined using natural language:
