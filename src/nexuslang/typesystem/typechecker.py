@@ -1043,16 +1043,24 @@ class TypeChecker:
         for stmt in loop.body:
             result_type = self.check_statement(stmt, loop_env)
 
-        # Detect loop-carried dependencies: writes to outer variables from inside the
-        # parallel region may cause data races.
+        # Detect loop-carried dependencies and unsupported reduction-style
+        # accumulator updates inside the parallel region.
         outer_mutations = self._collect_outer_mutations(
             loop.body,
             env,
             excluded_names={loop.var_name},
         )
-        for name in outer_mutations:
+        for mutation in outer_mutations:
+            if mutation["kind"] == "reduction":
+                self.errors.append(
+                    f"Type error: parallel for loop uses outer variable '{mutation['name']}' as a reduction variable "
+                    f"inside the parallel region — potential data race (loop-carried dependency); "
+                    f"use parallel_reduce or aggregate results after the loop"
+                )
+                continue
+
             self.errors.append(
-                f"Type error: parallel for loop writes to outer variable '{name}' — "
+                f"Type error: parallel for loop {mutation['detail']} '{mutation['name']}' — "
                 f"potential data race (loop-carried dependency)"
             )
 
@@ -1062,14 +1070,17 @@ class TypeChecker:
             self,
             body: list,
             outer_env: TypeEnvironment,
-            excluded_names: Optional[Set[str]] = None) -> List[str]:
-        """Return names of variables declared in outer_env that are assigned inside body.
+            excluded_names: Optional[Set[str]] = None) -> List[Dict[str, str]]:
+        """Return structured outer-scope write hazards found inside a parallel region.
 
-        A VariableDeclaration whose name resolves in the outer environment (not just the loop-local
-        environment) constitutes a write to an outer variable from inside the parallel region.
-        These are loop-carried dependencies that may cause data races.
+        Hazards include:
+        - writes to an outer variable
+        - mutations of outer object members
+        - mutations of outer indexed collections
+        - reduction-style writes where an outer variable is reassigned using its
+          own previous value (for example: `set total to total plus x`)
         """
-        mutated: List[str] = []
+        mutated: List[Dict[str, str]] = []
         excluded = excluded_names or set()
         non_executed_scope_nodes = {
             "FunctionDefinition",
@@ -1080,6 +1091,44 @@ class TypeChecker:
             "TraitDefinition",
         }
 
+        def _outer_name_exists(name: str) -> bool:
+            try:
+                outer_env.get_variable_type(name)
+                return True
+            except TypeCheckError:
+                return False
+
+        def _record(name: str, kind: str, detail: str) -> None:
+            if name in excluded:
+                return
+            if not _outer_name_exists(name):
+                return
+            entry = {"name": name, "kind": kind, "detail": detail}
+            if entry not in mutated:
+                mutated.append(entry)
+
+        def _expression_mentions_identifier(node: Any, identifier: str) -> bool:
+            if node is None:
+                return False
+            if isinstance(node, Identifier):
+                return node.name == identifier
+
+            for attr in (
+                    "left", "right", "operand", "value", "condition",
+                    "object_expr", "target", "iterable", "index"):
+                child = getattr(node, attr, None)
+                if child is not None and _expression_mentions_identifier(child, identifier):
+                    return True
+
+            for attr in ("arguments", "elements", "body"):
+                children = getattr(node, attr, None)
+                if isinstance(children, list):
+                    for child in children:
+                        if _expression_mentions_identifier(child, identifier):
+                            return True
+
+            return False
+
         def _walk(nodes):
             for node in nodes:
                 if node.__class__.__name__ in non_executed_scope_nodes:
@@ -1087,15 +1136,29 @@ class TypeChecker:
                     continue
 
                 if isinstance(node, VariableDeclaration):
-                    if node.name in excluded:
-                        continue
-                    try:
-                        outer_env.get_variable_type(node.name)
-                        # Variable exists in outer scope -> mutation of outer variable
-                        if node.name not in mutated:
-                            mutated.append(node.name)
-                    except TypeCheckError:
-                        pass
+                    if _expression_mentions_identifier(getattr(node, "value", None), node.name):
+                        _record(
+                            node.name,
+                            "reduction",
+                            "uses outer variable as a reduction variable",
+                        )
+                    else:
+                        _record(node.name, "variable-write", "writes to outer variable")
+
+                if isinstance(node, MemberAssignment):
+                    target = getattr(node, "target", None)
+                    base_name = getattr(getattr(target, "object_expr", None), "name", None)
+                    if isinstance(base_name, str):
+                        _record(base_name, "member-write", "mutates outer object")
+
+                if isinstance(node, IndexAssignment):
+                    target = getattr(node, "target", None)
+                    base_name = getattr(getattr(target, "array_expr", None), "name", None)
+                    if base_name is None:
+                        base_name = getattr(getattr(target, "array", None), "name", None)
+                    if isinstance(base_name, str):
+                        _record(base_name, "index-write", "mutates outer collection")
+
                 # Recurse into compound statements
                 for attr in ("body", "then_body", "else_body", "cases", "default_case"):
                     child = getattr(node, attr, None)

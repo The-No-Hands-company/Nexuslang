@@ -171,13 +171,14 @@ Real-time syntax and semantic error detection.
 
 ### Visual Studio Code
 
-1. **Install NexusLang Extension** (when available) or configure manually:
+1. **Install NLPL Language Support extension**.
 
 2. **Manual Setup** (`.vscode/settings.json`):
 ```json
 {
- "nexuslang.lsp.enabled": true,
- "nexuslang.lsp.serverPath": "/path/to/nlpl/src/nxl_lsp.py"
+ "nexuslang.languageServer.enabled": true,
+ "nexuslang.languageServer.path": "",
+ "nexuslang.trace.server": "off"
 }
 ```
 
@@ -201,7 +202,7 @@ local configs = require('lspconfig.configs')
 if not configs.nlpl then
  configs.nlpl = {
  default_config = {
- cmd = {'python', '/path/to/nlpl/src/nxl_lsp.py'},
+ cmd = {'python', '-m', 'nexuslang.lsp', '--stdio'},
  filetypes = {'nlpl'},
  root_dir = lspconfig.util.root_pattern('.git', '.nlplroot'),
  settings = {},
@@ -222,7 +223,7 @@ lspconfig.nlpl.setup{}
 
 (lsp-register-client
  (make-lsp-client
- :new-connection (lsp-stdio-connection '("python" "/path/to/nlpl/src/nxl_lsp.py"))
+ :new-connection (lsp-stdio-connection '("python" "-m" "nexuslang.lsp" "--stdio"))
  :major-modes '(nlpl-mode)
  :server-id 'nlpl-lsp))
 
@@ -237,7 +238,7 @@ lspconfig.nlpl.setup{}
  "clients": {
  "nlpl": {
  "enabled": true,
- "command": ["python", "/path/to/nlpl/src/nxl_lsp.py"],
+ "command": ["python", "-m", "nexuslang.lsp", "--stdio"],
  "selector": "source.nxl"
  }
  }
@@ -251,7 +252,7 @@ lspconfig.nlpl.setup{}
 Most editors use stdio communication:
 
 ```bash
-python src/nxl_lsp.py
+PYTHONPATH=src python -m nexuslang.lsp --stdio
 ```
 
 The server reads JSON-RPC messages from stdin and writes responses to stdout.
@@ -398,12 +399,12 @@ set processor to new utils.DataProcessor
 
 **Check**:
 - Python path is correct
-- `src/nxl_lsp.py` exists and is executable
+- `src/nexuslang/lsp/server.py` exists
 - No syntax errors in LSP code
 
 **Debug**:
 ```bash
-python src/nxl_lsp.py
+PYTHONPATH=src python -m nexuslang.lsp --stdio
 # Should start and wait for stdin input
 ```
 
@@ -428,18 +429,11 @@ tail -f /tmp/nlpl-lsp.log
 
 ## Future Enhancements
 
-Planned features (not yet implemented):
+Near-term planned improvements:
 
-- [ ] Rename refactoring (`textDocument/rename`)
 - [ ] Extract function/method refactoring
 - [ ] Organize imports
-- [ ] Inlay hints for inferred types
-- [ ] Call hierarchy (`callHierarchy/*`)
 - [ ] Type hierarchy (`typeHierarchy/*`)
-- [ ] Semantic tokens for syntax highlighting
-- [ ] Code lens (show references count)
-- [ ] Document symbols tree
-- [ ] Workspace folders support
 - [ ] Incremental text sync (currently full sync)
 
 ## Contributing
@@ -448,12 +442,12 @@ The LSP is implemented in pure Python and follows LSP specification 3.17.
 
 **Adding a New Feature**:
 
-1. Create provider in `src/nlpl/lsp/<feature>.py`
+1. Create provider in `src/nexuslang/lsp/<feature>.py`
 2. Import and initialize in `server.py`
 3. Add handler method `_handle_<feature>()`
 4. Register in `_handle_message()` switch
 5. Update server capabilities in `_handle_initialize()`
-6. Add tests in `tests/test_lsp_enhancements.py`
+6. Add tests in `tests/tooling/test_lsp_*.py`
 7. Update this documentation
 
 ## References

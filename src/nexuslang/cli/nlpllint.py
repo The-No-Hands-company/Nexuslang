@@ -18,8 +18,9 @@ import sys
 import os
 import argparse
 import json
+import tomllib
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 # Add parent directories to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
@@ -33,6 +34,150 @@ from nexuslang.tooling.analyzer.analyzer import (
 from nexuslang.tooling.analyzer.report import Severity
 from nexuslang.tooling.analyzer.autofix import AutoFixer
 from nexuslang.tooling.analyzer.ide_hooks import IDEHooks, LspFormatter
+
+
+_ALLOWED_ROOT_KEYS = {
+    'mode',
+    'strict',
+    'minimal',
+    'json',
+    'fix',
+    'dry_run',
+    'no_color',
+    'errors_only',
+    'max_issues',
+    'analyzer',
+}
+
+_ALLOWED_ANALYZER_KEYS = {
+    'memory',
+    'null',
+    'resources',
+    'init',
+    'types',
+    'dead_code',
+    'style',
+    'performance',
+    'security',
+    'data_flow',
+    'control_flow',
+}
+
+
+def _validate_bool(config: Dict[str, Any], key: str) -> None:
+    if key in config and not isinstance(config[key], bool):
+        raise ValueError(f"Config key '{key}' must be a boolean")
+
+
+def _validate_config(config: Dict[str, Any]) -> None:
+    """Validate linter configuration schema and value types."""
+    unknown_root = sorted(set(config.keys()) - _ALLOWED_ROOT_KEYS)
+    if unknown_root:
+        raise ValueError(f"Unknown config key(s): {', '.join(unknown_root)}")
+
+    if 'mode' in config:
+        mode = config['mode']
+        if not isinstance(mode, str):
+            raise ValueError("Config key 'mode' must be a string")
+        if mode.strip().lower() not in {'default', 'strict', 'minimal'}:
+            raise ValueError("Config key 'mode' must be one of: default, strict, minimal")
+
+    for key in ('strict', 'minimal', 'json', 'fix', 'dry_run', 'no_color', 'errors_only'):
+        _validate_bool(config, key)
+
+    if 'max_issues' in config:
+        max_issues = config['max_issues']
+        if not isinstance(max_issues, int):
+            raise ValueError("Config key 'max_issues' must be an integer")
+        if max_issues <= 0:
+            raise ValueError("Config key 'max_issues' must be > 0")
+
+    analyzer_cfg = config.get('analyzer')
+    if analyzer_cfg is not None:
+        if not isinstance(analyzer_cfg, dict):
+            raise ValueError("Config key 'analyzer' must be an object/table")
+        unknown_analyzer = sorted(set(analyzer_cfg.keys()) - _ALLOWED_ANALYZER_KEYS)
+        if unknown_analyzer:
+            raise ValueError(
+                f"Unknown analyzer config key(s): {', '.join(unknown_analyzer)}"
+            )
+        for key, value in analyzer_cfg.items():
+            if not isinstance(value, bool):
+                raise ValueError(f"Analyzer config key '{key}' must be a boolean")
+
+
+def _load_config(path: str) -> Dict[str, Any]:
+    """Load linter configuration from JSON or TOML."""
+    cfg_path = Path(path)
+    if not cfg_path.exists():
+        raise FileNotFoundError(f"Configuration file not found: {path}")
+
+    raw = cfg_path.read_bytes()
+    suffix = cfg_path.suffix.lower()
+
+    if suffix == '.json':
+        data = json.loads(raw.decode('utf-8'))
+    elif suffix in ('.toml', '.tml'):
+        data = tomllib.loads(raw.decode('utf-8'))
+    else:
+        # Try TOML first, then JSON for extension-less config files.
+        try:
+            data = tomllib.loads(raw.decode('utf-8'))
+        except Exception:
+            data = json.loads(raw.decode('utf-8'))
+
+    if not isinstance(data, dict):
+        raise ValueError("Configuration root must be an object/table")
+
+    # Allow nesting under [nlpllint] or [linter], while keeping flat files valid.
+    if isinstance(data.get('nlpllint'), dict):
+        config = data['nlpllint']
+        _validate_config(config)
+        return config
+    if isinstance(data.get('linter'), dict):
+        config = data['linter']
+        _validate_config(config)
+        return config
+
+    _validate_config(data)
+    return data
+
+
+def _create_analyzer_from_config(args, config: Dict[str, Any]) -> StaticAnalyzer:
+    """Create analyzer instance using CLI mode flags with config fallbacks."""
+    mode = str(config.get('mode', '')).strip().lower()
+
+    strict_mode = args.strict or mode == 'strict' or bool(config.get('strict', False))
+    minimal_mode = args.minimal or mode == 'minimal' or bool(config.get('minimal', False))
+
+    if strict_mode and minimal_mode:
+        # CLI conflict should keep argparse behavior intuitive: explicit strict wins.
+        minimal_mode = False
+
+    if strict_mode:
+        return create_strict_analyzer()
+    if minimal_mode:
+        return create_minimal_analyzer()
+
+    analyzer_cfg = config.get('analyzer', {})
+    if not isinstance(analyzer_cfg, dict) or not analyzer_cfg:
+        return create_default_analyzer()
+
+    params = {
+        'enable_all': True,
+        'enable_memory': bool(analyzer_cfg.get('memory', True)),
+        'enable_null': bool(analyzer_cfg.get('null', True)),
+        'enable_resources': bool(analyzer_cfg.get('resources', True)),
+        'enable_init': bool(analyzer_cfg.get('init', True)),
+        'enable_types': bool(analyzer_cfg.get('types', True)),
+        'enable_dead_code': bool(analyzer_cfg.get('dead_code', True)),
+        'enable_style': bool(analyzer_cfg.get('style', False)),
+        'enable_performance': bool(analyzer_cfg.get('performance', True)),
+        'enable_security': bool(analyzer_cfg.get('security', True)),
+        'enable_data_flow': bool(analyzer_cfg.get('data_flow', True)),
+        'enable_control_flow': bool(analyzer_cfg.get('control_flow', True)),
+    }
+    return StaticAnalyzer(**params)
 
 
 def main():
@@ -50,7 +195,8 @@ def main():
     
     parser.add_argument(
         '-r', '--recursive',
-        action='store_true',
+        action=argparse.BooleanOptionalAction,
+        default=True,
         help='Recursively analyze directory (default: True)'
     )
     
@@ -106,7 +252,7 @@ def main():
     parser.add_argument(
         '--config',
         type=str,
-        help='Path to configuration file (TODO)'
+        help='Path to JSON/TOML configuration file'
     )
     
     args = parser.parse_args()
@@ -117,13 +263,23 @@ def main():
         print(f"Error: Path not found: {args.path}", file=sys.stderr)
         return 1
     
-    # Create analyzer
-    if args.strict:
-        analyzer = create_strict_analyzer()
-    elif args.minimal:
-        analyzer = create_minimal_analyzer()
-    else:
-        analyzer = create_default_analyzer()
+    # Load optional config file.
+    config: Dict[str, Any] = {}
+    if args.config:
+        try:
+            config = _load_config(args.config)
+        except Exception as exc:
+            print(f"Error loading config: {exc}", file=sys.stderr)
+            return 1
+
+    analyzer = _create_analyzer_from_config(args, config)
+
+    json_output = args.json or bool(config.get('json', False))
+    fix_enabled = args.fix or bool(config.get('fix', False))
+    dry_run_enabled = args.dry_run or bool(config.get('dry_run', False))
+    no_color = args.no_color or bool(config.get('no_color', False))
+    errors_only = args.errors_only or bool(config.get('errors_only', False))
+    max_issues = args.max_issues if args.max_issues is not None else config.get('max_issues')
     
     # Analyze
     try:
@@ -136,17 +292,16 @@ def main():
         return 1
     
     # Auto-fix pass (runs before output so the summary reflects remaining issues)
-    if args.fix or getattr(args, 'dry_run', False):
-        dry_run = getattr(args, 'dry_run', False)
-        _apply_fixes(reports, dry_run=dry_run, use_colors=not getattr(args, 'no_color', False))
+    if fix_enabled or dry_run_enabled:
+        _apply_fixes(reports, dry_run=dry_run_enabled, use_colors=not no_color)
 
     # Output results
-    use_colors = not args.no_color and sys.stdout.isatty()
+    use_colors = not no_color and sys.stdout.isatty()
     
-    if args.json:
+    if json_output:
         output_json(reports)
     else:
-        return output_text(reports, use_colors, args.errors_only, args.max_issues)
+        return output_text(reports, use_colors, errors_only, max_issues)
 
 
 def _apply_fixes(

@@ -85,6 +85,21 @@
           "default": "",
           "description": "Path to log file for language server output"
         },
+        "nexuslang.languageServer.linting.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable real-time analyzer-backed lint diagnostics in the language server"
+        },
+        "nexuslang.languageServer.linting.strict": {
+          "type": "boolean",
+          "default": false,
+          "description": "Use strict lint profile for editor-time diagnostics"
+        },
+        "nexuslang.languageServer.linting.errorsOnly": {
+          "type": "boolean",
+          "default": false,
+          "description": "Only surface lint diagnostics with error severity"
+        },
         "nexuslang.trace.server": {
           "type": "string",
           "enum": [

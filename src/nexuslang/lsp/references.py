@@ -10,6 +10,7 @@ import re
 from ..parser.lexer import Lexer
 from ..parser.parser import Parser
 from ..analysis import ASTSymbolExtractor, SymbolTable
+from ..parser.ast import ClassDefinition
 
 
 class ReferencesProvider:
@@ -27,6 +28,7 @@ class ReferencesProvider:
         self.server = server
         # Cache symbol tables per document
         self.symbol_tables: Dict[str, SymbolTable] = {}
+        self._class_hierarchy_cache: Optional[Dict[str, List[str]]] = None
     
     def _get_or_build_symbol_table(self, text: str, uri: str) -> Optional[SymbolTable]:
         """Build symbol table from document text."""
@@ -98,7 +100,8 @@ class ReferencesProvider:
 
         # Extend with cross-file results from workspace files not currently open
         self._add_workspace_references(references, text, position)
-        return references
+        self._add_override_family_method_definitions(references, text, position, uri)
+        return self._dedupe_references(references)
 
     def _add_workspace_references(
         self,
@@ -206,6 +209,12 @@ class ReferencesProvider:
             return 'variable'
         
         line = lines[position.line]
+        inside_class = self._is_inside_class(lines, position.line)
+
+        # Check for method definition (inside a class). In NexusLang class methods
+        # are commonly written as function declarations in class scope.
+        if inside_class and re.search(rf'\b(?:method|function)\s+{re.escape(symbol)}\b', line, re.IGNORECASE):
+            return 'method'
         
         # Check for function definition
         if re.search(rf'\bfunction\s+{re.escape(symbol)}\b', line, re.IGNORECASE):
@@ -214,14 +223,6 @@ class ReferencesProvider:
         # Check for class definition
         if re.search(rf'\bclass\s+{re.escape(symbol)}\b', line, re.IGNORECASE):
             return 'class'
-        
-        # Check for method definition (inside a class)
-        for i in range(position.line - 1, max(0, position.line - 50), -1):
-            if re.search(r'\bclass\s+\w+', lines[i], re.IGNORECASE):
-                # Inside class, likely a method
-                if re.search(rf'\bmethod\s+{re.escape(symbol)}\b', line, re.IGNORECASE):
-                    return 'method'
-                break
         
         # Check for variable assignment
         if re.search(rf'\bset\s+{re.escape(symbol)}\s+to\b', line, re.IGNORECASE):
@@ -359,7 +360,7 @@ class ReferencesProvider:
         refs = []
         
         # Pattern for method definition
-        def_pattern = rf'\bmethod\s+{re.escape(symbol)}\b'
+        def_pattern = rf'\b(?:method|function)\s+{re.escape(symbol)}\b'
         
         # Pattern for method calls (object.method or call method on object)
         call_pattern = rf'\.{re.escape(symbol)}\s*\('
@@ -369,11 +370,13 @@ class ReferencesProvider:
             # Check for definition
             match = re.search(def_pattern, line, re.IGNORECASE)
             if match:
+                keyword_match = re.search(r'\b(?:method|function)\s+', line[match.start():], re.IGNORECASE)
+                start_pos = match.start() + (keyword_match.end() if keyword_match else 0)
                 refs.append({
                     "uri": uri,
                     "range": {
-                        "start": {"line": i, "character": match.start()},
-                        "end": {"line": i, "character": match.end()}
+                        "start": {"line": i, "character": start_pos},
+                        "end": {"line": i, "character": start_pos + len(symbol)}
                     }
                 })
             
@@ -401,6 +404,153 @@ class ReferencesProvider:
                     })
         
         return refs
+
+    def _is_inside_class(self, lines: List[str], line_number: int) -> bool:
+        """Best-effort check whether a line is inside a class block."""
+        for i in range(line_number, max(-1, line_number - 80), -1):
+            if i < 0:
+                break
+            if re.search(r'\bend\b', lines[i], re.IGNORECASE):
+                return False
+            if re.search(r'\bclass\s+\w+', lines[i], re.IGNORECASE):
+                return True
+        return False
+
+    def _add_override_family_method_definitions(
+        self,
+        references: List[Dict],
+        text: str,
+        position: 'Position',
+        uri: str,
+    ) -> None:
+        """Include method declarations from base/derived classes in override families."""
+        index = getattr(self.server, 'workspace_index', None)
+        if not index:
+            return
+
+        symbol = self._get_symbol_at_position(text, position)
+        if not symbol:
+            return
+
+        method_symbols = [s for s in index.get_symbol(symbol) if s.kind == 'method']
+        if not method_symbols:
+            return
+
+        current_method = self._find_current_method_symbol(method_symbols, uri, position.line)
+        if not current_method or not current_method.scope:
+            return
+
+        class_name = current_method.scope.split('.')[0]
+        family_classes = self._collect_override_family_classes(class_name, symbol)
+        if not family_classes:
+            return
+
+        for sym in method_symbols:
+            if not sym.scope:
+                continue
+            method_class = sym.scope.split('.')[0]
+            if method_class not in family_classes:
+                continue
+            references.append({
+                "uri": sym.file_uri,
+                "range": {
+                    "start": {"line": sym.line, "character": sym.column},
+                    "end": {"line": sym.line, "character": sym.column + len(sym.name)}
+                }
+            })
+
+    def _collect_override_family_classes(self, class_name: str, method_name: str) -> set:
+        """Collect classes in the same inheritance family that declare method_name."""
+        hierarchy = self._build_class_hierarchy()
+        descendants: Dict[str, List[str]] = {}
+        for cls, parents in hierarchy.items():
+            for parent in parents:
+                descendants.setdefault(parent, []).append(cls)
+
+        index = getattr(self.server, 'workspace_index', None)
+        if not index:
+            return set()
+
+        method_classes = {
+            s.scope.split('.')[0]
+            for s in index.get_symbol(method_name)
+            if s.kind == 'method' and s.scope
+        }
+
+        family = set()
+        queue = [class_name]
+        visited = set()
+        while queue:
+            cls = queue.pop(0)
+            if cls in visited:
+                continue
+            visited.add(cls)
+
+            if cls in method_classes:
+                family.add(cls)
+
+            queue.extend(hierarchy.get(cls, []))
+            queue.extend(descendants.get(cls, []))
+
+        return family
+
+    def _find_current_method_symbol(self, method_symbols, uri: str, line: int):
+        """Find the method symbol that best matches the current cursor line."""
+        same_file = [s for s in method_symbols if s.file_uri == uri]
+        if not same_file:
+            return None
+
+        exact = [s for s in same_file if s.line == line]
+        if exact:
+            return exact[0]
+
+        return min(same_file, key=lambda s: abs(s.line - line))
+
+    def _build_class_hierarchy(self) -> Dict[str, List[str]]:
+        """Build class -> direct parent class names from indexed workspace files."""
+        if self._class_hierarchy_cache is not None:
+            return self._class_hierarchy_cache
+
+        hierarchy: Dict[str, List[str]] = {}
+        index = getattr(self.server, 'workspace_index', None)
+        if not index:
+            self._class_hierarchy_cache = hierarchy
+            return hierarchy
+
+        for file_uri in index.indexed_files:
+            file_path = index._uri_to_path(file_uri)
+            try:
+                with open(file_path, 'r', encoding='utf-8') as fh:
+                    source = fh.read()
+                lexer = Lexer(source)
+                tokens = lexer.tokenize()
+                parser = Parser(tokens)
+                ast = parser.parse()
+            except Exception:
+                continue
+
+            for stmt in getattr(ast, 'statements', []):
+                if isinstance(stmt, ClassDefinition):
+                    hierarchy[stmt.name] = list(getattr(stmt, 'parent_classes', []) or [])
+
+        self._class_hierarchy_cache = hierarchy
+        return hierarchy
+
+    def _dedupe_references(self, references: List[Dict]) -> List[Dict]:
+        """Deduplicate references by URI and start position."""
+        seen = set()
+        unique = []
+        for ref in references:
+            key = (
+                ref.get("uri"),
+                ref.get("range", {}).get("start", {}).get("line"),
+                ref.get("range", {}).get("start", {}).get("character"),
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            unique.append(ref)
+        return unique
     
     def _find_variable_refs(self, lines: List[str], symbol: str, uri: str) -> List[Dict]:
         """Find variable assignments and all references."""

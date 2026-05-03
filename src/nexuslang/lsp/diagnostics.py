@@ -88,6 +88,23 @@ class DiagnosticsProvider:
 
         return diagnostic
 
+    def _is_valid_error_code(self, code: Optional[str]) -> bool:
+        """Return True when code follows NexusLang EXXX format."""
+        if not isinstance(code, str):
+            return False
+        return bool(re.fullmatch(r"E\d{3}", code))
+
+    def _tag_origin(self, diagnostics: List[Dict], origin: str) -> List[Dict]:
+        """Annotate diagnostic stream origin for downstream merge/debugging."""
+        tagged: List[Dict] = []
+        for diagnostic in diagnostics or []:
+            d = dict(diagnostic)
+            data = dict(d.get("data", {}))
+            data.setdefault("origin", origin)
+            d["data"] = data
+            tagged.append(d)
+        return tagged
+
     def _diagnostic_sort_key(self, diagnostic: Dict) -> tuple:
         """Return a stable sort key for deterministic diagnostics ordering."""
         rng = diagnostic.get("range", {})
@@ -109,18 +126,26 @@ class DiagnosticsProvider:
         normalized = dict(diagnostic)
 
         source = normalized.get("source", "nlpl")
+
+        data = dict(normalized.get("data", {}))
+        if source in {"parser", "nlpl-parser"}:
+            data.setdefault("origin", "parser")
+        elif source in {"typechecker", "nlpl-typechecker"}:
+            data.setdefault("origin", "typechecker")
+        elif source in {"nexuslang", "nlpl"}:
+            data.setdefault("origin", "diagnostics")
+
         if source in {"nexuslang", "parser", "typechecker", "nlpl-parser", "nlpl-typechecker"}:
             normalized["source"] = "nlpl"
         elif not source:
             normalized["source"] = "nlpl"
 
         code = normalized.get("code")
-        if not code:
+        if not self._is_valid_error_code(code):
             code = get_error_code_for_type("runtime_error")
             normalized["code"] = code
 
         info = get_error_info(str(code))
-        data = dict(normalized.get("data", {}))
         if info:
             data.setdefault("title", info.title)
             data.setdefault("category", info.category)
@@ -128,6 +153,7 @@ class DiagnosticsProvider:
                 data.setdefault("fixes", info.fixes[:3])
             if info.doc_link:
                 data.setdefault("docLink", info.doc_link)
+        data.setdefault("reference", f"docs/reference/error-codes.md#{str(code).lower()}")
         data.setdefault("explainHint", f"nxl --explain {code}")
         normalized["data"] = {k: v for k, v in data.items() if v not in (None, [], "")}
 
@@ -143,7 +169,7 @@ class DiagnosticsProvider:
                 merged.append(self._normalize_diagnostic(diagnostic))
 
         deduped: List[Dict] = []
-        seen = set()
+        seen = {}
         for diagnostic in sorted(merged, key=self._diagnostic_sort_key):
             identity = (
                 diagnostic.get("range", {}).get("start", {}).get("line", 0),
@@ -155,10 +181,32 @@ class DiagnosticsProvider:
                 str(diagnostic.get("source", "nlpl")),
                 str(diagnostic.get("message", "")),
             )
-            if identity in seen:
+            existing_idx = seen.get(identity)
+            if existing_idx is None:
+                seen[identity] = len(deduped)
+                deduped.append(diagnostic)
                 continue
-            seen.add(identity)
-            deduped.append(diagnostic)
+
+            # Merge origins for identical diagnostics emitted by multiple streams.
+            existing = deduped[existing_idx]
+            existing_data = dict(existing.get("data", {}))
+            incoming_data = dict(diagnostic.get("data", {}))
+
+            origins = set()
+            existing_origin = existing_data.get("origin")
+            if existing_origin:
+                origins.add(existing_origin)
+            incoming_origin = incoming_data.get("origin")
+            if incoming_origin:
+                origins.add(incoming_origin)
+            origins.update(existing_data.get("origins", []))
+            origins.update(incoming_data.get("origins", []))
+
+            if origins:
+                existing_data["origins"] = sorted(origins)
+                if "origin" not in existing_data:
+                    existing_data["origin"] = sorted(origins)[0]
+                existing["data"] = existing_data
 
         return deduped
     
@@ -180,6 +228,9 @@ class DiagnosticsProvider:
         channel_diagnostics: List[Dict] = []
         macro_comptime_diagnostics: List[Dict] = []
         exception_diagnostics: List[Dict] = []
+        async_diagnostics: List[Dict] = []
+        unsafe_ffi_diagnostics: List[Dict] = []
+        parallel_diagnostics: List[Dict] = []
         unused_var_diagnostics: List[Dict] = []
         
         # Track this file in workspace
@@ -204,16 +255,22 @@ class DiagnosticsProvider:
         channel_diagnostics = self._check_channel_operations(text)
         macro_comptime_diagnostics = self._check_macro_comptime_operations(text)
         exception_diagnostics = self._check_exception_scope_and_unreachable_catch(text)
+        async_diagnostics = self._check_async_await_spawn_contexts(text)
+        unsafe_ffi_diagnostics = self._check_unsafe_and_ffi_signatures(text)
+        parallel_diagnostics = self._check_parallel_unsafe_captures(text)
         unused_var_diagnostics = self._check_unused_vars(text)
 
         diagnostics = self.merge_and_dedupe_diagnostics(
-            parser_diagnostics,
-            type_diagnostics,
-            import_diagnostics,
-            channel_diagnostics,
-            macro_comptime_diagnostics,
-            exception_diagnostics,
-            unused_var_diagnostics,
+            self._tag_origin(parser_diagnostics, "parser"),
+            self._tag_origin(type_diagnostics, "typechecker"),
+            self._tag_origin(import_diagnostics, "imports"),
+            self._tag_origin(channel_diagnostics, "channels"),
+            self._tag_origin(macro_comptime_diagnostics, "macro-comptime"),
+            self._tag_origin(exception_diagnostics, "exceptions"),
+            self._tag_origin(async_diagnostics, "async"),
+            self._tag_origin(unsafe_ffi_diagnostics, "unsafe-ffi"),
+            self._tag_origin(parallel_diagnostics, "parallel-for"),
+            self._tag_origin(unused_var_diagnostics, "unused-vars"),
         )
         
         # Cache diagnostics for this file
@@ -391,6 +448,30 @@ class DiagnosticsProvider:
             for error in typechecker.errors:
                 # Try to find the AST node related to this error
                 line, col, end_col = self._find_error_position(text, error, ast)
+
+                contract_fixes = self._suggest_contract_fixes(error)
+                asm_fixes = self._suggest_inline_asm_fixes(error)
+                ffi_fixes = self._suggest_unsafe_ffi_fixes(error)
+                is_contract_error = bool(contract_fixes)
+                is_asm_error = bool(asm_fixes)
+                is_ffi_error = bool(ffi_fixes)
+                selected_fixes = contract_fixes or asm_fixes or ffi_fixes
+
+                if is_contract_error or is_asm_error or is_ffi_error:
+                    error_code = "E201"
+                    error_type = "invalid_operation"
+                else:
+                    error_code = None
+                    error_type = "type_mismatch"
+
+                if is_contract_error:
+                    category = "contract"
+                elif is_asm_error:
+                    category = "systems"
+                elif is_ffi_error:
+                    category = "ffi"
+                else:
+                    category = None
                 
                 diagnostics.append(
                     self._build_diagnostic(
@@ -400,7 +481,10 @@ class DiagnosticsProvider:
                         severity=1,
                         message=f"Type error: {error}",
                         source="nexuslang",
-                        error_type_key="type_mismatch",
+                        error_code=error_code,
+                        error_type_key=error_type,
+                        category=category,
+                        fixes=selected_fixes,
                     )
                 )
         
@@ -409,6 +493,134 @@ class DiagnosticsProvider:
             pass
         
         return diagnostics
+
+    def _suggest_contract_fixes(self, error: str) -> List[str]:
+        """Return quick-fix suggestions for contract diagnostics."""
+        text = (error or "").lower()
+        if not any(k in text for k in ("require", "ensure", "guarantee", "invariant", "contract")):
+            return []
+
+        fixes: List[str] = []
+
+        if "must be a boolean" in text:
+            fixes.extend([
+                "Use a boolean condition expression",
+                "Convert contract condition to explicit boolean check",
+                "Add contract failure message",
+            ])
+
+        if "must not contain assignments" in text or "must not contain assignments or mutations" in text:
+            fixes.extend([
+                "Move assignment or mutation outside contract condition",
+                "Keep only pure boolean expressions in contract conditions",
+                "Add contract failure message",
+            ])
+
+        if "message must be a string" in text:
+            fixes.extend([
+                "Use string literal for contract message",
+                "Convert contract message to string",
+            ])
+
+        # Stable order, remove duplicates.
+        seen = set()
+        ordered: List[str] = []
+        for fix in fixes:
+            if fix in seen:
+                continue
+            seen.add(fix)
+            ordered.append(fix)
+        return ordered
+
+    def _suggest_inline_asm_fixes(self, error: str) -> List[str]:
+        """Return quick-fix suggestions for inline assembly diagnostics."""
+        text = (error or "").lower()
+        if "inline assembly" not in text:
+            return []
+
+        fixes: List[str] = []
+
+        if "input constraint" in text:
+            fixes.extend([
+                "Use GCC-style input constraint tokens (e.g., r, m, i)",
+                "Remove whitespace from asm constraint strings",
+            ])
+
+        if "output constraint" in text:
+            fixes.extend([
+                "Add output write marker (= or +) to asm output constraint",
+                "Use GCC-style output constraint tokens (e.g., =r, +m)",
+            ])
+
+        if "output operand must be an identifier" in text:
+            fixes.extend([
+                "Use a variable identifier as asm output target",
+                "Declare output variable before inline asm block",
+            ])
+
+        if "undefined output variable" in text:
+            fixes.extend([
+                "Declare output variable before inline asm block",
+                "Use an existing variable name in asm outputs",
+            ])
+
+        if "clobber" in text and "duplicate" in text:
+            fixes.extend([
+                "Remove duplicate clobber entries",
+            ])
+
+        if "invalid inline assembly clobber" in text:
+            fixes.extend([
+                "Use valid clobbers such as memory, cc, or register names",
+                "Remove special characters from clobber names",
+            ])
+
+        seen = set()
+        ordered: List[str] = []
+        for fix in fixes:
+            if fix in seen:
+                continue
+            seen.add(fix)
+            ordered.append(fix)
+        return ordered
+
+    def _suggest_unsafe_ffi_fixes(self, error: str) -> List[str]:
+        """Return quick-fix suggestions for unsafe/FFI diagnostics."""
+        text = (error or "").lower()
+        if not any(k in text for k in ("extern", "foreign", "ffi", "unsafe", "calling convention", "library")):
+            return []
+
+        fixes: List[str] = []
+
+        if "from library" in text or "library" in text:
+            fixes.append("Add source library clause: from library \"c\"")
+
+        if "calling convention" in text or "convention" in text:
+            fixes.append("Use supported calling conventions: cdecl, stdcall, fastcall, sysv, win64, aapcs")
+
+        if "unsafe" in text and "do" in text:
+            fixes.append("Use unsafe blocks as: unsafe do ... end")
+
+        if "return" in text and "extern function" in text:
+            fixes.append("Declare explicit extern return type with returns <Type>")
+
+        if "parameter" in text and "as" in text:
+            fixes.append("Declare each extern parameter as: name as Type")
+
+        if not fixes:
+            fixes.extend([
+                "Ensure extern signatures include parameter and return types",
+                "Prefer explicit unsafe scopes around raw FFI operations",
+            ])
+
+        seen = set()
+        ordered: List[str] = []
+        for fix in fixes:
+            if fix in seen:
+                continue
+            seen.add(fix)
+            ordered.append(fix)
+        return ordered
     
     def _find_error_position(self, text: str, error: str, ast) -> tuple:
         """
@@ -899,6 +1111,391 @@ class DiagnosticsProvider:
                         error_type_key="undefined_variable",
                     )
                 )
+
+        return diagnostics
+
+    def _check_async_await_spawn_contexts(self, text: str) -> List[Dict]:
+        """Check await/spawn misuse patterns and async-scope violations."""
+        diagnostics: List[Dict] = []
+        lines = text.split('\n')
+
+        async_function_pattern = re.compile(r'^\s*async\s+function\b', re.IGNORECASE)
+        await_pattern = re.compile(r'\bawait\b', re.IGNORECASE)
+        bare_await_pattern = re.compile(r'\bawait\s*$', re.IGNORECASE)
+        bare_spawn_pattern = re.compile(r'^\s*spawn\s*$', re.IGNORECASE)
+
+        async_scope_indents: List[int] = []
+
+        def _indent(line_text: str) -> int:
+            return len(line_text) - len(line_text.lstrip(' '))
+
+        for i, raw_line in enumerate(lines):
+            stripped = raw_line.strip()
+            if not stripped or stripped.startswith('#') or stripped.startswith('//'):
+                continue
+
+            indent = _indent(raw_line)
+
+            # Pop async scopes on dedent.
+            while async_scope_indents and indent <= async_scope_indents[-1]:
+                async_scope_indents.pop()
+
+            if async_function_pattern.match(raw_line):
+                async_scope_indents.append(indent)
+                continue
+
+            await_match = await_pattern.search(raw_line)
+            if await_match and not async_scope_indents:
+                diagnostics.append(
+                    self._build_diagnostic(
+                        line=i,
+                        start_char=await_match.start(),
+                        end_char=await_match.end(),
+                        severity=1,
+                        message="Cannot use 'await' outside an async function",
+                        source="nexuslang",
+                        error_code="E201",
+                        error_type_key="invalid_operation",
+                    )
+                )
+
+            if await_match and bare_await_pattern.search(raw_line):
+                diagnostics.append(
+                    self._build_diagnostic(
+                        line=i,
+                        start_char=await_match.start(),
+                        end_char=await_match.end(),
+                        severity=2,
+                        message="Await expression is missing a task or awaitable value",
+                        source="nexuslang",
+                        error_code="E201",
+                        error_type_key="invalid_operation",
+                    )
+                )
+
+            if bare_spawn_pattern.match(raw_line):
+                start = raw_line.lower().find('spawn')
+                diagnostics.append(
+                    self._build_diagnostic(
+                        line=i,
+                        start_char=max(0, start),
+                        end_char=max(5, start + 5),
+                        severity=1,
+                        message="Spawn expression is missing target function or block",
+                        source="nexuslang",
+                        error_code="E201",
+                        error_type_key="invalid_operation",
+                    )
+                )
+
+        return diagnostics
+
+    def _check_unsafe_and_ffi_signatures(self, text: str) -> List[Dict]:
+        """Check unsafe block structure and extern/foreign signature consistency."""
+        diagnostics: List[Dict] = []
+        lines = text.split('\n')
+
+        unsafe_open_pattern = re.compile(r'^\s*unsafe\b', re.IGNORECASE)
+        unsafe_do_pattern = re.compile(r'^\s*unsafe\s+do\b', re.IGNORECASE)
+        end_pattern = re.compile(r'^\s*end\b', re.IGNORECASE)
+        extern_function_pattern = re.compile(r'^\s*(extern|foreign)\s+function\s+([A-Za-z_][A-Za-z0-9_]*)\b(.*)$', re.IGNORECASE)
+        extern_variable_pattern = re.compile(r'^\s*(extern|foreign)\s+variable\s+([A-Za-z_][A-Za-z0-9_]*)\b(.*)$', re.IGNORECASE)
+
+        supported_calling_conventions = {"cdecl", "stdcall", "fastcall", "sysv", "win64", "aapcs", "vectorcall"}
+        unsafe_stack: List[Dict] = []
+
+        def _indent(line_text: str) -> int:
+            return len(line_text) - len(line_text.lstrip(' '))
+
+        for i, raw_line in enumerate(lines):
+            stripped = raw_line.strip()
+            if not stripped or stripped.startswith('#') or stripped.startswith('//'):
+                continue
+
+            indent = _indent(raw_line)
+
+            if unsafe_open_pattern.match(raw_line) and not unsafe_do_pattern.match(raw_line):
+                start = raw_line.lower().find('unsafe')
+                diagnostics.append(
+                    self._build_diagnostic(
+                        line=i,
+                        start_char=max(0, start),
+                        end_char=max(6, start + 6),
+                        severity=1,
+                        message="Unsafe block must use 'unsafe do' opening syntax",
+                        source="nexuslang",
+                        error_code="E201",
+                        error_type_key="invalid_operation",
+                        category="ffi",
+                        fixes=["Open unsafe blocks with: unsafe do", "Close unsafe blocks with end"],
+                    )
+                )
+
+            if unsafe_do_pattern.match(raw_line):
+                unsafe_stack.append({"line": i, "indent": indent})
+
+            if end_pattern.match(raw_line) and unsafe_stack:
+                if indent <= unsafe_stack[-1]["indent"]:
+                    unsafe_stack.pop()
+
+            extern_function_match = extern_function_pattern.match(raw_line)
+            if extern_function_match:
+                function_name = extern_function_match.group(2)
+                remainder = extern_function_match.group(3) or ""
+                remainder_lower = remainder.lower()
+                name_start = raw_line.find(function_name)
+
+                if " from library " not in remainder_lower:
+                    diagnostics.append(
+                        self._build_diagnostic(
+                            line=i,
+                            start_char=max(0, name_start),
+                            end_char=max(len(function_name), name_start + len(function_name)),
+                            severity=1,
+                            message=f"Extern function '{function_name}' must specify source library using 'from library \"name\"'",
+                            source="nexuslang",
+                            error_code="E201",
+                            error_type_key="invalid_operation",
+                            category="ffi",
+                            fixes=["Add source library clause: from library \"c\""],
+                        )
+                    )
+
+                if " returns " not in remainder_lower:
+                    diagnostics.append(
+                        self._build_diagnostic(
+                            line=i,
+                            start_char=max(0, name_start),
+                            end_char=max(len(function_name), name_start + len(function_name)),
+                            severity=2,
+                            message=f"Extern function '{function_name}' should declare an explicit return type",
+                            source="nexuslang",
+                            error_code="E201",
+                            error_type_key="invalid_operation",
+                            category="ffi",
+                            fixes=["Declare explicit extern return type with returns <Type>"],
+                        )
+                    )
+
+                call_conv_match = re.search(r'\bcalling\s+convention\s+([A-Za-z_][A-Za-z0-9_-]*)', remainder, re.IGNORECASE)
+                if call_conv_match:
+                    calling_convention = call_conv_match.group(1)
+                    if calling_convention.lower() not in supported_calling_conventions:
+                        diagnostics.append(
+                            self._build_diagnostic(
+                                line=i,
+                                start_char=call_conv_match.start(1),
+                                end_char=call_conv_match.end(1),
+                                severity=1,
+                                message=(
+                                    f"Unsupported calling convention '{calling_convention}' for extern function '{function_name}'"
+                                ),
+                                source="nexuslang",
+                                error_code="E201",
+                                error_type_key="invalid_operation",
+                                category="ffi",
+                                fixes=["Use supported calling conventions: cdecl, stdcall, fastcall, sysv, win64, aapcs"],
+                            )
+                        )
+
+                params_match = re.search(
+                    r'\bwith\b\s*(.*?)(?=\breturns\b|\bfrom\s+library\b|\bcalling\s+convention\b|$)',
+                    remainder,
+                    re.IGNORECASE,
+                )
+                if params_match:
+                    params_segment = params_match.group(1)
+                    params = [p.strip() for p in re.split(r',|\band\b', params_segment, flags=re.IGNORECASE) if p.strip()]
+                    for param in params:
+                        if param == "...":
+                            continue
+                        if " as " not in param.lower():
+                            diagnostics.append(
+                                self._build_diagnostic(
+                                    line=i,
+                                    start_char=max(0, params_match.start(1)),
+                                    end_char=max(params_match.start(1) + len(params_segment), params_match.start(1) + 1),
+                                    severity=1,
+                                    message=(
+                                        f"Extern function '{function_name}' parameter '{param}' must declare type using 'as <Type>'"
+                                    ),
+                                    source="nexuslang",
+                                    error_code="E201",
+                                    error_type_key="invalid_operation",
+                                    category="ffi",
+                                    fixes=["Declare each extern parameter as: name as Type"],
+                                )
+                            )
+
+            extern_variable_match = extern_variable_pattern.match(raw_line)
+            if extern_variable_match:
+                variable_name = extern_variable_match.group(2)
+                remainder = extern_variable_match.group(3) or ""
+                remainder_lower = remainder.lower()
+                name_start = raw_line.find(variable_name)
+
+                if " as " not in remainder_lower:
+                    diagnostics.append(
+                        self._build_diagnostic(
+                            line=i,
+                            start_char=max(0, name_start),
+                            end_char=max(len(variable_name), name_start + len(variable_name)),
+                            severity=1,
+                            message=f"Extern variable '{variable_name}' must declare a type using 'as <Type>'",
+                            source="nexuslang",
+                            error_code="E201",
+                            error_type_key="invalid_operation",
+                            category="ffi",
+                            fixes=["Add type annotation: extern variable name as Type"],
+                        )
+                    )
+
+                if " from library " not in remainder_lower:
+                    diagnostics.append(
+                        self._build_diagnostic(
+                            line=i,
+                            start_char=max(0, name_start),
+                            end_char=max(len(variable_name), name_start + len(variable_name)),
+                            severity=2,
+                            message=f"Extern variable '{variable_name}' should specify source library",
+                            source="nexuslang",
+                            error_code="E201",
+                            error_type_key="invalid_operation",
+                            category="ffi",
+                            fixes=["Add source library clause: from library \"c\""],
+                        )
+                    )
+
+        for unsafe in unsafe_stack:
+            line_index = unsafe["line"]
+            raw_line = lines[line_index]
+            start = raw_line.lower().find('unsafe')
+            diagnostics.append(
+                self._build_diagnostic(
+                    line=line_index,
+                    start_char=max(0, start),
+                    end_char=max(6, start + 6),
+                    severity=1,
+                    message="Unsafe block opened here is not closed with 'end'",
+                    source="nexuslang",
+                    error_code="E201",
+                    error_type_key="invalid_operation",
+                    category="ffi",
+                    fixes=["Add closing 'end' for unsafe block"],
+                )
+            )
+
+        return diagnostics
+
+    def _check_parallel_unsafe_captures(self, text: str) -> List[Dict]:
+        """Check for likely unsafe outer-scope captures in parallel-for bodies."""
+        diagnostics: List[Dict] = []
+        lines = text.split('\n')
+
+        parallel_open_pattern = re.compile(
+            r'^\s*parallel\s+for(?:\s+each)?\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\b',
+            re.IGNORECASE,
+        )
+        end_pattern = re.compile(r'^\s*end\b', re.IGNORECASE)
+        set_assign_pattern = re.compile(r'^\s*set\s+([A-Za-z_][A-Za-z0-9_]*)\b', re.IGNORECASE)
+        member_assign_pattern = re.compile(r'^\s*set\s+([A-Za-z_][A-Za-z0-9_]*)\s*\.', re.IGNORECASE)
+        index_assign_pattern = re.compile(r'^\s*set\s+([A-Za-z_][A-Za-z0-9_]*)\s*\[', re.IGNORECASE)
+
+        declared_before: set = set()
+        contexts: List[Dict] = []
+
+        def _indent(line_text: str) -> int:
+            return len(line_text) - len(line_text.lstrip(' '))
+
+        for i, raw_line in enumerate(lines):
+            stripped = raw_line.strip()
+            if not stripped or stripped.startswith('#') or stripped.startswith('//'):
+                continue
+
+            indent = _indent(raw_line)
+
+            if contexts and end_pattern.match(raw_line):
+                while contexts and indent <= contexts[-1]['indent']:
+                    contexts.pop()
+                continue
+
+            open_match = parallel_open_pattern.match(raw_line)
+            if open_match:
+                loop_var = open_match.group(1)
+                contexts.append({
+                    'indent': indent,
+                    'line': i,
+                    'loop_var': loop_var,
+                    'reported': set(),
+                })
+                continue
+
+            if contexts:
+                ctx = contexts[-1]
+
+                def _emit_capture(var_name: str, start: int, end: int, detail: str) -> None:
+                    key = (i, var_name, detail)
+                    if key in ctx['reported']:
+                        return
+                    ctx['reported'].add(key)
+                    diagnostics.append(
+                        self._build_diagnostic(
+                            line=i,
+                            start_char=max(0, start),
+                            end_char=max(start + 1, end),
+                            severity=2,
+                            message=(
+                                f"Potential unsafe capture in parallel region: {detail} '{var_name}'"
+                            ),
+                            source="nexuslang",
+                            error_code="E201",
+                            error_type_key="invalid_operation",
+                            category="concurrency",
+                            fixes=[
+                                "Prefer loop-local temporaries inside parallel regions",
+                                "Use message passing/channels for shared-state coordination",
+                                "Aggregate results after the parallel loop instead of mutating outer variables",
+                            ],
+                        )
+                    )
+
+                assign_match = set_assign_pattern.match(raw_line)
+                if assign_match:
+                    target = assign_match.group(1)
+                    if target in declared_before and target != ctx['loop_var']:
+                        _emit_capture(
+                            target,
+                            assign_match.start(1),
+                            assign_match.end(1),
+                            "writes to outer variable",
+                        )
+
+                member_match = member_assign_pattern.match(raw_line)
+                if member_match:
+                    base_obj = member_match.group(1)
+                    if base_obj in declared_before and base_obj != ctx['loop_var']:
+                        _emit_capture(
+                            base_obj,
+                            member_match.start(1),
+                            member_match.end(1),
+                            "mutates outer object",
+                        )
+
+                index_match = index_assign_pattern.match(raw_line)
+                if index_match:
+                    base_seq = index_match.group(1)
+                    if base_seq in declared_before and base_seq != ctx['loop_var']:
+                        _emit_capture(
+                            base_seq,
+                            index_match.start(1),
+                            index_match.end(1),
+                            "mutates outer collection",
+                        )
+
+            # Track declarations/assignments visible to subsequent lines.
+            assign_match = set_assign_pattern.match(raw_line)
+            if assign_match:
+                declared_before.add(assign_match.group(1))
 
         return diagnostics
 

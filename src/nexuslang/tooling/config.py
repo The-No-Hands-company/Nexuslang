@@ -102,6 +102,14 @@ class BuildConfig:
     # ""    = explicitly disabled (never run any build script).
     # "path" = explicit path to a specific script.
     build_script: Optional[str] = None
+    # Run static analyzer (nlpllint) as part of build.
+    lint_on_build: bool = False
+    # Use strict analyzer profile (enables style checks).
+    lint_strict: bool = False
+    # Emit only lint errors (suppress warnings).
+    lint_errors_only: bool = False
+    # Treat lint warnings as build-breaking.
+    lint_fail_on_warnings: bool = False
 
 
 @dataclass
@@ -187,6 +195,10 @@ class ConfigLoader:
             warnings_as_errors=bool(build_data.get("warnings_as_errors", False)),
             # None preserves auto-detect; absent key → None.  Empty string → disabled.
             build_script=build_data.get("build_script", None),
+            lint_on_build=bool(build_data.get("lint_on_build", False)),
+            lint_strict=bool(build_data.get("lint_strict", False)),
+            lint_errors_only=bool(build_data.get("lint_errors_only", False)),
+            lint_fail_on_warnings=bool(build_data.get("lint_fail_on_warnings", False)),
         )
 
         # Parse [features]

@@ -356,11 +356,12 @@ class WorkspaceIndex:
     def _extract_class_symbol(self, stmt: ClassDefinition, file_uri: str, scope: Optional[str]) -> List[SymbolInfo]:
         """Return SymbolInfo list for a ClassDefinition, including methods and attributes."""
         symbols = []
+        class_line = self._line_from_node(stmt)
         symbol = SymbolInfo(
             name=stmt.name,
             kind='class',
             file_uri=file_uri,
-            line=stmt.line_number - 1 if stmt.line_number else 0,
+            line=class_line,
             column=0,
             scope=scope
         )
@@ -374,7 +375,7 @@ class WorkspaceIndex:
                         name=method.name,
                         kind='method',
                         file_uri=file_uri,
-                        line=method.line_number - 1 if method.line_number else 0,
+                        line=self._line_from_node(method, fallback=class_line),
                         column=0,
                         scope=class_scope,
                         signature=method_signature,
@@ -386,7 +387,7 @@ class WorkspaceIndex:
                             name=param.name,
                             kind='parameter',
                             file_uri=file_uri,
-                            line=method.line_number - 1 if method.line_number else 0,
+                            line=self._line_from_node(param, fallback=self._line_from_node(method, fallback=class_line)),
                             column=0,
                             scope=f"{class_scope}.{method.name}",
                             type_annotation=str(param.type_annotation) if hasattr(param, 'type_annotation') and param.type_annotation else None
@@ -394,19 +395,28 @@ class WorkspaceIndex:
                         symbols.append(param_symbol)
                     method_scope = f"{class_scope}.{method.name}"
                     symbols.extend(self._extract_control_flow_symbols(getattr(method, 'body', []), file_uri, method_scope))
-        if hasattr(stmt, 'attributes'):
-            for attr in stmt.attributes:
-                if isinstance(attr, VariableDeclaration):
-                    attr_symbol = SymbolInfo(
-                        name=attr.name,
-                        kind='field',
-                        file_uri=file_uri,
-                        line=0,  # TODO: Get from AST
-                        column=0,
-                        scope=class_scope,
-                        type_annotation=str(attr.type_annotation) if attr.type_annotation else None
-                    )
-                    symbols.append(attr_symbol)
+        # Class fields can appear as PropertyDeclaration (current AST) and
+        # VariableDeclaration (legacy/compat parse shapes).
+        class_fields = []
+        if hasattr(stmt, 'properties') and isinstance(stmt.properties, list):
+            class_fields.extend(stmt.properties)
+        legacy_attributes = getattr(stmt, 'attributes', None)
+        if isinstance(legacy_attributes, list):
+            class_fields.extend(legacy_attributes)
+
+        for field in class_fields:
+            if not hasattr(field, 'name'):
+                continue
+            field_symbol = SymbolInfo(
+                name=field.name,
+                kind='field',
+                file_uri=file_uri,
+                line=self._line_from_node(field, fallback=class_line),
+                column=0,
+                scope=class_scope,
+                type_annotation=str(getattr(field, 'type_annotation', None)) if getattr(field, 'type_annotation', None) else None
+            )
+            symbols.append(field_symbol)
         return symbols
 
     def _extract_symbols_from_ast(self, ast: Program, file_uri: str, scope: Optional[str] = None) -> List[SymbolInfo]:
@@ -437,11 +447,12 @@ class WorkspaceIndex:
                 symbols.extend(self._extract_class_symbol(stmt, file_uri, scope))
 
             elif isinstance(stmt, StructDefinition):
+                struct_line = self._line_from_node(stmt)
                 symbol = SymbolInfo(
                     name=stmt.name,
                     kind='struct',
                     file_uri=file_uri,
-                    line=stmt.line_number - 1 if stmt.line_number else 0,
+                    line=struct_line,
                     column=0,
                     scope=scope
                 )
@@ -453,7 +464,7 @@ class WorkspaceIndex:
                             name=field.name,
                             kind='field',
                             file_uri=file_uri,
-                            line=0,  # TODO: Get from AST
+                            line=self._line_from_node(field, fallback=struct_line),
                             column=0,
                             scope=struct_scope,
                             type_annotation=str(field.type_annotation) if hasattr(field, 'type_annotation') else None
@@ -465,7 +476,7 @@ class WorkspaceIndex:
                     name=stmt.name,
                     kind='variable',
                     file_uri=file_uri,
-                    line=0,  # TODO: Get from AST
+                    line=self._line_from_node(stmt),
                     column=0,
                     scope=scope,
                     type_annotation=str(stmt.type_annotation) if stmt.type_annotation else None
@@ -611,6 +622,13 @@ class WorkspaceIndex:
             return 0
         match = re.search(r'\b' + re.escape(symbol_name) + r'\b', lines[line_idx])
         return match.start() if match else 0
+
+    def _line_from_node(self, node, fallback: int = 0) -> int:
+        """Return 0-indexed line from AST node metadata, with fallback."""
+        line_number = getattr(node, 'line_number', None)
+        if isinstance(line_number, int) and line_number > 0:
+            return line_number - 1
+        return fallback
 
     def _find_nxl_files(self) -> List[str]:
         """

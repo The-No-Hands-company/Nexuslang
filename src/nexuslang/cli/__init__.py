@@ -153,6 +153,10 @@ def cmd_build(args):
         jobs=args.jobs,
         clean=args.clean,
         optimize_bounds_checks=args.optimize_bounds_checks,
+        lint=args.lint,
+        lint_strict=args.lint_strict,
+        lint_errors_only=args.lint_errors_only,
+        lint_fail_on_warnings=args.lint_fail_on_warnings,
     )
     sys.exit(0 if ok else 1)
 
@@ -626,6 +630,14 @@ def _add_build_subcommand(sub: argparse._SubParsersAction) -> None:
                    help="Enable link-time optimisation (LTO)")
     p.add_argument("--pgo-use", metavar="PROFILE",
                    help="Path to a merged PGO profile to guide optimisation")
+    p.add_argument("--lint", action=argparse.BooleanOptionalAction, default=None,
+                   help="Run static analysis during build (overrides [build].lint_on_build)")
+    p.add_argument("--lint-strict", action="store_true",
+                   help="Use strict lint profile (includes style checks)")
+    p.add_argument("--lint-errors-only", action="store_true",
+                   help="Only report lint errors (suppress lint warnings)")
+    p.add_argument("--lint-fail-on-warnings", action="store_true",
+                   help="Treat lint warnings as build-breaking")
 
 
 def _add_run_subcommand(sub: argparse._SubParsersAction) -> None:

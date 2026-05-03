@@ -51,6 +51,7 @@ class CompletionProvider:
             "true", "false", "null",
             "create", "channel", "send", "receive", "close",
             "macro", "expand", "comptime", "eval", "const",
+            "async", "await", "spawn",
             
             # Error handling
             "Ok", "Error", "panic", "assert",
@@ -93,6 +94,11 @@ class CompletionProvider:
                 "documentation": "For loop template"
             },
         }
+
+        self.generic_constraint_traits = [
+            "Comparable", "Equatable", "Hashable", "Printable", "Serializable",
+            "Cloneable", "Sendable", "Awaitable"
+        ]
     
     def get_keyword_completions(self) -> List[Dict]:
         """Return completion items for all known NexusLang keywords."""
@@ -133,8 +139,33 @@ class CompletionProvider:
         
         # Context-aware completions -----------------------------------------------
 
+        # Inside generic function/method parameter list: function name<...>
+        if re.search(r'\b(?:function|method)\s+\w+\s*<[^>]*$', prefix, re.IGNORECASE):
+            completions.extend(self._get_generic_parameter_completions(prefix, current_word))
+
+        # After `where` clause start
+        elif re.search(r'\bwhere\s*$', prefix, re.IGNORECASE):
+            completions.extend([
+                {
+                    "label": "T is Comparable",
+                    "kind": 15,
+                    "insertText": "${1:T} is ${2:Comparable}",
+                    "documentation": "Generic where-clause constraint"
+                },
+                {
+                    "label": "T is Comparable, R is Equatable",
+                    "kind": 15,
+                    "insertText": "${1:T} is ${2:Comparable}, ${3:R} is ${4:Equatable}",
+                    "documentation": "Multiple generic where constraints"
+                }
+            ])
+
+        # After `where T is` or `, R is`
+        elif re.search(r'\bwhere\s+\w+\s+is\s*$', prefix, re.IGNORECASE) or re.search(r',\s*\w+\s+is\s*$', prefix, re.IGNORECASE):
+            completions.extend(self._get_generic_trait_completions(current_word))
+
         # After "set X to" - suggest values/functions
-        if re.search(r'\bset\s+\w+\s+to\s*$', prefix, re.IGNORECASE):
+        elif re.search(r'\bset\s+\w+\s+to\s*$', prefix, re.IGNORECASE):
             completions.extend(self._get_value_completions(text, current_word))
         
         # After "function X with" or "function X that takes" - parameter patterns
@@ -252,6 +283,28 @@ class CompletionProvider:
                     "documentation": "Channel"
                 })
 
+        # After "spawn" - suggest function names to spawn
+        elif re.search(r'\bspawn\s*$', prefix, re.IGNORECASE):
+            for func_name in self._extract_functions(text):
+                completions.append({
+                    "label": func_name,
+                    "kind": 3,
+                    "detail": "Spawn function",
+                    "insertText": f"{func_name} with ${{1:args}}",
+                    "documentation": "Spawn async task"
+                })
+
+        # After "await" - suggest task/promise-like variables
+        elif re.search(r'\bawait\s*$', prefix, re.IGNORECASE):
+            for handle in self._extract_async_handles(text):
+                completions.append({
+                    "label": handle,
+                    "kind": 6,
+                    "detail": "Async handle",
+                    "insertText": handle,
+                    "documentation": "Await async task or promise"
+                })
+
         # After "<funcname> with " — suggest named parameters from function definition
         elif re.search(r'\b(\w+)\s+with\s+$', prefix, re.IGNORECASE):
             func_match = re.search(r'\b(\w+)\s+with\s+$', prefix, re.IGNORECASE)
@@ -279,6 +332,48 @@ class CompletionProvider:
         else:
             completions.extend(self._get_general_completions(text, current_word))
         
+        return completions
+
+    def _get_generic_parameter_completions(self, prefix: str, current_word: str) -> List[Dict]:
+        """Suggest type parameters and inline constraints in <...> lists."""
+        completions = []
+        in_constraint_position = prefix.rstrip().endswith(':') or prefix.rstrip().endswith('+')
+
+        if in_constraint_position:
+            return self._get_generic_trait_completions(current_word)
+
+        templates = [
+            ("T", "T"),
+            ("R", "R"),
+            ("T, R", "T, R"),
+            ("T: Comparable", "T: Comparable"),
+            ("T: Comparable + Printable", "T: Comparable + Printable"),
+            ("F :: * -> *", "F :: * -> *"),
+        ]
+
+        for label, insert_text in templates:
+            if label.lower().startswith(current_word.lower()) or not current_word:
+                completions.append({
+                    "label": label,
+                    "kind": 15,
+                    "insertText": insert_text,
+                    "documentation": "Generic type parameter template"
+                })
+
+        return completions
+
+    def _get_generic_trait_completions(self, current_word: str) -> List[Dict]:
+        """Suggest common trait/constraint names for generic bounds."""
+        completions = []
+        for trait in self.generic_constraint_traits:
+            if trait.lower().startswith(current_word.lower()) or not current_word:
+                completions.append({
+                    "label": trait,
+                    "kind": 7,
+                    "detail": "Generic constraint",
+                    "insertText": trait,
+                    "documentation": "Trait bound for generic parameter"
+                })
         return completions
 
     def _get_general_completions(self, text: str, current_word: str) -> List[Dict]:
@@ -483,5 +578,26 @@ class CompletionProvider:
             if m:
                 names.add(m.group(1))
         return sorted(names)
+
+    def _extract_async_handles(self, text: str) -> List[str]:
+        """Extract task/promise-like variable names from local document."""
+        handles = set()
+
+        spawn_assign_pattern = re.compile(r'^\s*set\s+(\w+)\s+to\s+spawn\b', re.IGNORECASE)
+        typed_async_pattern = re.compile(
+            r'^\s*set\s+(\w+)\s+as\s+(?:Task|Promise)(?:\s*<[^>]+>)?\s+to\b',
+            re.IGNORECASE,
+        )
+
+        for line in text.split('\n'):
+            spawn_match = spawn_assign_pattern.match(line)
+            if spawn_match:
+                handles.add(spawn_match.group(1))
+
+            typed_match = typed_async_pattern.match(line)
+            if typed_match:
+                handles.add(typed_match.group(1))
+
+        return sorted(handles)
 
 __all__ = ['CompletionProvider']

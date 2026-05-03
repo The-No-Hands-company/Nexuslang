@@ -174,6 +174,11 @@ class LLVMIRGenerator(CodeGenerator):
         self.channel_payload_types: Dict[str, str] = {}
         self.channel_payload_ownership: Dict[str, Dict[str, str]] = {}
 
+        # Parallel-for runtime support (compiled partition + join runtime call)
+        self.has_parallel_for_ops = False
+        self.parallel_body_counter = 0
+        self.parallel_body_definitions: List[str] = []
+
         # Generator runtime support (pull-style frame/next semantics)
         self.has_generator_ops = False
         # Names of variables that store generator frame pointers.
@@ -825,6 +830,7 @@ class LLVMIRGenerator(CodeGenerator):
         self._collect_first_pass(ast)
         self._detect_rc_usage(ast)
         self._detect_channel_usage(ast)
+        self._detect_parallel_for_usage(ast)
         self._detect_generator_usage(ast)
         self._declare_external_functions()
         self._emit_type_declarations()
@@ -851,6 +857,7 @@ class LLVMIRGenerator(CodeGenerator):
                 self._generate_pending_specializations()
         
         self._insert_late_type_declarations()
+        self._emit_parallel_body_definitions()
         self._emit_lambda_definitions()
         self._emit_string_constants()
         
@@ -1159,6 +1166,47 @@ class LLVMIRGenerator(CodeGenerator):
             for stmt in ast.statements:
                 if scan_node(stmt):
                     break
+
+    def _detect_parallel_for_usage(self, ast):
+        """Pre-scan AST to detect parallel-for usage."""
+        def scan_node(node):
+            if node is None:
+                return False
+
+            node_type = type(node).__name__
+            if node_type == 'ParallelForLoop':
+                self.has_parallel_for_ops = True
+                return True
+
+            if hasattr(node, 'body') and isinstance(node.body, list):
+                for stmt in node.body:
+                    if scan_node(stmt):
+                        return True
+
+            if hasattr(node, 'statements') and isinstance(node.statements, list):
+                for stmt in node.statements:
+                    if scan_node(stmt):
+                        return True
+
+            if hasattr(node, 'value') and node.value:
+                if scan_node(node.value):
+                    return True
+
+            if hasattr(node, 'iterable') and node.iterable:
+                if scan_node(node.iterable):
+                    return True
+
+            if hasattr(node, 'methods') and isinstance(node.methods, list):
+                for method in node.methods:
+                    if scan_node(method):
+                        return True
+
+            return False
+
+        if hasattr(ast, 'statements'):
+            for stmt in ast.statements:
+                if scan_node(stmt):
+                    break
     
     def _declare_external_functions(self):
         """Declare external C standard library functions (if not overridden by FFI)."""
@@ -1223,6 +1271,13 @@ class LLVMIRGenerator(CodeGenerator):
             self.emit('declare i64 @nxl_channel_receive(i8*) #0')
             self.emit('declare void @nxl_channel_close(i8*) #0')
             self.emit('')
+
+        # Parallel runtime helpers - only if needed
+        if self.has_parallel_for_ops:
+            self.emit('; NexusLang Parallel Runtime')
+            self.emit('declare void @nxl_parallel_for_i64(i64*, i64, void (i64)*, i64) #0')
+            self.emit('')
+            self.required_libraries.add('pthread')
         
         # Only declare if not already declared via extern
         if 'printf' not in self.extern_functions:
@@ -3786,9 +3841,72 @@ class LLVMIRGenerator(CodeGenerator):
         self._expand_macro_body(stmt, indent)
 
     def _generate_parallel_for_loop(self, node, indent=''):
-        """Lower parallel for to foreach loop in compiled backends (sequential fallback)."""
+        """Lower parallel for to runtime-backed partitioned execution with join."""
+        # Keep a strict fallback path for loop forms that cannot be safely outlined.
+        if hasattr(node, 'else_body') and node.else_body:
+            self._emit_parallel_for_fallback(node, indent)
+            return
+
+        if self._parallel_body_has_unsupported_control_flow(getattr(node, 'body', [])):
+            self._emit_parallel_for_fallback(node, indent)
+            return
+
+        if self._parallel_body_references_outer_locals(node):
+            self._emit_parallel_for_fallback(node, indent)
+            return
+
         class _ForEachShim:
             pass
+
+        shim = _ForEachShim()
+        shim.iterator = node.var_name
+        shim.iterable = node.iterable
+        shim.body = node.body
+        shim.label = None
+        shim.else_body = None
+
+        array_ptr, array_type, array_size, length_reg = self._resolve_iterable(shim, indent)
+        if array_ptr is None or array_type == 'generator.frame':
+            self._emit_parallel_for_fallback(node, indent)
+            return
+
+        ptr_type_for_runtime = array_type
+        if array_type and array_type.startswith('{'):
+            # _resolve_iterable extracted the list data pointer already.
+            ptr_type_for_runtime = 'i64*'
+
+        if ptr_type_for_runtime and ptr_type_for_runtime.endswith('*'):
+            elem_type = ptr_type_for_runtime[:-1]
+        else:
+            elem_type = 'i64'
+
+        if elem_type != 'i64':
+            self._emit_parallel_for_fallback(node, indent)
+            return
+
+        if array_size is not None:
+            count_reg = str(array_size)
+        elif length_reg is not None:
+            count_reg = length_reg
+        elif type(node.iterable).__name__ == 'ListExpression':
+            count_reg = str(len(getattr(node.iterable, 'elements', [])))
+        else:
+            self._emit_parallel_for_fallback(node, indent)
+            return
+
+        if ptr_type_for_runtime != 'i64*':
+            cast_ptr = self._new_temp()
+            self.emit(f'{indent}{cast_ptr} = bitcast {ptr_type_for_runtime} {array_ptr} to i64*')
+            array_ptr = cast_ptr
+
+        body_fn_name = self._generate_parallel_for_body_function(node)
+        self.emit(f'{indent}call void @nxl_parallel_for_i64(i64* {array_ptr}, i64 {count_reg}, void (i64)* @{body_fn_name}, i64 0)')
+
+    def _emit_parallel_for_fallback(self, node, indent=''):
+        """Fallback: lower to foreach loop when parallel outlining is not safe."""
+        class _ForEachShim:
+            pass
+
         shim = _ForEachShim()
         shim.iterator = node.var_name
         shim.iterable = node.iterable
@@ -3796,6 +3914,107 @@ class LLVMIRGenerator(CodeGenerator):
         shim.label = None
         shim.else_body = None
         self._generate_foreach_loop(shim, indent)
+
+    def _parallel_body_has_unsupported_control_flow(self, statements) -> bool:
+        """Return True when body contains control flow not valid in an outlined callback."""
+        unsupported = {'BreakStatement', 'ContinueStatement', 'ReturnStatement'}
+
+        def walk(node):
+            if node is None:
+                return False
+            if isinstance(node, list):
+                return any(walk(item) for item in node)
+            if not hasattr(node, '__dict__'):
+                return False
+
+            if type(node).__name__ in unsupported:
+                return True
+
+            for value in vars(node).values():
+                if walk(value):
+                    return True
+            return False
+
+        return walk(statements)
+
+    def _parallel_body_references_outer_locals(self, node) -> bool:
+        """Return True if the loop body captures outer local variables."""
+        iterator_name = node.var_name
+        outer_local_names = set(self.local_vars.keys())
+        outer_local_names.discard(iterator_name)
+
+        def walk(ast_node):
+            if ast_node is None:
+                return False
+            if isinstance(ast_node, list):
+                return any(walk(item) for item in ast_node)
+            if not hasattr(ast_node, '__dict__'):
+                return False
+
+            if type(ast_node).__name__ == 'Identifier':
+                return ast_node.name in outer_local_names
+
+            for value in vars(ast_node).values():
+                if walk(value):
+                    return True
+            return False
+
+        return walk(getattr(node, 'body', []))
+
+    def _generate_parallel_for_body_function(self, node) -> str:
+        """Outline parallel-for body into a standalone callback function."""
+        body_name = f'__nxl_parallel_body_{self.parallel_body_counter}'
+        self.parallel_body_counter += 1
+
+        saved_function = self.current_function_name
+        saved_return_type = self.current_return_type
+        saved_local_vars = self.local_vars.copy()
+        saved_temp_counter = self.temp_counter
+        saved_label_counter = self.label_counter
+        saved_ir_lines = self.ir_lines.copy()
+
+        self.current_function_name = body_name
+        self.current_return_type = 'void'
+        self.local_vars = {}
+        self.temp_counter = 0
+        self.label_counter = 0
+        self.ir_lines = []
+
+        self.emit(f'define void @{body_name}(i64 %iter_value) personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*) {{')
+        self.emit('entry:')
+
+        iter_alloca = self._new_temp()
+        self.emit(f'  {iter_alloca} = alloca i64, align 8')
+        self.emit(f'  store i64 %iter_value, i64* {iter_alloca}, align 8')
+        self.local_vars[node.var_name] = ('i64', iter_alloca)
+
+        if hasattr(node, 'body') and node.body:
+            for stmt in node.body:
+                self._generate_statement(stmt, indent='  ')
+
+        self.emit('  ret void')
+        self.emit('}')
+        self.emit('')
+
+        self.parallel_body_definitions.append('\n'.join(self.ir_lines))
+
+        self.current_function_name = saved_function
+        self.current_return_type = saved_return_type
+        self.local_vars = saved_local_vars
+        self.temp_counter = saved_temp_counter
+        self.label_counter = saved_label_counter
+        self.ir_lines = saved_ir_lines
+
+        return body_name
+
+    def _emit_parallel_body_definitions(self) -> None:
+        """Emit collected parallel-for callback definitions."""
+        if not self.parallel_body_definitions:
+            return
+        self.emit('')
+        self.emit('; Parallel-for callback definitions')
+        for body_ir in self.parallel_body_definitions:
+            self.emit(body_ir)
 
     def _generate_send_statement(self, stmt, indent='') -> None:
         """Generate channel send statement via runtime call."""
@@ -6591,7 +6810,7 @@ class LLVMIRGenerator(CodeGenerator):
         typeinfo_ptr = self._new_temp()
         self.emit(f'{indent}{typeinfo_ptr} = bitcast {{ i8*, i8* }}* {typeinfo_global} to i8*')
         
-        # Throw the exception - use invoke to __nxl_throw if in try block
+        # Throw the exception via helper for consistent lowering across contexts.
         if self.in_try_block and self.current_landing_pad:
             # Use invoke for the throw helper so exception can be caught
             normal_label = self._new_label('throw.unreachable')
@@ -6600,8 +6819,8 @@ class LLVMIRGenerator(CodeGenerator):
             self.emit(f'{normal_label}:')
             self.emit(f'{indent}  unreachable')
         else:
-            # Direct call when not in try block (will terminate if uncaught)
-            self.emit(f'{indent}call void @__cxa_throw(i8* {exception_ptr}, i8* {typeinfo_ptr}, i8* null) noreturn')
+            # Direct helper call when not in try block (terminates if uncaught).
+            self.emit(f'{indent}call void @__nxl_throw(i8* {exception_ptr}, i8* {typeinfo_ptr})')
             self.emit(f'{indent}unreachable')
         
         # Create new unreachable block for any code that follows

@@ -11,6 +11,8 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 import logging
 
+from ..tooling.analyzer.analyzer import create_default_analyzer, create_strict_analyzer
+
 # Configure logging
 logging.basicConfig(
     filename='/tmp/nlpl-lsp.log',
@@ -384,10 +386,12 @@ class NLPLLanguageServer:
         
         # Send diagnostics (syntax + type errors merged with dead-code warnings)
         diagnostics = self.diagnostics_provider.get_diagnostics(uri, text)
+        lint_diagnostics = self._get_realtime_lint_diagnostics(uri, text)
         try:
             diagnostics = self.diagnostics_provider.merge_and_dedupe_diagnostics(
                 diagnostics,
                 self.dead_code_provider.get_diagnostics(uri, text),
+                lint_diagnostics,
             )
         except Exception as e:
             logger.error(f"Dead code analysis error for {uri}: {e}", exc_info=True)
@@ -413,14 +417,82 @@ class NLPLLanguageServer:
             
             # Send diagnostics (syntax + dead-code warnings)
             diagnostics = self.diagnostics_provider.get_diagnostics(uri, changes[0]['text'])
+            lint_diagnostics = self._get_realtime_lint_diagnostics(uri, changes[0]['text'])
             try:
                 diagnostics = self.diagnostics_provider.merge_and_dedupe_diagnostics(
                     diagnostics,
                     self.dead_code_provider.get_diagnostics(uri, changes[0]['text']),
+                    lint_diagnostics,
                 )
             except Exception as e:
                 logger.error(f"Dead code analysis error for {uri}: {e}", exc_info=True)
             self._publish_diagnostics(uri, diagnostics)
+
+    def _get_realtime_lint_diagnostics(self, uri: str, text: str) -> List[Dict]:
+        """Run static analyzer checks for editor-time lint diagnostics (opt-in)."""
+        lint_opts = self.initialization_options.get("linting", {}) or {}
+        if not lint_opts.get("enabled", False):
+            return []
+
+        strict = bool(lint_opts.get("strict", False))
+        errors_only = bool(lint_opts.get("errorsOnly", False))
+
+        ast = self.get_or_parse(uri, text)
+        if ast is None:
+            # Parser diagnostics are already provided by diagnostics provider.
+            return []
+
+        analyzer = create_strict_analyzer() if strict else create_default_analyzer()
+        lines = text.split('\n')
+        diagnostics: List[Dict] = []
+
+        severity_map = {
+            "error": 1,
+            "warning": 2,
+            "info": 3,
+            "hint": 4,
+        }
+
+        for checker in analyzer.checkers:
+            try:
+                issues = checker.check(ast, text, lines)
+            except Exception as exc:
+                logger.error(
+                    "Realtime lint checker '%s' failed for %s: %s",
+                    checker.__class__.__name__,
+                    uri,
+                    exc,
+                    exc_info=True,
+                )
+                continue
+
+            for issue in issues:
+                severity_name = getattr(issue.severity, "value", str(issue.severity)).lower()
+                if errors_only and severity_name != "error":
+                    continue
+
+                location = getattr(issue, "location", None)
+                line = max(0, (getattr(location, "line", 1) or 1) - 1)
+                col = max(0, (getattr(location, "column", 1) or 1) - 1)
+
+                diagnostics.append(
+                    {
+                        "range": {
+                            "start": {"line": line, "character": col},
+                            "end": {"line": line, "character": col + 1},
+                        },
+                        "severity": severity_map.get(severity_name, 3),
+                        "message": f"[{issue.code}] {issue.message}",
+                        "source": "nlpl-lint",
+                        "data": {
+                            "origin": "nlpl-lint",
+                            "lintCode": issue.code,
+                            "category": getattr(getattr(issue, "category", None), "value", None),
+                        },
+                    }
+                )
+
+        return diagnostics
     
     def _handle_did_close(self, params: Dict):
         """Handle textDocument/didClose notification."""

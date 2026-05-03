@@ -33,6 +33,8 @@ class HoverProvider:
             "for": "For-each loop\n\nSyntax:\n```nlpl\nfor each item in collection\n    # body\n```",
             "while": "While loop\n\nSyntax:\n```nlpl\nwhile condition\n    # body\n```",
             "return": "Return value from function\n\nSyntax:\n```nlpl\nreturn value\n```",
+            "yield": "Yield a value from a generator function.\n\nSyntax:\n```nlpl\nyield value\n```\n\nNotes:\n- `yield` marks the function as a generator\n- Generator signatures are represented as `List<T>` where `T` is the yielded element type",
+            "generator": "Generator functions produce a sequence of values over time using `yield`.\n\nExample:\n```nlpl\nfunction count_up_to that takes n as Integer returns List of Integer\n    set i to 0\n    while i is less than n\n        yield i\n        set i to i plus 1\n    end\nend\n```",
             "import": "Import module\n\nSyntax:\n```nlpl\nimport module_name\nfrom module_name import symbol\n```",
             "channel": "Channel primitive for concurrent message passing.\n\nSyntax:\n```nlpl\nset ch to create channel\nsend 42 to ch\nset value to receive from ch\n```",
             "Channel": "Typed channel for message passing between concurrent tasks.\n\nExamples:\n```nlpl\nset ch as Channel<Integer> to create channel\nsend 1 to ch\nset x to receive from ch\n```",
@@ -44,6 +46,16 @@ class HoverProvider:
             "comptime": "Compile-time execution surface.\n\nForms:\n```nlpl\ncomptime eval EXPR\ncomptime const NAME is EXPR\ncomptime assert COND\ncomptime assert COND message \"reason\"\n```",
             "eval": "Evaluate expression during compile time.\n\nSyntax:\n```nlpl\ncomptime eval EXPR\n```",
             "const": "Define immutable compile-time constant.\n\nSyntax:\n```nlpl\ncomptime const NAME is EXPR\n```",
+            "asm": "Inline assembly block with explicit operand constraints.\n\nSyntax:\n```nlpl\nasm\n    code\n        \"nop\"\n    inputs \"r\": value\n    outputs \"=r\": out_var\n    clobbers \"memory\", \"cc\"\nend\n```",
+            "inputs": "Inline-assembly input operands.\n\nUse GCC-style constraint tokens like `r`, `m`, `i`.\n\nExample:\n```nlpl\ninputs \"r\": src\n```",
+            "outputs": "Inline-assembly output operands.\n\nOutput constraints should include write markers (`=` or `+`).\n\nExample:\n```nlpl\noutputs \"=r\": result\n```",
+            "clobbers": "Inline-assembly clobber list.\n\nUse `memory`, `cc`, or register names (for example `rax`).\n\nExample:\n```nlpl\nclobbers \"memory\", \"cc\", \"rax\"\n```",
+            "constraint": "Inline-assembly operand constraint token.\n\nCommon forms: `r`, `m`, `i` for inputs and `=r`, `+m` for outputs.",
+            "unsafe": "Explicit unsafe execution region for low-level operations.\n\nSyntax:\n```nlpl\nunsafe do\n    # FFI calls, raw pointers, manual memory operations\nend\n```",
+            "extern": "Declare external symbols for FFI binding.\n\nFunction syntax:\n```nlpl\nextern function puts with text as Pointer returns Integer from library \"c\"\n```\n\nVariable syntax:\n```nlpl\nextern variable errno as Integer from library \"c\"\n```",
+            "foreign": "Alias for `extern` declarations in FFI contexts.\n\nExample:\n```nlpl\nforeign function malloc with size as Integer returns Pointer from library \"c\"\n```",
+            "calling": "Calling convention clause used in extern function declarations.\n\nSyntax:\n```nlpl\nextern function fn with x as Integer returns Integer from library \"mylib\" calling convention cdecl\n```",
+            "convention": "Calling convention selector for extern functions.\n\nCommon values: `cdecl`, `stdcall`, `fastcall`, `sysv`, `win64`, `aapcs`.",
             
             # Math module
             "sqrt": "**sqrt** - Square root\n\n**From**: math\n\n**Syntax**: `sqrt with number`\n\n**Returns**: Float\n\n**Example**:\n```nlpl\nset result to sqrt with 16  # 4.0\n```",
@@ -193,28 +205,38 @@ class HoverProvider:
         lines = text.split('\n')
         
         # Look for function definition with full signature
-        func_pattern = rf'function\s+{re.escape(symbol)}\s+(.*?)(?:\n|$)'
+        func_pattern = rf'function\s+{re.escape(symbol)}\s*(<[^>]+>)?\s*(.*?)(?:\n|$)'
         for i, line in enumerate(lines):
             match = re.search(func_pattern, line, re.IGNORECASE)
             if match:
-                signature = match.group(1).strip()
+                generic_part = (match.group(1) or '').strip()
+                signature = (match.group(2) or '').strip()
                 
                 # Extract parameters
                 params = self._extract_parameters(signature)
                 return_type = self._extract_return_type(signature)
+                generic_info = self._extract_generic_info(generic_part, signature)
                 
                 # Build formatted signature
-                info = f"**{symbol}** - Function\n\n```nlpl\nfunction {symbol} {signature}\n```"
+                generic_sig = f"{generic_part} " if generic_part else ""
+                info = f"**{symbol}** - Function\n\n```nlpl\nfunction {symbol}{generic_sig}{signature}\n```"
                 
                 # Add parameter details
                 if params:
                     info += "\n\n**Parameters**:\n"
                     for param_name, param_type in params:
                         info += f"- `{param_name}`: {param_type}\n"
+
+                if generic_info:
+                    info += f"\n\n{generic_info}"
                 
                 # Add return type
                 if return_type:
                     info += f"\n**Returns**: {return_type}"
+
+                generator_hint = self._extract_generator_flow_hint(lines, i)
+                if generator_hint:
+                    info += f"\n\n{generator_hint}"
                 
                 # Look for docstring (comment on next line)
                 if i + 1 < len(lines) and lines[i + 1].strip().startswith('#'):
@@ -224,23 +246,33 @@ class HoverProvider:
                 return info
         
         # Look for method definition
-        method_pattern = rf'method\s+{re.escape(symbol)}\s+(.*?)(?:\n|$)'
+        method_pattern = rf'method\s+{re.escape(symbol)}\s*(<[^>]+>)?\s*(.*?)(?:\n|$)'
         for i, line in enumerate(lines):
             match = re.search(method_pattern, line, re.IGNORECASE)
             if match:
-                signature = match.group(1).strip()
+                generic_part = (match.group(1) or '').strip()
+                signature = (match.group(2) or '').strip()
                 params = self._extract_parameters(signature)
                 return_type = self._extract_return_type(signature)
+                generic_info = self._extract_generic_info(generic_part, signature)
                 
-                info = f"**{symbol}** - Method\n\n```nlpl\nmethod {symbol} {signature}\n```"
+                generic_sig = f"{generic_part} " if generic_part else ""
+                info = f"**{symbol}** - Method\n\n```nlpl\nmethod {symbol}{generic_sig}{signature}\n```"
                 
                 if params:
                     info += "\n\n**Parameters**:\n"
                     for param_name, param_type in params:
                         info += f"- `{param_name}`: {param_type}\n"
+
+                if generic_info:
+                    info += f"\n\n{generic_info}"
                 
                 if return_type:
                     info += f"\n**Returns**: {return_type}"
+
+                generator_hint = self._extract_generator_flow_hint(lines, i)
+                if generator_hint:
+                    info += f"\n\n{generator_hint}"
                 
                 return info
         
@@ -313,6 +345,55 @@ class HoverProvider:
                     params.append((param_name, param_type))
         
         return params
+
+    def _extract_generic_info(self, generic_part: str, signature: str) -> Optional[str]:
+        """Extract and format generic parameter/constraint information."""
+        generic_part = (generic_part or '').strip()
+        signature = (signature or '').strip()
+
+        params = []
+        param_constraints = []
+        where_constraints = []
+
+        if generic_part.startswith('<') and generic_part.endswith('>'):
+            inner = generic_part[1:-1].strip()
+            if inner:
+                for token in [p.strip() for p in inner.split(',') if p.strip()]:
+                    if ':' in token:
+                        param_name, constraint = [x.strip() for x in token.split(':', 1)]
+                        params.append(param_name)
+                        param_constraints.append(f"- `{param_name}`: {constraint}")
+                    else:
+                        params.append(token)
+
+        where_match = re.search(r'\bwhere\s+(.+?)(?:\s+returns|$)', signature, re.IGNORECASE)
+        if where_match:
+            where_clause = where_match.group(1).strip()
+            for part in [p.strip() for p in where_clause.split(',') if p.strip()]:
+                m = re.match(r'(\w+)\s+is\s+(.+)', part, re.IGNORECASE)
+                if m:
+                    where_constraints.append(f"- `{m.group(1)}` is {m.group(2).strip()}")
+                else:
+                    where_constraints.append(f"- {part}")
+
+        if not params and not param_constraints and not where_constraints:
+            return None
+
+        info_lines = []
+        if params:
+            info_lines.append("**Generic Parameters**:")
+            for param in params:
+                info_lines.append(f"- `{param}`")
+
+        if param_constraints:
+            info_lines.append("**Generic Constraints**:")
+            info_lines.extend(param_constraints)
+
+        if where_constraints:
+            info_lines.append("**Where Constraints**:")
+            info_lines.extend(where_constraints)
+
+        return "\n".join(info_lines)
     
     def _extract_return_type(self, signature: str) -> Optional[str]:
         """Extract return type from function signature."""
@@ -320,6 +401,65 @@ class HoverProvider:
         if returns_match:
             return returns_match.group(1)
         return None
+
+    def _extract_generator_flow_hint(self, lines: list, function_line_index: int) -> Optional[str]:
+        """Return generator/yield flow hint text for a function, if applicable."""
+        body_lines = self._extract_block_body(lines, function_line_index)
+        yield_exprs = []
+        for raw in body_lines:
+            stripped = raw.strip()
+            if not stripped.lower().startswith('yield'):
+                continue
+
+            expr = stripped[5:].strip()  # text after "yield"
+            if not expr:
+                expr = "<value>"
+            if expr and expr not in yield_exprs:
+                yield_exprs.append(expr)
+
+        if not yield_exprs:
+            return None
+
+        preview = ", ".join(f"`{expr}`" for expr in yield_exprs[:3])
+        if len(yield_exprs) > 3:
+            preview += ", ..."
+
+        return (
+            "**Generator Flow**:\n"
+            f"- Yields: {preview}\n"
+            "- Completes when the function reaches `end`"
+        )
+
+    def _extract_block_body(self, lines: list, start_index: int) -> list:
+        """Extract lines inside a block that starts at ``start_index``."""
+        block_starts = re.compile(
+            r'^\s*(function|method|if|else if|else|while|for|try|catch|switch|case|default|class|trait|interface|describe|it|test|macro)\b',
+            re.IGNORECASE,
+        )
+
+        body = []
+        depth = 1
+        j = start_index + 1
+
+        while j < len(lines):
+            line = lines[j]
+            stripped = line.strip()
+
+            if re.match(r'^end\b', stripped, re.IGNORECASE):
+                depth -= 1
+                if depth == 0:
+                    break
+                body.append(line)
+                j += 1
+                continue
+
+            if block_starts.match(stripped):
+                depth += 1
+
+            body.append(line)
+            j += 1
+
+        return body
     
     def _infer_type_from_value(self, value: str) -> Optional[str]:
         """Infer type from variable value."""

@@ -1274,6 +1274,87 @@ class TestBuildScriptBuilderIntegration:
         config = ConfigLoader.load(str(toml_path))
         assert config.manifest_dir == str(tmp_path)
 
+    def test_build_fails_on_lint_errors(self, tmp_path):
+        src_dir = tmp_path / "src"
+        src_dir.mkdir(parents=True, exist_ok=True)
+        (src_dir / "main.nxl").write_text("set x to 1\n")
+
+        config = _minimal_project_config(src_dir=str(src_dir), out_dir=str(tmp_path / "build"))
+        config.build.lint_on_build = True
+        bs = BuildSystem(config)
+
+        with patch.object(bs, "_run_static_analysis", return_value=([
+            "[lint] main.nxl:1:1 M001 unsafe operation"
+        ], [])):
+            with patch.object(bs, "_compile_files") as compile_files:
+                result = bs._build_internal(
+                    release=False,
+                    profile=None,
+                    features=None,
+                    jobs=1,
+                    clean=False,
+                    check_only=False,
+                    optimize_bounds_checks=False,
+                )
+
+        assert result.success is False
+        assert any("M001" in err for err in result.errors)
+        compile_files.assert_not_called()
+
+    def test_build_fails_when_lint_warnings_are_promoted(self, tmp_path):
+        src_dir = tmp_path / "src"
+        src_dir.mkdir(parents=True, exist_ok=True)
+        (src_dir / "main.nxl").write_text("set x to 1\n")
+
+        config = _minimal_project_config(src_dir=str(src_dir), out_dir=str(tmp_path / "build"))
+        config.build.lint_on_build = True
+        config.build.lint_fail_on_warnings = True
+        bs = BuildSystem(config)
+
+        with patch.object(bs, "_run_static_analysis", return_value=([], [
+            "[lint] main.nxl:1:1 S018 TODO/FIXME marker found"
+        ])):
+            with patch.object(bs, "_compile_files") as compile_files:
+                result = bs._build_internal(
+                    release=False,
+                    profile=None,
+                    features=None,
+                    jobs=1,
+                    clean=False,
+                    check_only=False,
+                    optimize_bounds_checks=False,
+                )
+
+        assert result.success is False
+        assert any("warning treated as error" in err for err in result.errors)
+        compile_files.assert_not_called()
+
+    def test_build_allows_lint_warnings_without_promotion(self, tmp_path):
+        src_dir = tmp_path / "src"
+        src_dir.mkdir(parents=True, exist_ok=True)
+        (src_dir / "main.nxl").write_text("set x to 1\n")
+
+        config = _minimal_project_config(src_dir=str(src_dir), out_dir=str(tmp_path / "build"))
+        config.build.lint_on_build = True
+        bs = BuildSystem(config)
+
+        with patch.object(bs, "_run_static_analysis", return_value=([], [
+            "[lint] main.nxl:1:1 S018 TODO/FIXME marker found"
+        ])):
+            with patch.object(bs, "_compile_files", return_value=(1, [], [])):
+                result = bs._build_internal(
+                    release=False,
+                    profile=None,
+                    features=None,
+                    jobs=1,
+                    clean=False,
+                    check_only=False,
+                    optimize_bounds_checks=False,
+                )
+
+        assert result.success is True
+        assert any("S018" in warning for warning in result.warnings)
+
 
 # ---------------------------------------------------------------------------
 # BuildSystem.test() — test runner tests

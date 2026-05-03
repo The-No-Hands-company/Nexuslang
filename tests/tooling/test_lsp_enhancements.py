@@ -13,6 +13,7 @@ Tests for all LSP provider enhancements:
 import pytest
 import sys
 import os
+import tempfile
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
@@ -23,6 +24,7 @@ from nexuslang.lsp.definitions import DefinitionProvider
 from nexuslang.lsp.hover import HoverProvider
 from nexuslang.lsp.completions import CompletionProvider
 from nexuslang.lsp.symbols import SymbolProvider
+from nexuslang.lsp.workspace_index import WorkspaceIndex
 
 
 class TestReferencesProvider:
@@ -96,6 +98,48 @@ set p2 as Person to new Person
         # Should find: 1 definition + 2+ instantiations
         assert len(refs) >= 2, f"Expected at least 2 references, got {len(refs)}"
 
+    def test_override_family_references_include_base_and_derived_methods(self):
+        """Method references should include base and derived declarations."""
+        base_code = """
+class BaseWorker
+    function process that takes value as Integer returns Integer
+        return value
+"""
+        derived_code = """
+class AdvancedWorker extends BaseWorker
+    function process that takes value as Integer returns Integer
+        return value plus 1
+"""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            base_file = os.path.join(tmpdir, "base.nxl")
+            derived_file = os.path.join(tmpdir, "derived.nxl")
+
+            with open(base_file, "w", encoding="utf-8") as fh:
+                fh.write(base_code)
+            with open(derived_file, "w", encoding="utf-8") as fh:
+                fh.write(derived_code)
+
+            server = NLPLLanguageServer()
+            server.workspace_index = WorkspaceIndex(tmpdir)
+            server.workspace_index.scan_workspace()
+
+            base_uri = server.workspace_index._path_to_uri(base_file)
+            derived_uri = server.workspace_index._path_to_uri(derived_file)
+
+            server.documents[base_uri] = base_code
+            server.documents[derived_uri] = derived_code
+
+            provider = ReferencesProvider(server)
+            position = Position(2, 14)  # on derived method name "process"
+            refs = provider.find_references(derived_code, position, derived_uri, include_declaration=True)
+
+            found_base = any(ref["uri"] == base_uri and ref["range"]["start"]["line"] == 2 for ref in refs)
+            found_derived = any(ref["uri"] == derived_uri and ref["range"]["start"]["line"] == 2 for ref in refs)
+
+            assert found_base, "Expected base override method declaration in references"
+            assert found_derived, "Expected derived override method declaration in references"
+
 
 class TestEnhancedDefinitions:
     """Test enhanced go-to-definition functionality."""
@@ -165,6 +209,46 @@ set doubled to counter times 2
         # Should point to the closest assignment before line 3
         assert location.range.start.line in [1, 2], "Should point to variable assignment"
 
+    def test_find_override_base_method_definition(self):
+        """Go-to-definition on overriding method should navigate to base method."""
+        base_code = """
+class BaseService
+    function run that takes input as Integer returns Integer
+        return input
+"""
+        derived_code = """
+class AppService extends BaseService
+    function run that takes input as Integer returns Integer
+        return input plus 1
+"""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            base_file = os.path.join(tmpdir, "base.nxl")
+            derived_file = os.path.join(tmpdir, "derived.nxl")
+
+            with open(base_file, "w", encoding="utf-8") as fh:
+                fh.write(base_code)
+            with open(derived_file, "w", encoding="utf-8") as fh:
+                fh.write(derived_code)
+
+            server = NLPLLanguageServer()
+            server.workspace_index = WorkspaceIndex(tmpdir)
+            server.workspace_index.scan_workspace()
+
+            base_uri = server.workspace_index._path_to_uri(base_file)
+            derived_uri = server.workspace_index._path_to_uri(derived_file)
+
+            server.documents[base_uri] = base_code
+            server.documents[derived_uri] = derived_code
+
+            provider = DefinitionProvider(server)
+            position = Position(2, 14)  # on derived method name "run"
+            location = provider.get_definition(derived_code, position, derived_uri)
+
+            assert location is not None, "Should find base method definition"
+            assert location.uri == base_uri
+            assert location.range.start.line == 2
+
 
 class TestEnhancedHover:
     """Test enhanced hover documentation."""
@@ -206,6 +290,29 @@ set result to calculate with 5, 3.14
         content = hover["contents"]["value"]
         assert "calculate" in content, "Should contain function name"
         assert "Parameters" in content or "parameter" in content.lower(), "Should list parameters"
+
+    def test_hover_generic_function_shows_parameters_and_constraints(self):
+        """Hover should include generic parameters and constraints."""
+        server = NLPLLanguageServer()
+        provider = HoverProvider(server)
+
+        code = """
+function transform<T: Comparable> that takes value as T where T is Printable returns T
+    return value
+
+set result to transform with 5
+"""
+
+        position = Position(4, 16)  # on "transform"
+        hover = provider.get_hover(code, position)
+
+        assert hover is not None, "Should provide hover info for generic function"
+        content = hover["contents"]["value"]
+        assert "Generic Parameters" in content
+        assert "Generic Constraints" in content
+        assert "Where Constraints" in content
+        assert "Comparable" in content
+        assert "Printable" in content
     
     def test_hover_variable_with_type(self):
         """Test hover on variable shows type."""
@@ -252,6 +359,82 @@ set counter as Integer to 0
         assert hover is not None, "Should provide hover info for comptime"
         content = hover["contents"]["value"]
         assert "Compile-time execution" in content
+
+    def test_hover_asm_keyword_docs(self):
+        """Test hover docs for asm keyword and constraint sections."""
+        server = NLPLLanguageServer()
+        provider = HoverProvider(server)
+
+        code = "asm\n    inputs \"r\": x\nend"
+        position = Position(0, 1)  # on "asm"
+
+        hover = provider.get_hover(code, position)
+
+        assert hover is not None, "Should provide hover info for asm"
+        content = hover["contents"]["value"]
+        assert "Inline assembly" in content
+
+        position_inputs = Position(1, 6)  # on "inputs"
+        hover_inputs = provider.get_hover(code, position_inputs)
+        assert hover_inputs is not None
+        assert "constraint tokens" in hover_inputs["contents"]["value"]
+
+    def test_hover_unsafe_and_extern_keyword_docs(self):
+        """Test hover docs for unsafe and extern FFI keywords."""
+        server = NLPLLanguageServer()
+        provider = HoverProvider(server)
+
+        unsafe_code = "unsafe do\n    end"
+        unsafe_pos = Position(0, 1)  # on "unsafe"
+        unsafe_hover = provider.get_hover(unsafe_code, unsafe_pos)
+
+        assert unsafe_hover is not None, "Should provide hover info for unsafe"
+        assert "unsafe execution region" in unsafe_hover["contents"]["value"].lower()
+
+        extern_code = "extern function puts returns Integer from library \"c\""
+        extern_pos = Position(0, 2)  # on "extern"
+        extern_hover = provider.get_hover(extern_code, extern_pos)
+
+        assert extern_hover is not None, "Should provide hover info for extern"
+        assert "external symbols" in extern_hover["contents"]["value"].lower()
+
+    def test_hover_yield_keyword_docs(self):
+        """Hover should document yield keyword semantics."""
+        server = NLPLLanguageServer()
+        provider = HoverProvider(server)
+
+        code = "yield 1"
+        position = Position(0, 1)
+        hover = provider.get_hover(code, position)
+
+        assert hover is not None, "Should provide hover info for yield"
+        content = hover["contents"]["value"].lower()
+        assert "yield a value" in content
+        assert "generator" in content
+
+    def test_hover_generator_function_shows_yield_flow_hint(self):
+        """Hover on generator function call should include yield-flow hints."""
+        server = NLPLLanguageServer()
+        provider = HoverProvider(server)
+
+        code = """
+function sequence that takes n as Integer returns List of Integer
+    set i to 0
+    while i is less than n
+        yield i
+        set i to i plus 1
+    end
+end
+
+set values to sequence with 5
+"""
+        position = Position(1, 10)  # on function name "sequence"
+        hover = provider.get_hover(code, position)
+
+        assert hover is not None, "Should provide hover info for generator function"
+        content = hover["contents"]["value"]
+        assert "Generator Flow" in content
+        assert "Yields" in content
 
 
 class TestEnhancedCompletions:
@@ -419,6 +602,36 @@ expand
         assert "const" in labels, "Should suggest comptime const"
         assert "assert" in labels, "Should suggest comptime assert"
 
+    def test_generic_parameter_completion_inside_type_list(self):
+        """Completions should suggest generic parameter templates in <...>."""
+        server = NLPLLanguageServer()
+        provider = CompletionProvider(server)
+
+        code = "function map<"
+        position = Position(0, len(code))
+        completions = provider.get_completions(code, position)
+
+        labels = [c["label"] for c in completions]
+        assert "T" in labels
+        assert "T: Comparable" in labels
+
+    def test_generic_where_constraint_completion(self):
+        """Completions should suggest where-clause constraint snippets and traits."""
+        server = NLPLLanguageServer()
+        provider = CompletionProvider(server)
+
+        code = "function map<T> that takes value as T where "
+        position = Position(0, len(code))
+        completions = provider.get_completions(code, position)
+        labels = [c["label"] for c in completions]
+        assert "T is Comparable" in labels
+
+        code2 = "function map<T> that takes value as T where T is "
+        position2 = Position(0, len(code2))
+        completions2 = provider.get_completions(code2, position2)
+        labels2 = [c["label"] for c in completions2]
+        assert "Comparable" in labels2
+
     def test_channel_hover_keyword_docs(self):
         """Test hover docs for channel keyword."""
         server = NLPLLanguageServer()
@@ -431,6 +644,38 @@ expand
         assert hover is not None, "Should provide hover info for channel"
         content = hover["contents"]["value"]
         assert "message passing" in content.lower()
+
+    def test_spawn_completion_suggests_function_targets(self):
+        """Completions after spawn should suggest known function targets."""
+        server = NLPLLanguageServer()
+        provider = CompletionProvider(server)
+
+        code = """
+function compute that takes x as Integer returns Integer
+    return x
+
+set task to spawn 
+"""
+        position = Position(4, len("set task to spawn "))
+
+        completions = provider.get_completions(code, position)
+        labels = [c["label"] for c in completions]
+        assert "compute" in labels, "Should suggest known function for spawn"
+
+    def test_await_completion_suggests_async_handles(self):
+        """Completions after await should suggest task/promise variables."""
+        server = NLPLLanguageServer()
+        provider = CompletionProvider(server)
+
+        code = """
+set task to spawn compute with 1
+set result to await 
+"""
+        position = Position(2, len("set result to await "))
+
+        completions = provider.get_completions(code, position)
+        labels = [c["label"] for c in completions]
+        assert "task" in labels, "Should suggest spawned async handle after await"
 
 
 class TestEnhancedSymbols:
@@ -525,6 +770,27 @@ function calibrate that takes val as Float returns Float
         first_name = symbols[0]["name"]
         assert first_name in ["calculate", "calculate_average", "calibrate"], \
             f"First result should start with 'cal', got {first_name}"
+
+    def test_find_symbols_marks_generator_functions(self):
+        """Fallback symbol extraction should mark generator functions."""
+        server = NLPLLanguageServer()
+        provider = SymbolProvider(server)
+
+        code = """
+function sequence that takes n as Integer returns List of Integer
+    yield n
+end
+
+function compute that takes x as Integer returns Integer
+    return x
+end
+"""
+        server.documents["test.nxl"] = code
+        symbols = provider.find_symbols("se", server.documents)
+
+        seq = next((s for s in symbols if s["name"] == "sequence"), None)
+        assert seq is not None, "Should find sequence symbol"
+        assert seq.get("containerName") == "generator"
 
 
 if __name__ == "__main__":

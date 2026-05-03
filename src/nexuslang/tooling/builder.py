@@ -170,6 +170,10 @@ class BuildSystem:
         clean: bool = False,
         check_only: bool = False,
         optimize_bounds_checks: bool = False,
+        lint: Optional[bool] = None,
+        lint_strict: bool = False,
+        lint_errors_only: bool = False,
+        lint_fail_on_warnings: bool = False,
     ) -> bool:
         """Build the project.
 
@@ -193,6 +197,10 @@ class BuildSystem:
             clean=clean,
             check_only=check_only,
             optimize_bounds_checks=optimize_bounds_checks,
+            lint=lint,
+            lint_strict=lint_strict,
+            lint_errors_only=lint_errors_only,
+            lint_fail_on_warnings=lint_fail_on_warnings,
         )
         result.print_summary(
             self.config.package.name,
@@ -523,6 +531,10 @@ class BuildSystem:
         clean: bool,
         check_only: bool,
         optimize_bounds_checks: bool,
+        lint: Optional[bool] = None,
+        lint_strict: bool = False,
+        lint_errors_only: bool = False,
+        lint_fail_on_warnings: bool = False,
     ) -> BuildResult:
         t0 = time.monotonic()
 
@@ -579,6 +591,40 @@ class BuildSystem:
                 errors=[f"No source files found in {src_dir}"],
                 elapsed=time.monotonic() - t0,
             )
+
+        # ------------------------------------------------------------------
+        # Optional static-analysis (nlpllint) integration
+        # ------------------------------------------------------------------
+        lint_enabled = self.config.build.lint_on_build if lint is None else lint
+        effective_lint_strict = self.config.build.lint_strict or lint_strict
+        effective_lint_errors_only = self.config.build.lint_errors_only or lint_errors_only
+        effective_lint_fail_on_warnings = (
+            self.config.build.lint_fail_on_warnings or lint_fail_on_warnings
+        )
+
+        if lint_enabled:
+            print("  Running static analysis (nlpllint)...")
+            lint_errors, lint_warnings = self._run_static_analysis(
+                src_dir,
+                strict=effective_lint_strict,
+                errors_only=effective_lint_errors_only,
+            )
+            if lint_errors:
+                return BuildResult(
+                    success=False,
+                    errors=lint_errors,
+                    warnings=script_warnings + lint_warnings,
+                    elapsed=time.monotonic() - t0,
+                )
+            if effective_lint_fail_on_warnings and lint_warnings:
+                promoted = [f"[lint] warning treated as error: {w}" for w in lint_warnings]
+                return BuildResult(
+                    success=False,
+                    errors=promoted,
+                    warnings=script_warnings + lint_warnings,
+                    elapsed=time.monotonic() - t0,
+                )
+            script_warnings.extend(lint_warnings)
 
         # Determine which files need (re)compilation
         to_compile = [s for s in sources if cache.needs_rebuild(s)] if not clean else sources
@@ -647,6 +693,46 @@ class BuildSystem:
             lto_output=lto_output,
             lto_skipped_reason=lto_skip_reason,
         )
+
+    def _run_static_analysis(
+        self,
+        src_dir: str,
+        *,
+        strict: bool,
+        errors_only: bool,
+    ) -> Tuple[List[str], List[str]]:
+        """Run static analyzer over source tree and return (errors, warnings)."""
+        from ..tooling.analyzer.analyzer import create_default_analyzer, create_strict_analyzer
+
+        if not os.path.isdir(src_dir):
+            return [f"[lint] Source directory not found: {src_dir}"], []
+
+        analyzer = create_strict_analyzer() if strict else create_default_analyzer()
+        reports = analyzer.analyze_directory(src_dir, recursive=True)
+
+        lint_errors: List[str] = []
+        lint_warnings: List[str] = []
+
+        for report in reports:
+            for issue in report.issues:
+                severity = getattr(issue.severity, "value", str(issue.severity)).lower()
+                if errors_only and severity != "error":
+                    continue
+
+                file_path = getattr(issue.location, "file", report.file_path)
+                line = getattr(issue.location, "line", 1)
+                column = getattr(issue.location, "column", 1)
+                rendered = (
+                    f"[lint] {file_path}:{line}:{column} "
+                    f"{issue.code} {issue.message}"
+                )
+
+                if severity == "error":
+                    lint_errors.append(rendered)
+                elif severity == "warning":
+                    lint_warnings.append(rendered)
+
+        return lint_errors, lint_warnings
 
     def _run_build_script_if_present(
         self,

@@ -406,6 +406,32 @@ end
             assert stats['structs'] >= 1
             assert stats['total_symbols'] > 0
 
+    def test_extracts_real_line_info_for_variable_and_struct_fields(self):
+        """Global variables and struct fields should use AST line metadata, not line 0 placeholders."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_file = os.path.join(tmpdir, "test.nxl")
+            with open(test_file, 'w') as f:
+                f.write(
+                    """set global_count to 1
+struct Point
+    x as Integer
+    y as Integer
+end
+"""
+                )
+
+            index = WorkspaceIndex(tmpdir)
+            file_uri = index._path_to_uri(test_file)
+            symbols = index.index_file(file_uri, test_file)
+
+            global_var = next(s for s in symbols if s.kind == 'variable' and s.name == 'global_count')
+            assert global_var.line == 0
+            assert global_var.column > 0
+
+            fields = [s for s in symbols if s.kind == 'field' and s.scope == 'Point']
+            assert len(fields) == 2
+            assert all(field.line > 0 for field in fields)
+
 
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])

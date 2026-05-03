@@ -23,7 +23,7 @@ from nexuslang.parser.ast import (
 )
 
 
-def test_llvm_parallel_for_is_lowered_to_loop_ir():
+def test_llvm_parallel_for_is_lowered_to_parallel_runtime_call():
     ast = Program([
         ParallelForLoop(
             "item",
@@ -36,7 +36,9 @@ def test_llvm_parallel_for_is_lowered_to_loop_ir():
     llvm_ir = generator.generate(ast)
 
     assert "define i32 @main(" in llvm_ir
-    assert "for.cond" in llvm_ir or "foreach.cond" in llvm_ir
+    assert "declare void @nxl_parallel_for_i64(i64*, i64, void (i64)*, i64)" in llvm_ir
+    assert "define void @__nxl_parallel_body_0(i64 %iter_value)" in llvm_ir
+    assert "call void @nxl_parallel_for_i64(" in llvm_ir
 
 
 def test_llvm_contracts_and_expect_emit_runtime_panic_guards():
@@ -101,3 +103,27 @@ def test_llvm_nested_try_catch_multiple_rethrows_emit_nested_landingpads():
     assert llvm_ir.count("landingpad { i8*, i32 }") >= 3
     assert llvm_ir.count("@__nxl_throw") >= 3 or llvm_ir.count("@__cxa_throw") >= 3
     assert llvm_ir.count("@__cxa_begin_catch") >= 3
+
+
+def test_llvm_uncaught_raise_uses_throw_helper_and_unreachable():
+    ast = Program([
+        RaiseStatement(message=Literal("string", "fatal")),
+    ])
+
+    generator = LLVMIRGenerator()
+    llvm_ir = generator.generate(ast)
+
+    assert "call void @__nxl_throw(i8*" in llvm_ir
+    assert "unreachable" in llvm_ir
+
+
+def test_llvm_raise_without_message_uses_default_error_text():
+    ast = Program([
+        RaiseStatement(),
+    ])
+
+    generator = LLVMIRGenerator()
+    llvm_ir = generator.generate(ast)
+
+    assert "Error raised" in llvm_ir
+    assert "call void @__nxl_throw(i8*" in llvm_ir

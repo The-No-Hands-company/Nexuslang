@@ -166,11 +166,18 @@ Canonical forms:
 ```ebnf
 whileLoop      ::= ["label" IDENTIFIER ":"] "while" expression block "end"
 forEachLoop    ::= ["label" IDENTIFIER ":"] "for" "each" IDENTIFIER ["with" "index" IDENTIFIER] "in" expression block "end"
+parallelForLoop::= "parallel" ("for" | "for" "each") IDENTIFIER "in" expression block "end"
 switchStmt     ::= "switch" expression ("case" expression block)+ ["default" block]
 breakStmt      ::= "break" [IDENTIFIER]
 continueStmt   ::= "continue" [IDENTIFIER]
 fallthroughStmt::= "fallthrough"
 ```
+
+Notes:
+
+1. The handwritten parser accepts `parallel for x in items` and `parallel for each x in items`.
+2. `parallel for` currently does not support `with index` or chunk-size/options clauses in parser syntax.
+3. Higher-level batching and reduction should use standard-library concurrency helpers such as `parallel_for_each` and `parallel_reduce` until dedicated loop clauses are implemented.
 
 ### 5. Functions and Procedures
 
@@ -306,6 +313,37 @@ End module.
 
 Export the utilities module.
 ```
+
+### 9.1 Generators and Yield (Parser-Aligned)
+
+NexusLang generator functions are declared using normal function syntax. A function is treated as a generator when its body contains one or more `yield` expressions.
+
+```nlpl
+function sequence with n as Integer returns List of Integer
+    set i to 0
+    while i is less than n
+        yield i
+        set i to i plus 1
+    end
+end
+```
+
+Canonical forms:
+
+```ebnf
+functionDef          ::= ["async"] "function" IDENTIFIER [genericParams]
+                         ["with" parameterList] ["returns" typeAnnotation]
+                         contractClauses? statement* "end"
+
+yieldExpression      ::= "yield" [expression]
+generatorExpression  ::= "(" expression "for" expression "in" expression ["if" expression] ")"
+```
+
+Notes:
+
+1. Generator declaration is semantic (body contains `yield`), not a separate keyword form.
+2. Parser-level generator expression uses `for ... in ...` inside parentheses.
+3. `yield` can be bare (`yield`) or carry a value (`yield expr`).
 
 ### 10. Comments and Documentation
 

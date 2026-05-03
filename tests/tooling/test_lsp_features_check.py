@@ -42,14 +42,17 @@ set message to greet with "World"
     
     print("\n✅ Code parsed successfully")
     print(f"   AST nodes: {len(ast.statements)}")
+    assert len(ast.statements) > 0
     
     # Check if we can find the function definition
     print("\n✅ Function definitions found:")
+    found_function = False
     for stmt in ast.statements:
         if hasattr(stmt, '__class__') and stmt.__class__.__name__ == 'FunctionDefinition':
             print(f"   - {stmt.name} at line {getattr(stmt, 'line', '?')}")
-    
-    return True
+            found_function = True
+
+    assert found_function
 
 
 def test_completion_provider():
@@ -71,8 +74,8 @@ def test_completion_provider():
     keywords = provider.get_keyword_completions()
     print(f"\n✅ Keyword completions available: {len(keywords)}")
     print(f"   Sample: {[k['label'] for k in keywords[:5]]}")
-    
-    return True
+
+    assert len(keywords) > 0
 
 
 def check_lsp_files():

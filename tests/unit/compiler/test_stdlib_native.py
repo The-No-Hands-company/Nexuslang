@@ -146,6 +146,7 @@ _REQUIRED_SYMBOLS = [
     "nxl_bool_to_string",
     "nxl_string_to_int",
     "nxl_string_to_float",
+    "nxl_parallel_for_i64",
     "nxl_runtime_version",
     # math
     "nxl_sin",

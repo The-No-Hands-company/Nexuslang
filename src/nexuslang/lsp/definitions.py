@@ -11,6 +11,7 @@ import os
 from ..parser.lexer import Lexer
 from ..parser.parser import Parser
 from ..analysis import ASTSymbolExtractor, SymbolTable
+from ..parser.ast import ClassDefinition
 
 
 class DefinitionProvider:
@@ -34,6 +35,7 @@ class DefinitionProvider:
         }
         # Cache symbol tables per document
         self.symbol_tables: Dict[str, SymbolTable] = {}
+        self._class_hierarchy_cache: Optional[Dict[str, List[str]]] = None
     
     def _get_word_at_position(self, text: str, position):
         """Alias for _get_symbol_at_position for workspace index code."""
@@ -85,6 +87,33 @@ class DefinitionProvider:
             if word:
                 symbols = self.server.workspace_index.get_symbol(word)
                 if symbols:
+                    # Method override-aware navigation: when invoked on an overriding
+                    # method definition, jump to the nearest base implementation.
+                    method_symbols = [s for s in symbols if s.kind == 'method']
+                    if method_symbols:
+                        current_method = self._find_current_method_symbol(method_symbols, uri, position.line)
+                        if current_method:
+                            base_method = self._find_overridden_method(word, current_method.scope)
+                            if base_method:
+                                from ..lsp.server import Location, Range, Position
+                                return Location(
+                                    uri=base_method.file_uri,
+                                    range=Range(
+                                        start=Position(line=base_method.line, character=base_method.column),
+                                        end=Position(line=base_method.line, character=base_method.column + len(base_method.name))
+                                    )
+                                )
+
+                            # If no override target exists, keep local definition stable.
+                            from ..lsp.server import Location, Range, Position
+                            return Location(
+                                uri=current_method.file_uri,
+                                range=Range(
+                                    start=Position(line=current_method.line, character=current_method.column),
+                                    end=Position(line=current_method.line, character=current_method.column + len(current_method.name))
+                                )
+                            )
+
                     # Return first matching symbol (could enhance to handle multiple)
                     sym = symbols[0]
                     from ..lsp.server import Location, Range, Position
@@ -336,13 +365,16 @@ class DefinitionProvider:
                 return (i, match.start() + len('class '))
 
         # Look for method definition
-        method_pattern = rf'\bmethod\s+{re.escape(symbol)}\b'
+        method_pattern = rf'\b(?:method|function)\s+{re.escape(symbol)}\b'
         for i, line in enumerate(lines):
             if current_position and i == current_line:
                 continue
             match = re.search(method_pattern, line, re.IGNORECASE)
             if match:
-                return (i, match.start() + len('method '))
+                prefix = line[match.start():match.end()]
+                kw_match = re.match(r'\b(?:method|function)\s+', prefix, re.IGNORECASE)
+                offset = kw_match.end() if kw_match else len('function ')
+                return (i, match.start() + offset)
 
         # Look for variable assignment — prefer closest definition at or before
         # the cursor, but fall back to the first occurrence in the file.
@@ -365,6 +397,78 @@ class DefinitionProvider:
             return first_any
 
         return (None, None)
+
+    def _find_current_method_symbol(self, method_symbols, uri: str, line: int):
+        """Find the method symbol that best matches the current cursor line."""
+        same_file = [s for s in method_symbols if s.file_uri == uri]
+        if not same_file:
+            return None
+
+        exact = [s for s in same_file if s.line == line]
+        if exact:
+            return exact[0]
+
+        # Fallback to nearest method symbol in file.
+        return min(same_file, key=lambda s: abs(s.line - line))
+
+    def _find_overridden_method(self, method_name: str, method_scope: str):
+        """Find nearest base-class method overridden by the given method scope."""
+        if not method_scope:
+            return None
+
+        class_name = method_scope.split('.')[0]
+        hierarchy = self._build_class_hierarchy()
+
+        index = getattr(self.server, 'workspace_index', None)
+        if not index:
+            return None
+
+        queue = list(hierarchy.get(class_name, []))
+        visited = set()
+
+        while queue:
+            parent = queue.pop(0)
+            if parent in visited:
+                continue
+            visited.add(parent)
+
+            candidates = [s for s in index.get_symbol(method_name) if s.kind == 'method' and s.scope and s.scope.split('.')[0] == parent]
+            if candidates:
+                return candidates[0]
+
+            queue.extend(hierarchy.get(parent, []))
+
+        return None
+
+    def _build_class_hierarchy(self) -> Dict[str, List[str]]:
+        """Build class -> direct parent class names from indexed workspace files."""
+        if self._class_hierarchy_cache is not None:
+            return self._class_hierarchy_cache
+
+        hierarchy: Dict[str, List[str]] = {}
+        index = getattr(self.server, 'workspace_index', None)
+        if not index:
+            self._class_hierarchy_cache = hierarchy
+            return hierarchy
+
+        for file_uri in index.indexed_files:
+            file_path = index._uri_to_path(file_uri)
+            try:
+                with open(file_path, 'r', encoding='utf-8') as fh:
+                    source = fh.read()
+                lexer = Lexer(source)
+                tokens = lexer.tokenize()
+                parser = Parser(tokens)
+                ast = parser.parse()
+            except Exception:
+                continue
+
+            for stmt in getattr(ast, 'statements', []):
+                if isinstance(stmt, ClassDefinition):
+                    hierarchy[stmt.name] = list(getattr(stmt, 'parent_classes', []) or [])
+
+        self._class_hierarchy_cache = hierarchy
+        return hierarchy
 
 
 __all__ = ['DefinitionProvider']

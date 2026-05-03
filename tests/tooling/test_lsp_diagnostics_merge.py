@@ -56,6 +56,35 @@ def test_merge_and_dedupe_normalizes_legacy_source_and_missing_code():
     assert diag["source"] == "nlpl"
     assert diag["code"] == "E309"
     assert diag.get("data", {}).get("explainHint") == "nxl --explain E309"
+    assert diag.get("data", {}).get("reference") == "docs/reference/error-codes.md#e309"
+
+
+def test_merge_and_dedupe_normalizes_invalid_code_to_runtime_error():
+    provider = _provider()
+    diagnostics = provider.merge_and_dedupe_diagnostics(
+        [_diag(0, 0, "bad-code", code="NOT_A_CODE", source="nexuslang")],
+    )
+
+    assert len(diagnostics) == 1
+    diag = diagnostics[0]
+    assert diag["code"] == "E309"
+    assert diag.get("data", {}).get("reference") == "docs/reference/error-codes.md#e309"
+
+
+def test_merge_and_dedupe_preserves_and_merges_origins():
+    provider = _provider()
+    parser_diag = _diag(1, 0, "duplicate", "E200", source="parser")
+    type_diag = _diag(1, 0, "duplicate", "E200", source="typechecker")
+
+    diagnostics = provider.merge_and_dedupe_diagnostics(
+        provider._tag_origin([parser_diag], "parser"),
+        provider._tag_origin([type_diag], "typechecker"),
+    )
+
+    assert len(diagnostics) == 1
+    data = diagnostics[0].get("data", {})
+    assert diagnostics[0]["source"] == "nlpl"
+    assert data.get("origins") == ["parser", "typechecker"]
 
 
 def test_get_diagnostics_output_is_deduplicated_and_sorted():
@@ -70,6 +99,8 @@ def test_get_diagnostics_output_is_deduplicated_and_sorted():
     provider._check_imports = lambda text, uri: []
     provider._check_channel_operations = lambda text: []
     provider._check_macro_comptime_operations = lambda text: []
+    provider._check_exception_scope_and_unreachable_catch = lambda text: []
+    provider._check_async_await_spawn_contexts = lambda text: []
     provider._check_unused_vars = lambda text: []
 
     diagnostics = provider.get_diagnostics("file:///dedup.nxl", "set x to 1", check_imports=False)

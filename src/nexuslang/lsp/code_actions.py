@@ -10,6 +10,7 @@ from typing import List, Dict, Optional
 from ..parser.lexer import Lexer
 from ..parser.parser import Parser
 from ..analysis import ASTSymbolExtractor, SymbolTable, SymbolKind
+from .formatter import NLPLFormatter
 
 
 class CodeActionsProvider:
@@ -76,6 +77,10 @@ class CodeActionsProvider:
         organize_action = self._organize_imports(uri, text)
         if organize_action:
             actions.append(organize_action)
+
+        format_action = self._format_document_action(uri, text)
+        if format_action:
+            actions.append(format_action)
 
         # Toggle comment for the selected / cursor range
         toggle_action = self._toggle_comment(uri, text, range_params)
@@ -273,8 +278,135 @@ class CodeActionsProvider:
                 if action:
                     action["diagnostics"] = [diagnostic]
                     actions.append(action)
+                continue
+
+            is_contract_context = any(k in message_lower for k in ("require", "ensure", "guarantee", "invariant", "contract"))
+
+            if is_contract_context and ("add contract failure message" in fix_lower or "contract failure message" in fix_lower):
+                action = self._add_contract_message_action(uri, text, diag_range, diagnostic)
+                if action:
+                    actions.append(action)
+                continue
+
+            if is_contract_context and ("explicit boolean check" in fix_lower or "boolean condition" in fix_lower):
+                action = self._convert_contract_condition_to_boolean(uri, text, diag_range, diagnostic)
+                if action:
+                    actions.append(action)
+                continue
+
+            if is_contract_context and ("use string literal" in fix_lower or "convert contract message to string" in fix_lower):
+                action = self._convert_contract_message_to_string(uri, text, diag_range, diagnostic)
+                if action:
+                    actions.append(action)
 
         return actions
+
+    def _add_contract_message_action(self, uri: str, text: str, diag_range: Dict, diagnostic: Dict) -> Optional[Dict]:
+        """Append a default message clause to a contract statement if missing."""
+        line_num = diag_range.get("start", {}).get("line", 0)
+        lines = text.split("\n")
+        if line_num >= len(lines):
+            return None
+
+        line = lines[line_num]
+        m = re.match(r'^(\s*)(require|ensure|guarantee|invariant)\b(.+)$', line, re.IGNORECASE)
+        if not m:
+            return None
+        if re.search(r'\bmessage\b', line, re.IGNORECASE):
+            return None
+
+        insert_at = len(line.rstrip())
+        return {
+            "title": "Add contract failure message",
+            "kind": self.KIND_QUICKFIX,
+            "diagnostics": [diagnostic],
+            "edit": {
+                "changes": {
+                    uri: [{
+                        "range": {
+                            "start": {"line": line_num, "character": insert_at},
+                            "end": {"line": line_num, "character": insert_at},
+                        },
+                        "newText": ' message "contract failed"',
+                    }]
+                }
+            },
+        }
+
+    def _convert_contract_condition_to_boolean(self, uri: str, text: str, diag_range: Dict, diagnostic: Dict) -> Optional[Dict]:
+        """Convert contract condition to explicit boolean check by appending 'is true'."""
+        line_num = diag_range.get("start", {}).get("line", 0)
+        lines = text.split("\n")
+        if line_num >= len(lines):
+            return None
+
+        line = lines[line_num]
+        m = re.match(r'^(\s*)(require|ensure|guarantee|invariant)\s+(.+?)(\s+message\s+.+)?\s*$', line, re.IGNORECASE)
+        if not m:
+            return None
+
+        indent, keyword, condition, message_clause = m.groups()
+        condition = condition.strip()
+        if re.search(r'\bis\s+(true|false)\b', condition, re.IGNORECASE):
+            return None
+
+        rebuilt = f"{indent}{keyword} {condition} is true"
+        if message_clause:
+            rebuilt += message_clause
+
+        return {
+            "title": "Convert contract condition to explicit boolean check",
+            "kind": self.KIND_QUICKFIX,
+            "diagnostics": [diagnostic],
+            "edit": {
+                "changes": {
+                    uri: [{
+                        "range": {
+                            "start": {"line": line_num, "character": 0},
+                            "end": {"line": line_num, "character": len(line)},
+                        },
+                        "newText": rebuilt,
+                    }]
+                }
+            },
+        }
+
+    def _convert_contract_message_to_string(self, uri: str, text: str, diag_range: Dict, diagnostic: Dict) -> Optional[Dict]:
+        """Wrap non-string contract message expression in quotes as a safe fallback."""
+        line_num = diag_range.get("start", {}).get("line", 0)
+        lines = text.split("\n")
+        if line_num >= len(lines):
+            return None
+
+        line = lines[line_num]
+        message_match = re.search(r'\bmessage\s+(.+)$', line, re.IGNORECASE)
+        if not message_match:
+            return None
+
+        message_expr = message_match.group(1).strip()
+        if message_expr.startswith('"') and message_expr.endswith('"'):
+            return None
+
+        start = message_match.start(1)
+        end = len(line)
+        replacement = f'"{message_expr}"'
+
+        return {
+            "title": "Convert contract message to string literal",
+            "kind": self.KIND_QUICKFIX,
+            "diagnostics": [diagnostic],
+            "edit": {
+                "changes": {
+                    uri: [{
+                        "range": {
+                            "start": {"line": line_num, "character": start},
+                            "end": {"line": line_num, "character": end},
+                        },
+                        "newText": replacement,
+                    }]
+                }
+            },
+        }
     
     def _remove_unused_variable(self, uri: str, text: str, var_name: str, diag_range: Dict) -> Optional[Dict]:
         """Remove unused variable declaration."""
@@ -387,6 +519,19 @@ class CodeActionsProvider:
     # ------------------------------------------------------------------
     # New Week-5 refactoring actions
     # ------------------------------------------------------------------
+
+    def _format_document_action(self, uri: str, text: str) -> Optional[Dict]:
+        """Return a format quick fix when formatter output differs from source."""
+        formatter = NLPLFormatter()
+        edits = formatter.get_formatting_edits(text)
+        if not edits:
+            return None
+
+        return {
+            "title": "Format document (NexusLang style)",
+            "kind": self.KIND_QUICKFIX,
+            "edit": {"changes": {uri: edits}},
+        }
 
     def _organize_imports(self, uri: str, text: str) -> Optional[Dict]:
         """

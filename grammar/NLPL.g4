@@ -53,6 +53,7 @@ statement
     | repeatNTimes
     | repeatWhileLoop
     | forEachLoop
+    | parallelForLoop
     | switchStatement
     | matchStatement
     | returnStatement
@@ -153,6 +154,16 @@ memberAssignment
 //   function process with items as List of Integer and *rest as String
 //       ...
 //   end
+//
+//   Generator declaration pattern (parser-aligned):
+//   function sequence with n as Integer returns List of Integer
+//       yield 0
+//       yield n
+//   end
+//
+//   Notes:
+//   - The parser identifies generator functions by `yield` usage in the body.
+//   - Return annotations for generators are conventionally `List of T`.
 // --------------------------------------------------------------------------
 
 functionDefinition
@@ -446,6 +457,15 @@ forEachLoop
         statement*
       END
     ;
+
+parallelForLoop
+        : PARALLEL FOR EACH IDENTIFIER IN expression
+                statement*
+            END
+        | PARALLEL FOR IDENTIFIER IN expression
+                statement*
+            END
+        ;
 
 labelPrefix
     : LABEL IDENTIFIER ':'
@@ -812,6 +832,7 @@ postfix
 atom
     : literal
     | IDENTIFIER
+    | generatorExpression
     | '(' expression ')'
     | listLiteral
     | dictLiteral
@@ -837,6 +858,10 @@ receiveExpression
 
 yieldExpression
     : YIELD expression?
+    ;
+
+generatorExpression
+    : '(' expression FOR expression IN expression (IF expression)? ')'
     ;
 
 functionCall

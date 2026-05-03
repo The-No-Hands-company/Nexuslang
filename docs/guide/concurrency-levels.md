@@ -243,10 +243,9 @@ parallel for each image in images
  call save with image
 end
 
-# Or with explicit chunk size
-parallel for each batch in batches with chunk size 100
- call process_batch with batch
-end
+# Chunk-size clauses for parallel loops are not parser-supported yet.
+# Use library helpers when explicit partitioning is required.
+parallel_for_each with process_batch and batches
 ```
 
 #### Futures and Promises

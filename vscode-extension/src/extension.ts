@@ -1,4 +1,5 @@
 import * as path from 'path';
+import * as fs from 'fs';
 import * as vscode from 'vscode';
 import {
     LanguageClient,
@@ -150,7 +151,7 @@ async function explainErrorCode(context: vscode.ExtensionContext): Promise<void>
         return;
     }
 
-    const config = vscode.workspace.getConfiguration('nlpl');
+    const config = vscode.workspace.getConfiguration('nexuslang');
     const pythonPath = config.get<string>('languageServer.pythonPath', 'python3');
     const srcPath = path.join(workspaceFolder.uri.fsPath, 'src');
 
@@ -159,7 +160,7 @@ async function explainErrorCode(context: vscode.ExtensionContext): Promise<void>
         cwd: workspaceFolder.uri.fsPath,
         env: { ...process.env, PYTHONPATH: srcPath }
     });
-    terminal.sendText(`${pythonPath} -m nxl --explain ${code}`);
+    terminal.sendText(`${pythonPath} -m nexuslang.main --explain ${code}`);
     terminal.show();
 }
 
@@ -184,7 +185,7 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     // Get configuration
-    const config = vscode.workspace.getConfiguration('nlpl');
+    const config = vscode.workspace.getConfiguration('nexuslang');
     const enabled = config.get<boolean>('languageServer.enabled', true);
     
     console.log('[NexusLang] Language server enabled:', enabled);
@@ -199,18 +200,21 @@ export async function activate(context: vscode.ExtensionContext) {
     let args: string[] = [];
     
     if (!serverPath) {
-        // Default: use Python to run LSP server from workspace
+        // Prefer the workspace server script when available; otherwise use module entrypoint.
         const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        const pythonPath = config.get<string>('languageServer.pythonPath', 'python3');
+        serverPath = pythonPath;
+        const defaultArgs = config.get<string[]>('languageServer.arguments', ['--stdio']);
+
         if (workspaceFolder) {
-            const pythonPath = config.get<string>('languageServer.pythonPath', 'python3');
-            const lspServerPath = path.join(workspaceFolder.uri.fsPath, 'src', 'nlpl', 'lsp', 'server.py');
-            serverPath = pythonPath;
-            // Run server.py directly (simpler than -m)
-            args = [lspServerPath, '--stdio'];
+            const lspServerPath = path.join(workspaceFolder.uri.fsPath, 'src', 'nexuslang', 'lsp', 'server.py');
+            if (fs.existsSync(lspServerPath)) {
+                args = [lspServerPath, ...defaultArgs];
+            } else {
+                args = ['-m', 'nexuslang.lsp', ...defaultArgs];
+            }
         } else {
-            // Fallback to system installation
-            serverPath = 'nlpl-lsp';
-            args = config.get<string[]>('languageServer.arguments', ['--stdio']);
+            args = ['-m', 'nexuslang.lsp', ...defaultArgs];
         }
     } else {
         // Server path was manually configured
@@ -252,6 +256,13 @@ export async function activate(context: vscode.ExtensionContext) {
         documentSelector: [{ scheme: 'file', language: 'nlpl' }],
         synchronize: {
             fileEvents: vscode.workspace.createFileSystemWatcher('**/*.nxl')
+        },
+        initializationOptions: {
+            linting: {
+                enabled: config.get<boolean>('languageServer.linting.enabled', false),
+                strict: config.get<boolean>('languageServer.linting.strict', false),
+                errorsOnly: config.get<boolean>('languageServer.linting.errorsOnly', false),
+            }
         }
     };
 

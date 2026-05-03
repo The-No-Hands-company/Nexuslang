@@ -34,20 +34,21 @@ cd NexusLang
 python src/main.py --version  # Verify installation
 ```
 
-### Step 2: Install the VS Code Extension (Coming Soon)
+### Step 2: Install the VS Code Extension
 
-**Option A: From Marketplace** (when published)
+**Option A: From Marketplace**
 ```
-Search "NexusLang" in VS Code Extensions
+Search "NLPL Language Support" in VS Code Extensions
 Click "Install"
 ```
 
-**Option B: Manual Installation** (for now)
+**Option B: Build and install from this repository**
 ```bash
-cd .vscode/nlpl-extension
+cd vscode-extension
 npm install
 npm run compile
-code --install-extension .
+npm run package
+code --install-extension nlpl-language-support-0.1.0.vsix
 ```
 
 ### Step 3: Configure (Optional)
@@ -57,9 +58,12 @@ Create `.vscode/settings.json` in your NexusLang project:
 ```json
 {
   "nexuslang.languageServer.enabled": true,
-  "nexuslang.languageServer.path": "/absolute/path/to/NexusLang/src/nxl_lsp.py",
+  "nexuslang.languageServer.path": "",
+  "nexuslang.languageServer.linting.enabled": true,
+  "nexuslang.languageServer.linting.strict": false,
+  "nexuslang.languageServer.linting.errorsOnly": false,
   "nexuslang.trace.server": "verbose",
-  "nexuslang.diagnostics.enable": true
+  "nexuslang.languageServer.debug": false
 }
 ```
 
@@ -657,9 +661,9 @@ Results:
 ```json
 {
   "nexuslang.languageServer.enabled": true,
-  "nexuslang.languageServer.path": "/path/to/NexusLang/src/nxl_lsp.py",
-  "nexuslang.diagnostics.enable": true,
-  "nexuslang.completion.enable": true,
+  "nexuslang.languageServer.path": "",
+  "nexuslang.languageServer.linting.enabled": true,
+  "nexuslang.languageServer.linting.errorsOnly": false,
   "nexuslang.trace.server": "off",  // or "messages", "verbose"
   "editor.quickSuggestions": {
     "other": true,
@@ -684,7 +688,7 @@ local configs = require('lspconfig.configs')
 if not configs.nlpl then
   configs.nlpl = {
     default_config = {
-      cmd = {'python3', '/path/to/NexusLang/src/nxl_lsp.py'},
+      cmd = {'python3', '-m', 'nexuslang.lsp', '--stdio'},
       filetypes = {'nlpl'},
       root_dir = lspconfig.util.root_pattern('.git', '.nxl'),
       settings = {},
@@ -712,7 +716,7 @@ vim.api.nvim_create_autocmd("FileType", {
   callback = function()
     vim.lsp.start({
       name = "nlpl",
-      cmd = {"python3", "/path/to/NexusLang/src/nxl_lsp.py"},
+      cmd = {"python3", "-m", "nexuslang.lsp", "--stdio"},
     })
   end,
 })
@@ -743,7 +747,7 @@ vim.api.nvim_create_autocmd("FileType", {
 ;; Register NexusLang LSP client
 (lsp-register-client
  (make-lsp-client 
-  :new-connection (lsp-stdio-connection '("python3" "/path/to/NexusLang/src/nxl_lsp.py"))
+  :new-connection (lsp-stdio-connection '("python3" "-m" "nexuslang.lsp" "--stdio"))
   :activation-fn (lsp-activate-on "nlpl")
   :major-modes '(nlpl-mode)
   :server-id 'nlpl-lsp))
@@ -777,7 +781,7 @@ vim.api.nvim_create_autocmd("FileType", {
   "clients": {
     "nlpl": {
       "enabled": true,
-      "command": ["python3", "/path/to/NexusLang/src/nxl_lsp.py"],
+      "command": ["python3", "-m", "nexuslang.lsp", "--stdio"],
       "selector": "source.nxl",
       "languageId": "nlpl"
     }
@@ -827,12 +831,12 @@ contexts:
 2. **Verify NexusLang installation**:
    ```bash
    cd /path/to/NLPL
-   python3 src/main.py --version
+  PYTHONPATH=src python3 -m nexuslang.main --version
    ```
 
 3. **Check LSP server directly**:
    ```bash
-   python3 /path/to/NexusLang/src/nxl_lsp.py
+  PYTHONPATH=src python3 -m nexuslang.lsp --stdio
    ```
    Should start without errors
 
@@ -860,7 +864,7 @@ contexts:
 3. **Verify completion is enabled** (VS Code settings):
    ```json
    {
-     "nexuslang.completion.enable": true,
+     "nexuslang.languageServer.enabled": true,
      "editor.quickSuggestions": {
        "other": true
      }
@@ -882,7 +886,8 @@ contexts:
 2. **Check diagnostic settings** (VS Code):
    ```json
    {
-     "nexuslang.diagnostics.enable": true
+     "nexuslang.languageServer.linting.enabled": true,
+     "nexuslang.languageServer.linting.errorsOnly": false
    }
    ```
 
@@ -945,7 +950,7 @@ Workspace-wide analysis (imports, symbols) scales linearly with file count:
 - **50-200 files**: < 1 second
 - **> 200 files**: 1-2 seconds
 
-**Optimization**: Use `.nlplignore` to exclude generated/vendored code (coming soon)
+**Optimization**: Exclude generated/vendored code with editor-level excludes (for example `files.watcherExclude` / `search.exclude` in VS Code).
 
 ### Memory Usage
 
@@ -983,7 +988,8 @@ Enable multi-file diagnostics in settings:
 
 ```json
 {
-  "nexuslang.diagnostics.workspace": true
+  "nexuslang.languageServer.enabled": true,
+  "nexuslang.trace.server": "messages"
 }
 ```
 
@@ -994,13 +1000,7 @@ Checks:
 
 ### Semantic Highlighting
 
-Enable semantic token coloring (coming soon):
-
-```json
-{
-  "nexuslang.semanticHighlighting.enable": true
-}
-```
+Semantic token coloring is available through standard LSP semantic tokens and is enabled automatically when your editor/theme supports semantic highlighting.
 
 Highlights:
 - Functions (blue)
@@ -1099,9 +1099,9 @@ Test 7: Signature Help
 **A**: Configure in settings (VS Code):
 ```json
 {
-  "nexuslang.diagnostics.unusedVariables": false,
-  "nexuslang.diagnostics.typeErrors": true,
-  "nexuslang.diagnostics.syntaxErrors": true
+  "nexuslang.languageServer.linting.enabled": true,
+  "nexuslang.languageServer.linting.strict": false,
+  "nexuslang.languageServer.linting.errorsOnly": true
 }
 ```
 
@@ -1110,7 +1110,7 @@ Test 7: Signature Help
 **A**: Not all errors have quick fixes. Currently supported:
 - Unclosed strings
 - Unused variables
-- Some type errors (coming soon)
+- Selected type and diagnostic-driven fixes
 - Refactoring operations
 
 ### Q: Is LSP required to use NLPL?
@@ -1131,7 +1131,7 @@ Test 7: Signature Help
 
 ## References
 
-- **[LSP README](../../src/nlpl/lsp/README.md)** - Technical implementation details
+- **[LSP README](../../src/nexuslang/lsp/README.md)** - Technical implementation details
 - **[NLPL Documentation](../README.md)** - Complete language documentation
 - **[LSP Specification](https://microsoft.github.io/language-server-protocol/)** - Official protocol spec
 - **[Test Results](#verified-features-status)** - All features verified working (Feb 2026)

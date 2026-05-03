@@ -106,6 +106,15 @@ class SymbolProvider:
                     'case': 22,      # EnumMember-like branch entry
                     'label': 20,     # Key-like label identifier
                 }
+                container_name = sym.scope
+                if sym.kind in ('function', 'method'):
+                    source_text = (
+                        documents.get(sym.file_uri)
+                        or documents.get(sym.file_uri.replace('file://', ''))
+                    )
+                    if source_text and self._is_named_function_generator(source_text, sym.name):
+                        container_name = 'generator'
+
                 symbols.append({
                     'name': sym.name,
                     'kind': kind_map.get(sym.kind, 13),
@@ -116,7 +125,7 @@ class SymbolProvider:
                             'end': {'line': sym.line, 'character': sym.column + len(sym.name)}
                         }
                     },
-                    'containerName': sym.scope
+                    'containerName': container_name
                 })
             return symbols
         
@@ -138,6 +147,10 @@ class SymbolProvider:
                 continue
             
             for symbol in matching_symbols:
+                container_name = symbol.parent.name if symbol.parent else None
+                if symbol.kind == SymbolKind.FUNCTION and self._is_named_function_generator(text, symbol.name):
+                    container_name = 'generator'
+
                 symbols.append({
                     "name": symbol.name,
                     "kind": self._symbol_kind_to_lsp(symbol.kind),
@@ -148,7 +161,7 @@ class SymbolProvider:
                             "end": {"line": symbol.location.line, "character": symbol.location.column + len(symbol.name)}
                         }
                     },
-                    "containerName": symbol.parent.name if symbol.parent else None
+                    "containerName": container_name
                 })
         
         # Sort by relevance (fuzzy match score)
@@ -186,9 +199,11 @@ class SymbolProvider:
                 func_name = match.group(1)
                 # Use fuzzy matching
                 if self._fuzzy_match(query, func_name):
+                    is_generator = self._is_generator_function(lines, i)
                     symbols.append({
                         "name": func_name,
                         "kind": 12,  # Function
+                        "containerName": "generator" if is_generator else None,
                         "location": {
                             "uri": uri,
                             "range": {
@@ -199,6 +214,44 @@ class SymbolProvider:
                     })
         
         return symbols
+
+    def _is_generator_function(self, lines: List[str], function_line_index: int) -> bool:
+        """Best-effort detection for generator functions by scanning for `yield`."""
+        block_starts = re.compile(
+            r'^\s*(function|method|if|else if|else|while|for|try|catch|switch|case|default|class|trait|interface|describe|it|test|macro)\b',
+            re.IGNORECASE,
+        )
+
+        depth = 1
+        i = function_line_index + 1
+        while i < len(lines):
+            stripped = lines[i].strip()
+
+            if re.match(r'^yield\b', stripped, re.IGNORECASE):
+                return True
+
+            if re.match(r'^end\b', stripped, re.IGNORECASE):
+                depth -= 1
+                if depth == 0:
+                    return False
+                i += 1
+                continue
+
+            if block_starts.match(stripped):
+                depth += 1
+
+            i += 1
+
+        return False
+
+    def _is_named_function_generator(self, text: str, function_name: str) -> bool:
+        """Return True if a named function contains at least one `yield` in its body."""
+        lines = text.split('\n')
+        pattern = re.compile(rf'^\s*function\s+{re.escape(function_name)}\b', re.IGNORECASE)
+        for i, line in enumerate(lines):
+            if pattern.search(line):
+                return self._is_generator_function(lines, i)
+        return False
     
     def _find_classes(self, text: str, uri: str, query: str) -> List[Dict]:
         """Find class symbols."""

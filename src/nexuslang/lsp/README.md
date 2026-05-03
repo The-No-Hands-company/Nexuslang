@@ -550,7 +550,11 @@ The NexusLang LSP server reports these capabilities to clients:
   "hoverProvider": true,
   "documentFormattingProvider": true,
   "workspaceSymbolProvider": true,
+  "documentSymbolProvider": true,
   "renameProvider": true
+  "semanticTokensProvider": {
+    "full": true
+  }
 }
 ```
 
@@ -578,9 +582,9 @@ tail -f /tmp/nlpl-lsp.log
 - [x] Code action providers (quick fixes) 
 - [x] Signature help for function calls 
 - [x] Multi-file diagnostics (imports) 
-- [ ] Semantic token highlighting
-- [ ] Document outline/symbols
-- [ ] Rename refactoring
+- [x] Semantic token highlighting
+- [x] Document outline/symbols
+- [x] Rename refactoring
 
 ### Medium Term
 - [ ] Incremental parsing for better performance

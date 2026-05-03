@@ -44,12 +44,68 @@ Options:
  --strict Enable all checks (including style)
  --minimal Only critical checks (memory, null, init)
  --json Output in JSON format
- --fix Auto-fix issues (TODO)
+ --fix Auto-fix issues
  --no-color Disable colored output
  --errors-only Show only errors
  --max-issues N Limit displayed issues
- --config FILE Use configuration file (TODO)
+ --config FILE Use JSON/TOML configuration file
  -h, --help Show help
+```
+
+### Configuration Schema (`--config`)
+
+`nlpllint` accepts JSON or TOML config files. Root can be either flat or nested under `nlpllint` / `linter`.
+
+Supported root keys:
+
+- `mode`: `default | strict | minimal`
+- `strict`: boolean
+- `minimal`: boolean
+- `json`: boolean
+- `fix`: boolean
+- `dry_run`: boolean
+- `no_color`: boolean
+- `errors_only`: boolean
+- `max_issues`: integer (`> 0`)
+- `analyzer`: object with per-check booleans
+
+Supported `analyzer` keys:
+
+- `memory`, `null`, `resources`, `init`, `types`, `dead_code`, `style`
+- `performance`, `security`, `data_flow`, `control_flow`
+
+Validation rules:
+
+- Unknown keys are rejected with a config error.
+- Wrong value types are rejected with a config error.
+- Invalid `mode` values are rejected.
+- Non-positive `max_issues` values are rejected.
+
+Example TOML:
+
+```toml
+mode = "default"
+json = true
+max_issues = 50
+
+[analyzer]
+security = false
+style = true
+```
+
+Example JSON:
+
+```json
+{
+	"nlpllint": {
+		"mode": "strict",
+		"errors_only": false,
+		"analyzer": {
+			"style": true,
+			"dead_code": true
+		}
+	}
+}
 ```
 
 ---
@@ -364,10 +420,10 @@ See `test_programs/static_analysis/test_bugs.nlpl` for example buggy code.
 - [ ] Implement dead code checker (full)
 - [ ] Implement style checker (full)
 - [ ] Add auto-fix capability
-- [ ] Add configuration file support
+- [x] Add configuration file support (JSON/TOML + schema validation)
 - [ ] Write comprehensive tests
-- [ ] Integration with build system
-- [ ] LSP integration for real-time analysis
+- [x] Integration with build system
+- [x] LSP integration for real-time analysis
 - [ ] Documentation website
 
 ---
@@ -415,25 +471,38 @@ See `test_programs/static_analysis/test_bugs.nlpl` for example buggy code.
 ### With Build System
 
 ```bash
-# Add to nlplbuild
-nlplbuild program.nlpl
- 
-1. Run nlpllint (static analysis)
-2. Compile (if no errors)
-3. Link
+# Run lint during build (can also be enabled in [build] config)
+nexuslang build --lint
+
+# Strict mode and warning policy
+nexuslang build --lint --lint-strict --lint-fail-on-warnings
 ```
 
-### With VS Code (Future)
+Build integration controls in `nexuslang.toml`:
+
+```toml
+[build]
+lint_on_build = true
+lint_strict = false
+lint_errors_only = false
+lint_fail_on_warnings = false
+```
+
+### With VS Code / LSP
 
 ```json
 {
- "nexuslang.linting.enabled": true,
- "nexuslang.linting.onType": true,
- "nexuslang.linting.showQuickFixes": true
+ "initializationOptions": {
+ "linting": {
+ "enabled": true,
+ "strict": false,
+ "errorsOnly": false
+ }
+ }
 }
 ```
 
-Real-time analysis as you type! 
+When enabled, lint diagnostics are merged with parser/type diagnostics in `textDocument/didOpen` and `textDocument/didChange`.
 
 ---
 
@@ -469,7 +538,7 @@ class MyChecker(BaseChecker):
 A: No! Analysis is <10ms per file, much faster than compilation itself.
 
 **Q: Can I disable specific checks?** 
-A: Yes, use configuration file (coming soon) or modify StaticAnalyzer init.
+A: Yes, use `nlpllint.toml`/JSON config or choose analyzer presets (default/strict/minimal).
 
 **Q: Will it work on existing code?** 
 A: Yes! Tested on 312 existing test programs.
@@ -497,13 +566,13 @@ A: Yes! Use `--json` output and check exit code (0 = no errors).
 - [ ] Dead code detection (full)
 - [ ] Style checking (full)
 - [ ] Auto-fix capability
-- [ ] Configuration files
+- [x] Configuration files
 - [ ] Comprehensive tests
 
 ### v0.3.0 (Month 1) - RC
-- [ ] LSP integration
+- [x] LSP integration
 - [ ] IDE plugins
-- [ ] Build system integration
+- [x] Build system integration
 - [ ] Performance optimization
 - [ ] Documentation website
 

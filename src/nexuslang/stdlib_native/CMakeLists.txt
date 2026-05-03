@@ -15,11 +15,11 @@ set(CMAKE_C_EXTENSIONS OFF)
 # ---------------------------------------------------------------------------
 
 set(NLPL_SOURCES
-    src/nlpl_runtime.c
-    src/nlpl_string.c
-    src/nlpl_math.c
-    src/nlpl_collections.c
-    src/nlpl_io.c
+    src/nxl_runtime.c
+    src/nxl_string.c
+    src/nxl_math.c
+    src/nxl_collections.c
+    src/nxl_io.c
 )
 
 # ---------------------------------------------------------------------------
@@ -89,7 +89,7 @@ install(TARGETS NLPL
     RUNTIME DESTINATION bin
 )
 
-install(FILES include/nlpl_runtime.h
+install(FILES include/nxl_runtime.h
     DESTINATION include
 )
 

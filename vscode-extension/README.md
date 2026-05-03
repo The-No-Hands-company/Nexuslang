@@ -12,32 +12,44 @@ Language support extension for NexusLang (NexusLang) with full LSP features.
 - **Diagnostics**: Real-time error and warning reporting
 - **Document Symbols**: Outline view of functions, classes, methods
 - **Code Actions**: Quick fixes and refactorings
+- **Semantic Tokens**: Semantic highlighting for symbols and control-flow keywords
+- **Rename Refactoring**: Symbol-aware rename through the language server
 
 ## Requirements
 
-The NexusLang language server must be installed:
+The extension needs access to the NexusLang language server runtime.
+
+If you are working in this repository, no package install is required. Use a Python
+environment with dependencies installed:
 
 ```bash
-pip install nlpl-compiler
+pip install -r requirements.txt
 ```
 
-Or use the bundled server if included with the extension.
+If you are using the extension outside this repository, either:
+
+- set `nexuslang.languageServer.path` to a language-server executable/script, or
+- use a Python environment where `python -m nexuslang.lsp --stdio` is available.
 
 ## Extension Settings
 
 This extension contributes the following settings:
 
-- `nlpl.languageServer.enabled`: Enable/disable the language server (default: `true`)
-- `nlpl.languageServer.path`: Path to language server executable (leave empty for auto-detect)
-- `nlpl.languageServer.arguments`: Arguments passed to the server (default: `["--stdio"]`)
-- `nlpl.languageServer.debug`: Enable debug mode (default: `false`)
-- `nlpl.languageServer.logFile`: Path to log file for server output
-- `nlpl.trace.server`: Trace communication between client and server (`off`, `messages`, `verbose`)
+- `nexuslang.languageServer.enabled`: Enable/disable the language server (default: `true`)
+- `nexuslang.languageServer.path`: Path to language server executable (leave empty to use `python -m nexuslang.lsp`)
+- `nexuslang.languageServer.pythonPath`: Python interpreter used to launch the server
+- `nexuslang.languageServer.arguments`: Arguments passed to the server (default: `["--stdio"]`)
+- `nexuslang.languageServer.debug`: Enable debug mode (default: `false`)
+- `nexuslang.languageServer.logFile`: Path to log file for server output
+- `nexuslang.languageServer.linting.enabled`: Enable real-time lint diagnostics
+- `nexuslang.languageServer.linting.strict`: Use strict lint profile in the editor
+- `nexuslang.languageServer.linting.errorsOnly`: Only show lint diagnostics with error severity
+- `nexuslang.trace.server`: Trace communication between client and server (`off`, `messages`, `verbose`)
 
 ## Usage
 
 1. Install the extension
-2. Open a `.nlpl` file
+2. Open a `.nxl` file
 3. The language server will start automatically
 4. Start coding with IntelliSense support
 
@@ -98,8 +110,8 @@ npm run publish
 ## Known Issues
 
 - Some advanced features are still in development
-- Semantic tokens support coming soon
-- Code actions for refactoring in progress
+- Full debugger polish is still in progress
+- Some advanced refactorings are not yet implemented
 
 ## Release Notes
 
@@ -108,7 +120,7 @@ npm run publish
 Initial release with:
 - Syntax highlighting
 - LSP integration
-- Basic IDE features
+- Semantic tokens, document symbols, and rename support
 
 ## Contributing
 
