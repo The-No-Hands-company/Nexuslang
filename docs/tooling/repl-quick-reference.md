@@ -37,7 +37,7 @@ python nxl_repl.py # Alternative entry point
 
 REPL automatically detects incomplete statements:
 
-```nlpl
+```nexuslang
 >>> function greet with name as String
 ... return "Hello, " plus name
 ... end
@@ -48,13 +48,13 @@ Press Enter on empty line to execute.
 ## Quick Examples
 
 ### Variables
-```nlpl
+```nexuslang
 >>> set x to 42
 >>> set name to "NexusLang"
 ```
 
 ### Functions
-```nlpl
+```nexuslang
 >>> function add with a as Integer, b as Integer returns Integer
 ... return a plus b
 ... end
@@ -63,14 +63,14 @@ Press Enter on empty line to execute.
 ```
 
 ### Loops
-```nlpl
+```nexuslang
 >>> for each num in [1, 2, 3]
 ... print text num
 ... end
 ```
 
 ### Structs
-```nlpl
+```nexuslang
 >>> struct Point
 ... x as Integer
 ... y as Integer
@@ -91,7 +91,7 @@ Press Enter on empty line to execute.
 
 If you get an error, the REPL continues running:
 
-```nlpl
+```nexuslang
 >>> set x to "invalid" plus 42
 Error: Cannot add string and integer
 >>> set y to 100

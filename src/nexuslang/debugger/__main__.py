@@ -1,7 +1,7 @@
 """
-NLPL Debug Adapter Protocol Server Entry Point
+"""NexusLang Debug Adapter Protocol Server Entry Point
 
-Run as: python3 -m nlpl.debugger
+Run as: python3 -m nexuslang.debugger
 """
 
 from .dap_server import main

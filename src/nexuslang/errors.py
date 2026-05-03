@@ -217,7 +217,7 @@ class NxlTypeError(NxlError):
         return base
 
 
-class NLPLContractError(NxlError):
+class NxlContractError(NxlError):
     """Contract violation error raised by require/ensure/guarantee statements."""
     def __init__(self, message: str, line: Optional[int] = None,
                  column: Optional[int] = None,

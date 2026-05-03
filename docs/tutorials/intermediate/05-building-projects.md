@@ -38,7 +38,7 @@ output_dir = "build"
 target = "c"
 
 [dependencies]
-nlpl-math = "1.0"
+nexuslang-math = "1.0"
 ```
 
 | Key | Meaning |
@@ -108,11 +108,11 @@ Add a library to `[dependencies]` and import it in your code:
 
 ```toml
 [dependencies]
-nlpl-csv = "2.0"
-nlpl-http = "1.3"
+nexuslang-csv = "2.0"
+nexuslang-http = "1.3"
 ```
 
-```nlpl
+```nexuslang
 import nxl_csv
 import nxl_http
 
@@ -150,7 +150,7 @@ nlpl run
 
 Test files live in `tests/` and commonly start with `test_`:
 
-```nlpl
+```nexuslang
 # tests/test_math.nxl
 import math
 

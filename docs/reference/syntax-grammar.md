@@ -145,7 +145,7 @@ End repeat.
 
 The parser supports indentation-scoped switch blocks and optional loop labels.
 
-```nlpl
+```nexuslang
 label outer: while counter is less than 10
     switch counter
         case 0
@@ -318,7 +318,7 @@ Export the utilities module.
 
 NexusLang generator functions are declared using normal function syntax. A function is treated as a generator when its body contains one or more `yield` expressions.
 
-```nlpl
+```nexuslang
 function sequence with n as Integer returns List of Integer
     set i to 0
     while i is less than n

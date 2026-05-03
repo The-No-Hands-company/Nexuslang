@@ -132,15 +132,15 @@ class DiagnosticsProvider:
         source = normalized.get("source", "nlpl")
 
         data = dict(normalized.get("data", {}))
-        if source in {"parser", "nlpl-parser"}:
+        if source in {"parser", "nexuslang-parser"}:
             data.setdefault("origin", "parser")
-        elif source in {"typechecker", "nlpl-typechecker"}:
+        elif source in {"typechecker", "nexuslang-typechecker"}:
             data.setdefault("origin", "typechecker")
         elif source in {"nexuslang", "nlpl"}:
             data.setdefault("origin", "diagnostics")
 
-        if source in {"nexuslang", "parser", "typechecker", "nlpl-parser", "nlpl-typechecker"}:
-            normalized["source"] = "nlpl"
+        if source in {"nexuslang", "parser", "typechecker", "nexuslang-parser", "nexuslang-typechecker"}:
+            normalized["source"] = "nexuslang"
         elif not source:
             normalized["source"] = "nlpl"
 

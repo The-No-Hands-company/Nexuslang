@@ -367,7 +367,7 @@ def main():
     """CLI for formatter."""
     import argparse
     
-    parser = argparse.ArgumentParser(description="NLPL Code Formatter")
+    parser = argparse.ArgumentParser(description="NexusLang Code Formatter")
     parser.add_argument('files', nargs='+', help='NLPL files to format')
     parser.add_argument('-i', '--in-place', action='store_true', help='Format files in-place')
     parser.add_argument('--check', action='store_true', help='Check if files are formatted (exit 1 if not)')

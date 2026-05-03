@@ -10,7 +10,7 @@
 Never optimize code you have not measured.  Use the built-in benchmarking
 tools to identify actual bottlenecks before making changes.
 
-```nlpl
+```nexuslang
 import system
 
 set start to system.time_nanoseconds()
@@ -45,7 +45,7 @@ micro-optimising a bad one.
 
 Allocating inside a hot loop creates gc pressure.  Pre-allocate and reuse:
 
-```nlpl
+```nexuslang
 # Slow: allocates a new string on every iteration
 set report to ""
 for each row in rows
@@ -65,7 +65,7 @@ set report to join parts with separator: "\n"
 Explicit type annotations let the interpreter skip runtime type inference in
 tight loops:
 
-```nlpl
+```nexuslang
 # Without annotations (slower in interpreter)
 set total to 0
 for each n in big_list
@@ -89,7 +89,7 @@ for each n as Integer in big_list
 | LIFO | `Stack` (from collections) | O(1) push/pop |
 | FIFO queue | `Queue` (from collections) | O(1) enqueue/dequeue |
 
-```nlpl
+```nexuslang
 import collections
 
 set seen to collections.new_set()
@@ -109,7 +109,7 @@ for each item in data
 
 Spread independent computations across multiple threads:
 
-```nlpl
+```nexuslang
 import system
 
 function process_chunk with chunk as List of Integer returns Integer
@@ -145,7 +145,7 @@ end
 
 For SIMD or hardware-specific acceleration:
 
-```nlpl
+```nexuslang
 # Horizontal sum of 4 floats using SSE
 set v to [1.0, 2.0, 3.0, 4.0]
 set sum to 0.0

@@ -6,7 +6,7 @@ NLPL provides a `switch` statement for multi-way branching based on the value of
 
 ## Syntax
 
-```nlpl
+```nexuslang
 switch <expression>
     case <value1>
         <statements>
@@ -24,7 +24,7 @@ switch <expression>
 
 ## Basic Example
 
-```nlpl
+```nexuslang
 set day to 3
 switch day
     case 1
@@ -49,7 +49,7 @@ switch day
 
 The compiler generates optimized LLVM `switch` instructions for integer case values:
 
-```nlpl
+```nexuslang
 set status_code to 404
 switch status_code
     case 200
@@ -66,7 +66,7 @@ switch status_code
 
 Switch statements support negative integer values:
 
-```nlpl
+```nexuslang
 set temperature to -5
 switch temperature
     case -10
@@ -87,7 +87,7 @@ switch temperature
 
 Zero is a valid case value:
 
-```nlpl
+```nexuslang
 set value to 0
 switch value
     case 0
@@ -104,7 +104,7 @@ switch value
 
 Each case can contain multiple statements:
 
-```nlpl
+```nexuslang
 set operation to 1
 set result to 0
 switch operation
@@ -130,7 +130,7 @@ Addition:
 
 The `default` case is optional. If omitted and no cases match, the switch does nothing:
 
-```nlpl
+```nexuslang
 switch value
     case 1
         print text "One"
@@ -143,7 +143,7 @@ switch value
 
 Switch statements can be nested:
 
-```nlpl
+```nexuslang
 set category to 1
 set subcategory to 2
 switch category
@@ -188,7 +188,7 @@ This is typically more efficient than a chain of conditional branches, especiall
 
 For non-constant case values or non-integer types, the compiler automatically falls back to generating an if-else chain:
 
-```nlpl
+```nexuslang
 set target to get_value()
 switch target
     case compute_value(1)  # Non-constant - uses if-else
@@ -201,7 +201,7 @@ switch target
 
 The compiler can evaluate simple constant expressions at compile time:
 
-```nlpl
+```nexuslang
 switch value
     case 1 plus 1     # Evaluates to 2
         print text "Two"
@@ -220,7 +220,7 @@ switch value
 
 Unlike C/C++, NexusLang switch cases do NOT fall through. Each case automatically breaks after execution:
 
-```nlpl
+```nexuslang
 switch value
     case 1
         print text "One"
@@ -233,7 +233,7 @@ switch value
 
 Cases can return from functions:
 
-```nlpl
+```nexuslang
 function get_day_name with day_number as Integer returns String
     switch day_number
         case 1
@@ -251,7 +251,7 @@ function get_day_name with day_number as Integer returns String
 1. **Use switch for multiple comparisons**: When testing one value against 3+ possibilities, prefer switch over if-else chains
 
 2. **Provide default case**: Always include a `default` case for robust error handling:
-   ```nlpl
+   ```nexuslang
    switch user_input
        case 1
            # Handle option 1
@@ -262,7 +262,7 @@ function get_day_name with day_number as Integer returns String
    ```
 
 3. **Keep cases simple**: Put complex logic in functions, keep case bodies concise:
-   ```nlpl
+   ```nexuslang
    switch command
        case 1
            call process_option_1()
@@ -277,14 +277,14 @@ function get_day_name with day_number as Integer returns String
 NLPL also has a `match` expression for pattern matching (more advanced):
 
 **Switch (value comparison):**
-```nlpl
+```nexuslang
 switch value
     case 1
         # Simple value matching
 ```
 
 **Match (pattern matching):**
-```nlpl
+```nexuslang
 match result with
     case Ok value
         # Destructuring patterns
@@ -298,7 +298,7 @@ Use **switch** for simple value comparisons, **match** for complex pattern match
 
 ### Enum-like Values
 
-```nlpl
+```nexuslang
 # Define constants
 set RED to 0
 set GREEN to 1
@@ -318,7 +318,7 @@ switch color
 
 ### Status Code Handling
 
-```nlpl
+```nexuslang
 function handle_response with status as Integer
     switch status
         case 200
@@ -339,7 +339,7 @@ function handle_response with status as Integer
 
 ### Menu Systems
 
-```nlpl
+```nexuslang
 function show_menu
     print text "1. New Game"
     print text "2. Load Game"
@@ -363,7 +363,7 @@ function handle_menu_choice with choice as Integer
 ## Limitations
 
 1. **No ranges**: Switch doesn't support range matching. Use if-else for ranges:
-   ```nlpl
+   ```nexuslang
    # Can't do: case 1 to 10
    if score is greater than or equal to 90
        print text "A"

@@ -1,4 +1,4 @@
-"""NLPL command-line toolchain.
+"""NexusLang command-line toolchain.
 
 Subcommands
 -----------

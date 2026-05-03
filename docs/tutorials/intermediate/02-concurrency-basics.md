@@ -25,7 +25,7 @@ NLPL supports two concurrency models:
 
 Mark a function `async` to allow it to `await` other async operations:
 
-```nlpl
+```nexuslang
 async function fetch_page with url as String returns String
     print text "Fetching " plus url plus "..."
     set response to await http_get with url
@@ -35,7 +35,7 @@ end
 
 Call an async function with `await`:
 
-```nlpl
+```nexuslang
 set html to await fetch_page with "https://example.com"
 print text html
 ```
@@ -44,7 +44,7 @@ print text html
 
 `await` can raise errors — handle them normally:
 
-```nlpl
+```nexuslang
 async function safe_fetch with url as String returns String
     try
         return await http_get with url
@@ -60,7 +60,7 @@ end
 
 ### Sequential (slower)
 
-```nlpl
+```nexuslang
 set a to await fetch_page with "https://example.com/page1"
 set b to await fetch_page with "https://example.com/page2"
 set c to await fetch_page with "https://example.com/page3"
@@ -70,7 +70,7 @@ Each request waits for the previous one to complete.
 
 ### Concurrent (faster)
 
-```nlpl
+```nexuslang
 set tasks to [
     fetch_page with "https://example.com/page1",
     fetch_page with "https://example.com/page2",
@@ -86,7 +86,7 @@ returning a list of results in the same order.
 
 ## Part 4 — Async in a Loop
 
-```nlpl
+```nexuslang
 set urls to [
     "https://api.example.com/users/1",
     "https://api.example.com/users/2",
@@ -111,7 +111,7 @@ for each r in responses
 
 For parallel number crunching, use native threads:
 
-```nlpl
+```nexuslang
 import system
 
 function compute_chunk with data as List of Integer returns Integer
@@ -141,7 +141,7 @@ print text convert (r1 plus r2) to string
 
 When threads share mutable data, use a mutex to prevent races:
 
-```nlpl
+```nexuslang
 import system
 
 set counter to 0
@@ -171,7 +171,7 @@ print text "Counter: " plus convert counter to string    # Counter: 10
 
 Attach handlers to events:
 
-```nlpl
+```nexuslang
 import system
 
 function on_data with payload as String

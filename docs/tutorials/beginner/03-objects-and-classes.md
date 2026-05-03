@@ -10,7 +10,7 @@
 A **class** is a blueprint for creating objects.  Each object has its own
 copy of the class's fields (data) and can call the class's methods (functions).
 
-```nlpl
+```nexuslang
 class Point
     public set x to Float
     public set y to Float
@@ -25,7 +25,7 @@ class Point
 
 Create an object with `create`:
 
-```nlpl
+```nexuslang
 set origin to create Point with 0.0 and 0.0
 set p      to create Point with 3.0 and 4.0
 print text p.to_string()    # (3.0, 4.0)
@@ -35,7 +35,7 @@ print text p.to_string()    # (3.0, 4.0)
 
 Inside a method, `this` is a reference to the object the method is running on:
 
-```nlpl
+```nexuslang
 public function move_by with dx as Float and dy as Float
     set this.x to this.x plus dx
     set this.y to this.y plus dy
@@ -52,7 +52,7 @@ public function move_by with dx as Float and dy as Float
 
 Prefer `private` for fields and expose them via getter/setter methods:
 
-```nlpl
+```nexuslang
 class BankAccount
     private set balance to Float
 
@@ -73,7 +73,7 @@ class BankAccount
         return true
 ```
 
-```nlpl
+```nexuslang
 set account to create BankAccount with 100.0
 account.deposit with 50.0
 set ok to account.withdraw with 30.0
@@ -87,7 +87,7 @@ print text "Balance: " plus convert account.get_balance() to string
 A class that **extends** another class inherits all of its public methods and
 can add new ones or override existing ones.
 
-```nlpl
+```nexuslang
 class Animal
     private set name to String
 
@@ -115,7 +115,7 @@ class Cat extends Animal
         return "Meow!"
 ```
 
-```nlpl
+```nexuslang
 set animals to [create Dog with "Rex", create Cat with "Whiskers"]
 for each animal in animals
     print text animal.get_name() plus " says: " plus animal.speak()
@@ -138,7 +138,7 @@ a method.
 An **interface** declares a set of methods that any implementing class must
 provide.  Interfaces describe *what* a class can do without specifying *how*.
 
-```nlpl
+```nexuslang
 interface Drawable
     public function draw returns String
 
@@ -169,7 +169,7 @@ class Circle implements Drawable and Resizable
 An **abstract class** sits between an interface and a concrete class.  It can
 provide some method implementations while leaving others to subclasses.
 
-```nlpl
+```nexuslang
 abstract class Shape
     public abstract function area returns Float
     public abstract function perimeter returns Float
@@ -192,7 +192,7 @@ class Rectangle extends Shape
         return 2.0 times (this.width plus this.height)
 ```
 
-```nlpl
+```nexuslang
 set r to create Rectangle with 4.0 and 5.0
 print text r.describe()   # area=20.0 perimeter=18.0
 ```
@@ -203,7 +203,7 @@ print text r.describe()   # area=20.0 perimeter=18.0
 
 A small inventory system using classes and inheritance:
 
-```nlpl
+```nexuslang
 abstract class Product
     private set name to String
     private set price to Float

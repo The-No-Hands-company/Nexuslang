@@ -21,7 +21,7 @@ available for:
 
 For everyday programming, NexusLang automatically manages object lifetimes:
 
-```nlpl
+```nexuslang
 function make_greeting with name as String returns String
     set msg to "Hello, " plus name plus "!"   # allocated automatically
     return msg                                 # caller now owns msg
@@ -35,14 +35,14 @@ end
 
 ### Taking an Address
 
-```nlpl
+```nexuslang
 set x to 42
 set ptr to address of x      # ptr holds the memory address of x
 ```
 
 ### Dereferencing
 
-```nlpl
+```nexuslang
 set val to dereference ptr   # read the value at the address
 # or:
 set val to value at ptr
@@ -50,7 +50,7 @@ set val to value at ptr
 
 ### Writing Through a Pointer
 
-```nlpl
+```nexuslang
 set (value at ptr) to 99    # x is now 99
 ```
 
@@ -60,7 +60,7 @@ set (value at ptr) to 99    # x is now 99
 
 `sizeof` returns the byte size of a type or value:
 
-```nlpl
+```nexuslang
 print text convert (sizeof Integer) to string   # 8 (64-bit)
 print text convert (sizeof Float)   to string   # 8
 print text convert (sizeof Boolean) to string   # 1
@@ -80,7 +80,7 @@ print text convert (sizeof Color) to string     # 24
 
 ### Allocating a Raw Buffer
 
-```nlpl
+```nexuslang
 allocate buffer of size 1024 bytes
 set ptr to address of buffer
 
@@ -96,7 +96,7 @@ free buffer
 
 ### Always Free in `always`
 
-```nlpl
+```nexuslang
 allocate buffer of size 4096 bytes
 try
     # ... use buffer ...
@@ -113,7 +113,7 @@ always
 
 Two levels of indirection (useful for output parameters in C APIs):
 
-```nlpl
+```nexuslang
 set value to 100
 set ptr1 to address of value
 set ptr2 to address of ptr1
@@ -129,7 +129,7 @@ set inner_val to value at inner_ptr   # 100
 
 Declare a pointer with an explicit pointee type for clarity:
 
-```nlpl
+```nexuslang
 set int_ptr   to 0 as Pointer to Integer
 set float_ptr to 0 as Pointer to Float
 
@@ -147,7 +147,7 @@ set n.next to 0 as Pointer to Node   # null pointer for leaf
 
 ## Part 8 — Array Pointer Arithmetic
 
-```nlpl
+```nexuslang
 set arr to [10, 20, 30, 40, 50]
 set base to address of arr[0]
 
@@ -163,7 +163,7 @@ set third to value at ptr_to_3rd     # 30
 
 Store a reference to a function and call it later:
 
-```nlpl
+```nexuslang
 function add with a as Integer and b as Integer returns Integer
     return a plus b
 end
@@ -190,7 +190,7 @@ Once a buffer is freed, any pointer to it is dangling.  Use the
 `MemorySafetyValidator` from the security module to catch this in
 development:
 
-```nlpl
+```nexuslang
 from nexuslang.security.analysis import MemorySafetyValidator
 
 set mv to create MemorySafetyValidator
@@ -215,7 +215,7 @@ catch error with message
 
 ## Part 11 — Custom Allocator Sketch
 
-```nlpl
+```nexuslang
 class ArenaAllocator
     private set memory as Pointer
     private set capacity as Integer

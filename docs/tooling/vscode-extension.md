@@ -242,7 +242,7 @@ Then check the log file for details.
 1. Create file: `hello.nlpl`
 2. Type:
 
-```nlpl
+```nexuslang
 function greet with name as String returns Nothing
     print text "Hello, " plus name
 end
@@ -259,7 +259,7 @@ greet with "World"
 
 ### Navigate a project
 
-```nlpl
+```nexuslang
 # file: math_utils.nlpl
 function add with x as Integer and y as Integer returns Integer
     return x plus y
@@ -284,7 +284,7 @@ print text result
 
 ### Refactor code
 
-```nlpl
+```nexuslang
 # Before
 set x to 10
 set y to 20
@@ -300,7 +300,7 @@ print text product
 3. Name: `calculate_sum`
 4. Result:
 
-```nlpl
+```nexuslang
 function calculate_sum returns Nothing
     set sum to x plus y
     print text sum

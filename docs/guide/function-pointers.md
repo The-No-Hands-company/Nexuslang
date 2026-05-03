@@ -25,7 +25,7 @@ Function pointers in NexusLang allow you to store references to functions and pa
 
 ### Getting a Function Address
 
-```nlpl
+```nexuslang
 function add_numbers that takes a as Integer and b as Integer returns Integer
  return a plus b
 
@@ -36,7 +36,7 @@ set func_ptr to address of add_numbers
 
 ### Basic Function Pointer
 
-```nlpl
+```nexuslang
 function add_numbers that takes a as Integer and b as Integer returns Integer
  return a plus b
 
@@ -48,7 +48,7 @@ print text "Function pointer obtained"
 
 ### Indirect Function Call
 
-```nlpl
+```nexuslang
 function add_numbers that takes a as Integer and b as Integer returns Integer
  return a plus b
 
@@ -66,7 +66,7 @@ print number result
 
 ### Multiple Function Pointers
 
-```nlpl
+```nexuslang
 function add_numbers that takes a as Integer and b as Integer returns Integer
  return a plus b
 
@@ -85,7 +85,7 @@ print text "Multiple function pointers obtained"
 
 ### Single Parameter Function
 
-```nlpl
+```nexuslang
 function square_number that takes n as Integer returns Integer
  return n times n
 
@@ -95,7 +95,7 @@ print text "Single parameter function pointer obtained"
 
 ### No Parameter Function
 
-```nlpl
+```nexuslang
 function get_constant returns Integer
  return 42
 
@@ -105,7 +105,7 @@ print text "No parameter function pointer obtained"
 
 ### Function Pointer Reassignment
 
-```nlpl
+```nexuslang
 function add_numbers that takes a as Integer and b as Integer returns Integer
  return a plus b
 
@@ -132,7 +132,7 @@ Pointer reassigned to multiply_numbers
 Function pointers are compiled to generic `i8*` (byte pointers) in LLVM IR:
 
 **NLPL Code:**
-```nlpl
+```nexuslang
 function add_numbers that takes a as Integer and b as Integer returns Integer
  return a plus b
 
@@ -182,7 +182,7 @@ This allows all function pointers to be stored uniformly as `i8*` regardless of 
 
 ### Callback Pattern (Future)
 
-```nlpl
+```nexuslang
 # Planned syntax for callbacks
 function process_data with data as Integer and callback as FunctionPointer
  set result to data times 2
@@ -192,7 +192,7 @@ function process_data with data as Integer and callback as FunctionPointer
 
 ### Strategy Pattern (Future)
 
-```nlpl
+```nexuslang
 # Planned: Select function based on runtime conditions
 set operation to address of add_numbers
 
@@ -207,7 +207,7 @@ else if user_choice is equal to 2
 
 ### Function Table (Future)
 
-```nlpl
+```nexuslang
 # Planned: Array of function pointers for dispatch
 set operations to [
  address of add_numbers,
@@ -231,7 +231,7 @@ int (*func_ptr)(int, int) = &add;
 int result = func_ptr(5, 3);
 ```
 
-```nlpl
+```nexuslang
 # NexusLang
 function add_numbers that takes a as Integer and b as Integer returns Integer
  return a plus b
@@ -251,7 +251,7 @@ func_ptr = add
 result = func_ptr(5, 3)
 ```
 
-```nlpl
+```nexuslang
 # NexusLang
 function add_numbers that takes a as Integer and b as Integer returns Integer
  return a plus b
@@ -270,7 +270,7 @@ let func_ptr: fn(i64, i64) -> i64 = add;
 let result = func_ptr(5, 3);
 ```
 
-```nlpl
+```nexuslang
 # NexusLang
 function add_numbers that takes a as Integer and b as Integer returns Integer
  return a plus b
@@ -300,7 +300,7 @@ set func_ptr to address of add_numbers
 
 ### Function Pointer Type Declarations
 
-```nlpl
+```nexuslang
 # Planned syntax
 type BinaryOperation as Function that takes Integer and Integer returns Integer
 
@@ -313,7 +313,7 @@ set result to call (value at operation) with 10 and 5
 
 ### Function Pointers as Parameters
 
-```nlpl
+```nexuslang
 # Planned syntax
 function apply_operation with x as Integer and y as Integer and op as FunctionPointer returns Integer
  return call (value at op) with x and y
@@ -323,7 +323,7 @@ set result to apply_operation with 10 and 5 and address of add_numbers
 
 ### Method Pointers
 
-```nlpl
+```nexuslang
 # Future: Pointers to class methods
 class Calculator
  public function add that takes a as Integer and b as Integer returns Integer

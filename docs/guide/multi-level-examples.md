@@ -25,7 +25,7 @@ This document shows how the **same functionality** can be implemented at differe
 **Lines of Code:** ~10 
 **Capable of:** Prototyping, scripts, rapid development
 
-```nlpl
+```nexuslang
 # Create a simple web server
 create a web server on port 8080
 
@@ -58,7 +58,7 @@ tell me when it's running
 **Lines of Code:** ~20 
 **Capable of:** Production web services, APIs, microservices
 
-```nlpl
+```nexuslang
 import from stdlib/http
 
 function start_server
@@ -107,7 +107,7 @@ start_server
 **Lines of Code:** ~40 
 **Capable of:** Desktop apps, custom servers, applications with specific requirements
 
-```nlpl
+```nexuslang
 import from stdlib/net
 import from stdlib/threading
 
@@ -177,7 +177,7 @@ server.start
 **Lines of Code:** ~80 
 **Capable of:** High-performance servers, embedded systems, performance-critical applications
 
-```nlpl
+```nexuslang
 # Direct system calls via FFI
 extern function socket with domain as Integer, type as Integer, protocol as Integer returns Integer from library "c"
 extern function bind with sockfd as Integer, addr as Pointer, addrlen as Integer returns Integer from library "c"
@@ -286,7 +286,7 @@ start_server with 8080
 **Lines of Code:** ~150+ 
 **Capable of:** Bare metal programming, OS components, extreme optimization
 
-```nlpl
+```nexuslang
 # Define syscall numbers
 constant SYS_SOCKET to 41
 constant SYS_BIND to 49
@@ -447,7 +447,7 @@ start_server with 8080
 
 ### Level 5: Natural Language
 
-```nlpl
+```nexuslang
 find all images in "input/" folder
 for each image
  resize it to 800 by 600
@@ -462,7 +462,7 @@ tell me when finished
 
 ### Level 4: Goroutines
 
-```nlpl
+```nexuslang
 import from stdlib/image
 import from stdlib/file
 
@@ -505,7 +505,7 @@ process_images with "input/", "output/"
 
 ### Level 3: Application Programming
 
-```nlpl
+```nexuslang
 import from stdlib/image
 import from stdlib/threading
 
@@ -555,7 +555,7 @@ processor.process_directory with "input/", "output/"
 
 ### Level 2: Systems Programming
 
-```nlpl
+```nexuslang
 import from stdlib/image_raw # Low-level image I/O
 
 extern function pthread_create with thread as Pointer, attr as Pointer, routine as FunctionPointer, arg as Pointer returns Integer from library "pthread"
@@ -663,7 +663,7 @@ This example shows how **Level 1** enables OS development.
 
 ### Level 1: Assembly-Level Kernel Boot
 
-```nlpl
+```nexuslang
 # Bootloader entry point (called by BIOS/UEFI)
 function _start
  # Disable interrupts during init
@@ -908,7 +908,7 @@ end
 
 ## Mixing Levels: Real-World Game Engine
 
-```nlpl
+```nexuslang
 # ============================================
 # LEVEL 1: GPU Driver Communication
 # ============================================

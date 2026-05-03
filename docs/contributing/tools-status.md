@@ -44,8 +44,8 @@ Remaining high-value work is now less about "feature missing" and more about dee
  - Platform chaos Cross-platform by default
 
 - Part 2: NexusLang Tooling Ecosystem Design
- - `nlpl build` - Unified build system
- - `nlpl lint` - Static analyzer (100+ checks)
+ - `nexuslang build` - Unified build system
+ - `nexuslang lint` - Static analyzer (100+ checks)
  - `nlpltest` - Testing framework
  - `nlpldb` - Time-travel debugger
  - `nlplprofile` - Profiler
@@ -184,7 +184,7 @@ Formatted output with suggestions
 - [ ] MemorySanitizer (uninitialized reads)
 - [ ] UndefinedBehaviorSanitizer (UB detection)
 - [ ] Runtime wrapper for readable output
-- [ ] `nlpl build --sanitize=address` interface
+- [ ] `nexuslang build --sanitize=address` interface
 
 **Estimated effort:** 1 week
 

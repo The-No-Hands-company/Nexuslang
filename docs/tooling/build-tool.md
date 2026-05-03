@@ -14,8 +14,8 @@ The NexusLang build tool is exposed through the main `nlpl` CLI. It provides pro
 - **Build profiles**: Support for dev, release, and custom profiles
 - **Feature flags**: Enable/disable capabilities at compile time
 - **Multiple targets**: Build libraries and multiple binaries
-- **Integrated testing**: Run test suites with `nlpl test`
-- **Clean builds**: Remove artifacts with `nlpl clean`
+- **Integrated testing**: Run test suites with `nexuslang test`
+- **Clean builds**: Remove artifacts with `nexuslang clean`
 - **Syntax checking**: Fast error checking without compilation
 
 ---
@@ -91,7 +91,7 @@ nlpl build --lint --lint-fail-on-warnings
 
 **Incremental Compilation**:
 
-By default, `nlpl build` uses incremental compilation to skip recompiling unchanged files. This dramatically improves build times for large projects.
+By default, `nexuslang build` uses incremental compilation to skip recompiling unchanged files. This dramatically improves build times for large projects.
 
 ```bash
 # First build - compiles everything
@@ -318,10 +318,10 @@ opt-level = 2       # Moderate optimization
 [features]
 default = ["text-processing"]
 text-processing = []                    # Text/string manipulation
-data-analytics = ["nlpl-math/stats"]    # Statistical analysis
-storage-backend = ["dep:nlpl-database"] # Persistent storage
+data-analytics = ["nexuslang-math/stats"]    # Statistical analysis
+storage-backend = ["dep:nexuslang-database"] # Persistent storage
 concurrent-execution = []                # Multi-threading
-network-support = ["nlpl-network"]      # Networking capabilities
+network-support = ["nexuslang-network"]      # Networking capabilities
 serialization = ["json", "binary"]      # Data serialization
 compression = []                        # Data compression
 encryption = []                         # Cryptographic features
@@ -409,7 +409,7 @@ opt-level = 2
 ```
 
 **`src/main.nxl`**:
-```nlpl
+```nexuslang
 function main
       print text "Hello from NexusLang!"
 end
@@ -442,13 +442,13 @@ output_dir = "build"
 target = "c"
 
 [dependencies]
-nlpl-csv = "1.0"
-nlpl-math = "2.0"
+nexuslang-csv = "1.0"
+nexuslang-math = "2.0"
 
 [features]
 default = ["text-processing"]
 text-processing = []
-data-analytics = ["nlpl-math/statistics"]
+data-analytics = ["nexuslang-math/statistics"]
 storage-backend = []
 
 [profile.release]
@@ -631,7 +631,7 @@ Each build creates a `BuildContext`:
 Features are resolved transitively:
 ```python
 requested = ["data-analytics"]
-resolved = ["data-analytics", "nlpl-math/statistics"]  # Includes deps
+resolved = ["data-analytics", "nexuslang-math/statistics"]  # Includes deps
 ```
 
 ---
@@ -655,7 +655,7 @@ resolved = ["data-analytics", "nlpl-math/statistics"]  # Includes deps
 
 ## See Also
 
-- **Manifest Specification**: `docs/tooling/nlpl-toml.md`
+- **Manifest Specification**: `docs/tooling/nexuslang-toml.md`
 - **Compiler Guide**: `COMPILER_GUIDE.md`
 - **Development Guide**: `docs/contributing/`
 - **Build System Architecture**: `docs/contributing/compiler-guide.md`

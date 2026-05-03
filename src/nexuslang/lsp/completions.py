@@ -386,7 +386,7 @@ class CompletionProvider:
                 completions.append({
                     "label": keyword,
                     "kind": 14,  # Keyword
-                    "detail": "NLPL keyword",
+                    "detail": "NexusLang keyword",
                     "insertText": keyword
                 })
 

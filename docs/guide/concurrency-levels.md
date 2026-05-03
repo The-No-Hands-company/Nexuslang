@@ -18,7 +18,7 @@ NLPL provides **five levels of concurrency abstractions**, allowing developers t
 ### Syntax
 
 #### Thread Creation via FFI
-```nlpl
+```nexuslang
 # Direct system calls
 extern function pthread_create with 
  thread as Pointer to Integer,
@@ -50,7 +50,7 @@ call pthread_join with thread_id, null
 ```
 
 #### Atomic Operations
-```nlpl
+```nexuslang
 # Direct atomic instructions via inline assembly
 function atomic_increment with ptr as Pointer to Integer
  inline assembly
@@ -70,7 +70,7 @@ end
 ```
 
 #### Spin Locks
-```nlpl
+```nexuslang
 # Manual spinlock implementation
 struct SpinLock
  locked as Integer # 0 = unlocked, 1 = locked
@@ -104,7 +104,7 @@ end
 ### Syntax
 
 #### Thread Objects
-```nlpl
+```nexuslang
 # Import threading module
 import from stdlib/threading
 
@@ -121,7 +121,7 @@ end
 ```
 
 #### Mutexes and Condition Variables
-```nlpl
+```nexuslang
 import from stdlib/sync
 
 # Mutex-protected data
@@ -171,7 +171,7 @@ end
 ```
 
 #### Thread Pools
-```nlpl
+```nexuslang
 import from stdlib/threading
 
 # Create fixed-size thread pool
@@ -204,7 +204,7 @@ pool.shutdown
 ### Syntax
 
 #### Concurrent Blocks
-```nlpl
+```nexuslang
 # Explicit parallel execution
 concurrent
  set result1 to fetch_data with "url1"
@@ -218,7 +218,7 @@ print text result1, result2, result3
 ```
 
 #### Async Functions (Optional)
-```nlpl
+```nexuslang
 # For developers who prefer async/await style
 async function fetch_user_data with user_id as Integer returns eventually UserData
  set user to await fetch_user with user_id
@@ -235,7 +235,7 @@ set data to await future
 ```
 
 #### Parallel Loops
-```nlpl
+```nexuslang
 # Process items in parallel automatically
 parallel for each image in images
  call resize with image, 800, 600
@@ -249,7 +249,7 @@ parallel_for_each with process_batch and batches
 ```
 
 #### Futures and Promises
-```nlpl
+```nexuslang
 import from stdlib/async
 
 # Create promise
@@ -282,7 +282,7 @@ set value to future.get # Blocks until ready
 ### Syntax
 
 #### Spawning Goroutines
-```nlpl
+```nexuslang
 # Spawn lightweight concurrent task
 spawn
  set data to fetch_from_network with url
@@ -304,7 +304,7 @@ end
 ```
 
 #### Channels
-```nlpl
+```nexuslang
 # Create typed channels
 set jobs to create channel of WorkItem
 set results to create channel of Result
@@ -335,7 +335,7 @@ end
 ```
 
 #### Select Statement
-```nlpl
+```nexuslang
 # Wait on multiple channels
 select
  case message from channel1
@@ -353,7 +353,7 @@ end
 ```
 
 #### Worker Pools with Channels
-```nlpl
+```nexuslang
 # Create worker pool pattern
 set jobs to create channel of Job with capacity 100
 set results to create channel of Result
@@ -382,7 +382,7 @@ end
 ```
 
 #### Context and Cancellation
-```nlpl
+```nexuslang
 # Create cancellable context
 set ctx to create context with timeout 30 seconds
 
@@ -419,7 +419,7 @@ ctx.cancel
 ### Syntax
 
 #### Implicit Parallel Processing
-```nlpl
+```nexuslang
 # Compiler automatically parallelizes
 process these files in parallel
  for each file in directory
@@ -435,7 +435,7 @@ show "All done!"
 ```
 
 #### Natural Concurrent Operations
-```nlpl
+```nexuslang
 # Multiple operations happen concurrently automatically
 fetch user data from database
 fetch posts from database 
@@ -450,7 +450,7 @@ end
 ```
 
 #### Natural Async I/O
-```nlpl
+```nexuslang
 # All I/O is automatically async
 ask the API for user information
 ask the database for recent orders
@@ -546,7 +546,7 @@ Scripting or prototyping?
 ### Web Server (All Levels)
 
 #### Level 1: Manual
-```nlpl
+```nexuslang
 extern function socket from library "c"
 extern function bind from library "c"
 extern function listen from library "c"
@@ -570,7 +570,7 @@ end
 ```
 
 #### Level 2: Explicit
-```nlpl
+```nexuslang
 import from stdlib/net
 import from stdlib/threading
 
@@ -586,7 +586,7 @@ end
 ```
 
 #### Level 3: Structured
-```nlpl
+```nexuslang
 import from stdlib/http
 
 function start_server
@@ -603,7 +603,7 @@ end
 ```
 
 #### Level 4: Goroutines
-```nlpl
+```nexuslang
 import from stdlib/http
 
 function start_server
@@ -621,7 +621,7 @@ end
 ```
 
 #### Level 5: Natural
-```nlpl
+```nexuslang
 create a web server on port 8080
 
 when someone visits the homepage
@@ -643,7 +643,7 @@ start listening for requests
 
 Developers can **start at any level** and **move between levels** as needed:
 
-```nlpl
+```nexuslang
 # Start with natural language (Level 5)
 process all files in parallel
 
@@ -667,7 +667,7 @@ end
 
 Future NexusLang IDE will **automatically suggest** the right level:
 
-```nlpl
+```nexuslang
 # You write:
 process files in parallel
 

@@ -26,7 +26,7 @@ PYTHONPATH=src python -m nexuslang.main program.nlpl --allow-ffi
 
 ## Part 2 — Declaring an External Function
 
-```nlpl
+```nexuslang
 # extern function NAME with PARAMS returns RETURN_TYPE from library "LIB"
 extern function strlen with str as Pointer returns Integer from library "c"
 ```
@@ -38,7 +38,7 @@ extern function strlen with str as Pointer returns Integer from library "c"
 
 ## Part 3 — Calling the Declared Function
 
-```nlpl
+```nexuslang
 extern function strlen with str as Pointer returns Integer from library "c"
 
 set message to "Hello, World!"
@@ -52,7 +52,7 @@ print text "Length: " plus convert length to string    # Length: 13
 
 ### `abs` (absolute value)
 
-```nlpl
+```nexuslang
 extern function abs with n as Integer returns Integer from library "c"
 
 print text convert (call abs with -42) to string    # 42
@@ -60,7 +60,7 @@ print text convert (call abs with -42) to string    # 42
 
 ### `strcmp` (string comparison)
 
-```nlpl
+```nexuslang
 extern function strcmp with s1 as Pointer and s2 as Pointer returns Integer from library "c"
 
 set a to "apple"
@@ -80,7 +80,7 @@ else
 
 Define an NexusLang struct that matches a C struct layout:
 
-```nlpl
+```nexuslang
 # C definition:
 # typedef struct { int x; int y; } Point2D;
 
@@ -104,7 +104,7 @@ set result to call render_point with ptr
 
 Suppose you want to use **zlib** for compression:
 
-```nlpl
+```nexuslang
 extern function compress with dest as Pointer and dest_len as Pointer and src as Pointer and src_len as Integer returns Integer from library "z"
 
 extern function uncompress with dest as Pointer and dest_len as Pointer and src as Pointer and src_len as Integer returns Integer from library "z"
@@ -119,7 +119,7 @@ For a full Zlib binding example, see [examples/07_low_level/03_ffi_c_interop.nlp
 C functions communicate errors through return codes, `errno`, or output
 parameters — not exceptions.  Check return values explicitly:
 
-```nlpl
+```nexuslang
 extern function fopen with path as Pointer and mode as Pointer returns Pointer from library "c"
 extern function fclose with fp as Pointer returns Integer from library "c"
 
@@ -138,7 +138,7 @@ call fclose with fp
 
 Always free C-allocated resources even when errors occur:
 
-```nlpl
+```nexuslang
 set fp to null
 try
     set fp to call fopen with "input.dat" and "rb"
@@ -158,7 +158,7 @@ always
 
 Run FFI-heavy code in a sandbox to limit blast radius:
 
-```nlpl
+```nexuslang
 from nexuslang.security.sandbox import Sandbox, SandboxPolicy
 
 set policy to create SandboxPolicy with allow_ffi: true and max_memory_mb: 256

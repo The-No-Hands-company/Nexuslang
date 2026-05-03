@@ -37,7 +37,7 @@ NLPL (NexusLang) uses English-like syntax that reads like prose while maintainin
 
 ### Declaration and Assignment
 
-```nlpl
+```nexuslang
 # Basic variable declaration
 set name to "Alice"
 set age to 25
@@ -74,7 +74,7 @@ set z to x plus y
 
 ### Primitive Types
 
-```nlpl
+```nexuslang
 # Integer
 set count to 42
 set negative to -100
@@ -97,7 +97,7 @@ set has_error to false
 
 ### Collection Types
 
-```nlpl
+```nexuslang
 # List
 set numbers to [1, 2, 3, 4, 5]
 set names to ["Alice", "Bob", "Charlie"]
@@ -117,7 +117,7 @@ set unique_numbers to {1, 2, 3, 4, 5}
 
 ### Special Types
 
-```nlpl
+```nexuslang
 # Option type (Rust-style)
 set maybe_value to Some(42)
 set nothing to None
@@ -143,7 +143,7 @@ set current_status to Status.Pending
 
 ### Function Definition
 
-```nlpl
+```nexuslang
 # Basic function
 function greet
   print text "Hello, world"
@@ -167,7 +167,7 @@ end
 
 ### Calling Functions
 
-```nlpl
+```nexuslang
 # No parameters
 call greet
 
@@ -181,7 +181,7 @@ set area to calculate_area with 10.0, 20.0
 
 ### Lambda Expressions
 
-```nlpl
+```nexuslang
 # Simple lambda
 set double to lambda x returns x times 2
 
@@ -199,7 +199,7 @@ set sum to add with 3, 7     # sum = 10
 
 ### If Statements
 
-```nlpl
+```nexuslang
 # Simple if
 if age is greater than or equal to 18
   print text "Adult"
@@ -226,7 +226,7 @@ end
 
 ### Comparison Operators
 
-```nlpl
+```nexuslang
 # Natural language comparisons
 if x equals y              # x == y
 if x is equal to y         # x == y
@@ -239,7 +239,7 @@ if x is less than or equal to y     # x <= y
 
 ### Loops
 
-```nlpl
+```nexuslang
 # While loop
 while count is less than 10
   print text count
@@ -274,7 +274,7 @@ end
 
 ### Switch Statement
 
-```nlpl
+```nexuslang
 switch day
   case "Monday"
     print text "Start of week"
@@ -295,7 +295,7 @@ end
 
 ### Basic Pattern Matching
 
-```nlpl
+```nexuslang
 match value with
   case 0 then "zero"
   case 1 then "one"
@@ -305,7 +305,7 @@ end
 
 ### With Guards
 
-```nlpl
+```nexuslang
 match age with
   case n if n is less than 0 then "invalid"
   case n if n is less than 13 then "child"
@@ -317,7 +317,7 @@ end
 
 ### List Destructuring
 
-```nlpl
+```nexuslang
 match numbers with
   case [] then "empty"
   case [x] then "single element"
@@ -328,7 +328,7 @@ end
 
 ### Option/Result Matching
 
-```nlpl
+```nexuslang
 match result with
   case Ok(value) then print text "Success: " plus (value to_string)
   case Err(msg) then print text "Error: " plus msg
@@ -341,7 +341,7 @@ end
 
 ### Class Definition
 
-```nlpl
+```nexuslang
 class Person
   # Properties
   name as String
@@ -366,7 +366,7 @@ end
 
 ### Creating Objects
 
-```nlpl
+```nexuslang
 set person to new Person with "Alice", 25
 call person.greet
 set adult to person.is_adult
@@ -374,7 +374,7 @@ set adult to person.is_adult
 
 ### Inheritance
 
-```nlpl
+```nexuslang
 class Student inherits Person
   student_id as String
   
@@ -391,7 +391,7 @@ end
 
 ### Interfaces
 
-```nlpl
+```nexuslang
 interface Drawable
   function draw with self
   function get_bounds with self returns Rectangle
@@ -412,7 +412,7 @@ end
 
 ### Properties
 
-```nlpl
+```nexuslang
 class BankAccount
   private balance as Float
   
@@ -439,7 +439,7 @@ end
 
 ### Struct Definition
 
-```nlpl
+```nexuslang
 struct Point
   x as Integer
   y as Integer
@@ -453,7 +453,7 @@ set p.y to 20
 
 ### Packed Struct
 
-```nlpl
+```nexuslang
 packed struct NetworkPacket
   magic as Integer
   version as Integer
@@ -463,7 +463,7 @@ end
 
 ### Union Definition
 
-```nlpl
+```nexuslang
 union Data
   int_value as Integer
   float_value as Float
@@ -482,7 +482,7 @@ set data.int_value to 42
 
 ### Basic Assembly
 
-```nlpl
+```nexuslang
 function get_value returns Integer
   asm "
     mov rax, 42
@@ -493,7 +493,7 @@ end
 
 ### Assembly with Parameters
 
-```nlpl
+```nexuslang
 function add_asm with a as Integer, b as Integer returns Integer
   asm "
     mov rax, rdi     ; First argument
@@ -509,7 +509,7 @@ end
 
 ### Pointers
 
-```nlpl
+```nexuslang
 # Get address
 set ptr to address of my_variable
 
@@ -523,7 +523,7 @@ set struct_size to sizeof MyStruct
 
 ### Memory Allocation
 
-```nlpl
+```nexuslang
 # Allocate memory
 set ptr to allocate 1024  # 1024 bytes
 
@@ -536,7 +536,7 @@ set point_ptr to allocate sizeof(Point)
 
 ### Bitwise Operations
 
-```nlpl
+```nexuslang
 # Bitwise AND
 set result to x bitwise_and y
 
@@ -560,7 +560,7 @@ set result to x shift_right 3
 
 ### Import Statements
 
-```nlpl
+```nexuslang
 # Basic import
 import math
 
@@ -576,7 +576,7 @@ from ..utils import helper_function
 
 ### Module Definition
 
-```nlpl
+```nexuslang
 # my_module.nlpl
 module MyModule
 
@@ -598,7 +598,7 @@ export helper_function
 
 ### Try-Catch-Finally
 
-```nlpl
+```nexuslang
 try
   set result to divide with 10, 0
 catch error
@@ -610,7 +610,7 @@ end
 
 ### Raising Errors
 
-```nlpl
+```nexuslang
 function validate_age with age as Integer
   if age is less than 0
     raise error "Age cannot be negative"
@@ -623,7 +623,7 @@ end
 
 ### Custom Exception Types
 
-```nlpl
+```nexuslang
 class ValidationError inherits Exception
   message as String
   
@@ -647,7 +647,7 @@ end
 
 ### Arithmetic Operators
 
-```nlpl
+```nexuslang
 set sum to a plus b           # Addition
 set diff to a minus b         # Subtraction
 set product to a times b      # Multiplication
@@ -658,7 +658,7 @@ set power to a to the power of b # Exponentiation
 
 ### Comparison Operators
 
-```nlpl
+```nexuslang
 a equals b                    # Equal
 a is equal to b               # Equal
 a is not equal to b           # Not equal
@@ -670,7 +670,7 @@ a is less than or equal to b    # Less or equal
 
 ### Logical Operators
 
-```nlpl
+```nexuslang
 condition1 and condition2     # Logical AND
 condition1 or condition2      # Logical OR
 not condition                 # Logical NOT
@@ -678,7 +678,7 @@ not condition                 # Logical NOT
 
 ### String Operations
 
-```nlpl
+```nexuslang
 set greeting to "Hello" plus " " plus "World"  # Concatenation
 set length to length of "Hello"                # Length
 set upper to upper of "hello"                  # Uppercase
@@ -688,7 +688,7 @@ set substring to substring of "Hello" from 1 to 4 # Substring
 
 ### List Operations
 
-```nlpl
+```nexuslang
 # Access element
 set first to items[0]
 
@@ -707,7 +707,7 @@ remove "item" from items
 
 ### Dictionary Operations
 
-```nlpl
+```nexuslang
 # Access value
 set value to dict["key"]
 
@@ -727,7 +727,7 @@ remove "key" from dict
 
 ## Comments
 
-```nlpl
+```nexuslang
 # Single-line comment
 
 # Multi-line comment
@@ -743,7 +743,7 @@ set x to 10  # Inline comment
 
 ### Variable Type Annotations
 
-```nlpl
+```nexuslang
 set name to "Alice" as String
 set age to 25 as Integer
 set scores to [90, 85, 92] as List of Integer
@@ -752,7 +752,7 @@ set user to {"name": "Alice"} as Dictionary of String to String
 
 ### Function Type Annotations
 
-```nlpl
+```nexuslang
 function process with items as List of Integer, threshold as Float returns Boolean
   # Function body
   return true
@@ -761,7 +761,7 @@ end
 
 ### Generic Type Annotations
 
-```nlpl
+```nexuslang
 function find with haystack as List of T, needle as T returns Option of Integer
   # Generic function
 end
@@ -773,7 +773,7 @@ end
 
 ### 1. Use Descriptive Names
 
-```nlpl
+```nexuslang
 # Good
 function calculate_total_price with items as List of Product returns Float
 
@@ -783,7 +783,7 @@ function calc with x as List returns Float
 
 ### 2. Add Type Annotations
 
-```nlpl
+```nexuslang
 # Good - clear types
 function process_user with user as User, action as String returns Result of User, String
 
@@ -795,7 +795,7 @@ end
 
 ### 3. Use Pattern Matching Over If/Else
 
-```nlpl
+```nexuslang
 # Good - clear and exhaustive
 match status with
   case "pending" then handle_pending
@@ -814,7 +814,7 @@ else if status equals "active"
 
 ### 4. Handle Errors Explicitly
 
-```nlpl
+```nexuslang
 # Good
 try
   set result to risky_operation
@@ -830,7 +830,7 @@ set result to risky_operation
 
 ### 5. Use Const for Immutable Values
 
-```nlpl
+```nexuslang
 const PI to 3.14159
 const MAX_USERS to 1000
 const DEFAULT_TIMEOUT to 30

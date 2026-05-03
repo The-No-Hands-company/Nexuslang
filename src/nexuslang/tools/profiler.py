@@ -172,7 +172,7 @@ class Profiler:
     def print_report(self, output=sys.stdout):
         """Print comprehensive profiling report."""
         print("=" * 80, file=output)
-        print("NLPL PROFILER REPORT", file=output)
+        print("NexusLang PROFILER REPORT", file=output)
         print("=" * 80, file=output)
         print(f"\nTotal Runtime: {self.total_runtime*1000:.2f}ms", file=output)
         print(f"Total Functions: {len(self.functions)}", file=output)

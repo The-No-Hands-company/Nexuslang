@@ -3,14 +3,14 @@
 ## Type Annotations
 
 ### Variable Declarations
-```nlpl
+```nexuslang
 set x to 42 # Inferred as Integer
 set y as Float to 3.14 # Explicit type annotation
 set name as String to "Alice" # Explicit String type
 ```
 
 ### Function Signatures
-```nlpl
+```nexuslang
 # Function with typed parameters and return type
 function add with a as Integer, b as Integer returns Integer
  return a plus b
@@ -23,7 +23,7 @@ end
 ```
 
 ### Class Properties
-```nlpl
+```nexuslang
 class Person
  name as String
  age as Integer
@@ -38,7 +38,7 @@ end
 ## Type Inference
 
 ### Automatic Inference
-```nlpl
+```nexuslang
 # Literals
 set count to 0 # Integer
 set price to 9.99 # Float
@@ -56,7 +56,7 @@ set result to 5 times 2.5 # Integer (5) * Float (2.5) = Float
 ```
 
 ### Bidirectional Inference
-```nlpl
+```nexuslang
 # Lambda parameter types inferred from context
 function map with items as List of Integer, fn as Function returns List of Integer
  set result to empty List of Integer
@@ -71,7 +71,7 @@ set doubled to map([1, 2, 3], lambda x => x times 2)
 ```
 
 ### Expected Type Context
-```nlpl
+```nexuslang
 # Empty collection with expected type
 function create_numbers returns List of Integer
  set nums to empty List of Integer # Type inferred from return type
@@ -89,7 +89,7 @@ end
 ## Generic Types
 
 ### Generic Functions
-```nlpl
+```nexuslang
 # Generic function with type parameter T
 function identity<T> with value as T returns T
  return value
@@ -101,7 +101,7 @@ set y to identity("hello") # T = String
 ```
 
 ### Multiple Type Parameters
-```nlpl
+```nexuslang
 # Generic function with T and R
 function map<T, R> with items as List<T>, fn as Function returns List<R>
  set result to empty List<R>
@@ -117,7 +117,7 @@ set strings to map([1, 2, 3], lambda x => "Number " plus x as String)
 ```
 
 ### Generic Collections
-```nlpl
+```nexuslang
 # List with element type
 set numbers to empty List of Integer
 append 1 to numbers
@@ -130,7 +130,7 @@ set scores["Bob"] to 87
 ```
 
 ### Generic Constraints
-```nlpl
+```nexuslang
 # Generic function with constraint
 function max<T: Comparable> with a as T, b as T returns T
  if a is greater than b
@@ -147,7 +147,7 @@ set max_str to max("apple", "banana") # T = String (Comparable)
 ## User-Defined Types
 
 ### Basic Class
-```nlpl
+```nexuslang
 class Point
  x as Integer
  y as Integer
@@ -164,7 +164,7 @@ set distance to p.distance_from_origin()
 ```
 
 ### Inheritance
-```nlpl
+```nexuslang
 class Animal
  name as String
  age as Integer
@@ -191,7 +191,7 @@ dog.bark()
 ```
 
 ### Polymorphism
-```nlpl
+```nexuslang
 # Function accepting supertype
 function greet_animal with animal as Animal returns String
  return "Hello, " plus animal.name plus "! " plus animal.make_sound()
@@ -208,7 +208,7 @@ set greeting2 to greet_animal(cat)
 ## Type Compatibility
 
 ### Numeric Widening
-```nlpl
+```nexuslang
 # Integer automatically widens to Float
 set int_val to 10 # Integer
 set float_val to 3.14 # Float
@@ -223,7 +223,7 @@ set doubled to process(5) # Integer 5 widens to Float
 ```
 
 ### String Concatenation
-```nlpl
+```nexuslang
 # String + Any (with conversion)
 set name to "Alice"
 set age to 30
@@ -231,7 +231,7 @@ set message to name plus " is " plus age as String plus " years old"
 ```
 
 ### List Compatibility
-```nlpl
+```nexuslang
 # Mixed numeric types unify to Float
 set mixed to [1, 2.5, 3] # List<Float> (Integer widens to Float)
 
@@ -249,7 +249,7 @@ set sum to sum_integers(nums) # List<Integer> matches parameter type
 ```
 
 ### Subtype Compatibility
-```nlpl
+```nexuslang
 # Subtype can be used where supertype is expected
 class Vehicle
  speed as Integer
@@ -270,7 +270,7 @@ show_speed(car) # Car compatible with Vehicle (subtype)
 ## Common Patterns
 
 ### Optional Types (Nullable)
-```nlpl
+```nexuslang
 # Function that may return null
 function find_user with id as Integer returns String
  if id is greater than 0
@@ -282,7 +282,7 @@ end
 ```
 
 ### Union Types
-```nlpl
+```nexuslang
 # Function with multiple return types
 function get_value with flag as Boolean returns Integer
  if flag
@@ -295,7 +295,7 @@ end
 ```
 
 ### Lambda Types
-```nlpl
+```nexuslang
 # Lambda with inferred types
 set doubler to lambda x => x times 2
 # Type inferred from usage: Integer -> Integer
@@ -313,7 +313,7 @@ set result to apply(10, lambda x => x plus 5)
 ```
 
 ### Generic Collections
-```nlpl
+```nexuslang
 # Creating typed collections
 set int_list to empty List of Integer
 set str_dict to empty Dictionary of String, Integer

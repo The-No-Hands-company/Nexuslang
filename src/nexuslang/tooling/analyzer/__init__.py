@@ -1,6 +1,6 @@
 """ 
-NLPL Static Analyzer
-====================
+NexusLang Static Analyzer
+=========================
 
 Production-grade static analysis for NexusLang code.
 

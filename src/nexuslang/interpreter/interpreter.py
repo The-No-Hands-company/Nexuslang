@@ -2922,14 +2922,14 @@ class Interpreter:
 
         Raises NLPLContractError when the condition is False.
         """
-        from ..errors import NLPLContractError
+        from ..errors import NxlContractError
         cond = self.execute(node.condition)
         if not cond:
             if node.message_expr is not None:
                 msg = str(self.execute(node.message_expr))
             else:
                 msg = "Precondition failed (require)"
-            raise NLPLContractError(msg, contract_kind="require")
+            raise NxlContractError(msg, contract_kind="require")
         return None
 
     def execute_ensure_statement(self, node):
@@ -2937,14 +2937,14 @@ class Interpreter:
 
         Raises NLPLContractError when the condition is False.
         """
-        from ..errors import NLPLContractError
+        from ..errors import NxlContractError
         cond = self.execute(node.condition)
         if not cond:
             if node.message_expr is not None:
                 msg = str(self.execute(node.message_expr))
             else:
                 msg = "Postcondition failed (ensure)"
-            raise NLPLContractError(msg, contract_kind="ensure")
+            raise NxlContractError(msg, contract_kind="ensure")
         return None
 
     def execute_guarantee_statement(self, node):
@@ -2952,14 +2952,14 @@ class Interpreter:
 
         Raises NLPLContractError when the condition is False.
         """
-        from ..errors import NLPLContractError
+        from ..errors import NxlContractError
         cond = self.execute(node.condition)
         if not cond:
             if node.message_expr is not None:
                 msg = str(self.execute(node.message_expr))
             else:
                 msg = "Invariant violated (guarantee)"
-            raise NLPLContractError(msg, contract_kind="guarantee")
+            raise NxlContractError(msg, contract_kind="guarantee")
         return None
 
     def execute_invariant_statement(self, node):
@@ -2971,14 +2971,14 @@ class Interpreter:
 
         Raises NLPLContractError (contract_kind="invariant") on failure.
         """
-        from ..errors import NLPLContractError
+        from ..errors import NxlContractError
         cond = self.execute(node.condition)
         if not cond:
             if node.message_expr is not None:
                 msg = str(self.execute(node.message_expr))
             else:
                 msg = "Invariant violated"
-            raise NLPLContractError(msg, contract_kind="invariant")
+            raise NxlContractError(msg, contract_kind="invariant")
         return None
 
     def execute_old_expression(self, node):

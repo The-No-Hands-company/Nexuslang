@@ -35,7 +35,7 @@ NLPL's struct/union features:
 
 ### Defining a Struct
 
-```nlpl
+```nexuslang
 struct Point
   x as Integer
   y as Integer
@@ -50,7 +50,7 @@ end
 
 ### Creating Struct Instances
 
-```nlpl
+```nexuslang
 struct Point
   x as Integer
   y as Integer
@@ -70,7 +70,7 @@ print text "y = " plus (p1.y to_string)
 
 ### Struct with Initialization
 
-```nlpl
+```nexuslang
 struct Rectangle
   x as Integer
   y as Integer
@@ -91,7 +91,7 @@ set rect.height to 50
 
 ### Nested Structs
 
-```nlpl
+```nexuslang
 struct Point
   x as Integer
   y as Integer
@@ -118,7 +118,7 @@ print text "Top-left x: " plus (rect.top_left.x to_string)
 
 ### Struct with Methods
 
-```nlpl
+```nexuslang
 struct Point
   x as Integer
   y as Integer
@@ -147,7 +147,7 @@ call p.move with 10, 10
 
 ### Struct Memory Layout
 
-```nlpl
+```nexuslang
 struct SimpleStruct
   a as Integer  # 8 bytes (64-bit)
   b as Integer  # 8 bytes
@@ -176,7 +176,7 @@ end
 
 ### Removing Padding
 
-```nlpl
+```nexuslang
 packed struct TightlyPacked
   a as Integer   # 8 bytes at offset 0
   b as Boolean   # 1 byte at offset 8
@@ -201,7 +201,7 @@ end
 
 ### Custom Alignment
 
-```nlpl
+```nexuslang
 aligned(16) struct AlignedStruct
   a as Integer
   b as Integer
@@ -220,7 +220,7 @@ end
 
 ### Defining a Union
 
-```nlpl
+```nexuslang
 union Data
   int_value as Integer
   float_value as Float
@@ -236,7 +236,7 @@ end
 
 ### Using Unions
 
-```nlpl
+```nexuslang
 union Data
   int_value as Integer
   float_value as Float
@@ -259,7 +259,7 @@ print text "As float: " plus (data.float_value to_string)
 
 ### Type Punning with Unions
 
-```nlpl
+```nexuslang
 union FloatBits
   float_value as Float
   int_bits as Integer
@@ -289,7 +289,7 @@ print text "Float 3.14 as bits: " plus (bits to_string)
 
 ### Manual Variant Type
 
-```nlpl
+```nexuslang
 enum ValueType
   IntType
   FloatType
@@ -341,7 +341,7 @@ end
 - ✅ Hardware interfacing
 
 **Example:**
-```nlpl
+```nexuslang
 struct PacketHeader
   magic as Integer      # 4 bytes
   version as Integer    # 4 bytes
@@ -361,7 +361,7 @@ end
 - ✅ Application logic
 
 **Example:**
-```nlpl
+```nexuslang
 class NetworkConnection
   private socket as Integer
   private buffer as String
@@ -394,7 +394,7 @@ end
 
 ### Calling C Functions with Structs
 
-```nlpl
+```nexuslang
 # C library has:
 # struct Point { int x; int y; };
 # void move_point(struct Point* p, int dx, int dy);
@@ -417,7 +417,7 @@ call move_point with (address of p), 5, 5
 ### Struct Layout Compatibility
 
 **NLPL struct:**
-```nlpl
+```nexuslang
 struct CCompatible
   a as Integer  # int (4 bytes on most platforms)
   b as Integer
@@ -446,7 +446,7 @@ struct CCompatible {
 
 ### Bit Fields
 
-```nlpl
+```nexuslang
 struct Flags
   read_permission as Boolean    # 1 bit (stored as 1 byte without bit field support)
   write_permission as Boolean   # 1 bit
@@ -458,7 +458,7 @@ end
 ```
 
 **Workaround using bitwise operations:**
-```nlpl
+```nexuslang
 struct PermissionFlags
   flags as Integer  # Pack multiple booleans into bits
 end
@@ -478,7 +478,7 @@ end
 
 ### Flexible Array Members
 
-```nlpl
+```nexuslang
 struct DynamicArray
   length as Integer
   capacity as Integer
@@ -501,7 +501,7 @@ end
 
 ### Zero-Cost Abstractions
 
-```nlpl
+```nexuslang
 struct Vector2D
   x as Float
   y as Float
@@ -537,7 +537,7 @@ set mag to v3.magnitude
 
 ### Copying Structs
 
-```nlpl
+```nexuslang
 struct Point
   x as Integer
   y as Integer
@@ -559,7 +559,7 @@ set p3 to allocate sizeof(Point)
 
 ### Struct Pointers
 
-```nlpl
+```nexuslang
 struct Node
   value as Integer
   next as Pointer to Node
@@ -585,7 +585,7 @@ end
 
 ### sizeof Operator
 
-```nlpl
+```nexuslang
 struct Example
   a as Integer
   b as Integer
@@ -607,7 +607,7 @@ set size_bool to sizeof(Boolean)
 
 ### 1. Use Descriptive Field Names
 
-```nlpl
+```nexuslang
 # Good: Clear intent
 struct Employee
   employee_id as Integer
@@ -627,7 +627,7 @@ end
 
 ### 2. Group Related Fields
 
-```nlpl
+```nexuslang
 # Good: Logical grouping
 struct Person
   # Identity
@@ -647,7 +647,7 @@ end
 
 ### 3. Consider Alignment for Performance
 
-```nlpl
+```nexuslang
 # Good: Largest fields first (minimizes padding)
 struct Optimized
   large as Integer      # 8 bytes
@@ -670,7 +670,7 @@ end
 
 ### 4. Document Memory Layout for FFI
 
-```nlpl
+```nexuslang
 # C struct:
 # struct NetworkPacket {
 #     uint32_t magic;      // offset 0
@@ -689,7 +689,7 @@ end
 
 ### 5. Initialize All Fields
 
-```nlpl
+```nexuslang
 # Good: All fields initialized
 function create_point returns Point
   set p to new Point
@@ -708,7 +708,7 @@ end
 
 ### 6. Use Unions Carefully
 
-```nlpl
+```nexuslang
 # Good: Tagged union for type safety
 enum DataType
   IntType
@@ -747,7 +747,7 @@ end
 
 ### 1. Data Transfer Objects
 
-```nlpl
+```nexuslang
 struct UserDTO
   id as Integer
   username as String
@@ -760,7 +760,7 @@ end
 
 ### 2. Configuration Structs
 
-```nlpl
+```nexuslang
 struct ServerConfig
   host as String
   port as Integer
@@ -779,7 +779,7 @@ set config.enable_ssl to false
 
 ### 3. Hardware Registers
 
-```nlpl
+```nexuslang
 packed struct GPIO_Register
   pin0 as Boolean
   pin1 as Boolean
@@ -798,7 +798,7 @@ set gpio.pin2 to true  # Set pin 2 high
 
 ### 4. Binary File Formats
 
-```nlpl
+```nexuslang
 packed struct BitmapHeader
   signature as Integer    # "BM" (2 bytes)
   file_size as Integer    # 4 bytes
@@ -815,7 +815,7 @@ end
 
 ### Stack vs Heap Allocation
 
-```nlpl
+```nexuslang
 # Stack allocation (fast, automatic cleanup)
 function use_stack returns Integer
   set p to new Point  # Allocated on stack
@@ -841,7 +841,7 @@ end
 
 ### Cache-Friendly Layout
 
-```nlpl
+```nexuslang
 # Good: Frequently accessed fields together
 struct CacheFriendly
   # Hot fields (accessed frequently)
@@ -858,7 +858,7 @@ end
 
 ### Struct Copying Cost
 
-```nlpl
+```nexuslang
 struct LargeStruct
   data1 as Integer
   data2 as Integer
@@ -884,7 +884,7 @@ end
 ### Issue: Field Not Found
 
 **Problem:**
-```nlpl
+```nexuslang
 struct Point
   x as Integer
   y as Integer
@@ -899,7 +899,7 @@ set p.z to 30  # ERROR: Field 'z' not found
 ### Issue: Type Mismatch
 
 **Problem:**
-```nlpl
+```nexuslang
 struct Data
   value as Integer
 end
@@ -913,7 +913,7 @@ set d.value to "hello"  # ERROR: Expected Integer, got String
 ### Issue: Accessing Union Field
 
 **Problem:**
-```nlpl
+```nexuslang
 union Data
   int_value as Integer
   float_value as Float
@@ -929,7 +929,7 @@ print text d.float_value  # Garbage! float_value was never set
 ### Issue: Struct Alignment Mismatch (FFI)
 
 **Problem:**
-```nlpl
+```nexuslang
 # NexusLang struct (unpacked, has padding)
 struct Data
   a as Boolean  # 1 byte + 7 bytes padding
@@ -945,7 +945,7 @@ end
 ```
 
 **Solution:** Use `packed struct` to match C layout:
-```nlpl
+```nexuslang
 packed struct Data
   a as Boolean
   b as Integer

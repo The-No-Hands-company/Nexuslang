@@ -15,11 +15,11 @@ from ..tooling.analyzer.analyzer import create_default_analyzer, create_strict_a
 
 # Configure logging
 logging.basicConfig(
-    filename='/tmp/nlpl-lsp.log',
+    filename='/tmp/nexuslang-lsp.log',
     level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-logger = logging.getLogger('nlpl-lsp')
+logger = logging.getLogger('nexuslang-lsp')
 
 
 @dataclass
@@ -65,7 +65,7 @@ class TextDocumentPosition:
     position: Position
 
 
-class NLPLLanguageServer:
+class NexusLangLanguageServer:
     """
     NexusLang Language Server implementing LSP protocol.
     
@@ -91,7 +91,7 @@ class NLPLLanguageServer:
         from ..lsp.hover import HoverProvider
         from ..lsp.diagnostics import DiagnosticsProvider
         from ..lsp.symbols import SymbolProvider
-        from ..lsp.formatter import NLPLFormatter
+        from ..lsp.formatter import NexusLangFormatter
         from ..lsp.code_actions import CodeActionsProvider
         from ..lsp.signature_help import SignatureHelpProvider
         from ..lsp.references import ReferencesProvider
@@ -106,7 +106,7 @@ class NLPLLanguageServer:
         self.hover_provider = HoverProvider(self)
         self.diagnostics_provider = DiagnosticsProvider(self)
         self.symbol_provider = SymbolProvider(self)
-        self.formatter = NLPLFormatter()
+        self.formatter = NexusLangFormatter()
         self.code_actions_provider = CodeActionsProvider(self)
         self.references_provider = ReferencesProvider(self)
         self.signature_help_provider = SignatureHelpProvider(self)
@@ -116,7 +116,7 @@ class NLPLLanguageServer:
         self.inlay_hints_provider = InlayHintsProvider(self)
         self.dead_code_provider = DeadCodeProvider(self)
         
-        logger.info("NLPL Language Server initialized")
+        logger.info("NexusLang Language Server initialized")
     
     def start(self):
         """Start the language server (stdio communication)."""
@@ -369,7 +369,7 @@ class NLPLLanguageServer:
             "result": {
                 "capabilities": capabilities,
                 "serverInfo": {
-                    "name": "NLPL Language Server",
+                    "name": "NexusLang Language Server",
                     "version": "0.1.0"
                 }
             }
@@ -483,9 +483,9 @@ class NLPLLanguageServer:
                         },
                         "severity": severity_map.get(severity_name, 3),
                         "message": f"[{issue.code}] {issue.message}",
-                        "source": "nlpl-lint",
+                        "source": "nexuslang-lint",
                         "data": {
-                            "origin": "nlpl-lint",
+                            "origin": "nexuslang-lint",
                             "lintCode": issue.code,
                             "category": getattr(getattr(issue, "category", None), "value", None),
                         },
@@ -1127,4 +1127,4 @@ class NLPLLanguageServer:
         self._parse_cache.pop(uri, None)
 
 
-__all__ = ['NLPLLanguageServer', 'Position', 'Range', 'Location']
+__all__ = ['NexusLangLanguageServer', 'Position', 'Range', 'Location']

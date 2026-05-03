@@ -14,7 +14,7 @@ fi
 
 # Get absolute path to project root
 PROJECT_ROOT=$(pwd)
-EXTENSION_DIR=".vscode/nlpl-extension"
+EXTENSION_DIR=".vscode/nexuslang-extension"
 
 echo "Project root: $PROJECT_ROOT"
 echo "Extension directory: $EXTENSION_DIR"
@@ -50,7 +50,7 @@ echo "npm install"
 echo "npm run compile"
 echo "npm install -g @vscode/vsce"
 echo "vsce package"
-echo "code --install-extension nlpl-language-support-0.1.0.vsix"
+echo "code --install-extension nexuslang-language-support-0.1.0.vsix"
 echo ""
 
 # Check if TypeScript compiler is available

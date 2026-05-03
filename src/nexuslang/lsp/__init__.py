@@ -1,6 +1,6 @@
 """
-NLPL Language Server Protocol (LSP) Implementation
-===================================================
+NexusLang Language Server Protocol (LSP) Implementation
+======================================================
 
 Provides IDE integration for NexusLang:
 - Auto-completion
@@ -14,7 +14,7 @@ Provides IDE integration for NexusLang:
 Based on LSP specification: https://microsoft.github.io/language-server-protocol/
 """
 
-from nexuslang.lsp.server import NLPLLanguageServer
+from nexuslang.lsp.server import NexusLangLanguageServer
 from nexuslang.lsp.completions import CompletionProvider
 from nexuslang.lsp.definitions import DefinitionProvider
 from nexuslang.lsp.hover import HoverProvider
@@ -24,7 +24,7 @@ from nexuslang.lsp.code_actions import CodeActionsProvider
 from nexuslang.lsp.signature_help import SignatureHelpProvider
 
 __all__ = [
-    'NLPLLanguageServer',
+    'NexusLangLanguageServer',
     'CompletionProvider',
     'DefinitionProvider',
     'HoverProvider',

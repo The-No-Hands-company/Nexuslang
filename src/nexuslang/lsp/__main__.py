@@ -1,6 +1,6 @@
 """
-NLPL Language Server - Main Entry Point
-========================================
+NexusLang Language Server - Main Entry Point
+============================================
 
 Run the NexusLang Language Server Protocol server.
 
@@ -13,13 +13,13 @@ Usage:
 import sys
 import argparse
 import logging
-from .server import NLPLLanguageServer
+from .server import NexusLangLanguageServer
 
 
 def main():
     """Main entry point for the NexusLang Language Server."""
     parser = argparse.ArgumentParser(
-        description='NLPL Language Server Protocol Implementation',
+        description='NexusLang Language Server Protocol Implementation',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -59,14 +59,14 @@ Examples:
     parser.add_argument(
         '--debug',
         action='store_true',
-        help='Enable debug logging to /tmp/nlpl-lsp.log'
+        help='Enable debug logging to /tmp/nexuslang-lsp.log'
     )
     
     parser.add_argument(
         '--log-file',
         type=str,
-        default='/tmp/nlpl-lsp.log',
-        help='Log file path (default: /tmp/nlpl-lsp.log)'
+        default='/tmp/nexuslang-lsp.log',
+        help='Log file path (default: /tmp/nexuslang-lsp.log)'
     )
     
     args = parser.parse_args()
@@ -78,12 +78,12 @@ Examples:
             level=logging.DEBUG,
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         )
-        logger = logging.getLogger('nlpl-lsp')
+        logger = logging.getLogger('nexuslang-lsp')
         logger.info(f"Starting NexusLang Language Server (debug mode)")
         logger.info(f"Args: {args}")
     
     # Create and start server
-    server = NLPLLanguageServer()
+    server = NexusLangLanguageServer()
     
     if args.tcp:
         # TCP mode - not yet implemented
@@ -95,12 +95,12 @@ Examples:
             server.start()
         except KeyboardInterrupt:
             if args.debug:
-                logger = logging.getLogger('nlpl-lsp')
+                logger = logging.getLogger('nexuslang-lsp')
                 logger.info("Server interrupted by user")
             sys.exit(0)
         except Exception as e:
             if args.debug:
-                logger = logging.getLogger('nlpl-lsp')
+                logger = logging.getLogger('nexuslang-lsp')
                 logger.error(f"Server error: {e}", exc_info=True)
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)

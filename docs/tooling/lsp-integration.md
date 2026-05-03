@@ -48,7 +48,7 @@ cd vscode-extension
 npm install
 npm run compile
 npm run package
-code --install-extension nlpl-language-support-0.1.0.vsix
+code --install-extension nexuslang-language-support-0.1.0.vsix
 ```
 
 ### Step 3: Configure (Optional)
@@ -87,7 +87,7 @@ Open any `.nlpl` file and start coding. You'll immediately see:
 
 **Example**: Syntax errors
 
-```nlpl
+```nexuslang
 set message to "unclosed string
 ```
 
@@ -98,7 +98,7 @@ Syntax error: Unterminated string at line 1, column 14
 
 **Example**: Type errors
 
-```nlpl
+```nexuslang
 function add with a as Integer, b as Integer returns String
   return a plus b  # Returns Integer, not String
 end
@@ -111,7 +111,7 @@ Type error: Return value of type 'Integer' is not compatible with expected retur
 
 **Example**: Unused variables
 
-```nlpl
+```nexuslang
 set unused_var to 42
 set x to 10
 print text x to_string
@@ -146,7 +146,7 @@ class  - Define a class
 
 After `as` or `returns`, get type suggestions:
 
-```nlpl
+```nexuslang
 set x as Int|  # Cursor here
 ```
 
@@ -160,7 +160,7 @@ IntRange
 
 After importing a module:
 
-```nlpl
+```nexuslang
 import math
 set result to sq|  # Cursor here
 ```
@@ -175,7 +175,7 @@ square_root  - Square root (alias)
 
 After `set x to`, get value suggestions:
 
-```nlpl
+```nexuslang
 set value to |  # Cursor here
 ```
 
@@ -199,7 +199,7 @@ new      - Create object instance
 **Remove Unused Variables**
 
 Code:
-```nlpl
+```nexuslang
 set unused_var to 42
 set x to 10
 ```
@@ -216,7 +216,7 @@ Result: Line deleted automatically
 **Fix Unclosed Strings**
 
 Code:
-```nlpl
+```nexuslang
 set message to "hello world
 ```
 
@@ -228,14 +228,14 @@ Quick fix:
 ```
 
 Result:
-```nlpl
+```nexuslang
 set message to "hello world"
 ```
 
 **Extract to Function** (Refactoring)
 
 Code:
-```nlpl
+```nexuslang
 set x to 10
 set y to 20
 set sum to x plus y
@@ -263,7 +263,7 @@ Result: Selected code moved to new function with proper signature
 
 #### Example: Function Definition
 
-```nlpl
+```nexuslang
 function calculate with x as Integer, y as Integer returns Integer
   return x plus y
 end
@@ -275,7 +275,7 @@ set result to calculate with 10, 20  # Ctrl+Click on 'calculate'
 
 #### Example: Class Definition
 
-```nlpl
+```nexuslang
 class Person
   name as String
   age as Integer
@@ -288,7 +288,7 @@ set alice to new Person  # Ctrl+Click on 'Person'
 
 #### Example: Variable Declaration
 
-```nlpl
+```nexuslang
 set message to "Hello, world!"
 
 # ... many lines later ...
@@ -337,7 +337,7 @@ set root to sqrt with 16.0  # 4.0
 
 #### Example: User Function Hover
 
-```nlpl
+```nexuslang
 function greet with name as String returns String
   return "Hello, " plus name
 end
@@ -363,7 +363,7 @@ function greet with name as String returns String
 #### Example: Standard Library Function
 
 Type:
-```nlpl
+```nexuslang
 import math
 set root to sqrt with |  # Cursor here
 ```
@@ -377,7 +377,7 @@ Parameter: number - The number to calculate square root of
 
 #### Example: Multi-Parameter Function
 
-```nlpl
+```nexuslang
 function calculate with x as Integer, y as Integer returns Integer
   return x plus y
 end
@@ -414,7 +414,7 @@ Manual trigger: `Ctrl+Shift+Space`
 #### Example: Rename Function
 
 **Before**:
-```nlpl
+```nexuslang
 function calculate with x as Integer, y as Integer returns Integer
   return x plus y
 end
@@ -427,7 +427,7 @@ print text result to_string
 **Action**: Place cursor on `calculate`, press `F2`, type `compute`
 
 **After**:
-```nlpl
+```nexuslang
 function compute with x as Integer, y as Integer returns Integer
   return x plus y
 end
@@ -442,7 +442,7 @@ print text result to_string
 #### Example: Rename Variable
 
 **Before**:
-```nlpl
+```nexuslang
 set counter to 0
 set total to 100
 
@@ -457,7 +457,7 @@ print text counter to_string
 **Action**: Place cursor on `counter` (any occurrence), press `F2`, type `index`
 
 **After**:
-```nlpl
+```nexuslang
 set index to 0
 set total to 100
 
@@ -474,7 +474,7 @@ print text index to_string
 #### Example: Rename Class
 
 **Before**:
-```nlpl
+```nexuslang
 class Person
   name as String
   age as Integer
@@ -487,7 +487,7 @@ set bob to new Person
 **Action**: Place cursor on `Person`, press `F2`, type `Human`
 
 **After**:
-```nlpl
+```nexuslang
 class Human
   name as String
   age as Integer
@@ -502,7 +502,7 @@ set bob to new Human
 #### Example: Rename Method
 
 **Before**:
-```nlpl
+```nexuslang
 class Calculator
   function calculate with x as Integer, y as Integer returns Integer
     return x plus y
@@ -516,7 +516,7 @@ set result to calc dot calculate with 5, 10
 **Action**: Place cursor on `calculate` method, press `F2`, type `compute`
 
 **After**:
-```nlpl
+```nexuslang
 class Calculator
   function compute with x as Integer, y as Integer returns Integer
     return x plus y
@@ -539,7 +539,7 @@ The rename feature protects against invalid renames:
 - Symbols that don't exist
 
 **Example - Attempting Invalid Rename**:
-```nlpl
+```nexuslang
 set message to "Hello"
 ```
 
@@ -582,14 +582,14 @@ The rename operation searches:
 **Multi-file example**:
 
 `utils.nlpl`:
-```nlpl
+```nexuslang
 function calculate with x as Integer, y as Integer returns Integer
   return x plus y
 end
 ```
 
 `main.nlpl`:
-```nlpl
+```nexuslang
 import utils from "utils.nxl"
 
 set result to calculate with 10, 20  # References utils.calculate
@@ -616,7 +616,7 @@ set result to calculate with 10, 20  # References utils.calculate
 #### Multi-File Import Checking
 
 File: `main.nlpl`
-```nlpl
+```nexuslang
 import math                        #  OK (stdlib)
 import utils from "utils.nxl"     #  OK (file exists)
 import nonexistent from "fake.nxl"  #  ERROR
@@ -742,18 +742,18 @@ vim.api.nvim_create_autocmd("FileType", {
 (require 'lsp-mode)
 
 ;; Define NexusLang language
-(add-to-list 'lsp-language-id-configuration '(nlpl-mode . "nlpl"))
+(add-to-list 'lsp-language-id-configuration '(nexuslang-mode . "nlpl"))
 
 ;; Register NexusLang LSP client
 (lsp-register-client
  (make-lsp-client 
   :new-connection (lsp-stdio-connection '("python3" "-m" "nexuslang.lsp" "--stdio"))
   :activation-fn (lsp-activate-on "nlpl")
-  :major-modes '(nlpl-mode)
-  :server-id 'nlpl-lsp))
+  :major-modes '(nexuslang-mode)
+  :server-id 'nexuslang-lsp))
 
 ;; Auto-start LSP for .nlpl files
-(add-hook 'nlpl-mode-hook #'lsp)
+(add-hook 'nexuslang-mode-hook #'lsp)
 
 ;; Optional: Enable which-key for keybinding hints
 (with-eval-after-load 'lsp-mode
@@ -842,7 +842,7 @@ contexts:
 
 4. **Check logs** (VS Code):
    - Output panel → NexusLang Language Server
-   - Or: `/tmp/nlpl-lsp.log`
+   - Or: `/tmp/nexuslang-lsp.log`
 
 5. **Restart editor** after configuration changes
 
@@ -891,7 +891,7 @@ contexts:
    }
    ```
 
-3. **View diagnostic source**: Hover over error to see source (nlpl-parser, nlpl-typechecker, etc.)
+3. **View diagnostic source**: Hover over error to see source (nexuslang-parser, nexuslang-typechecker, etc.)
 
 4. **Check workspace diagnostics**: Multi-file errors may take longer
 
@@ -967,7 +967,7 @@ Typical memory usage:
 
 ### Custom Completions
 
-Add project-specific completions via `.vscode/nlpl-completions.json`:
+Add project-specific completions via `.vscode/nexuslang-completions.json`:
 
 ```json
 {
@@ -1016,7 +1016,7 @@ Highlights:
 ### Manual Test
 
 1. Create `test.nlpl`:
-   ```nlpl
+   ```nexuslang
    set x to "unclosed string
    set unused to 42
    

@@ -409,7 +409,7 @@ nlpl clean && nlpl build
 ## Related Documentation
 
 - [Build Tool](build-tool.md) - Overview of build system
-- [nexuslang.toml Specification](nlpl-toml.md) - Manifest format
+- [nexuslang.toml Specification](nexuslang-toml.md) - Manifest format
 - [Compiler Architecture](../contributing/compiler-guide.md) - Compilation pipeline
 
 ## See Also

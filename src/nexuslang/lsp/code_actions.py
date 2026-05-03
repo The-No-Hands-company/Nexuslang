@@ -10,7 +10,7 @@ from typing import List, Dict, Optional
 from ..parser.lexer import Lexer
 from ..parser.parser import Parser
 from ..analysis import ASTSymbolExtractor, SymbolTable, SymbolKind
-from .formatter import NLPLFormatter
+from .formatter import NexusLangFormatter
 
 
 class CodeActionsProvider:
@@ -522,7 +522,7 @@ class CodeActionsProvider:
 
     def _format_document_action(self, uri: str, text: str) -> Optional[Dict]:
         """Return a format quick fix when formatter output differs from source."""
-        formatter = NLPLFormatter()
+        formatter = NexusLangFormatter()
         edits = formatter.get_formatting_edits(text)
         if not edits:
             return None

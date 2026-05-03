@@ -257,25 +257,25 @@ result = interpreter.interpret(optimized_ast)
 ### Optimization Examples
 
 **Before - Constant Folding**:
-```nlpl
+```nexuslang
 set x to 5 times 10 plus 3 times 2
 ```
 
 **After**:
-```nlpl
+```nexuslang
 set x to 56  # Computed at compile time
 ```
 
 ---
 
 **Before - Strength Reduction**:
-```nlpl
+```nexuslang
 set area to width times 2
 set power to base to the power of 2
 ```
 
 **After**:
-```nlpl
+```nexuslang
 set area to width plus width  # Addition cheaper than multiplication
 set power to base times base   # Multiplication cheaper than exponentiation
 ```
@@ -283,14 +283,14 @@ set power to base times base   # Multiplication cheaper than exponentiation
 ---
 
 **Before - Loop Unrolling**:
-```nlpl
+```nexuslang
 repeat 4 times
     print text "Hello"
 end
 ```
 
 **After**:
-```nlpl
+```nexuslang
 print text "Hello"
 print text "Hello"
 print text "Hello"
@@ -300,7 +300,7 @@ print text "Hello"
 ---
 
 **Before - Dead Code Elimination**:
-```nlpl
+```nexuslang
 if true
     print text "Always executed"
 else
@@ -309,7 +309,7 @@ end
 ```
 
 **After**:
-```nlpl
+```nexuslang
 print text "Always executed"
 ```
 
@@ -369,7 +369,7 @@ Production: compiled with O3 (maximum performance)
 
 Add type annotations for better optimization:
 
-```nlpl
+```nexuslang
 function calculate_sum with numbers as List of Integer returns Integer
     # Compiler can generate optimized integer arithmetic
 end
@@ -453,8 +453,8 @@ pipeline.add_pass(DeadCodeEliminationPass(aggressive=False))
 ### GitHub Actions
 
 See `.github/workflows/ci.yml` for full CI/CD pipeline that includes:
-- Static analysis with `nlpl-analyze`
-- Code formatting with `nlpl-format`
+- Static analysis with `nexuslang-analyze`
+- Code formatting with `nexuslang-format`
 - Performance benchmarks
 - Compiler tests
 

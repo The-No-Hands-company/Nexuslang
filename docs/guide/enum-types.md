@@ -8,7 +8,7 @@ Enums (enumerations) in NexusLang provide a way to define named constant sets wi
 
 ### Basic Auto-Numbered Enum
 
-```nlpl
+```nexuslang
 enum EnumName
     MemberOne
     MemberTwo
@@ -19,7 +19,7 @@ Auto-numbered enums start at 0 and increment by 1 for each member.
 
 ### Enum with Explicit Values
 
-```nlpl
+```nexuslang
 enum StatusCode
     Success = 0
     Warning = 100
@@ -29,7 +29,7 @@ enum StatusCode
 
 ### Mixed Auto and Explicit Values
 
-```nlpl
+```nexuslang
 enum Priority
     Low        # = 0 (auto)
     Medium     # = 1 (auto)
@@ -41,7 +41,7 @@ enum Priority
 
 ### Declaration and Access
 
-```nlpl
+```nexuslang
 enum Color
     Red
     Green
@@ -55,7 +55,7 @@ print number my_color  # Prints: 0
 
 Enum members are accessed using dot notation: `EnumName.MemberName`
 
-```nlpl
+```nexuslang
 enum DayOfWeek
     Monday
     Tuesday
@@ -72,7 +72,7 @@ set today to DayOfWeek.Wednesday  # Value: 2
 
 ### Traffic Light System
 
-```nlpl
+```nexuslang
 enum TrafficLight
     Red = 0
     Yellow = 1
@@ -93,7 +93,7 @@ switch light
 
 ### HTTP Status Codes
 
-```nlpl
+```nexuslang
 enum HttpStatus
     OK = 200
     Created = 201
@@ -111,7 +111,7 @@ if status is equal to 404
 
 ### Log Levels
 
-```nlpl
+```nexuslang
 enum LogLevel
     DEBUG
     INFO
@@ -138,7 +138,7 @@ switch current_level
 
 ### User Roles
 
-```nlpl
+```nexuslang
 enum UserRole
     Guest = 0
     User = 10
@@ -154,7 +154,7 @@ if role is greater than 40
 
 ### Game States
 
-```nlpl
+```nexuslang
 enum GameState
     MainMenu
     Playing
@@ -171,7 +171,7 @@ if current_state is equal to GameState.Playing
 
 Enums work perfectly with switch statements for clean, readable code:
 
-```nlpl
+```nexuslang
 enum Direction
     North
     South
@@ -195,7 +195,7 @@ switch heading
 
 Enum values can be compared like integers:
 
-```nlpl
+```nexuslang
 enum ErrorLevel
     None = 0
     Low = 1
@@ -218,7 +218,7 @@ if level is equal to 5
 
 You can define multiple enums in the same program:
 
-```nlpl
+```nexuslang
 enum Color
     Red
     Green
@@ -245,7 +245,7 @@ set task_priority to Priority.High
 Enums are compiled to integer constants at compile time. Each enum member becomes a global read-only constant:
 
 **NLPL Code:**
-```nlpl
+```nexuslang
 enum Status
     Active = 1
     Inactive = 0
@@ -270,7 +270,7 @@ This means enum access has **zero runtime overhead** - it's as fast as using a l
 
 Auto-numbered enums start at 0 and increment by 1:
 
-```nlpl
+```nexuslang
 enum Example
     First   # = 0
     Second  # = 1
@@ -279,7 +279,7 @@ enum Example
 
 If you specify an explicit value, auto-numbering continues from that value:
 
-```nlpl
+```nexuslang
 enum Example
     First      # = 0
     Second     # = 1
@@ -298,7 +298,7 @@ Enums are represented as 64-bit signed integers (`i64` in LLVM IR). This allows:
 
 ### 1. Use Descriptive Names
 
-```nlpl
+```nexuslang
 # Good
 enum LogLevel
     DEBUG
@@ -314,7 +314,7 @@ enum LL
 
 ### 2. Group Related Constants
 
-```nlpl
+```nexuslang
 # Good - related HTTP status codes
 enum HttpStatus
     OK = 200
@@ -330,7 +330,7 @@ enum MixedValues
 
 ### 3. Use Explicit Values for Important Constants
 
-```nlpl
+```nexuslang
 # Good - explicit values for external API compatibility
 enum ApiStatus
     Success = 0
@@ -348,7 +348,7 @@ enum ApiStatus
 
 Some prefer prefixing enum members for clarity:
 
-```nlpl
+```nexuslang
 enum Color
     ColorRed
     ColorGreen
@@ -362,7 +362,7 @@ set my_color to Color.Red  # Clear from context
 
 ### State Machines
 
-```nlpl
+```nexuslang
 enum ConnectionState
     Disconnected
     Connecting
@@ -376,7 +376,7 @@ set state to ConnectionState.Disconnected
 
 ### Configuration Flags
 
-```nlpl
+```nexuslang
 enum Feature
     FeatureA = 1
     FeatureB = 2
@@ -388,7 +388,7 @@ enum Feature
 
 ### Error Codes
 
-```nlpl
+```nexuslang
 enum ErrorCode
     NoError = 0
     FileNotFound = 1
@@ -411,7 +411,7 @@ function handle_error with code as Integer
 ## Limitations
 
 1. **Integer values only**: Enum values must be integers (no strings, floats, etc.)
-   ```nlpl
+   ```nexuslang
    # Not supported
    enum Message
        Hello = "hello"
@@ -419,7 +419,7 @@ function handle_error with code as Integer
    ```
 
 2. **No method definitions**: Enums are simple constants, not full types
-   ```nlpl
+   ```nexuslang
    # Not supported
    enum Color
        Red
@@ -428,7 +428,7 @@ function handle_error with code as Integer
    ```
 
 3. **No automatic string conversion**: Converting enum to string requires manual mapping
-   ```nlpl
+   ```nexuslang
    # Need to manually map values to strings
    ```
 
@@ -445,7 +445,7 @@ enum Color {
 };
 ```
 
-```nlpl
+```nexuslang
 # NexusLang
 enum Color
     Red
@@ -464,7 +464,7 @@ class Color(Enum):
     BLUE = 2
 ```
 
-```nlpl
+```nexuslang
 # NexusLang
 enum Color
     Red
@@ -483,7 +483,7 @@ enum Color {
 }
 ```
 
-```nlpl
+```nexuslang
 # NexusLang
 enum Color
     Red

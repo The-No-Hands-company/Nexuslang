@@ -30,7 +30,7 @@ NLPL's inline assembly features:
 
 ### Simple Assembly Block
 
-```nlpl
+```nexuslang
 asm "
   ; Assembly instructions here
   mov rax, 42
@@ -47,7 +47,7 @@ asm "
 
 ### Assembly with Return Value
 
-```nlpl
+```nexuslang
 function get_value returns Integer
   asm "
     mov rax, 42
@@ -124,7 +124,7 @@ set x to get_value
 
 ### Data Movement
 
-```nlpl
+```nexuslang
 function copy_value with x as Integer returns Integer
   asm "
     ; rdi contains x (first argument)
@@ -146,7 +146,7 @@ end
 
 ### Arithmetic Operations
 
-```nlpl
+```nexuslang
 function add_numbers with a as Integer, b as Integer returns Integer
   asm "
     ; rdi = a, rsi = b
@@ -178,7 +178,7 @@ end
 
 ### Bitwise Operations
 
-```nlpl
+```nexuslang
 function bitwise_and with a as Integer, b as Integer returns Integer
   asm "
     mov rax, rdi
@@ -226,7 +226,7 @@ end
 
 ### Control Flow
 
-```nlpl
+```nexuslang
 function absolute_value with x as Integer returns Integer
   asm "
     mov rax, rdi
@@ -267,7 +267,7 @@ end
 
 ### Comparison and Testing
 
-```nlpl
+```nexuslang
 function is_zero with x as Integer returns Boolean
   asm "
     xor rax, rax     ; rax = 0 (false)
@@ -290,7 +290,7 @@ end
 
 ### Direct Memory Access
 
-```nlpl
+```nexuslang
 function read_memory with address as Pointer returns Integer
   asm "
     mov rax, [rdi]   ; Read from address
@@ -314,7 +314,7 @@ end
 
 ### Stack Operations
 
-```nlpl
+```nexuslang
 function use_stack returns Integer
   asm "
     push rbp         ; Save base pointer
@@ -343,7 +343,7 @@ end
 
 ### SSE (Streaming SIMD Extensions)
 
-```nlpl
+```nexuslang
 function add_floats_simd with a as Float, b as Float returns Float
   asm "
     ; xmm0 = a, xmm1 = b (floating-point arguments)
@@ -382,7 +382,7 @@ end
 
 ### AVX (Advanced Vector Extensions)
 
-```nlpl
+```nexuslang
 function add_eight_floats with vec1 as Pointer, vec2 as Pointer
   asm "
     ; Load 8 floats from vec1 into ymm0 (256-bit)
@@ -409,7 +409,7 @@ end
 
 ### Atomic Operations
 
-```nlpl
+```nexuslang
 function atomic_increment with ptr as Pointer returns Integer
   asm "
     mov rax, 1
@@ -438,7 +438,7 @@ end
 
 ### CPU Feature Detection
 
-```nlpl
+```nexuslang
 function has_sse42 returns Boolean
   asm "
     push rbx          ; Save rbx (callee-saved)
@@ -473,7 +473,7 @@ end
 
 ### System Calls (Linux)
 
-```nlpl
+```nexuslang
 function syscall_write with fd as Integer, buf as Pointer, count as Integer returns Integer
   asm "
     mov rax, 1        ; sys_write
@@ -508,7 +508,7 @@ end
 
 ### Passing NexusLang Variables
 
-```nlpl
+```nexuslang
 function compute with x as Integer, y as Integer returns Integer
   # NexusLang variables are automatically mapped to calling convention
   asm "
@@ -531,7 +531,7 @@ set result to compute with 5, 10
 
 ### Working with Structs
 
-```nlpl
+```nexuslang
 struct Point
   x as Integer
   y as Integer
@@ -562,7 +562,7 @@ end
 
 ### Calling NexusLang Functions from Assembly
 
-```nlpl
+```nexuslang
 function nxl_helper with x as Integer returns Integer
   return x times 2 plus 1
 end
@@ -584,7 +584,7 @@ end
 
 ### 1. Preserve Callee-Saved Registers
 
-```nlpl
+```nexuslang
 # Good: Save and restore rbx
 function safe_function with x as Integer returns Integer
   asm "
@@ -612,7 +612,7 @@ end
 
 ### 2. Align Stack Properly
 
-```nlpl
+```nexuslang
 function with_stack_frame returns Integer
   asm "
     push rbp
@@ -636,7 +636,7 @@ end
 
 ### 3. Handle Flags Carefully
 
-```nlpl
+```nexuslang
 # Good: Don't rely on flag state
 function safe_check with x as Integer returns Boolean
   asm "
@@ -660,7 +660,7 @@ end
 
 ### 4. Document Assembly Code
 
-```nlpl
+```nexuslang
 function complex_operation with a as Integer, b as Integer returns Integer
   asm "
     ; Purpose: Compute (a * b) + (a / b)
@@ -688,7 +688,7 @@ end
 
 ### 5. Validate Inputs
 
-```nlpl
+```nexuslang
 function safe_divide with a as Integer, b as Integer returns Integer
   # Check for division by zero in NexusLang
   if b equals 0
@@ -706,7 +706,7 @@ end
 
 ### 6. Use Appropriate Instruction Size
 
-```nlpl
+```nexuslang
 # Good: Match data size
 function byte_operation with x as Integer returns Integer
   asm "
@@ -747,7 +747,7 @@ end
 ### Optimization Tips
 
 1. **Use SIMD for parallel data:**
-```nlpl
+```nexuslang
 # Process 4 floats at once instead of 1
 function add_arrays_simd with a as Pointer, b as Pointer, len as Integer
   asm "
@@ -770,7 +770,7 @@ end
 ```
 
 2. **Reduce memory accesses:**
-```nlpl
+```nexuslang
 # Good: Keep values in registers
 function sum_array with arr as Pointer, len as Integer returns Integer
   asm "
@@ -789,7 +789,7 @@ end
 ```
 
 3. **Use lea for arithmetic:**
-```nlpl
+```nexuslang
 function multiply_by_five with x as Integer returns Integer
   asm "
     lea rax, [rdi + rdi*4]  ; rax = x + x*4 = x*5 (faster than imul!)
@@ -799,7 +799,7 @@ end
 ```
 
 4. **Minimize branches:**
-```nlpl
+```nexuslang
 # Good: Branchless absolute value
 function abs_branchless with x as Integer returns Integer
   asm "
@@ -838,7 +838,7 @@ end
 
 ### Debugging Techniques
 
-```nlpl
+```nexuslang
 # Add debug output
 function debug_assembly with x as Integer returns Integer
   print text "Input: " plus (x to_string)
@@ -873,7 +873,7 @@ end
 
 ### Example 1: Fast Bit Count
 
-```nlpl
+```nexuslang
 function count_bits with x as Integer returns Integer
   asm "
     popcnt rax, rdi   ; Count set bits (requires SSE4.2)
@@ -887,7 +887,7 @@ set bits to count_bits with 0b11010110
 
 ### Example 2: Swap Without Temporary
 
-```nlpl
+```nexuslang
 function xor_swap with a as Pointer, b as Pointer
   asm "
     mov rax, [rdi]    ; Load *a
@@ -904,7 +904,7 @@ end
 
 ### Example 3: Memory Barrier
 
-```nlpl
+```nexuslang
 function memory_barrier
   asm "
     mfence            ; Full memory fence

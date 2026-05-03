@@ -44,7 +44,7 @@ Systems OOP
 **Status:** Q3 2026
 
 **Example:**
-```nlpl
+```nexuslang
 inline assembly
  mov rax, 0x3F8
  out dx, al
@@ -60,7 +60,7 @@ end
 **Status:** Working
 
 **Example:**
-```nlpl
+```nexuslang
 set buffer to allocate with 4096
 extern function pthread_create from library "pthread"
 ```
@@ -74,7 +74,7 @@ extern function pthread_create from library "pthread"
 **Status:** 100% Complete
 
 **Example:**
-```nlpl
+```nexuslang
 class BinaryTree<T> where T is Comparable
  function insert with value as T
 ```
@@ -88,7 +88,7 @@ class BinaryTree<T> where T is Comparable
 **Status:** Q1-Q2 2026
 
 **Example:**
-```nlpl
+```nexuslang
 spawn
  set data to fetch_data with url
  call process with data
@@ -104,7 +104,7 @@ end
 **Status:** 2027+
 
 **Example:**
-```nlpl
+```nexuslang
 ask the user for their name
 process all files in parallel
 ```
@@ -114,19 +114,19 @@ process all files in parallel
 ## Syntax Cheat Sheet
 
 ### Variables
-```nlpl
+```nexuslang
 L2-3: set x to 42
 L4-5: set x to 42 (same)
 ```
 
 ### Functions
-```nlpl
+```nexuslang
 L2-3: function calculate with x as Integer returns Float
 L4-5: function calculate with x as Integer returns Float
 ```
 
 ### Concurrency
-```nlpl
+```nexuslang
 L1: pthread_create (manual)
 L2: create thread with lambda: work
 L3: concurrent { task1; task2 }
@@ -135,7 +135,7 @@ L5: process files in parallel
 ```
 
 ### Memory
-```nlpl
+```nexuslang
 L1: inline assembly (mov, etc)
 L2: set ptr to allocate with 1024
 L3: automatic or manual (choice)
@@ -144,7 +144,7 @@ L5: automatic
 ```
 
 ### Loops
-```nlpl
+```nexuslang
 All levels:
 for each item in collection
  call process with item
@@ -208,7 +208,7 @@ end
 ## Common Patterns
 
 ### Pattern: Performance-Critical Loop
-```nlpl
+```nexuslang
 # Use L2 for inner loop
 function process_images
  for each image in images
@@ -221,7 +221,7 @@ end
 ```
 
 ### Pattern: Concurrent Server
-```nlpl
+```nexuslang
 # Use L4 for concurrency
 function start_server
  while true
@@ -234,7 +234,7 @@ end
 ```
 
 ### Pattern: Mixed-Level Game
-```nlpl
+```nexuslang
 # L1: GPU commands
 function write_gpu with data as Pointer
  inline assembly
@@ -309,7 +309,7 @@ cd my_project
 ```
 
 ### Choose Starting Level
-```nlpl
+```nexuslang
 # Desktop app? Start L3
 class Application
  function run
@@ -323,7 +323,7 @@ extern function ioctl from library "c"
 ```
 
 ### Optimize Later
-```nlpl
+```nexuslang
 # Identify bottleneck with profiler
 # Then drop to lower level just for that function
 ```

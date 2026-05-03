@@ -129,7 +129,7 @@ Example JSON:
 
 **Example:**
 
-```nlpl
+```nexuslang
 function buggy_code
  set buffer to alloc with 1024
  call dealloc with buffer
@@ -164,7 +164,7 @@ ERROR: M006 at program.nlpl:4:5
 
 **Example:**
 
-```nlpl
+```nexuslang
 set ptr to null
 set value to dereference ptr # ERROR: N004 - Null dereference!
 ```
@@ -192,7 +192,7 @@ set value to dereference ptr # ERROR: N004 - Null dereference!
 
 **Example:**
 
-```nlpl
+```nexuslang
 function leak_file
  set file to open "data.txt"
  set content to read_file with "data.txt"
@@ -212,7 +212,7 @@ end # WARNING: R005 - File 'file' not closed!
 
 **Example:**
 
-```nlpl
+```nexuslang
 set x to 0
 print number y # ERROR: I001 - 'y' used before initialization!
 ```

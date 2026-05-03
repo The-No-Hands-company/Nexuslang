@@ -214,7 +214,7 @@ store i64 %x, i64* %1
 
 #### 2. Function Inlining
 **Before optimization:**
-```nlpl
+```nexuslang
 function helper with x as Integer returns Integer
     return x times 2
 end
@@ -231,7 +231,7 @@ set result to call helper with 42
 
 #### 3. Dead Code Elimination
 **Before optimization:**
-```nlpl
+```nexuslang
 set unused to 42  # Never used
 set result to 100
 ```
@@ -245,7 +245,7 @@ set result to 100
 
 #### 4. Loop Optimizations
 **Before optimization:**
-```nlpl
+```nexuslang
 set sum to 0
 set i to 0
 while i is less than 1000
@@ -286,7 +286,7 @@ end
 - Zero-cost abstraction for async/await
 
 **Example:**
-```nlpl
+```nexuslang
 # This program has NO async functions
 function fibonacci with n as Integer returns Integer
     # ... synchronous code ...
@@ -423,7 +423,7 @@ diff output_o0.txt output_o2.txt  # Should be identical
 ### 1. Write Optimization-Friendly Code
 
 **Good:**
-```nlpl
+```nexuslang
 # Loop-invariant code
 set limit to 1000000
 set i to 0
@@ -434,7 +434,7 @@ end
 ```
 
 **Bad:**
-```nlpl
+```nexuslang
 # Optimizer may not hoist this
 set i to 0
 while i is less than call get_limit
@@ -514,7 +514,7 @@ python dev_tools/nlplc_llvm.py app.nlpl -O2 -o app_o2
 
 ### Link-Time Optimization (LTO)
 
-**Available in build profiles** via `nlpl build --lto` and profile settings.
+**Available in build profiles** via `nexuslang build --lto` and profile settings.
 The direct `dev_tools/nlplc_llvm.py --lto` workflow below is still planned.
 
 Will enable optimization across module boundaries:
@@ -525,7 +525,7 @@ python dev_tools/nlplc_llvm.py app.nlpl -O2 --lto -o app
 
 ### Profile-Guided Optimization (PGO)
 
-**Available in the build tool workflow** via `nlpl pgo instrument|collect|build`.
+**Available in the build tool workflow** via `nexuslang pgo instrument|collect|build`.
 The direct `dev_tools/nlplc_llvm.py --profile-*` workflow below is still planned.
 
 Will use runtime profiling data to guide optimization:

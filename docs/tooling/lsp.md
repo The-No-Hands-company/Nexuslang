@@ -19,7 +19,7 @@ Find all usages of a symbol (function, class, variable, method) across your enti
 **LSP Method**: `textDocument/references`
 
 **Example**:
-```nlpl
+```nexuslang
 function calculate that takes x as Integer returns Integer
  return x times 2
 
@@ -41,7 +41,7 @@ Jump to the definition of any symbol, even across files.
 **LSP Method**: `textDocument/definition`
 
 **Example**:
-```nlpl
+```nexuslang
 # file: helpers.nlpl
 function process_data that takes values as List returns Float
  return 0.0
@@ -71,7 +71,7 @@ Rich documentation displayed on hover with parameter details, types, and example
 ```markdown
 **calculate** - Function
 
-```nlpl
+```nexuslang
 function calculate that takes x as Integer, y as Float returns Float
 ```
 
@@ -83,7 +83,7 @@ function calculate that takes x as Integer, y as Float returns Float
 ```
 
 **Standard Library Hover**:
-```nlpl
+```nexuslang
 set result to sqrt with 16
 # Hover shows: "sqrt - Square root function"
 # From: math
@@ -110,19 +110,19 @@ Context-aware intelligent code completion.
 **LSP Method**: `textDocument/completion`
 
 **Example**:
-```nlpl
+```nexuslang
 set counter to 0
 set result to coun # Auto-complete suggests "counter"
 # ^^^^
 ```
 
 **Module Completion**:
-```nlpl
+```nexuslang
 import # Shows: math, string, io, system, collections, network
 ```
 
 **Type Completion**:
-```nlpl
+```nexuslang
 set value as # Shows: Integer, Float, String, Boolean, List, etc.
 ```
 
@@ -219,15 +219,15 @@ lspconfig.nlpl.setup{}
 ```elisp
 (require 'lsp-mode)
 
-(add-to-list 'lsp-language-id-configuration '(nlpl-mode . "nlpl"))
+(add-to-list 'lsp-language-id-configuration '(nexuslang-mode . "nlpl"))
 
 (lsp-register-client
  (make-lsp-client
  :new-connection (lsp-stdio-connection '("python" "-m" "nexuslang.lsp" "--stdio"))
- :major-modes '(nlpl-mode)
- :server-id 'nlpl-lsp))
+ :major-modes '(nexuslang-mode)
+ :server-id 'nexuslang-lsp))
 
-(add-hook 'nlpl-mode-hook #'lsp)
+(add-hook 'nexuslang-mode-hook #'lsp)
 ```
 
 ### Sublime Text (with LSP package)
@@ -262,8 +262,8 @@ The server reads JSON-RPC messages from stdin and writes responses to stdout.
 Enable debug logging:
 
 ```bash
-# Logs written to /tmp/nlpl-lsp.log
-tail -f /tmp/nlpl-lsp.log
+# Logs written to /tmp/nexuslang-lsp.log
+tail -f /tmp/nexuslang-lsp.log
 ```
 
 ## Architecture
@@ -356,7 +356,7 @@ pytest tests/test_lsp_enhancements.py -v
 ### Multi-File Project
 
 **File: `utils.nlpl`**
-```nlpl
+```nexuslang
 function helper that takes value as Integer returns Integer
  return value times 2
 
@@ -371,7 +371,7 @@ class DataProcessor
 ```
 
 **File: `main.nlpl`**
-```nlpl
+```nexuslang
 import utils
 
 # Go-to-definition on "helper" jumps to utils.nlpl
@@ -417,7 +417,7 @@ PYTHONPATH=src python -m nexuslang.lsp --stdio
 
 **Check server logs**:
 ```bash
-tail -f /tmp/nlpl-lsp.log
+tail -f /tmp/nexuslang-lsp.log
 ```
 
 ### Completions Not Showing

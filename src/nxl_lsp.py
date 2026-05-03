@@ -11,12 +11,12 @@ import sys
 # Add src directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
 
-from nexuslang.lsp.server import NLPLLanguageServer
+from nexuslang.lsp.server import NexusLangLanguageServer
 
 
 def main():
     """Start the NexusLang Language Server."""
-    server = NLPLLanguageServer()
+    server = NexusLangLanguageServer()
     server.start()
 
 

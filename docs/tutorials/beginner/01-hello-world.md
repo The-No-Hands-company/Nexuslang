@@ -9,7 +9,7 @@
 
 Create a file called `hello.nlpl`:
 
-```nlpl
+```nexuslang
 print text "Hello, World!"
 ```
 
@@ -29,7 +29,7 @@ Hello, World!
 
 ## Printing different types
 
-```nlpl
+```nexuslang
 print text "I am a string"
 print number 42
 print number 3.14
@@ -37,7 +37,7 @@ print number 3.14
 
 The `print text` and `print number` hints are optional — `print` alone works for anything:
 
-```nlpl
+```nexuslang
 print "Hello again"
 print 100
 ```
@@ -46,7 +46,7 @@ print 100
 
 ## Comments
 
-```nlpl
+```nexuslang
 # This is a comment — ignored by NexusLang
 print text "Comments don't affect output"
 
@@ -58,7 +58,7 @@ print text "Comments don't affect output"
 
 ## Multiline programs
 
-```nlpl
+```nexuslang
 print text "Line 1"
 print text "Line 2"
 print text "Line 3"
@@ -68,7 +68,7 @@ print text "Line 3"
 
 ## Variables
 
-```nlpl
+```nexuslang
 set greeting to "Hello"
 set name to "Alice"
 print text greeting plus ", " plus name plus "!"

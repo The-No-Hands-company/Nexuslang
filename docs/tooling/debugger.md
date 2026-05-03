@@ -107,7 +107,7 @@ Current function: calculate_sum
 ### Example 1: Basic Debugging
 
 **Program** (`test_debug.nlpl`):
-```nlpl
+```nexuslang
 function factorial with n as Integer returns Integer
  if n is less than or equal to 1
  return 1

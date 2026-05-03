@@ -31,7 +31,7 @@ NLPL's FFI features:
 
 ### Declaring External Functions
 
-```nlpl
+```nexuslang
 # Simple C function
 extern function puts with message as String returns Integer
 
@@ -53,7 +53,7 @@ extern function free with ptr as Pointer
 
 ### Calling External Functions
 
-```nlpl
+```nexuslang
 # Simple call
 call puts with "Hello from NLPL"
 
@@ -85,7 +85,7 @@ call free with ptr
 
 ### Explicit Type Sizes
 
-```nlpl
+```nexuslang
 # Use specific-sized types for predictable behavior
 extern function read with fd as Integer, buf as Pointer, count as Integer returns Integer
 
@@ -102,7 +102,7 @@ extern function read with fd as Integer, buf as Pointer, count as Integer return
 
 #### String Functions
 
-```nlpl
+```nexuslang
 # string.h functions
 extern function strlen with str as String returns Integer
 extern function strcpy with dest as String, src as String returns String
@@ -122,7 +122,7 @@ call strcat with buffer, " World"
 
 #### Memory Functions
 
-```nlpl
+```nexuslang
 # stdlib.h functions
 extern function malloc with size as Integer returns Pointer
 extern function calloc with nmemb as Integer, size as Integer returns Pointer
@@ -142,7 +142,7 @@ call free with buffer
 
 #### Math Functions
 
-```nlpl
+```nexuslang
 # math.h functions
 extern function sin with x as Float returns Float
 extern function cos with x as Float returns Float
@@ -158,7 +158,7 @@ set root to sqrt with 16.0   # = 4.0
 
 #### File I/O
 
-```nlpl
+```nexuslang
 # stdio.h functions
 extern function fopen with path as String, mode as String returns Pointer
 extern function fclose with stream as Pointer returns Integer
@@ -190,7 +190,7 @@ Variadic functions accept a variable number of arguments:
 
 ### Declaring Variadic Functions
 
-```nlpl
+```nexuslang
 # Use ... to indicate variadic parameters
 extern function printf with format as String, ... returns Integer
 extern function fprintf with stream as Pointer, format as String, ... returns Integer
@@ -199,7 +199,7 @@ extern function sprintf with buffer as String, format as String, ... returns Int
 
 ### Calling Variadic Functions
 
-```nlpl
+```nexuslang
 # printf examples
 call printf with "Hello, world!\n"
 call printf with "Number: %d\n", 42
@@ -239,7 +239,7 @@ Common printf/scanf format specifiers:
 | `%%` | - | Literal % character |
 
 **Width and precision:**
-```nlpl
+```nexuslang
 call printf with "%10d\n", 42        # Right-aligned, width 10
 call printf with "%-10d\n", 42       # Left-aligned, width 10
 call printf with "%.2f\n", 3.14159   # 2 decimal places
@@ -250,7 +250,7 @@ call printf with "%10.2f\n", 3.14159 # Width 10, 2 decimals
 
 **Critical:** NexusLang cannot verify variadic argument types at compile time!
 
-```nlpl
+```nexuslang
 # Dangerous - wrong type!
 call printf with "%d\n", "string"  # CRASH! Expected integer, got string
 
@@ -273,7 +273,7 @@ call printf with "%s\n", 42  # CRASH! Expected string, got integer
 
 ### Passing Structs to C Functions
 
-```nlpl
+```nexuslang
 # Define struct matching C layout
 struct Point
   x as Integer
@@ -292,7 +292,7 @@ call print_point with (address of p)
 
 ### Receiving Structs from C
 
-```nlpl
+```nexuslang
 # C function: struct Point create_point(int x, int y);
 # Note: Struct return values require special handling
 
@@ -312,7 +312,7 @@ call init_point with (address of p), 5, 10
 
 ### Packed Structs
 
-```nlpl
+```nexuslang
 # C struct with __attribute__((packed))
 packed struct NetworkHeader
   magic as Integer    # 4 bytes
@@ -332,7 +332,7 @@ set magic to header_ptr.magic
 
 ### Creating Pointers
 
-```nlpl
+```nexuslang
 # Get address of variable
 set x to 42
 set x_ptr to address of x
@@ -346,7 +346,7 @@ set int_ptr to buffer as Pointer to Integer
 
 ### Dereferencing Pointers
 
-```nlpl
+```nexuslang
 # Read through pointer
 set value to dereference ptr
 
@@ -358,7 +358,7 @@ call set_int_value with int_ptr, 42
 
 ### Pointer Arithmetic
 
-```nlpl
+```nexuslang
 # C-style pointer arithmetic requires careful calculation
 set ptr to malloc with 40  # 10 integers * 4 bytes
 
@@ -381,7 +381,7 @@ set value to get_array_element with int_ptr, 5
 
 #### 1. Memory Leaks
 
-```nlpl
+```nexuslang
 # Bad: Memory not freed
 function bad_example
   set ptr to malloc with 1024
@@ -401,7 +401,7 @@ end
 
 #### 2. Use After Free
 
-```nlpl
+```nexuslang
 # Bad: Use after free
 set ptr to malloc with 100
 call free with ptr
@@ -415,7 +415,7 @@ set ptr to 0  # Mark as invalid
 
 #### 3. Buffer Overflow
 
-```nlpl
+```nexuslang
 # Bad: No bounds checking
 set buffer to malloc with 10
 call strcpy with buffer, "This string is too long!"  # OVERFLOW!
@@ -429,7 +429,7 @@ call strncpy with buffer, "Long string", 9
 
 #### 4. Null Pointer Dereference
 
-```nlpl
+```nexuslang
 # Bad: No null check
 set ptr to malloc with 1024
 set value to dereference ptr  # Might crash if malloc failed!
@@ -445,7 +445,7 @@ set value to dereference ptr  # Safe
 ### Best Practices
 
 1. **Always check allocation results:**
-```nlpl
+```nexuslang
 set ptr to malloc with size
 if ptr equals 0
   raise error "Out of memory"
@@ -453,7 +453,7 @@ end
 ```
 
 2. **Use RAII pattern:**
-```nlpl
+```nexuslang
 function with_buffer with size as Integer, callback as Function
   set buffer to malloc with size
   try
@@ -465,7 +465,7 @@ end
 ```
 
 3. **Prefer NexusLang types over raw C:**
-```nlpl
+```nexuslang
 # Instead of C strings (char*)
 set name to "Alice"  # NexusLang String (automatic memory management)
 
@@ -474,7 +474,7 @@ set numbers to [1, 2, 3, 4, 5]  # NexusLang List (automatic)
 ```
 
 4. **Wrap C functions in NexusLang:**
-```nlpl
+```nexuslang
 function safe_read_file with path as String returns String
   extern function fopen with path as String, mode as String returns Pointer
   extern function fread with ptr as Pointer, size as Integer, nmemb as Integer, stream as Pointer returns Integer
@@ -503,7 +503,7 @@ end
 
 ### Dynamic Library Loading
 
-```nlpl
+```nexuslang
 # Load shared library
 extern function dlopen with filename as String, flag as Integer returns Pointer
 extern function dlsym with handle as Pointer, symbol as String returns Pointer
@@ -538,7 +538,7 @@ call dlclose with lib_handle
 
 ### Callbacks
 
-```nlpl
+```nexuslang
 # C function: void process_array(int *arr, int len, void (*callback)(int));
 
 # Define callback in NexusLang
@@ -554,7 +554,7 @@ call process_array with (address of numbers[0]), 5, my_callback
 
 ### Variable Argument Parsing
 
-```nlpl
+```nexuslang
 # For implementing variadic functions in NexusLang (using va_list)
 extern function va_start with ap as Pointer, last as Pointer
 extern function va_arg with ap as Pointer, type as Integer returns Pointer
@@ -565,7 +565,7 @@ extern function va_end with ap as Pointer
 
 ### Inline Assembly with FFI
 
-```nlpl
+```nexuslang
 function call_c_function_optimized with arg as Integer returns Integer
   asm "
     ; Call C function directly
@@ -582,7 +582,7 @@ end
 
 ### Linux
 
-```nlpl
+```nexuslang
 # System calls
 extern function open with path as String, flags as Integer, mode as Integer returns Integer
 extern function read with fd as Integer, buf as Pointer, count as Integer returns Integer
@@ -597,7 +597,7 @@ const O_RDWR to 2
 
 ### Windows
 
-```nlpl
+```nexuslang
 # Windows API
 extern function CreateFileA with filename as String, access as Integer, share as Integer, 
                                security as Pointer, disposition as Integer, 
@@ -637,7 +637,7 @@ const OPEN_EXISTING to 3
 
 ### Debugging Tools
 
-```nlpl
+```nexuslang
 # Add debug output
 function debug_call_c_function with ptr as Pointer
   print text "Calling C function with pointer: " plus (ptr as String)
@@ -668,7 +668,7 @@ end
 
 ### Example 1: File Operations
 
-```nlpl
+```nexuslang
 # Read file contents using C functions
 function read_file_contents with path as String returns String
   extern function fopen with path as String, mode as String returns Pointer
@@ -706,7 +706,7 @@ end
 
 ### Example 2: SHA256 Hashing
 
-```nlpl
+```nexuslang
 # Using OpenSSL for cryptography
 extern function SHA256 with data as Pointer, len as Integer, md as Pointer returns Pointer
 
@@ -737,7 +737,7 @@ end
 
 ### Example 3: HTTP Request
 
-```nlpl
+```nexuslang
 # Using libcurl
 extern function curl_easy_init returns Pointer
 extern function curl_easy_setopt with handle as Pointer, option as Integer, parameter as String returns Integer

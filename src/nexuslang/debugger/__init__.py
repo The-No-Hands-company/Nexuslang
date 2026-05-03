@@ -1,6 +1,6 @@
 """
-NLPL Debugger Integration
-==========================
+NexusLang Debugger Integration
+==============================
 
 Enables source-level debugging of NexusLang programs.
 

@@ -88,7 +88,7 @@ class DebugInfoGenerator:
             f'{cu_ref} = distinct !DICompileUnit('
             f'language: DW_LANG_C99, '  # Use C99 as base language
             f'file: {file_ref}, '
-            f'producer: "NLPL Compiler", '
+            f'producer: "NexusLang Compiler", '
             f'isOptimized: false, '
             f'runtimeVersion: 0, '
             f'emissionKind: FullDebug, '

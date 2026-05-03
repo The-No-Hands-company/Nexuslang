@@ -7,7 +7,7 @@
 
 ## Part 1 — Reading Files
 
-```nlpl
+```nexuslang
 import io
 
 # Read an entire file as a string
@@ -17,7 +17,7 @@ print text content
 
 If the file does not exist, `read_file` raises an error — handle it:
 
-```nlpl
+```nexuslang
 try
     set content to io.read_file with "config.txt"
     print text content
@@ -27,7 +27,7 @@ catch error with message
 
 ### Reading Line by Line
 
-```nlpl
+```nexuslang
 import io
 
 set lines to io.read_lines with "report.csv"
@@ -39,7 +39,7 @@ for each line in lines
 
 ## Part 2 — Writing Files
 
-```nlpl
+```nexuslang
 import io
 
 io.write_file with "output.txt" and "Hello, file!"
@@ -50,7 +50,7 @@ io.append_file with "log.txt" and "Entry: something happened\n"
 
 ### Writing Multiple Lines
 
-```nlpl
+```nexuslang
 import io
 
 set rows to ["Alice,30,Engineer", "Bob,25,Designer", "Carol,35,Manager"]
@@ -65,7 +65,7 @@ io.write_file with "people.csv" and content
 
 ## Part 3 — File System Operations
 
-```nlpl
+```nexuslang
 import io
 
 # Check existence
@@ -92,7 +92,7 @@ io.create_directory with "output/reports"
 
 ## Part 4 — HTTP Requests
 
-```nlpl
+```nexuslang
 import network
 
 # GET request
@@ -107,7 +107,7 @@ print text result
 
 ### GET with Headers
 
-```nlpl
+```nexuslang
 import network
 
 set headers to {"Authorization": "Bearer my_token", "Accept": "application/json"}
@@ -117,7 +117,7 @@ print text response
 
 ### Async HTTP (Recommended for Real Programs)
 
-```nlpl
+```nexuslang
 import network
 
 async function get_user with id as Integer returns String
@@ -133,7 +133,7 @@ print text user_json
 
 ## Part 5 — Parsing JSON
 
-```nlpl
+```nexuslang
 import io
 
 set json_text to "{\"name\": \"Alice\", \"age\": 30}"
@@ -146,7 +146,7 @@ print text name plus " is " plus convert age to string plus " years old."
 
 ### Writing JSON
 
-```nlpl
+```nexuslang
 import io
 
 set record to {"product": "Widget", "price": 9.99, "in_stock": true}
@@ -158,7 +158,7 @@ io.write_file with "product.json" and json_out
 
 ## Part 6 — CSV Processing
 
-```nlpl
+```nexuslang
 import io
 
 set lines to io.read_lines with "sales.csv"
@@ -179,7 +179,7 @@ print text "Total: $" plus convert total_sales to string
 
 ## Part 7 — TCP Sockets (Low-Level Networking)
 
-```nlpl
+```nexuslang
 import network
 
 # Server side
@@ -193,7 +193,7 @@ network.close with client
 network.close with server
 ```
 
-```nlpl
+```nexuslang
 # Client side
 import network
 

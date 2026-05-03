@@ -26,7 +26,7 @@ Use it sparingly. Most programs do not need it.
 
 ## Part 2 — Basic Syntax
 
-```nlpl
+```nexuslang
 asm
     code
         "nop"
@@ -36,7 +36,7 @@ end
 The `asm … end` block contains assembly in Intel syntax.  Multiple
 instructions are written as separate quoted strings:
 
-```nlpl
+```nexuslang
 asm
     code
         "push rbp"
@@ -51,7 +51,7 @@ end
 
 Pass NexusLang variables into and out of the assembly block:
 
-```nlpl
+```nexuslang
 set value to 42
 set result to 0
 
@@ -79,7 +79,7 @@ print text convert result to string    # 52
 Declare registers the assembly block modifies, so the compiler can save
 and restore them:
 
-```nlpl
+```nexuslang
 set a to 5
 set b to 3
 set quotient  to 0
@@ -110,14 +110,14 @@ print text convert remainder to string    # 2
 Use CPUID / MFENCE to enforce instruction ordering when writing lock-free
 data structures:
 
-```nlpl
+```nexuslang
 asm
     code
         "mfence"
 end
 ```
 
-```nlpl
+```nexuslang
 asm
     code
         "lfence"
@@ -130,7 +130,7 @@ end
 
 Read CPU feature flags:
 
-```nlpl
+```nexuslang
 set leaf    to 1
 set eax_out to 0
 set ecx_out to 0
@@ -164,7 +164,7 @@ print text "SSE supported: " plus convert has_sse to string
 
 Mark blocks that must not be reordered or eliminated by the compiler:
 
-```nlpl
+```nexuslang
 asm volatile
     code
         "out 0x80, al"      # I/O port write — side-effectful
@@ -177,7 +177,7 @@ end
 
 You can reference struct fields via pointer arithmetic:
 
-```nlpl
+```nexuslang
 struct Vector3
     x as Float
     y as Float

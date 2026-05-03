@@ -30,7 +30,7 @@ Pattern matching makes code more readable and safer by:
 
 ### Match Expression Structure
 
-```nlpl
+```nexuslang
 match <expression> with
   case <pattern> then <expression>
   case <pattern> then <expression>
@@ -55,7 +55,7 @@ The `match` expression:
 
 Match exact values:
 
-```nlpl
+```nexuslang
 function describe_number with n as Integer returns String
   match n with
     case 0 then return "zero"
@@ -79,7 +79,7 @@ set result to describe_number with 1
 
 Capture the matched value:
 
-```nlpl
+```nexuslang
 function process_value with x as Integer returns String
   match x with
     case 0 then return "zero"
@@ -100,7 +100,7 @@ set result to process_value with 42
 
 Match anything without binding:
 
-```nlpl
+```nexuslang
 function is_weekend with day as String returns Boolean
   match day with
     case "Saturday" then return true
@@ -122,7 +122,7 @@ set weekend to is_weekend with "Monday"
 
 Destructure lists:
 
-```nlpl
+```nexuslang
 function sum_first_two with numbers as List of Integer returns Integer
   match numbers with
     case [] then return 0
@@ -148,7 +148,7 @@ set result to sum_first_two with [10, 20, 30]
 
 Destructure tuples:
 
-```nlpl
+```nexuslang
 function describe_point with p as Tuple returns String
   match p with
     case (0, 0) then return "origin"
@@ -172,7 +172,7 @@ set desc to describe_point with point
 
 Add conditions to patterns:
 
-```nlpl
+```nexuslang
 function categorize_age with age as Integer returns String
   match age with
     case n if n is less than 0 then return "invalid"
@@ -188,7 +188,7 @@ set category to categorize_age with 25
 ```
 
 **Guard syntax:**
-```nlpl
+```nexuslang
 case <pattern> if <condition> then <expression>
 ```
 
@@ -202,7 +202,7 @@ case <pattern> if <condition> then <expression>
 
 Combine patterns for complex matching:
 
-```nlpl
+```nexuslang
 function analyze_data with data as List returns String
   match data with
     case [] then return "empty"
@@ -222,7 +222,7 @@ end
 
 ### Option Type Matching
 
-```nlpl
+```nexuslang
 function get_or_default with opt as Option of Integer, default as Integer returns Integer
   match opt with
     case Some(value) then return value
@@ -241,7 +241,7 @@ set result2 to get_or_default with nothing, 100
 
 ### Result Type Matching
 
-```nlpl
+```nexuslang
 function handle_result with res as Result of Integer, String returns String
   match res with
     case Ok(value) then return "Success: " plus (value to_string)
@@ -256,7 +256,7 @@ set msg to handle_result with result
 
 ### Enum Matching
 
-```nlpl
+```nexuslang
 enum Status
   Pending
   InProgress
@@ -276,7 +276,7 @@ end
 
 ### Complex Destructuring
 
-```nlpl
+```nexuslang
 function analyze_nested with data as List returns String
   match data with
     case [[x, y], [a, b]] if x equals a then
@@ -297,7 +297,7 @@ end
 
 ### Pattern Matching (Recommended)
 
-```nlpl
+```nexuslang
 function classify with x as Integer returns String
   match x with
     case n if n is less than 0 then return "negative"
@@ -317,7 +317,7 @@ end
 
 ### Switch Statement (Legacy)
 
-```nlpl
+```nexuslang
 function classify with x as Integer returns String
   switch x
     case 0
@@ -347,7 +347,7 @@ end
 
 ### 1. Order Patterns from Specific to General
 
-```nlpl
+```nexuslang
 # Good: Specific patterns first
 match x with
   case 0 then "zero"
@@ -366,7 +366,7 @@ end
 
 ### 2. Use Meaningful Variable Names
 
-```nlpl
+```nexuslang
 # Good: Clear intent
 match user_input with
   case age if age is greater than 0 then process_age with age
@@ -382,7 +382,7 @@ end
 
 ### 3. Avoid Wildcard When You Need the Value
 
-```nlpl
+```nexuslang
 # Good: Bind to use the value
 match calculate_result with
   case value then print text "Result: " plus (value to_string)
@@ -396,7 +396,7 @@ end
 
 ### 4. Use Guards for Complex Conditions
 
-```nlpl
+```nexuslang
 # Good: Guard makes intent clear
 match score with
   case s if s is greater than or equal to 90 then "A"
@@ -418,7 +418,7 @@ end
 
 ### 5. Always Handle All Cases
 
-```nlpl
+```nexuslang
 # Good: Catch-all case
 match status with
   case "pending" then handle_pending
@@ -436,7 +436,7 @@ end
 
 ### 6. Use Destructuring for Clarity
 
-```nlpl
+```nexuslang
 # Good: Intent is clear
 match coordinates with
   case (x, y) if x equals 0 and y equals 0 then "origin"
@@ -462,7 +462,7 @@ end
 
 ### 1. List Processing
 
-```nlpl
+```nexuslang
 function list_sum with numbers as List of Integer returns Integer
   match numbers with
     case [] then return 0
@@ -474,7 +474,7 @@ end
 
 ### 2. Option Handling
 
-```nlpl
+```nexuslang
 function safe_divide with a as Integer, b as Integer returns Option of Integer
   if b equals 0
     return None
@@ -491,7 +491,7 @@ end
 
 ### 3. State Machine
 
-```nlpl
+```nexuslang
 enum State
   Idle
   Running
@@ -513,7 +513,7 @@ end
 
 ### 4. Validation
 
-```nlpl
+```nexuslang
 function validate_input with input as String returns Result of String, String
   match input with
     case "" then return Err("Input cannot be empty")
@@ -532,7 +532,7 @@ end
 
 Pattern matching is fully integrated with NLPL's type system:
 
-```nlpl
+```nexuslang
 function process with value as Integer returns String
   match value with
     case n then n to_string  # Type checker knows n is Integer
@@ -567,7 +567,7 @@ Pattern matching is efficient:
 ### Optimization Tips
 
 1. **Put common cases first:**
-```nlpl
+```nexuslang
 # Good: Most common case first
 match request_type with
   case "GET" then handle_get      # 80% of requests
@@ -577,7 +577,7 @@ end
 ```
 
 2. **Use literals before guards:**
-```nlpl
+```nexuslang
 # Good: Literal match is faster
 match status with
   case 200 then "OK"
@@ -587,7 +587,7 @@ end
 ```
 
 3. **Avoid redundant patterns:**
-```nlpl
+```nexuslang
 # Bad: Last case is redundant
 match x with
   case n if n is less than 0 then "negative"
@@ -614,7 +614,7 @@ match value {
 }
 ```
 
-```nlpl
+```nexuslang
 # NexusLang
 match value with
   case 0 then "zero"
@@ -651,7 +651,7 @@ Pattern matching is used throughout NLPL's standard library:
 
 ### Result Type Implementation
 
-```nlpl
+```nexuslang
 class Result of T, E
   # ...
   
@@ -673,7 +673,7 @@ end
 
 ### Option Type Implementation
 
-```nlpl
+```nexuslang
 class Option of T
   # ...
   
@@ -700,7 +700,7 @@ end
 ### From Switch to Match
 
 **Old code (switch):**
-```nlpl
+```nexuslang
 switch status
   case "idle"
     handle_idle
@@ -712,7 +712,7 @@ end
 ```
 
 **New code (match):**
-```nlpl
+```nexuslang
 match status with
   case "idle" then handle_idle
   case "running" then handle_running
@@ -723,7 +723,7 @@ end
 ### From If/Else to Match
 
 **Old code (if/else):**
-```nlpl
+```nexuslang
 if score is greater than or equal to 90
   set grade to "A"
 else if score is greater than or equal to 80
@@ -736,7 +736,7 @@ end
 ```
 
 **New code (match):**
-```nlpl
+```nexuslang
 set grade to match score with
   case s if s is greater than or equal to 90 then "A"
   case s if s is greater than or equal to 80 then "B"
@@ -752,7 +752,7 @@ end
 ### Pattern Never Matches
 
 **Problem:**
-```nlpl
+```nexuslang
 match x with
   case _ then "always matches"
   case 0 then "never reached"  # Dead code!
@@ -764,7 +764,7 @@ end
 ### Guard Always False
 
 **Problem:**
-```nlpl
+```nexuslang
 match x with
   case n if n is greater than 100 and n is less than 0 then "impossible"
 end
@@ -775,7 +775,7 @@ end
 ### Type Mismatch
 
 **Problem:**
-```nlpl
+```nexuslang
 function process with x as Integer returns String
   match x with
     case n then return n  # ERROR: Integer vs String
@@ -788,7 +788,7 @@ end
 ### Missing Else/Catch-all
 
 **Problem:**
-```nlpl
+```nexuslang
 match x with
   case 0 then "zero"
   case 1 then "one"
@@ -797,7 +797,7 @@ end
 ```
 
 **Solution:** Add `else` or catch-all pattern:
-```nlpl
+```nexuslang
 match x with
   case 0 then "zero"
   case 1 then "one"

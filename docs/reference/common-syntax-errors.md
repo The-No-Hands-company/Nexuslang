@@ -17,13 +17,13 @@ This document lists common syntax errors encountered when writing NexusLang code
 Cannot use nested parentheses when calling `to_string` in string concatenation expressions.
 
 ### Incorrect
-```nlpl
+```nexuslang
 set num to 42
 print text "The number is: " plus (num to_string)  # SYNTAX ERROR
 ```
 
 ### Correct
-```nlpl
+```nexuslang
 set num to 42
 set num_str to num to_string
 print text "The number is: " plus num_str  # Works!
@@ -33,7 +33,7 @@ print text "The number is: " plus num_str  # Works!
 NLPL's parser currently doesn't support nested parentheses in certain expression contexts. Always extract intermediate values to variables before using them in string concatenation.
 
 ### More Examples
-```nlpl
+```nexuslang
 # Incorrect
 print text "Result: " plus (calculate_value with x to_string)
 
@@ -62,14 +62,14 @@ Certain words are reserved tokens in NexusLang and cannot be used as variable na
 - `if`, `else`, `while`, `for`, `return`, etc.
 
 ### Incorrect
-```nlpl
+```nexuslang
 function process with callback as Function
   # ...
 end
 ```
 
 ### Correct
-```nlpl
+```nexuslang
 function process with handler as Function
   # ...
 end
@@ -91,13 +91,13 @@ If you encounter an error like "Expected X, got TokenType.IDENTIFIER", the ident
 The raise statement requires specific syntax with the `with message` clause.
 
 ### Incorrect
-```nlpl
+```nexuslang
 raise error "Something went wrong"  # SYNTAX ERROR
 raise "Something went wrong"        # SYNTAX ERROR
 ```
 
 ### Correct
-```nlpl
+```nexuslang
 # Raise with message
 raise error with message "Something went wrong"
 
@@ -113,7 +113,7 @@ raise error
 ```
 
 ### Complete Example
-```nlpl
+```nexuslang
 function validate_age with age as Integer returns Boolean
   if age is less than 0
     raise error with message "Age cannot be negative"
@@ -141,7 +141,7 @@ end
 Try-catch blocks have specific syntax requirements for exception handling.
 
 ### Basic Syntax
-```nlpl
+```nexuslang
 try
   # Code that might fail
   set result to 10 divided by 0
@@ -154,7 +154,7 @@ end
 ### Nested Try-Catch
 ⚠️ **Note:** Nested try-catch blocks may not be fully supported in the current version.
 
-```nlpl
+```nexuslang
 # This may not work in all cases:
 try
   try
@@ -188,7 +188,7 @@ end
 ```
 
 ### Exception Properties
-```nlpl
+```nexuslang
 # Catch with message variable
 try
   raise error with message "Test error"
@@ -213,7 +213,7 @@ end
 Pattern matching is partially implemented in NexusLang. The `match` statement has parser support but may have limitations.
 
 ### Basic Match (Parser Support)
-```nlpl
+```nexuslang
 function describe_number with n as Integer returns String
   match n with
     case 0
@@ -231,7 +231,7 @@ end
 ### Workaround: Use If-Else Chains
 For reliable pattern matching, use if-else chains:
 
-```nlpl
+```nexuslang
 function describe_number with n as Integer returns String
   if n is equal to 0
     return "zero"
@@ -271,7 +271,7 @@ NLPL error messages include:
 ### 4. Extract Complex Expressions
 When in doubt, break complex expressions into multiple statements:
 
-```nlpl
+```nexuslang
 # Instead of:
 print text "Result: " plus (calculate with (get_value with x to_string) to_string)
 

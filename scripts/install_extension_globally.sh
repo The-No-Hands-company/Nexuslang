@@ -22,7 +22,7 @@ fi
 mkdir -p "$VSCODE_EXTENSIONS"
 
 # Copy extension
-EXTENSION_DIR="$VSCODE_EXTENSIONS/nlpl-language-support"
+EXTENSION_DIR="$VSCODE_EXTENSIONS/nexuslang-language-support"
 echo "📦 Installing to: $EXTENSION_DIR"
 
 if [ -d "$EXTENSION_DIR" ]; then

@@ -18,7 +18,7 @@ mechanisms to detect these situations and handle them gracefully.
 Wrap code that might fail in a `try` block.  If an error occurs, execution
 jumps to the matching `catch` block.
 
-```nlpl
+```nexuslang
 try
     set result to 10 divided by 0
     print text "Result: " plus convert result to string
@@ -31,7 +31,7 @@ it, the program continues running after the error.
 
 ### Catching File Errors
 
-```nlpl
+```nexuslang
 try
     set content to read_file("data.txt")
     print text content
@@ -41,7 +41,7 @@ catch error with message
 
 ### Catching Network Errors
 
-```nlpl
+```nexuslang
 try
     set response to http_get("https://api.example.com/data")
     print text response
@@ -56,7 +56,7 @@ catch error with message
 You can nest `try/catch` blocks when different operations can fail with
 different meanings:
 
-```nlpl
+```nexuslang
 try
     set raw to read_file("config.txt")
     try
@@ -74,7 +74,7 @@ catch error with read_message
 
 Use `raise error with "message"` to signal an error from your own code:
 
-```nlpl
+```nexuslang
 function divide with a as Float and b as Float returns Float
     if b equals 0.0
         raise error with "Cannot divide by zero"
@@ -93,7 +93,7 @@ catch error with message
 
 A common pattern is to validate input at the start of a function:
 
-```nlpl
+```nexuslang
 function set_age with age as Integer
     if age is less than 0
         raise error with "Age cannot be negative"
@@ -114,7 +114,7 @@ catch error with message
 
 A block that runs whether or not an error occurred — useful for cleanup:
 
-```nlpl
+```nexuslang
 try
     set file_handle to open_file("log.txt", "write")
     write_to_file with file_handle and "Processing started"
@@ -133,7 +133,7 @@ always
 Not every function needs to handle every error.  If a function does not have
 a `try/catch`, any error it encounters propagates up to the caller:
 
-```nlpl
+```nexuslang
 function load_config returns String
     # If the file is missing, the error bubbles up to whoever calls load_config
     return read_file("config.txt")

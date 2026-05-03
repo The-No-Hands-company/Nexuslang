@@ -3,7 +3,7 @@
 ## Syntax Options
 
 ### Option 1: Natural language style
-```nlpl
+```nexuslang
 inline assembly
     "mov rax, rbx"
     "add rax, 1"
@@ -12,7 +12,7 @@ end
 ```
 
 ### Option 2: Block with metadata
-```nlpl
+```nexuslang
 asm
     code "mov rax, rbx"
     code "add rax, 1"
@@ -23,12 +23,12 @@ end
 ```
 
 ### Option 3: Single-line (GCC-style)
-```nlpl
+```nexuslang
 asm "mov %1, %0" with outputs "=r"(result) and inputs "r"(value)
 ```
 
 ### Option 4: Multi-line with template
-```nlpl
+```nexuslang
 assembly """
     mov rax, {input1}
     add rax, {input2}

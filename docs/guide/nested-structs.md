@@ -9,7 +9,7 @@ NLPL now supports **nested struct member access and assignment**, allowing you t
 ## Syntax
 
 ### Nested Member Access (Read)
-```nlpl
+```nexuslang
 struct Point
  x as Integer
  y as Integer
@@ -27,7 +27,7 @@ print number rect.top_left.x # Prints: 10
 ```
 
 ### Nested Member Assignment (Write)
-```nlpl
+```nexuslang
 # Single-level assignment
 set point to new Point
 set point.x to 42
@@ -119,7 +119,7 @@ For reading `rect.top_left.x`:
 ## Supported Nesting Depth
 **Unlimited** - The implementation is fully recursive and can handle arbitrarily deep nesting:
 
-```nlpl
+```nexuslang
 struct A
  value as Integer
 
@@ -173,7 +173,7 @@ Test 3: Mixed Types
 
 ### 1. Function Parameters
  **Not Yet Supported**: Passing structs as function parameters
-```nlpl
+```nexuslang
 function print_point with p as Point returns Integer
  # Currently causes parser error
 ```
@@ -182,7 +182,7 @@ function print_point with p as Point returns Integer
 
 ### 2. Function Return Types 
  **Not Yet Supported**: Returning struct instances from functions
-```nlpl
+```nexuslang
 function create_origin returns Point
  # Currently limited to primitive return types
 ```
@@ -191,7 +191,7 @@ function create_origin returns Point
 
 ### 3. Struct Arrays
  **Partial Support**: Can create struct instances but not array indexing combined with member access
-```nlpl
+```nexuslang
 set points to list new Point, new Point # Syntax error
 set arr_elem to points[0] # Works
 set arr_elem.x to 10 # Works
@@ -200,12 +200,12 @@ set points[0].x to 10 # Not yet supported (requires chained indexing)
 
 ### 4. Struct Initialization
  **Not Yet Supported**: Constructor arguments or initializer lists
-```nlpl
+```nexuslang
 set p to new Point(10, 20) # Not supported
 ```
 
 **Current Approach**: Zero-initialization, then member assignment
-```nlpl
+```nexuslang
 set p to new Point
 set p.x to 10
 set p.y to 20
@@ -242,7 +242,7 @@ set p.y to 20
 ## Examples
 
 ### Simple Nested Struct
-```nlpl
+```nexuslang
 struct Inner
  value as Integer
 
@@ -257,7 +257,7 @@ print number obj.inner.value # 100
 ```
 
 ### Complex Hierarchy
-```nlpl
+```nexuslang
 struct Position
  x as Integer
  y as Integer
@@ -286,7 +286,7 @@ print number player.vel.dx # 5
 ```
 
 ### Struct Pointers
-```nlpl
+```nexuslang
 struct Node
  value as Integer
  next as Node # Forward declaration would be needed
@@ -343,7 +343,7 @@ r.tl.x = 10; // Identical syntax
 ```
 
 ### NexusLang
-```nlpl
+```nexuslang
 struct Point
  x as Integer
  y as Integer

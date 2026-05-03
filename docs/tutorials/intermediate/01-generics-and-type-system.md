@@ -9,7 +9,7 @@
 
 Without generics you need a separate function for every type:
 
-```nlpl
+```nexuslang
 function max_integer with a as Integer and b as Integer returns Integer
     if a is greater than b  return a
     return b
@@ -23,7 +23,7 @@ end
 
 With generics you write it once with a **type parameter** `T`:
 
-```nlpl
+```nexuslang
 function max<T> that takes a as T and b as T returns T
     if a is greater than b  return a
     return b
@@ -39,7 +39,7 @@ set f to max with 3.14 and 2.71     # Float
 
 ### Identity and Pass-Through
 
-```nlpl
+```nexuslang
 function identity<T> that takes value as T returns T
     return value
 end
@@ -50,7 +50,7 @@ print text identity with "hello"                       # hello
 
 ### Swapping Two Values
 
-```nlpl
+```nexuslang
 function swap<T> that takes first as T and second as T returns List
     return [second, first]
 end
@@ -61,7 +61,7 @@ set pair to swap with "alpha" and "beta"
 
 ### Pair Creation
 
-```nlpl
+```nexuslang
 function make_pair<T, U> that takes first as T and second as U returns List
     return [first, second]
 end
@@ -73,7 +73,7 @@ set kv to make_pair with "port" and 8080
 
 ## Part 3 — Generic Classes
 
-```nlpl
+```nexuslang
 class Box<T>
     private set contents to T
 
@@ -90,7 +90,7 @@ class Box<T>
         return false
 ```
 
-```nlpl
+```nexuslang
 set int_box to new Box<Integer>
 set int_box.contents to 100
 print text convert (int_box.get()) to string    # 100
@@ -102,7 +102,7 @@ print text str_box.get()
 
 ### Generic Stack
 
-```nlpl
+```nexuslang
 class Stack<T>
     private set items to List of T
 
@@ -138,7 +138,7 @@ class Stack<T>
 NLPL infers types from usage, but you can annotate variables and function
 signatures explicitly for clarity and early error detection:
 
-```nlpl
+```nexuslang
 set count as Integer to 0
 set label as String to "items"
 set ratio as Float to 0.5
@@ -157,7 +157,7 @@ end
 
 An optional holds either a value or nothing (`null`).  Use `Optional of T`:
 
-```nlpl
+```nexuslang
 function find_user with id as Integer returns Optional of String
     if id equals 1
         return "Alice"
@@ -179,7 +179,7 @@ else
 
 Constrain a generic parameter to types that support certain operations:
 
-```nlpl
+```nexuslang
 function sum_list<T: Numeric> that takes items as List of T returns T
     set total to 0
     for each item in items

@@ -64,7 +64,7 @@ NLPL provides a complete, production-ready Language Server Protocol implementati
 - Resolves imports and module references
 
 **Example:**
-```nlpl
+```nexuslang
 # file: utils.nlpl
 function calculate_sum with numbers as List of Integer returns Integer
     # ... implementation
@@ -155,7 +155,7 @@ Point (struct)
 4. Deduplicate and return caller/callee information
 
 **Example:**
-```nlpl
+```nexuslang
 function helper returns Integer
     return 42
 end
@@ -190,7 +190,7 @@ end
 - Type-aware suggestions
 
 **Example:**
-```nlpl
+```nexuslang
 set calculator to new Calculator()
 calculator.  # Triggers completion: add, subtract, multiply, divide
 ```
@@ -209,7 +209,7 @@ calculator.  # Triggers completion: add, subtract, multiply, divide
 - Displays type information
 
 **Example:**
-```nlpl
+```nexuslang
 function calculate_average with numbers as List of Float returns Float
     # Hover shows: calculate_average(numbers: List<Float>) -> Float
 end
@@ -229,7 +229,7 @@ end
 - Provides contextual error messages
 
 **Example:**
-```nlpl
+```nexuslang
 function test
     set x to "unclosed string
     # Error: Unclosed string literal at line 2
@@ -275,7 +275,7 @@ end
 - Applies edits automatically
 
 **Example:**
-```nlpl
+```nexuslang
 set x to "unclosed string
 # Quick fix: Add closing quote
 ```

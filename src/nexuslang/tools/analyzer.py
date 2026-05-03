@@ -466,7 +466,7 @@ def main():
     """CLI for static analyzer."""
     import argparse
     
-    parser = argparse.ArgumentParser(description="NLPL Static Analyzer")
+    parser = argparse.ArgumentParser(description="NexusLang Static Analyzer")
     parser.add_argument('files', nargs='+', help='NLPL files to analyze')
     parser.add_argument('--strict', action='store_true', help='Treat warnings as errors')
     parser.add_argument('--json', help='Output results as JSON')

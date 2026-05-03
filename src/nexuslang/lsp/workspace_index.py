@@ -40,7 +40,7 @@ from ..parser.ast import (
     SwitchStatement, WhileLoop, ForLoop
 )
 
-logger = logging.getLogger('nlpl-lsp.workspace-index')
+logger = logging.getLogger('nexuslang-lsp.workspace-index')
 
 
 @dataclass

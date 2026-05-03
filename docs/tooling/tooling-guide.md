@@ -16,13 +16,13 @@ The static analyzer performs multi-pass analysis to detect potential issues befo
 
 ```bash
 # Analyze single file
-./nlpl-analyze examples/01_basic_concepts.nlpl
+./nexuslang-analyze examples/01_basic_concepts.nlpl
 
 # Analyze multiple files
-./nlpl-analyze test_programs/unit/basic/*.nlpl
+./nexuslang-analyze test_programs/unit/basic/*.nlpl
 
 # Export to JSON
-./nlpl-analyze --json report.json examples/*.nlpl
+./nexuslang-analyze --json report.json examples/*.nlpl
 ```
 
 ### What It Detects
@@ -82,16 +82,16 @@ The formatter enforces consistent code style while preserving program semantics.
 
 ```bash
 # Preview formatting (prints to stdout)
-./nlpl-format my_program.nlpl
+./nexuslang-format my_program.nlpl
 
 # Format in-place
-./nlpl-format -i my_program.nlpl
+./nexuslang-format -i my_program.nlpl
 
 # Show diff of changes
-./nlpl-format --diff my_program.nlpl
+./nexuslang-format --diff my_program.nlpl
 
 # Check if file needs formatting (exit code 1 if changes needed)
-./nlpl-format --check my_program.nlpl
+./nexuslang-format --check my_program.nlpl
 ```
 
 ### Formatting Rules
@@ -107,7 +107,7 @@ The formatter enforces consistent code style while preserving program semantics.
 ### Example
 
 **Before:**
-```nlpl
+```nexuslang
 set x to    5
 set   y   to   10
 
@@ -124,7 +124,7 @@ set   list   to  [  1 ,  2,3  ,   4]
 ```
 
 **After:**
-```nlpl
+```nexuslang
 set x to 5
 set y to 10
 
@@ -373,7 +373,7 @@ jobs:
         run: pip install -r requirements.txt
       - name: Run static analyzer
         run: |
-          ./nlpl-analyze examples/*.nlpl --json analysis.json
+          ./nexuslang-analyze examples/*.nlpl --json analysis.json
           # Fail if critical errors found
           python -c "
           import json
@@ -386,7 +386,7 @@ jobs:
           "
       - name: Check formatting
         run: |
-          ./nlpl-format --check examples/*.nlpl
+          ./nexuslang-format --check examples/*.nlpl
 ```
 
 ### Pre-commit Hook
@@ -400,7 +400,7 @@ STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep '\.nxl$')
 
 if [ -n "$STAGED" ]; then
     echo "Running static analysis..."
-    ./nlpl-analyze $STAGED
+    ./nexuslang-analyze $STAGED
     
     if [ $? -ne 0 ]; then
         echo "Static analysis found critical issues. Commit aborted."
@@ -408,10 +408,10 @@ if [ -n "$STAGED" ]; then
     fi
     
     echo "Checking code formatting..."
-    ./nlpl-format --check $STAGED
+    ./nexuslang-format --check $STAGED
     
     if [ $? -ne 0 ]; then
-        echo "Code needs formatting. Run './nlpl-format -i <files>' and try again."
+        echo "Code needs formatting. Run './nexuslang-format -i <files>' and try again."
         exit 1
     fi
 fi
@@ -503,8 +503,8 @@ Planned improvements:
 
 The NexusLang tooling suite provides production-quality code analysis, formatting, and profiling capabilities:
 
-- **Analyze** code for bugs and quality issues with `nlpl-analyze`
-- **Format** code consistently with `nlpl-format`
+- **Analyze** code for bugs and quality issues with `nexuslang-analyze`
+- **Format** code consistently with `nexuslang-format`
 - **Profile** runtime performance with the integrated profiler
 
 All tools work seamlessly with the NexusLang interpreter and compiler, helping you write better, faster, and more maintainable code.

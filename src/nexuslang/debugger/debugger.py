@@ -429,7 +429,7 @@ class Debugger:
         
         while self.state == DebuggerState.PAUSED:
             try:
-                cmd = input("\n(nlpl-dbg) ").strip().lower()
+                cmd = input("\n(nexuslang-dbg) ").strip().lower()
                 
                 if not cmd:
                     continue
@@ -629,7 +629,7 @@ def main():
     """Entry point for running debugger directly."""
     import argparse
     
-    parser = argparse.ArgumentParser(description='NLPL Debugger')
+    parser = argparse.ArgumentParser(description='NexusLang Debugger')
     parser.add_argument('file', help='The NexusLang file to debug')
     parser.add_argument('--break', '-b', dest='breakpoints', action='append',
                        help='Set breakpoint at line (can be used multiple times)')

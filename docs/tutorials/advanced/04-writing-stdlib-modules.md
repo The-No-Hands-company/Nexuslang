@@ -79,7 +79,7 @@ def register_stdlib(runtime: Runtime) -> None:
 
 ## Part 5 — Using the Module from NexusLang
 
-```nlpl
+```nexuslang
 import my_module
 
 set result to my_module.my_add with 3 and 4
@@ -102,7 +102,7 @@ def divmod_nxl(a, b):
     return [quotient, remainder]
 ```
 
-```nlpl
+```nexuslang
 set parts to my_module.divmod_nxl with 17 and 5
 set q to parts[0]    # 3
 set r to parts[1]    # 2
@@ -125,7 +125,7 @@ def apply_to_list(func, items):
     return result
 ```
 
-```nlpl
+```nexuslang
 import my_module
 
 function double with n as Integer returns Integer
@@ -149,7 +149,7 @@ def register_my_module_functions(runtime: Runtime) -> None:
     # ... function registrations ...
 ```
 
-```nlpl
+```nexuslang
 import my_module
 
 if needed_size is greater than my_module.MY_MAX_SIZE

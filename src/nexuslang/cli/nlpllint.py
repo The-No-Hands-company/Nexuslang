@@ -183,7 +183,7 @@ def _create_analyzer_from_config(args, config: Dict[str, Any]) -> StaticAnalyzer
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description='NLPL Static Analyzer - Catch bugs before runtime',
+        description='NexusLang Static Analyzer - Catch bugs before runtime',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__
     )

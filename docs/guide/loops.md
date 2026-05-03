@@ -6,13 +6,13 @@ NLPL now supports `repeat while` loops, providing a natural language alternative
 ## Syntax
 
 ### Basic Syntax
-```nlpl
+```nexuslang
 repeat while <condition>
     # loop body
 ```
 
 ### With Break and Continue
-```nlpl
+```nexuslang
 repeat while <condition>
     if <break_condition>
         break
@@ -22,7 +22,7 @@ repeat while <condition>
 ```
 
 ### Nested Loops
-```nlpl
+```nexuslang
 repeat while <outer_condition>
     repeat while <inner_condition>
         # inner loop body
@@ -32,7 +32,7 @@ repeat while <outer_condition>
 ## Examples
 
 ### Basic Counter Loop
-```nlpl
+```nexuslang
 set counter to 0
 repeat while counter is less than 5
     print text "Counter:"
@@ -55,7 +55,7 @@ Counter:
 ```
 
 ### Loop with Break
-```nlpl
+```nexuslang
 set i to 0
 repeat while i is less than 100
     print value i
@@ -67,7 +67,7 @@ repeat while i is less than 100
 Output: 0, 1, 2, 3, 4
 
 ### Loop with Continue
-```nlpl
+```nexuslang
 set i to 0
 repeat while i is less than 10
     set i to i plus 1
@@ -80,7 +80,7 @@ repeat while i is less than 10
 Output: Odd: 1, 3, 5, 7, 9
 
 ### Complex Conditions
-```nlpl
+```nexuslang
 set x to 1
 set y to 20
 repeat while x is less than y and x is less than 15
@@ -93,7 +93,7 @@ repeat while x is less than y and x is less than 15
 
 Both `repeat while` and `while` are functionally equivalent:
 
-```nlpl
+```nexuslang
 # Traditional while loop
 while x is greater than 0
     set x to x minus 1

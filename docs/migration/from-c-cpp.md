@@ -353,9 +353,9 @@ greet with "Alice"
 | C / C++ | NexusLang |
 |---------|------|
 | `Makefile` / CMake | `nexuslang.toml` |
-| `gcc -o out main.c` | `nlpl build` |
+| `gcc -o out main.c` | `nexuslang build` |
 | `gcc -O2 ...` | `[profile.release] optimization = 2` in `nexuslang.toml` |
-| `make test` | `nlpl test` |
+| `make test` | `nexuslang test` |
 | `pkg-config` | `[dependencies]` in `nexuslang.toml` |
 | `#include <lib.h>` | `import lib` (stdlib) or `extern function ...` (C lib) |
 
@@ -389,4 +389,4 @@ link_time_optimization = true
 | Undefined behavior | Possible (buffer overflows, etc.) | Memory safety tools available (`MemorySafetyValidator`) |
 | Templates | `template<typename T>` | `function f<T> that takes v as T returns T` |
 | Inline ASM | `__asm__` / `asm` blocks | `asm ... end` blocks |
-| Build | Make / CMake / Meson | `nlpl build` + `nexuslang.toml` |
+| Build | Make / CMake / Meson | `nexuslang build` + `nexuslang.toml` |

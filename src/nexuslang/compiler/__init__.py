@@ -1,6 +1,6 @@
 """
-NLPL Compiler - Code Generation to Multiple Targets
-====================================================
+NexusLang Compiler - Code Generation to Multiple Targets
+========================================================
 
 This module provides the compiler infrastructure to convert NexusLang AST
 into various target formats for standalone execution.

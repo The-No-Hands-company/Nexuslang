@@ -301,7 +301,7 @@ def _handle_error_code_commands(args: argparse.Namespace) -> bool:
 
     if args.list_errors:
         from .error_codes import ERROR_CODES
-        print("NLPL Error Codes")
+        print("NexusLang Error Codes")
         print("=" * 60)
         categories: dict = {}
         for code, info in sorted(ERROR_CODES.items()):

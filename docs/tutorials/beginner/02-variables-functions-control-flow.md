@@ -9,7 +9,7 @@
 
 ### Declaring and Assigning Variables
 
-```nlpl
+```nexuslang
 set name to "Alice"
 set age to 30
 set height to 1.68
@@ -21,7 +21,7 @@ declaration keywords — the type is inferred from the first assigned value.
 
 ### Changing a Variable's Value
 
-```nlpl
+```nexuslang
 set counter to 0
 set counter to counter plus 1
 set counter to counter plus 1
@@ -40,7 +40,7 @@ print text convert counter to string   # prints 2
 
 ### Arithmetic
 
-```nlpl
+```nexuslang
 set a to 10
 set b to 3
 
@@ -53,7 +53,7 @@ set remainder to a modulo b        # 1
 
 ### String Operations
 
-```nlpl
+```nexuslang
 set first to "Hello"
 set second to "World"
 set joined to first plus ", " plus second plus "!"   # "Hello, World!"
@@ -64,7 +64,7 @@ set chars  to length(first)                          # 5
 
 ### List Operations
 
-```nlpl
+```nexuslang
 set fruits to ["apple", "banana", "cherry"]
 set first_fruit to fruits[0]                       # "apple"
 set count       to length(fruits)                  # 3
@@ -77,7 +77,7 @@ append "date" to fruits                            # now 4 items
 
 ### Defining a Function
 
-```nlpl
+```nexuslang
 function greet with name as String
     print text "Hello, " plus name plus "!"
 end
@@ -85,14 +85,14 @@ end
 
 Call it with:
 
-```nlpl
+```nexuslang
 greet with "Alice"
 greet with "Bob"
 ```
 
 ### Returning a Value
 
-```nlpl
+```nexuslang
 function square with n as Integer returns Integer
     return n times n
 end
@@ -103,7 +103,7 @@ print text convert result to string    # 49
 
 ### Multiple Parameters
 
-```nlpl
+```nexuslang
 function add with x as Integer and y as Integer returns Integer
     return x plus y
 end
@@ -117,7 +117,7 @@ print text convert total to string     # 8
 When a function has many parameters, using names at the call site makes the
 code easier to read:
 
-```nlpl
+```nexuslang
 function create_user with username as String and email as String and age as Integer
     print text "Creating user: " plus username
     print text "Email: " plus email
@@ -129,7 +129,7 @@ create_user with username: "alice" and email: "alice@example.com" and age: 28
 
 ### Default Parameters
 
-```nlpl
+```nexuslang
 function greet_formal with name as String and title as String default to "Ms."
     print text "Good day, " plus title plus " " plus name plus "."
 end
@@ -148,7 +148,7 @@ NLPL evaluates the file top-to-bottom. Define functions above the code that call
 
 ### if / else if / else
 
-```nlpl
+```nexuslang
 set score to 75
 
 if score is greater than or equal to 90
@@ -174,7 +174,7 @@ else
 
 ### Boolean Operators
 
-```nlpl
+```nexuslang
 if age is greater than or equal to 18 and has_id equals true
     print text "Access granted"
 
@@ -187,7 +187,7 @@ if not is_banned
 
 ### for each Loop
 
-```nlpl
+```nexuslang
 set numbers to [1, 2, 3, 4, 5]
 for each n in numbers
     print text convert n to string
@@ -195,7 +195,7 @@ for each n in numbers
 
 ### while Loop
 
-```nlpl
+```nexuslang
 set count to 1
 while count is less than or equal to 5
     print text "Count: " plus convert count to string
@@ -204,7 +204,7 @@ while count is less than or equal to 5
 
 ### Nested Loops
 
-```nlpl
+```nexuslang
 for each i in [1, 2, 3]
     for each j in [1, 2, 3]
         print text convert i to string plus " x " plus convert j to string plus " = " plus convert (i times j) to string
@@ -216,7 +216,7 @@ for each i in [1, 2, 3]
 
 Here is a short program that uses everything from this tutorial:
 
-```nlpl
+```nexuslang
 # Fizz Buzz
 
 function fizzbuzz with n as Integer returns String

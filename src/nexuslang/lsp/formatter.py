@@ -1,6 +1,6 @@
 """
-NLPL Code Formatter
-===================
+NexusLang Code Formatter
+=======================
 
 Formats NexusLang code according to the NexusLang style guide.
 
@@ -22,7 +22,7 @@ import re
 from typing import Dict, List, Optional, Tuple
 
 
-class NLPLFormatter:
+class NexusLangFormatter:
     """
     Formats NexusLang code according to style guidelines.
 
@@ -443,4 +443,4 @@ class NLPLFormatter:
         return line_lower == 'end' or line_lower.startswith('end ')
 
 
-__all__ = ['NLPLFormatter']
+__all__ = ['NexusLangFormatter']

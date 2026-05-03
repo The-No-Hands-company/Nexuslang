@@ -17,7 +17,7 @@ manageable files and share code across projects.
 
 NLPL ships with a standard library.  Import a module with `import`:
 
-```nlpl
+```nexuslang
 import math
 
 set pi      to math.pi
@@ -33,7 +33,7 @@ print text "round(3.7) = " plus convert rounded to string
 
 Use `import … from` to bring names directly into scope:
 
-```nlpl
+```nexuslang
 import sqrt and round and pi from math
 
 print text convert (sqrt with 9.0) to string   # 3.0
@@ -58,7 +58,7 @@ print text convert (sqrt with 9.0) to string   # 3.0
 
 Create a file `greetings.nlpl`:
 
-```nlpl
+```nexuslang
 # greetings.nlpl
 # A small module for greeting messages.
 
@@ -73,7 +73,7 @@ end
 
 Then use it from `main.nlpl` in the same directory:
 
-```nlpl
+```nexuslang
 # main.nlpl
 import greetings
 
@@ -97,7 +97,7 @@ project/
 
 `math_helpers.nlpl`:
 
-```nlpl
+```nexuslang
 function clamp with value as Float and low as Float and high as Float returns Float
     if value is less than low
         return low
@@ -109,7 +109,7 @@ end
 
 `main.nlpl`:
 
-```nlpl
+```nexuslang
 import utils.math_helpers
 
 set clamped to utils.math_helpers.clamp with 150.0 and 0.0 and 100.0
@@ -122,14 +122,14 @@ print text convert clamped to string    # 100.0
 
 You can export simple values from a module:
 
-```nlpl
+```nexuslang
 # constants.nlpl
 set MAX_RETRIES to 3
 set DEFAULT_TIMEOUT to 30.0
 set APP_NAME to "MyApp"
 ```
 
-```nlpl
+```nexuslang
 import constants
 
 print text constants.APP_NAME
