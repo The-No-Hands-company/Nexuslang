@@ -677,10 +677,11 @@ class NLPLLanguageServer:
                 'label': 20,     # Key-like loop label
             }
             
-            # Group by scope for hierarchy
-            top_level = []
-            children_by_scope = {}
-            
+            # Build a hierarchical symbol tree using dotted scope paths.
+            symbol_entries = []
+            symbols_by_path = {}
+            result = []
+
             for sym in symbols:
                 lsp_symbol = {
                     'name': sym.name,
@@ -694,29 +695,20 @@ class NLPLLanguageServer:
                         'end': {'line': sym.line, 'character': sym.column + len(sym.name)}
                     }
                 }
-                
+
                 if sym.signature:
                     lsp_symbol['detail'] = sym.signature
-                
-                if not sym.scope:
-                    # Top-level symbol
-                    top_level.append(lsp_symbol)
-                    if sym.kind in ('class', 'struct', 'function'):
-                        # Initialize children list for this scope
-                        children_by_scope[sym.name] = []
+
+                symbol_path = f"{sym.scope}.{sym.name}" if sym.scope else sym.name
+                symbol_entries.append((sym.scope, symbol_path, lsp_symbol))
+                symbols_by_path[symbol_path] = lsp_symbol
+
+            for scope, _symbol_path, lsp_symbol in symbol_entries:
+                if scope and scope in symbols_by_path:
+                    parent = symbols_by_path[scope]
+                    parent.setdefault('children', []).append(lsp_symbol)
                 else:
-                    # Child symbol - add to parent's children
-                    if sym.scope in children_by_scope:
-                        children_by_scope[sym.scope].append(lsp_symbol)
-            
-            # Attach children to parents
-            for symbol in top_level:
-                if symbol['name'] in children_by_scope:
-                    children = children_by_scope[symbol['name']]
-                    if children:
-                        symbol['children'] = children
-            
-            result = top_level
+                    result.append(lsp_symbol)
         else:
             # No workspace index: use regex-based fallback directly on the document text
             text = self.documents.get(uri, '')

@@ -76,6 +76,38 @@ set global_var to 100
             method_names = [child['name'] for child in class_symbol['children']]
             assert 'method1' in method_names
             assert 'method2' in method_names
+
+    def test_document_symbol_hierarchy_includes_method_parameters(self):
+        """Method parameters should appear nested under their method symbol."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_file = os.path.join(tmpdir, "nested_params.nxl")
+            with open(test_file, 'w') as f:
+                f.write("""
+class Calculator
+    function scale with value as Integer and factor as Integer returns Integer
+        return value times factor
+    end
+end
+""")
+
+            server = NLPLLanguageServer()
+            server.workspace_index = WorkspaceIndex(tmpdir)
+            server.workspace_index.scan_workspace()
+
+            file_uri = server.workspace_index._path_to_uri(test_file)
+            params = {'textDocument': {'uri': file_uri}}
+            response = server._handle_document_symbol(1, params)
+
+            symbols = response['result']
+            class_symbol = next((s for s in symbols if s['name'] == 'Calculator'), None)
+            assert class_symbol is not None
+
+            method_symbol = next((c for c in class_symbol.get('children', []) if c['name'] == 'scale'), None)
+            assert method_symbol is not None
+
+            parameter_names = {child['name'] for child in method_symbol.get('children', [])}
+            assert 'value' in parameter_names
+            assert 'factor' in parameter_names
     
     def test_flat_document_symbols(self):
         """Test document symbols without hierarchy."""
