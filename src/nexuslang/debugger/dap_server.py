@@ -297,6 +297,11 @@ class DAPServer:
     def _handle_configurationDone(self, seq: int, args: Dict[str, Any]) -> Dict[str, Any]:
         """Configuration done - all breakpoints set, ready to run."""
         logger.info("Configuration done - starting program execution")
+
+        if self.interpreter is None or not hasattr(self, 'ast'):
+            raise ValueError(
+                "No program is loaded for debugging. Send a launch request before configurationDone."
+            )
         
         # Run program in background (will pause at breakpoints)
         # For now, run synchronously since NexusLang interpreter is single-threaded
@@ -308,7 +313,8 @@ class DAPServer:
             
         except Exception as e:
             logger.error(f"Program error: {e}", exc_info=True)
-            self.debugger.trace_exception(e)
+            if self.debugger is not None:
+                self.debugger.trace_exception(e)
             self.send_event('terminated')
         
         return {}

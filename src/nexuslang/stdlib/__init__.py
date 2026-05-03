@@ -3,6 +3,8 @@ Standard library for the NexusLang (NexusLang).
 This package contains built-in functions and modules for NexusLang programs.
 """
 
+import logging
+
 from ..runtime.runtime import Runtime
 from ..stdlib.option_result import register_option_result_functions
 from ..stdlib.math import register_math_functions
@@ -93,12 +95,17 @@ from ..stdlib.platform_macos import register_platform_macos_functions
 from ..stdlib.gui import register_gui_functions
 
 
+logger = logging.getLogger(__name__)
+
+
 def _register_optional_graphics(runtime: Runtime) -> None:
     """Register optional graphics support when dependencies are available."""
     try:
         register_graphics_functions(runtime)
-    except Exception:
-        pass
+    except Exception as exc:
+        # Keep stdlib boot resilient on systems without graphics dependencies,
+        # but surface the reason for troubleshooting in production logs.
+        logger.warning("Skipping optional graphics registration: %s", exc)
 
 
 _STDLIB_REGISTRARS = (
@@ -131,7 +138,6 @@ _STDLIB_REGISTRARS = (
     register_compression_functions,
     register_env_functions,
     register_subprocess_functions,
-    register_math3d_functions,
     register_camera_functions,
     register_shader_functions,
     register_mesh_functions,
@@ -236,7 +242,6 @@ _STDLIB_MODULES = (
     "email",
     "smtp",
     "templates",
-    "testing",
     "hardware",
     "port_io",
     "atomics",

@@ -28,7 +28,11 @@ Hints are computed by lightweight regex scanning; no full parse is needed.
 from __future__ import annotations
 
 import re
+import logging
 from typing import Dict, List, Optional
+
+
+logger = logging.getLogger(__name__)
 
 
 # LSP InlayHintKind constants
@@ -309,7 +313,7 @@ class InlayHintsProvider:
                     if params:
                         cache[key] = params
             except Exception:
-                pass
+                logger.debug("Skipping workspace-index parameter cache enrichment", exc_info=True)
 
         return cache
 

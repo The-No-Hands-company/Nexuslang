@@ -353,6 +353,41 @@ class TestStepHandlers:
         server.debugger.step_into.assert_called_once()
 
 
+class TestConfigurationDone:
+    def test_configuration_done_without_launch_returns_error_response(self):
+        server = DAPServer()
+        responses = []
+        server._send_message = lambda m: responses.append(m)
+
+        server.handle_message({
+            "type": "request",
+            "command": "configurationDone",
+            "seq": 1,
+            "arguments": {}
+        })
+
+        assert len(responses) == 1
+        response = responses[0]
+        assert response["type"] == "response"
+        assert response["success"] is False
+        assert "launch request" in response.get("message", "")
+
+    def test_configuration_done_handles_runtime_error_without_debugger(self):
+        server = DAPServer()
+        server.interpreter = MagicMock()
+        server.interpreter.interpret.side_effect = RuntimeError("runtime boom")
+        server.ast = object()
+        server.debugger = None
+
+        events = []
+        server.send_event = lambda e, b=None: events.append((e, b))
+
+        result = server._handle_configurationDone(1, {})
+
+        assert result == {}
+        assert any(name == "terminated" for name, _ in events)
+
+
 # ---------------------------------------------------------------------------
 # Evaluate Handler
 # ---------------------------------------------------------------------------

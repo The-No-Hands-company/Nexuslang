@@ -304,6 +304,12 @@ class CallbackManager:
         Returns:
             Function pointer that C code can call
         """
+        raise NotImplementedError(
+            "Compiler-side FFI callback trampolines are not implemented safely yet. "
+            "Use the interpreter/ctypes FFI callback path or implement full argument "
+            "conversion and NexusLang invocation before enabling compiled callbacks."
+        )
+
         signature = CallbackSignature(
             name=name,
             param_types=param_types,
@@ -311,14 +317,12 @@ class CallbackManager:
             nxl_function=nxl_function
         )
         
-        # Generate trampoline
+        # This code is intentionally unreachable until compiler-side callbacks
+        # are fully implemented.
         trampoline = self._generate_trampoline(signature)
         signature.trampoline_func = trampoline
-        
         self.callbacks[name] = signature
         self.trampolines[name] = trampoline
-        
-        # Return function pointer
         return trampoline
     
     def _generate_trampoline(self, sig: CallbackSignature) -> ir.Function:

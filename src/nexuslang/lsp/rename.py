@@ -7,9 +7,13 @@ Provides symbol renaming across the workspace using AST-based analysis.
 
 from typing import List, Dict, Optional
 import re
+import logging
 from ..parser.lexer import Lexer
 from ..parser.parser import Parser
 from ..analysis import ASTSymbolExtractor, SymbolTable
+
+
+logger = logging.getLogger(__name__)
 
 
 class RenameProvider:
@@ -44,6 +48,7 @@ class RenameProvider:
             self.symbol_tables[uri] = symbol_table
             return symbol_table
         except Exception:
+            logger.debug("Falling back to cached symbol table for %s", uri, exc_info=True)
             return self.symbol_tables.get(uri, None)
     
     def prepare_rename(
@@ -184,7 +189,7 @@ class RenameProvider:
                     if doc_changes:
                         changes[file_uri] = doc_changes
                 except Exception:
-                    pass
+                    logger.warning("Skipping rename scan for %s", file_uri, exc_info=True)
 
         if not changes:
             return None

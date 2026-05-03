@@ -7,9 +7,13 @@ Provides real-time error checking and warnings.
 
 from typing import List, Dict, Optional
 import re
+import logging
 
 from nexuslang.error_codes import get_error_info, get_error_code_for_type
 from nexuslang.lsp.telemetry import DiagnosticTelemetry
+
+
+logger = logging.getLogger(__name__)
 
 
 class DiagnosticsProvider:
@@ -238,9 +242,7 @@ class DiagnosticsProvider:
         
         # Try parser-based syntax checking first
         parser_diagnostics = self._check_parser_syntax_enhanced(text, uri)
-        if parser_diagnostics:
-            pass
-        else:
+        if not parser_diagnostics:
             # Fallback to basic syntax checks
             parser_diagnostics = self._check_syntax(text)
         
@@ -489,8 +491,8 @@ class DiagnosticsProvider:
                 )
         
         except Exception:
-            # If parsing fails, syntax errors will be caught by _check_parser_syntax_enhanced
-            pass
+            # If parsing fails, syntax errors are handled by parser diagnostics fallback.
+            logger.debug("Enhanced type diagnostics failed", exc_info=True)
         
         return diagnostics
 
@@ -706,8 +708,8 @@ class DiagnosticsProvider:
                 )
         
         except Exception:
-            # If parsing fails, syntax errors will be caught by _check_parser_syntax
-            pass
+            # If parsing fails, syntax errors are handled by parser diagnostics fallback.
+            logger.debug("Type checker diagnostics failed", exc_info=True)
         
         return diagnostics
     

@@ -7,10 +7,14 @@ Finds all references to a symbol across the workspace using AST-based analysis.
 
 from typing import List, Dict, Optional, Tuple
 import re
+import logging
 from ..parser.lexer import Lexer
 from ..parser.parser import Parser
 from ..analysis import ASTSymbolExtractor, SymbolTable
 from ..parser.ast import ClassDefinition
+
+
+logger = logging.getLogger(__name__)
 
 
 class ReferencesProvider:
@@ -44,6 +48,7 @@ class ReferencesProvider:
             self.symbol_tables[uri] = symbol_table
             return symbol_table
         except Exception:
+            logger.debug("Falling back to cached symbol table for %s", uri, exc_info=True)
             return self.symbol_tables.get(uri, None)
     
     def find_references(
@@ -126,7 +131,7 @@ class ReferencesProvider:
                 doc_refs = self._find_in_document(file_text, symbol, symbol_type, file_uri)
                 references.extend(doc_refs)
             except Exception:
-                pass
+                logger.warning("Skipping references scan for %s", file_uri, exc_info=True)
     
     def _fallback_find_references(
         self, 
@@ -527,6 +532,7 @@ class ReferencesProvider:
                 parser = Parser(tokens)
                 ast = parser.parse()
             except Exception:
+                logger.debug("Skipping class hierarchy parse for %s", file_uri, exc_info=True)
                 continue
 
             for stmt in getattr(ast, 'statements', []):
