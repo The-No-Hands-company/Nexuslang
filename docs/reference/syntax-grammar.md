@@ -258,17 +258,27 @@ Set xRef to 30.  // This changes x's value
 
 ### 8. Error Handling
 
-Error handling uses natural language constructs:
+Error handling uses structured try/catch blocks with optional exception bindings and typed raises:
 
 ```
-Try to
-    Open the file "data.txt".
-    Read the first line from the file.
-If something goes wrong, then
-    Display "Error: " followed by the error message.
-Finally
-    Close the file if it is open.
-End try.
+try
+    read config_file
+catch err with message, code as ConfigError
+    print text message
+finally
+    print text "cleanup"
+end
+
+raise ValueError with message "invalid input"
+throw error with message last_error
+raise
+```
+
+Canonical forms:
+
+```ebnf
+tryCatch       ::= "try" block "catch" IDENTIFIER ["with" IDENTIFIER ("," IDENTIFIER)*] ["as" IDENTIFIER] block ["finally" block] "end"
+raiseStmt      ::= ("raise" | "throw") [IDENTIFIER ["with" IDENTIFIER expression]]
 ```
 
 ### 9. Modules and Namespaces

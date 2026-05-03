@@ -554,14 +554,16 @@ tryCatch
     : TRY
         statement*
       CATCH IDENTIFIER
+        (WITH IDENTIFIER (COMMA IDENTIFIER)*)?
+        (AS IDENTIFIER)?
         statement*
       (FINALLY statement*)?
       END
     ;
 
 raiseStatement
-    : RAISE expression
-    | THROW expression
+    : RAISE (IDENTIFIER (WITH IDENTIFIER expression)?)?
+    | THROW (IDENTIFIER (WITH IDENTIFIER expression)?)?
     ;
 
 assertStatement
