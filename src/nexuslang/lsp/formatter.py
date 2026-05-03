@@ -443,4 +443,7 @@ class NexusLangFormatter:
         return line_lower == 'end' or line_lower.startswith('end ')
 
 
-__all__ = ['NexusLangFormatter']
+# Backward-compatible alias
+NLPLFormatter = NexusLangFormatter
+
+__all__ = ['NexusLangFormatter', 'NLPLFormatter']

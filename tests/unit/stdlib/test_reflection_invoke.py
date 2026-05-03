@@ -103,7 +103,7 @@ class TestReflectInvoke:
 
     def test_invoke_with_one_arg(self):
         result = self.reflect_invoke(self.obj, "greet", ["NexusLang"])
-        assert result == "Hello, NLPL!"
+        assert result == "Hello, NexusLang!"
 
     def test_invoke_with_two_args(self):
         result = self.reflect_invoke(self.obj, "add", [3, 4])

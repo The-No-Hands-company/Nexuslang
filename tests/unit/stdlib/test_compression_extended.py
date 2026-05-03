@@ -7,9 +7,9 @@ import pytest
 import sys
 import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-from src.nlpl.stdlib.compression import (
+from nexuslang.stdlib.compression import (
     # lzma (always available)
     lzma_compress,
     lzma_decompress,
@@ -29,8 +29,8 @@ from src.nlpl.stdlib.compression import (
     HAS_LZ4,
     HAS_ZSTD,
 )
-from src.nlpl.runtime.runtime import Runtime
-from src.nlpl.stdlib.compression import register_compression_functions
+from nexuslang.runtime.runtime import Runtime
+from nexuslang.stdlib.compression import register_compression_functions
 
 SAMPLE_ASCII = "The quick brown fox jumps over the lazy dog"
 SAMPLE_UNICODE = "Unicode: \u4e2d\u6587 \u0420\u0443\u0441\u0441\u043a\u0438\u0439 Deutsch"

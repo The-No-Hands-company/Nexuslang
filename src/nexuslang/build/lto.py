@@ -1,75 +1,34 @@
-"""nexuslang.build.lto — Link-Time Optimisation support.
-
-Wraps the host toolchain's LTO facilities (LLVM lld / llvm-lto / gold-plugin)
-to produce a single optimised native binary from LLVM bitcode (.ll) files
-emitted by the NexusLang compiler backend.
-
-Supported LTO modes
--------------------
-THIN    Per-module summaries; fast parallel link.  Selected for opt_level < 3.
-FULL    Whole-program analysis; slowest but highest-quality.  Used at -O3.
-
-Usage
------
-    from nexuslang.build.lto import LTOConfig, LTOLinker, LTOMode, LTOResult
-
-    cfg = LTOConfig(mode=LTOMode.THIN, opt_level=2, strip_debug=False)
-    linker = LTOLinker(cfg)
-    result = linker.link_with_lto(
-        bitcode_files=["a.ll", "b.ll"],
-        output=Path("out/myapp"),
-        work_dir=Path("out"),
-    )
-    if result.success:
-        print("linked ->", result.output_file)
-    else:
-        for err in result.errors:
-            print("error:", err)
-"""
+"""Link-Time Optimization support for NexusLang build workflows."""
 
 from __future__ import annotations
 
-import os
 import shutil
 import subprocess
-import tempfile
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 
-# ---------------------------------------------------------------------------
-# Public types
-# ---------------------------------------------------------------------------
-
-class LTOMode(Enum):
-    """LTO link strategy."""
-    THIN = "thin"   # ThinLTO – fast; default for opt < 3
-    FULL = "full"   # Full LTO – slow, maximum quality; used at O3
+class LTOMode(str, Enum):
+    DISABLED = "disabled"
+    THIN = "thin"
+    FULL = "full"
 
 
 @dataclass
 class LTOConfig:
-    """Configuration for an LTO link pass."""
-
-    mode: LTOMode = LTOMode.THIN
-    opt_level: int = 2          # 0..3  maps directly to -O<n> passed to the linker
-    strip_debug: bool = False   # strip debug info from output
-    internalize: bool = True    # internalize all non-exported symbols
-    extra_link_flags: List[str] = field(default_factory=list)
-
-    def __post_init__(self) -> None:
-        if not 0 <= self.opt_level <= 3:
-            raise ValueError(f"opt_level must be 0–3, got {self.opt_level}")
+    mode: LTOMode = LTOMode.DISABLED
+    opt_level: int = 2
+    strip_debug: bool = False
+    internalize: bool = True
+    passes: str = ""
 
 
 @dataclass
 class LTOResult:
-    """Outcome of an LTO link invocation."""
-
     success: bool
-    output_file: Optional[Path]
+    output_file: Optional[Path] = None
     errors: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
     returncode: int = 0
@@ -77,249 +36,136 @@ class LTOResult:
     stderr: str = ""
 
 
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
+class LLVMTools:
+    """Resolver/cacher for external LLVM tools used by LTO."""
 
-def _find_tool(*candidates: str) -> Optional[str]:
-    """Return the first candidate found on PATH, or None."""
-    for name in candidates:
-        found = shutil.which(name)
-        if found:
-            return found
-    return None
+    def __init__(self) -> None:
+        self._cache: Dict[str, Optional[str]] = {}
 
+    def find(self, tool_name: str) -> Optional[str]:
+        if tool_name in self._cache:
+            return self._cache[tool_name]
+        found = shutil.which(tool_name)
+        self._cache[tool_name] = found
+        return found
 
-def _ll_to_bc(ll_file: str, work_dir: Path) -> Optional[Path]:
-    """Convert a .ll text IR file to LLVM bitcode (.bc) using llvm-as.
+    def check_lto_tools(self) -> Dict[str, Optional[str]]:
+        return {
+            "llvm-link": self.find("llvm-link"),
+            "opt": self.find("opt"),
+            "llc": self.find("llc"),
+            "llvm-strip": self.find("llvm-strip"),
+        }
 
-    Returns the .bc path on success, None if llvm-as is unavailable.
-    """
-    llvm_as = _find_tool("llvm-as", "llvm-as-16", "llvm-as-15", "llvm-as-14")
-    if not llvm_as:
-        return None
-    bc_path = work_dir / (Path(ll_file).stem + ".bc")
-    r = subprocess.run(
-        [llvm_as, ll_file, "-o", str(bc_path)],
-        capture_output=True,
-        text=True,
-    )
-    if r.returncode == 0 and bc_path.exists():
-        return bc_path
-    return None
+    def all_required_available(self) -> bool:
+        return all(path is not None for path in self.check_lto_tools().values())
 
-
-# ---------------------------------------------------------------------------
-# LTOLinker
-# ---------------------------------------------------------------------------
 
 class LTOLinker:
-    """Drive an LTO-enabled link of NexusLang LLVM IR files.
+    """Driver for LTO linking pipeline."""
 
-    The linker tries the following strategies in order, returning the first
-    that succeeds:
-
-    1. LLVM ``llvm-lto`` / ``llvm-lto2`` command (direct bitcode linking).
-    2. ``lld`` with ``--lto=thin`` or ``--lto=full``.
-    3. ``clang`` / ``clang++`` with ``-flto`` (driver-based LTO).
-    4. Plain ``clang`` without LTO (fallback so the build never hard-errors).
-
-    All strategies convert ``.ll`` text IR to ``.bc`` bitcode first when the
-    input files are in text form.
-    """
-
-    def __init__(self, config: LTOConfig) -> None:
+    def __init__(self, config: LTOConfig, tools: Optional[LLVMTools] = None) -> None:
         self.config = config
+        self.tools = tools or LLVMTools()
 
-    # ------------------------------------------------------------------
+    def emit_bitcode_flags(self) -> List[str]:
+        if self.config.mode == LTOMode.DISABLED:
+            return []
+        if self.config.mode == LTOMode.THIN:
+            return ["-emit-llvm", "-flto=thin"]
+        return ["-emit-llvm", "-flto"]
+
     def link_with_lto(
         self,
-        bitcode_files: List[str],
+        bitcode_files: List[Path],
         output: Path,
-        work_dir: Path,
+        work_dir: Optional[Path] = None,
     ) -> LTOResult:
-        """Link *bitcode_files* into *output* using the configured LTO mode.
+        if not bitcode_files:
+            return LTOResult(success=False, errors=["No bitcode files provided for LTO"])
 
-        Parameters
-        ----------
-        bitcode_files:
-            Paths to ``.ll`` or ``.bc`` LLVM IR files to link.
-        output:
-            Desired output file path (no extension; the linker appends one
-            if necessary on the target platform).
-        work_dir:
-            Scratch directory for temporary files produced during the link.
-        """
+        if self.config.mode == LTOMode.DISABLED:
+            return LTOResult(success=True, output_file=output)
+
+        if not self.tools.all_required_available():
+            missing = [
+                name for name, path in self.tools.check_lto_tools().items() if path is None
+            ]
+            return LTOResult(
+                success=False,
+                errors=[f"Missing required LLVM tools: {', '.join(missing)}"],
+            )
+
+        llvm_link = self.tools.find("llvm-link")
+        opt = self.tools.find("opt")
+        llc = self.tools.find("llc")
+
+        assert llvm_link is not None
+        assert opt is not None
+        assert llc is not None
+
+        work_dir = work_dir or output.parent
         work_dir.mkdir(parents=True, exist_ok=True)
 
-        if not bitcode_files:
-            return LTOResult(
-                success=False,
-                output_file=None,
-                errors=["No bitcode files provided for LTO link"],
-            )
+        linked_bc = work_dir / "linked.bc"
+        optimized_bc = work_dir / "optimized.bc"
+        output_parent = output.parent
+        output_parent.mkdir(parents=True, exist_ok=True)
 
-        # Convert .ll -> .bc where needed
-        bc_files: List[str] = []
-        errors: List[str] = []
-        for ll in bitcode_files:
-            if ll.endswith(".ll"):
-                bc = _ll_to_bc(ll, work_dir)
-                if bc is not None:
-                    bc_files.append(str(bc))
-                else:
-                    # llvm-as not available – keep .ll and hope the linker handles it
-                    bc_files.append(ll)
-            else:
-                bc_files.append(ll)
+        mode_pass = "thinlto" if self.config.mode == LTOMode.THIN else "default"
+        opt_flag = f"-O{self.config.opt_level}"
 
-        # Try strategies in priority order
-        for strategy in (
-            self._link_via_llvm_lto,
-            self._link_via_lld,
-            self._link_via_clang_flto,
-            self._link_via_clang_plain,
-        ):
-            result = strategy(bc_files, output, work_dir)
-            if result is not None:
-                return result
-
-        return LTOResult(
-            success=False,
-            output_file=None,
-            errors=errors + ["No suitable LTO linker found on PATH"],
-        )
-
-    # ------------------------------------------------------------------
-    # Private link strategies
-    # ------------------------------------------------------------------
-
-    def _link_via_llvm_lto(
-        self, files: List[str], output: Path, work_dir: Path
-    ) -> Optional[LTOResult]:
-        tool = _find_tool(
-            "llvm-lto2", "llvm-lto2-16", "llvm-lto2-15", "llvm-lto2-14",
-            "llvm-lto",  "llvm-lto-16",  "llvm-lto-15",  "llvm-lto-14",
-        )
-        if not tool:
-            return None
-
-        cmd = [tool, "run"] + files + [
-            f"-o={output}",
-            f"-O{self.config.opt_level}",
-        ]
-        if self.config.mode == LTOMode.THIN:
-            cmd.append("-thinlto")
-        if self.config.strip_debug:
-            cmd.append("-strip-debug")
-        if self.config.internalize:
-            cmd.append("-internalize")
-
-        return self._run(cmd, output)
-
-    def _link_via_lld(
-        self, files: List[str], output: Path, work_dir: Path
-    ) -> Optional[LTOResult]:
-        tool = _find_tool("ld.lld", "lld", "lld-16", "lld-15", "lld-14")
-        if not tool:
-            return None
-
-        lto_flag = (
-            "--lto=thin" if self.config.mode == LTOMode.THIN else "--lto=full"
-        )
-        cmd = (
-            [tool]
-            + files
-            + [
-                "-o", str(output),
-                lto_flag,
-                f"--lto-O{self.config.opt_level}",
-            ]
-        )
-        if self.config.strip_debug:
-            cmd.append("--strip-debug")
-
-        return self._run(cmd, output)
-
-    def _link_via_clang_flto(
-        self, files: List[str], output: Path, work_dir: Path
-    ) -> Optional[LTOResult]:
-        tool = _find_tool("clang", "clang-16", "clang-15", "clang++")
-        if not tool:
-            return None
-
-        flto = (
-            "-flto=thin" if self.config.mode == LTOMode.THIN else "-flto"
-        )
-        cmd = (
-            [tool]
-            + files
-            + [
-                "-o", str(output),
-                flto,
-                f"-O{self.config.opt_level}",
-                "-lm",
-            ]
-        )
-        if self.config.strip_debug:
-            cmd.append("-g0")
-
-        return self._run(cmd, output)
-
-    def _link_via_clang_plain(
-        self, files: List[str], output: Path, work_dir: Path
-    ) -> Optional[LTOResult]:
-        """Last-resort plain clang link without LTO (for environments where no
-        LTO-capable tool is available)."""
-        tool = _find_tool("clang", "clang-16", "clang-15", "gcc")
-        if not tool:
-            return None
-
-        cmd = (
-            [tool]
-            + files
-            + ["-o", str(output), f"-O{self.config.opt_level}", "-lm"]
-        )
-        return self._run(cmd, output)
-
-    # ------------------------------------------------------------------
-
-    def _run(self, cmd: List[str], expected_output: Path) -> LTOResult:
-        """Execute *cmd* and return an LTOResult."""
-        try:
-            r = subprocess.run(cmd, capture_output=True, text=True)
-        except FileNotFoundError:
-            return LTOResult(
-                success=False,
-                output_file=None,
-                errors=[f"Tool not found: {cmd[0]}"],
-            )
-
-        warnings = [
-            line for line in r.stderr.splitlines()
-            if "warning" in line.lower()
-        ]
-        errors = [
-            line for line in r.stderr.splitlines()
-            if "error" in line.lower() and "warning" not in line.lower()
+        commands = [
+            [llvm_link, *[str(p) for p in bitcode_files], "-o", str(linked_bc)],
+            [opt, opt_flag, f"-passes={self.config.passes or mode_pass}", str(linked_bc), "-o", str(optimized_bc)],
+            [llc, str(optimized_bc), "-filetype=obj", "-o", str(output)],
         ]
 
-        if r.returncode == 0 and expected_output.exists():
-            return LTOResult(
-                success=True,
-                output_file=expected_output,
-                warnings=warnings,
-                returncode=r.returncode,
-                stdout=r.stdout,
-                stderr=r.stderr,
-            )
+        for cmd in commands:
+            try:
+                proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+            except FileNotFoundError as exc:
+                return LTOResult(success=False, errors=[str(exc)])
 
-        return LTOResult(
-            success=False,
-            output_file=None,
-            errors=errors or [r.stderr.strip() or f"Exit {r.returncode}"],
-            warnings=warnings,
-            returncode=r.returncode,
-            stdout=r.stdout,
-            stderr=r.stderr,
-        )
+            if proc.returncode != 0:
+                err = proc.stderr.strip() or f"Command failed: {' '.join(cmd)}"
+                return LTOResult(
+                    success=False,
+                    errors=[err],
+                    returncode=proc.returncode,
+                    stdout=proc.stdout,
+                    stderr=proc.stderr,
+                )
+
+        return LTOResult(success=True, output_file=output)
+
+
+def lto_flags_for_profile(
+    mode: LTOMode,
+    opt_level: int = 2,
+    strip: bool = False,
+) -> List[str]:
+    if mode == LTOMode.DISABLED:
+        return []
+
+    flags: List[str] = []
+    if mode == LTOMode.THIN:
+        flags.append("-flto=thin")
+    else:
+        flags.append("-flto")
+
+    flags.append(f"-O{opt_level}")
+    if strip:
+        flags.append("-s")
+
+    return flags
+
+
+__all__ = [
+    "LTOMode",
+    "LTOConfig",
+    "LTOResult",
+    "LLVMTools",
+    "LTOLinker",
+    "lto_flags_for_profile",
+]

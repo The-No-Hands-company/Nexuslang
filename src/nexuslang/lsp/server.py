@@ -483,7 +483,7 @@ class NexusLangLanguageServer:
                         },
                         "severity": severity_map.get(severity_name, 3),
                         "message": f"[{issue.code}] {issue.message}",
-                        "source": "nexuslang-lint",
+                        "source": "nlpl-lint",
                         "data": {
                             "origin": "nexuslang-lint",
                             "lintCode": issue.code,
@@ -1127,4 +1127,7 @@ class NexusLangLanguageServer:
         self._parse_cache.pop(uri, None)
 
 
-__all__ = ['NexusLangLanguageServer', 'Position', 'Range', 'Location']
+# Backward-compatible alias
+NLPLLanguageServer = NexusLangLanguageServer
+
+__all__ = ['NexusLangLanguageServer', 'NLPLLanguageServer', 'Position', 'Range', 'Location']

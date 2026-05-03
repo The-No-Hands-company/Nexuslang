@@ -140,7 +140,7 @@ class DiagnosticsProvider:
             data.setdefault("origin", "diagnostics")
 
         if source in {"nexuslang", "parser", "typechecker", "nexuslang-parser", "nexuslang-typechecker"}:
-            normalized["source"] = "nexuslang"
+            normalized["source"] = "nlpl"
         elif not source:
             normalized["source"] = "nlpl"
 

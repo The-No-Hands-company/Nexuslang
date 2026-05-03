@@ -70,14 +70,16 @@ class CCodeGenerator(CodeGenerator):
             if not isinstance(stmt, (FunctionDefinition, ClassDefinition, ExternFunctionDeclaration, ExternVariableDeclaration, MacroDefinition))
         ]
 
+        has_user_main = any(isinstance(stmt, FunctionDefinition) and stmt.name == "main" for stmt in ast.statements)
+
         # Pre-collect compile-time metadata used while emitting function bodies.
         for stmt in ast.statements:
             if isinstance(stmt, MacroDefinition):
                 self._collect_macro_definition(stmt)
-            elif isinstance(stmt, VariableDeclaration):
+            elif has_user_main and isinstance(stmt, VariableDeclaration):
                 if self._can_materialize_global_variable(stmt):
                     self.global_variables[stmt.name] = self._infer_type(stmt.value)
-            elif isinstance(stmt, ComptimeConst):
+            elif has_user_main and isinstance(stmt, ComptimeConst):
                 const_type = self._infer_type(stmt.expr)
                 self.global_variables[stmt.name] = const_type
 
@@ -100,16 +102,13 @@ class CCodeGenerator(CodeGenerator):
                 self.symbol_table[stmt.name] = var_type
             elif isinstance(stmt, MacroDefinition):
                 self._collect_macro_definition(stmt)
-            elif isinstance(stmt, VariableDeclaration):
+            elif has_user_main and isinstance(stmt, VariableDeclaration):
                 if self._can_materialize_global_variable(stmt):
                     self.global_variables[stmt.name] = self._infer_type(stmt.value)
-            elif isinstance(stmt, ComptimeConst):
+            elif has_user_main and isinstance(stmt, ComptimeConst):
                 const_type = self._infer_type(stmt.expr)
                 self.global_variables[stmt.name] = const_type
         
-        # Check if user defined a main function
-        has_user_main = any(isinstance(stmt, FunctionDefinition) and stmt.name == "main" for stmt in ast.statements)
-
         if has_user_main and self.top_level_statements:
             self.forward_declarations.append(f"static void {self.top_level_init_name}(void);")
         

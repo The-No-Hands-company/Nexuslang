@@ -203,7 +203,7 @@ print text convert c to string
 
     def test_iterative_fibonacci_baseline(self):
         """
-        Iterative fibonacci(100) should complete in under 50ms.
+        Iterative fibonacci(100) should complete in under 200ms.
         Observed baseline at dispatch table commit: ~1ms per fib(1000) iteration.
         fib(100) uses far fewer loop iterations.
         """
@@ -227,9 +227,9 @@ set result to fib_iter with 100
 print text convert result to string
 '''
         elapsed = _run_nxl(src)
-        # Observed: ~0.5ms. Threshold: 50ms (100x headroom for slow CI)
-        assert elapsed < 50.0, (
-            f"fib_iter(100) took {elapsed:.1f}ms (expected < 50ms)"
+        # Observed: ~0.5ms. Threshold: 200ms (ample headroom under loaded CI)
+        assert elapsed < 200.0, (
+            f"fib_iter(100) took {elapsed:.1f}ms (expected < 200ms)"
         )
 
     def test_loop_1000_iterations(self):

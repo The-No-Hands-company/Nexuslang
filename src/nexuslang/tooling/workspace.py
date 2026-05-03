@@ -192,7 +192,7 @@ class WorkspaceManifest:
             if not manifet.exists():
                 raise WorkspaceError(
                     f"Workspace member '{p}' does not contain an "
-                    f"{PACKAGE_MANIFEST_NAME} file."
+                    f"{PACKAGE_MANIFEST_NAME} file (legacy: nlpl.toml)."
                 )
             members.append(p)
 

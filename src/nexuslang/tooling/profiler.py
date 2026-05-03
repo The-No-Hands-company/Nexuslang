@@ -301,7 +301,10 @@ class MemoryProfiler:
         lines.append(f"{'Site':<55} {'Count':>6} {'Peak':>10} {'Total':>10}")
         lines.append("-" * 80)
         for site in self.top_sites(n):
-            label = f"{os.path.basename(site.file)}:{site.line}"
+            filename = os.path.basename(site.file)
+            if filename.endswith(".nlpl"):
+                filename = filename[:-5] + ".nxl"
+            label = f"{filename}:{site.line}"
             lines.append(
                 f"{label:<55} {site.alloc_count:>6} "
                 f"{_fmt_bytes(site.peak_bytes):>10} "

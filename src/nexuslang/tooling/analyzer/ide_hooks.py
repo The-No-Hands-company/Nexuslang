@@ -45,7 +45,7 @@ JSON output format
       },
       "severity": 1,            # 1=Error 2=Warn 3=Info 4=Hint
       "code": "E001",
-      "source": "nexuslang-analyze",
+    "source": "nlpl-analyze",
       "message": "Human-readable message",
       "relatedInformation": [   # optional
         {
@@ -198,10 +198,10 @@ class IDEHooks:
 
     Args:
         source_name: Value used for the ``"source"`` field in diagnostics
-                     (default: ``"nexuslang-analyze```).
+                     (default: ``"nlpl-analyze```).
     """
 
-    def __init__(self, source_name: str = "nexuslang-analyze") -> None:
+    def __init__(self, source_name: str = "nlpl-analyze") -> None:
         self.source_name = source_name
 
     # ------------------------------------------------------------------
@@ -448,7 +448,7 @@ class LspFormatter:
                                                     start_line=5, end_line=10)
     """
 
-    def __init__(self, source_name: str = "nexuslang-analyze") -> None:
+    def __init__(self, source_name: str = "nlpl-analyze") -> None:
         from .autofix import AutoFixer
         self._hooks = IDEHooks(source_name=source_name)
         self._fixer = AutoFixer()

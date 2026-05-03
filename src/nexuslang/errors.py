@@ -229,6 +229,10 @@ class NxlContractError(NxlError):
                          "ContractError", full_source=full_source)
 
 
+# Backward-compatible alias
+NLPLContractError = NxlContractError
+
+
 def get_close_matches(word: str, possibilities: List[str], n: int = 3, cutoff: float = 0.6) -> List[str]:
     """
     Get close matches to a word from a list of possibilities.

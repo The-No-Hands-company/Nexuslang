@@ -233,7 +233,7 @@ def _make_diag(
         },
         "severity": severity,
         "code": code,
-        "source": "nexuslang-dead-code",
+        "source": "nlpl-dead-code",
         "message": message,
         "data": {"fixes": fixes},
     }

@@ -1304,6 +1304,14 @@ class LLVMIRGenerator(CodeGenerator):
             self.emit('declare i8* @strtok(i8*, i8* nocapture) #4')
         if 'strstr' not in self.extern_functions:
             self.emit('declare i8* @strstr(i8* nocapture, i8* nocapture) #4')
+
+        # Legacy pattern-matching runtime helper symbols kept for compatibility.
+        self.emit('declare i1 @NLPL_Optional_has_value(i8*) #4')
+        self.emit('declare i64 @NLPL_Optional_get_value(i8*) #4')
+        self.emit('declare i1 @NLPL_Result_is_ok(i8*) #4')
+        self.emit('declare i64 @NLPL_Result_get_value(i8*) #4')
+        self.emit('declare i8* @NLPL_Result_get_error(i8*) #4')
+
         if 'memcpy' not in self.extern_functions:
             self.emit('declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg) #10')
         if 'toupper' not in self.extern_functions:
