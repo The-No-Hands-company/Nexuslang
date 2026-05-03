@@ -193,7 +193,10 @@ Example:
 
 ### Core Classes
 
-**src/nlpl/build/incremental.py**:
+**Current implementation paths**:
+
+- `src/nexuslang/build_system/builder.py`
+- `src/nexuslang/build_system/dependency_resolver.py`
 
 1. **FileMetadata** (dataclass)
    - Stores path, mtime, size, hash, imports

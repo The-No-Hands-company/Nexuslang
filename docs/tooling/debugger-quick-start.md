@@ -194,7 +194,7 @@ which python3
 "nexuslang.debugger.pythonPath": "/usr/bin/python3"
 
 # Verify DAP server exists
-ls src/nlpl/debugger/dap_server.py
+ls src/nexuslang/debugger/dap_server.py
 ```
 
 ### Variables Panel Empty

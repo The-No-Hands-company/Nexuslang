@@ -53,28 +53,28 @@ less /tmp/nlpl-lsp.log
 ## File Locations
 
 ### LSP Implementation
-- **Server**: `src/nlpl/lsp/server.py`
-- **Completions**: `src/nlpl/lsp/completions.py`
-- **Definitions**: `src/nlpl/lsp/definitions.py`
-- **Hover**: `src/nlpl/lsp/hover.py`
-- **Diagnostics**: `src/nlpl/lsp/diagnostics.py`
-- **Symbols**: `src/nlpl/lsp/symbols.py`
-- **References**: `src/nlpl/lsp/references.py`
-- **Rename**: `src/nlpl/lsp/rename.py`
-- **Code Actions**: `src/nlpl/lsp/code_actions.py`
-- **Signature Help**: `src/nlpl/lsp/signature_help.py`
-- **Formatter**: `src/nlpl/lsp/formatter.py`
-- **Semantic Tokens**: `src/nlpl/lsp/semantic_tokens.py`
+- **Server**: `src/nexuslang/lsp/server.py`
+- **Completions**: `src/nexuslang/lsp/completions.py`
+- **Definitions**: `src/nexuslang/lsp/definitions.py`
+- **Hover**: `src/nexuslang/lsp/hover.py`
+- **Diagnostics**: `src/nexuslang/lsp/diagnostics.py`
+- **Symbols**: `src/nexuslang/lsp/symbols.py`
+- **References**: `src/nexuslang/lsp/references.py`
+- **Rename**: `src/nexuslang/lsp/rename.py`
+- **Code Actions**: `src/nexuslang/lsp/code_actions.py`
+- **Signature Help**: `src/nexuslang/lsp/signature_help.py`
+- **Formatter**: `src/nexuslang/lsp/formatter.py`
+- **Semantic Tokens**: `src/nexuslang/lsp/semantic_tokens.py`
 
-### Week 1 New Files (To Create)
-- `src/nlpl/lsp/workspace_index.py` - Workspace symbol indexing
-- `tests/test_workspace_index.py` - Tests for indexing
+### Core Supporting Files
+- `src/nexuslang/lsp/workspace_index.py` - Workspace symbol indexing
+- `tests/tooling/test_workspace_index.py` - Tests for indexing
 - `docs/9_status_reports/LSP_WEEK_01_REPORT.md` - Week report
 
 ### Documentation
 - **Roadmap**: `docs/8_planning/LSP_COMPLETION_ROADMAP.md`
 - **Week 1 Kickoff**: `docs/9_status_reports/LSP_WEEK_01_KICKOFF.md`
-- **LSP README**: `src/nlpl/lsp/README.md`
+- **LSP README**: `src/nexuslang/lsp/README.md`
 
 ### Test Projects (For Manual Testing)
 - **Examples**: `examples/` (existing NexusLang examples)
@@ -145,7 +145,7 @@ class Location:
 ## AST Nodes to Handle (Week 1)
 
 ```python
-# From src/nlpl/parser/ast.py
+# From src/nexuslang/parser/ast.py
 
 class FunctionDefinition:
     name: str
@@ -377,4 +377,4 @@ If you finish Week 1 tasks early:
 **Questions? Check:**
 - LSP Roadmap: `docs/8_planning/LSP_COMPLETION_ROADMAP.md`
 - Week 1 Kickoff: `docs/9_status_reports/LSP_WEEK_01_KICKOFF.md`
-- LSP README: `src/nlpl/lsp/README.md`
+- LSP README: `src/nexuslang/lsp/README.md`

@@ -25,7 +25,7 @@
 The build tool is located at `dev_tools/nxl_build.py` and requires:
 - Python 3.8+
 - NexusLang compiler (`nlplc`)
-- Access to `src/nlpl/` modules
+- Access to `src/nexuslang/` modules
 
 **Make executable**:
 ```bash

@@ -8,7 +8,7 @@ Successfully implemented a comprehensive code formatter for the NexusLang Langua
 
 ### Created Files
 
-1. **`src/nlpl/lsp/formatter.py`** (287 lines)
+1. **`src/nexuslang/lsp/formatter.py`** (287 lines)
  - Main formatter implementation
  - Implements `NLPLFormatter` class with full formatting logic
  - Handles indentation, spacing, and code structure
@@ -23,7 +23,7 @@ Successfully implemented a comprehensive code formatter for the NexusLang Langua
 
 ### Modified Files
 
-1. **`src/nlpl/lsp/server.py`**
+1. **`src/nexuslang/lsp/server.py`**
  - Added import for `NLPLFormatter`
  - Initialized formatter in `__init__` method
  - Implemented `_handle_formatting` method (removed TODO)

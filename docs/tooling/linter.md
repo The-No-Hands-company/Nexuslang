@@ -510,7 +510,7 @@ When enabled, lint diagnostics are merged with parser/type diagnostics in `textD
 
 ### Adding New Checks
 
-1. Create checker in `src/nlpl/tooling/analyzer/checks/`
+1. Create checker in `src/nexuslang/tooling/analyzer/checks/`
 2. Inherit from `BaseChecker`
 3. Implement `check(ast, source, lines)` method
 4. Return list of `Issue` objects
@@ -590,7 +590,7 @@ A: Yes! Use `--json` output and check exit code (0 = no errors).
 ### Files Created
 
 ```
-src/nlpl/tooling/analyzer/
+src/nexuslang/tooling/analyzer/
  __init__.py # Package exports
  analyzer.py # Main analyzer (200 lines)
  report.py # Issue reporting (250 lines)
@@ -605,7 +605,7 @@ src/nlpl/tooling/analyzer/
  dead_code.py # Stub (10 lines)
  style.py # Stub (10 lines)
 
-src/nlpl/cli/
+src/nexuslang/cli/
  __init__.py # CLI package
  nlpllint.py # CLI tool (250 lines)
 
@@ -643,7 +643,7 @@ Part of the NexusLang project.
 
 - **Documentation:** `docs/DEVELOPMENT_TOOLS_STATUS.md`
 - **Architecture:** `docs/NLPL_COMPETITIVE_ADVANTAGES.md`
-- **Issues:** Report via GitHub (when available)
+- **Issues:** Report via the project GitHub repository
 
 ---
 

@@ -1,7 +1,7 @@
 # NexusLang Language Server Protocol (LSP) Features
 
 **Status:** Production-ready  
-**Coverage:** 13 LSP features fully implemented
+**Coverage:** 15 LSP capabilities implemented
 
 ---
 
@@ -24,12 +24,12 @@ NLPL provides a complete, production-ready Language Server Protocol implementati
 
 ### Components
 
-1. **LSP Server** (`src/nlpl/lsp/server.py`)
+1. **LSP Server** (`src/nexuslang/lsp/server.py`)
    - JSON-RPC communication over stdio
    - Message routing and protocol handling
    - Provider orchestration
 
-2. **Workspace Index** (`src/nlpl/lsp/workspace_index.py`)
+2. **Workspace Index** (`src/nexuslang/lsp/workspace_index.py`)
    - Hash-table-based symbol storage (O(1) lookup)
    - Background indexing on startup
    - Incremental re-indexing on file changes
@@ -321,6 +321,30 @@ set x to "unclosed string
 
 ---
 
+### 14. Code Lens
+
+**Capability:** `codeLensProvider: { resolveProvider: true }`
+
+**Usage:** Inline reference/run-style annotations above supported symbols
+
+**Implementation:**
+- Server-side code lens generation and resolve support
+- Workspace-aware symbol counting hooks
+
+---
+
+### 15. Inlay Hints
+
+**Capability:** `inlayHintProvider: true`
+
+**Usage:** Inline parameter/type guidance where supported by the client
+
+**Implementation:**
+- Request handler exposed through the main LSP server
+- Client-driven rendering via standard LSP inlay hint support
+
+---
+
 ## Performance Characteristics
 
 ### Workspace Indexing
@@ -376,13 +400,14 @@ Coverage:                      100%
 
 ### Setup
 
-1. Install NexusLang VS Code extension (if available)
+1. Install the NLPL Language Support VS Code extension
 2. Or configure generic LSP client:
 
 ```json
 {
-  "nexuslang.lsp.serverPath": "/path/to/nlpl/src/main.py",
-  "nexuslang.lsp.args": ["--lsp"]
+  "nexuslang.languageServer.enabled": true,
+  "nexuslang.languageServer.path": "",
+  "nexuslang.trace.server": "messages"
 }
 ```
 
@@ -416,7 +441,7 @@ local configs = require('lspconfig.configs')
 if not configs.nlpl then
   configs.nlpl = {
     default_config = {
-      cmd = {'python3', '/path/to/nlpl/src/main.py', '--lsp'},
+      cmd = {'python3', '-m', 'nexuslang.lsp', '--stdio'},
       filetypes = {'nlpl'},
       root_dir = lspconfig.util.root_pattern('.git'),
       settings = {},
@@ -442,7 +467,7 @@ lspconfig.nlpl.setup{}
 (lsp-register-client
  (make-lsp-client
   :new-connection (lsp-stdio-connection
-                   '("python3" "/path/to/nlpl/src/main.py" "--lsp"))
+                   '("python3" "-m" "nexuslang.lsp" "--stdio"))
   :major-modes '(nlpl-mode)
   :server-id 'nlpl-ls))
 ```
@@ -472,7 +497,7 @@ Logs written to `/tmp/nlpl-lsp.log`
 
 **Issue:** LSP not starting
 - Check Python path in configuration
-- Verify `src/main.py` has `--lsp` flag support
+- Verify `PYTHONPATH=src python -m nexuslang.lsp --stdio` starts cleanly
 - Check logs for errors
 
 **Issue:** Symbols not found
@@ -482,7 +507,7 @@ Logs written to `/tmp/nlpl-lsp.log`
 
 **Issue:** Slow performance
 - Check workspace size (>1000 files?)
-- Profile with `--lsp-debug` flag
+- Enable `nexuslang.trace.server` or inspect `/tmp/nlpl-lsp.log` for detailed diagnostics
 - Consider excluding large directories
 
 ---
@@ -494,12 +519,11 @@ Logs written to `/tmp/nlpl-lsp.log`
 1. **Incremental Parsing** - Only re-parse changed functions
 2. **Persistent Index** - Cache symbols to disk
 3. **Multi-workspace Support** - Handle multiple projects
-4. **Inlay Hints** - Show inferred types inline
-5. **Folding Ranges** - Code folding support
-6. **Selection Ranges** - Smart selection expansion
-7. **Document Links** - Clickable import paths
-8. **Color Presentation** - Color picker for literals
-9. **Moniker** - Cross-project symbol linking
+4. **Folding Ranges** - Code folding support
+5. **Selection Ranges** - Smart selection expansion
+6. **Document Links** - Clickable import paths
+7. **Color Presentation** - Color picker for literals
+8. **Moniker** - Cross-project symbol linking
 
 ### Performance Targets
 
@@ -532,5 +556,5 @@ Logs written to `/tmp/nlpl-lsp.log`
 
 - [LSP Specification](https://microsoft.github.io/language-server-protocol/)
 - [NLPL Grammar](../../grammar/NLPL.g4)
-- [LSP Test Suite](../../../tests/test_lsp_*.py)
-- [Workspace Index Implementation](../../../src/nlpl/lsp/workspace_index.py)
+- [LSP Test Suite](../../../tests/tooling/test_lsp_*.py)
+- [Workspace Index Implementation](../../../src/nexuslang/lsp/workspace_index.py)
