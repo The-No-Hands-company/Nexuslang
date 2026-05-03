@@ -470,11 +470,11 @@ Planned features for future versions:
 
 ## See Also
 
-- **NLPL Language Specification**: `docs/2_language_basics/language_specification.md`
+- **NexusLang Language Specification**: `docs/reference/language-spec.md`
 - **Examples**: `examples/01_basic_concepts.nlpl` through `examples/22_feature_showcase.nlpl`
-- **Standard Library**: `docs/3_core_concepts/stdlib_modules.nlpl`
-- **Debugger Documentation**: `docs/7_development/debugger.md` (coming soon)
-- **LSP Integration**: `docs/7_development/lsp_features.md` (coming soon)
+- **Standard Library**: `docs/reference/stdlib/index.md`
+- **Debugger Documentation**: `docs/tooling/debugger.md`
+- **LSP Integration**: `docs/tooling/lsp-features.md`
 
 ## Contributing
 
@@ -482,7 +482,7 @@ To contribute to the REPL:
 
 1. **Report bugs**: Open an issue with reproduction steps
 2. **Request features**: Suggest enhancements via GitHub issues
-3. **Submit PRs**: Follow the style guide in `docs/7_development/style_guide.md`
+3. **Submit PRs**: Follow the style guide in `docs/contributing/style-guide.md`
 
 ## License
 

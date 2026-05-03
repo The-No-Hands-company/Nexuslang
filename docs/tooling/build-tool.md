@@ -657,8 +657,8 @@ resolved = ["data-analytics", "nlpl-math/statistics"]  # Includes deps
 
 - **Manifest Specification**: `docs/tooling/nlpl-toml.md`
 - **Compiler Guide**: `COMPILER_GUIDE.md`
-- **Development Guide**: `docs/7_development/`
-- **Build System Architecture**: `docs/4_architecture/`
+- **Development Guide**: `docs/contributing/`
+- **Build System Architecture**: `docs/contributing/compiler-guide.md`
 
 ---
 

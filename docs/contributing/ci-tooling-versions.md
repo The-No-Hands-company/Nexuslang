@@ -61,7 +61,7 @@ docker run --rm -v "$PWD:/repo" -w /repo \
 
 # Python tests
 pip install pytest pytest-cov pytest-timeout pytest-rerunfailures
-pytest tests/ -q --maxfail=1 --cov=src/nlpl --cov-fail-under=75 --timeout=30
+pytest tests/ -q --maxfail=1 --cov=src/nexuslang --cov-fail-under=75 --timeout=30
 ```
 
 ## Version Update Checklist

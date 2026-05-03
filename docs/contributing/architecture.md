@@ -118,7 +118,7 @@ Performs various optimizations on the intermediate code:
 
 #### Current Implementation (v1.2):
 
-**Module**: `src/nlpl/compiler/llvm_optimizer.py` (370 lines)
+**Module**: `src/nexuslang/compiler/llvm_optimizer.py` (370 lines)
 
 **Optimization Levels**: 5 levels implemented via subprocess calls to LLVM `opt` tool
 - **-O0**: No optimization (debug builds)
@@ -152,7 +152,7 @@ python dev_tools/nlplc_llvm.py program.nlpl -O2 -o program     # Standard optimi
 python dev_tools/nlplc_llvm.py program.nlpl --ir-opt            # View optimized IR
 ```
 
-See `docs/4_architecture/optimization_guide.md` for comprehensive optimization documentation.
+See `docs/reference/optimization-guide.md` for comprehensive optimization documentation.
 
 ### 7. Code Generator
 

@@ -2,13 +2,13 @@
 
 ## Overview
 
-Successfully implemented three critical TODOs in the NexusLang build system (`src/nlpl/tooling/builder.py`), significantly enhancing its capabilities for handling complex projects with dependencies, multi-file modules, and intelligent executable detection.
+Successfully implemented three critical TODOs in the NexusLang build system (`src/nexuslang/tooling/builder.py`), significantly enhancing its capabilities for handling complex projects with dependencies, multi-file modules, and intelligent executable detection.
 
 ## Changes Summary
 
 ### Files Modified
 
-1. **`src/nlpl/tooling/builder.py`** (325 lines, +197 additions)
+1. **`src/nexuslang/tooling/builder.py`** (325 lines, +197 additions)
  - Implemented dependency path resolution
  - Added multi-file module compilation and linking
  - Implemented intelligent main entry point detection
@@ -34,9 +34,9 @@ Successfully implemented three critical TODOs in the NexusLang build system (`sr
  - Adds `{dependency_path}/build/lib` to search paths
 - For version-based dependencies:
  - Checks standard installation locations:
- - `~/.nlpl/lib/{dep_name}`
- - `/usr/local/lib/nlpl/{dep_name}`
- - `/usr/lib/nlpl/{dep_name}`
+ - `~/.nexuslang/lib/{dep_name}`
+ - `/usr/local/lib/nexuslang/{dep_name}`
+ - `/usr/lib/nexuslang/{dep_name}`
 
 **Code**:
 ```python
@@ -50,9 +50,9 @@ for dep_name, dep_spec in self.config.dependencies.items():
  else:
  # Check standard installation paths
  standard_paths = [
- os.path.expanduser(f'~/.nlpl/lib/{dep_name}'),
- f'/usr/local/lib/nlpl/{dep_name}',
- f'/usr/lib/nlpl/{dep_name}'
+ os.path.expanduser(f'~/.nexuslang/lib/{dep_name}'),
+ f'/usr/local/lib/nexuslang/{dep_name}',
+ f'/usr/lib/nexuslang/{dep_name}'
  ]
  for path in standard_paths:
  if os.path.exists(path):
@@ -69,7 +69,7 @@ for dep_name, dep_spec in self.config.dependencies.items():
 #### Key Components:
 
 1. **Main Entry Point Detection** (`_detect_main_entry_point()`)
- - Strategy 1: Look for `main.nlpl`
+ - Strategy 1: Look for `main.nxl`
  - Strategy 2: Look for file matching package name
  - Strategy 3: Look for file containing `main()` function
  - Strategy 4: Default to first file
@@ -134,7 +134,7 @@ if len(compiled_objects) > 1:
 
 3. **Any Executable File**
  - Scan for files with execute permission
- - Skip directories, object files (`.o`), and source files (`.c`, `.cpp`, `.h`, `.nlpl`, etc.)
+ - Skip directories, object files (`.o`), and source files (`.c`, `.cpp`, `.h`, `.nxl`, etc.)
 
 4. **Newest Non-Source File**
  - Find most recently modified file
@@ -210,7 +210,7 @@ Test 6: Find Executable
 ### Example 1: Single-File Project
 
 ```toml
-# nlpl.toml
+# nexuslang.toml
 [package]
 name = "hello"
 version = "0.1.0"
@@ -222,38 +222,38 @@ target = "c"
 ```
 
 ```bash
-nlplbuild build # Compiles src/hello.nlpl build/hello
-nlplbuild run # Runs build/hello
+nlpl build # Compiles src/hello.nxl build/hello
+nlpl run # Runs build/hello
 ```
 
 ### Example 2: Multi-File Project
 
 ```
 project/
- nlpl.toml
+ nexuslang.toml
  src/
- main.nlpl # Entry point (auto-detected)
+ main.nxl # Entry point (auto-detected)
  utils/
- string.nlpl
- math.nlpl
+ string.nxl
+ math.nxl
  models/
- user.nlpl
+ user.nxl
 ```
 
 ```bash
-nlplbuild build
+nlpl build
 # Compiles all files:
-# src/main.nlpl build/main.c
-# src/utils/string.nlpl build/utils/string.c
-# src/utils/math.nlpl build/utils/math.c
-# src/models/user.nlpl build/models/user.c
+# src/main.nxl build/main.c
+# src/utils/string.nxl build/utils/string.c
+# src/utils/math.nxl build/utils/math.c
+# src/models/user.nxl build/models/user.c
 # Links all together build/project
 ```
 
 ### Example 3: Project with Dependencies
 
 ```toml
-# nlpl.toml
+# nexuslang.toml
 [package]
 name = "myapp"
 version = "1.0.0"
@@ -313,9 +313,9 @@ Source Files Main Detection Module Grouping
 ```
 Dependencies Local (path)? Yes Add {path}/build/lib
  No Check Standard Paths:
- - ~/.nlpl/lib/{name}
- - /usr/local/lib/nlpl/{name}
- - /usr/lib/nlpl/{name}
+ - ~/.nexuslang/lib/{name}
+ - /usr/local/lib/nexuslang/{name}
+ - /usr/lib/nexuslang/{name}
 ```
 
 ### Executable Detection Flow

@@ -8,7 +8,7 @@
 ## Part 1 — Overview
 
 The NexusLang standard library is implemented in Python.  Each module is a
-subdirectory of `src/nlpl/stdlib/` containing an `__init__.py` that
+subdirectory of `src/nexuslang/stdlib/` containing an `__init__.py` that
 registers Python callables with the runtime.
 
 When you import a module in NexusLang, the interpreter loads the corresponding
@@ -19,7 +19,7 @@ Python module and calls its `register_*_functions` function.
 ## Part 2 — Module File Layout
 
 ```
-src/nlpl/stdlib/
+src/nexuslang/stdlib/
   my_module/
     __init__.py        # registration entry point
     _impl.py           # optional: implementation helpers
@@ -29,7 +29,7 @@ src/nlpl/stdlib/
 
 ## Part 3 — Minimal Module
 
-`src/nlpl/stdlib/my_module/__init__.py`:
+`src/nexuslang/stdlib/my_module/__init__.py`:
 
 ```python
 """
@@ -63,7 +63,7 @@ def my_greet(name: str) -> str:
 
 ## Part 4 — Registering the Module
 
-Open `src/nlpl/stdlib/__init__.py` and add two lines:
+Open `src/nexuslang/stdlib/__init__.py` and add two lines:
 
 ```python
 # 1. Import the registration function
@@ -252,10 +252,10 @@ Maximum buffer size: `4096`.
 
 | Step | Action |
 |------|--------|
-| 1 | Create `src/nlpl/stdlib/my_module/__init__.py` |
+| 1 | Create `src/nexuslang/stdlib/my_module/__init__.py` |
 | 2 | Implement Python functions with type checks |
 | 3 | Write `register_my_module_functions(runtime)` |
-| 4 | Add registration call to `src/nlpl/stdlib/__init__.py` |
+| 4 | Add registration call to `src/nexuslang/stdlib/__init__.py` |
 | 5 | Write pytest tests in `tests/unit/stdlib/` |
 | 6 | Add reference page to `docs/reference/stdlib/` |
 

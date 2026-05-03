@@ -372,10 +372,10 @@ All 11 tests passing
 
 ### Key Code Locations
 
-- **AST Node**: `src/nlpl/parser/ast.py` - `AddressOfExpression` class (line 662)
-- **Parser**: `src/nlpl/parser/parser.py` - `unary()` method handles `address of` (line 2904)
-- **Type Inference**: `src/nlpl/compiler/backends/llvm_ir_generator.py` - `_infer_expression_type()` (line 4077)
-- **Code Generation**: `src/nlpl/compiler/backends/llvm_ir_generator.py` - `_generate_address_of_expression()` (line 2586)
+- **AST Node**: `src/nexuslang/parser/ast.py` - `AddressOfExpression` class (line 662)
+- **Parser**: `src/nexuslang/parser/parser.py` - `unary()` method handles `address of` (line 2904)
+- **Type Inference**: `src/nexuslang/compiler/backends/llvm_ir_generator.py` - `_infer_expression_type()` (line 4077)
+- **Code Generation**: `src/nexuslang/compiler/backends/llvm_ir_generator.py` - `_generate_address_of_expression()` (line 2586)
 
 ### Design Decisions
 

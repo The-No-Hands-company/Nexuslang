@@ -295,5 +295,5 @@ end
 | Error handling | `Result<T,E>`, `?` | `try/catch/always` |
 | Concurrency model | `async`/`threads`, `Send`/`Sync` | `async`/`await`, `system.spawn_thread` |
 | Macros | `macro_rules!`, proc macros | No macros; use functions or stdlib |
-| Build system | Cargo + `Cargo.toml` | `nlpl build` + `nlpl.toml` |
+| Build system | Cargo + `Cargo.toml` | `nlpl build` + `nexuslang.toml` |
 | Package registry | crates.io | NexusLang package registry (planned) |

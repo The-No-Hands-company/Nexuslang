@@ -16,7 +16,7 @@ ast = parse_with_cache('file.nxl', source_code)  # ~10x faster
 
 ### 1. LSP Server (Automatic)
 
-Already integrated in `src/nlpl/lsp/diagnostics.py`. No changes needed.
+Already integrated in `src/nexuslang/lsp/diagnostics.py`. No changes needed.
 
 ### 2. Custom Parser
 
@@ -89,4 +89,4 @@ python dev_tools/profile_parser.py
 
 ## Documentation
 
-Full documentation: `docs/7_development/performance_optimizations.md`
+Full documentation: `docs/contributing/performance-optimizations.md`

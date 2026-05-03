@@ -294,7 +294,7 @@ print text dist
 
 ```
 myproject/
-├── nlpl.toml          # Project configuration
+├── nexuslang.toml     # Project configuration
 ├── src/
 │   ├── main.nlpl      # Entry point
 │   ├── utils.nlpl     # Utility functions
@@ -305,7 +305,7 @@ myproject/
     └── main           # Executable
 ```
 
-**Project configuration (nlpl.toml):**
+**Project configuration (nexuslang.toml):**
 
 ```toml
 [package]
@@ -330,9 +330,9 @@ nlpl build --clean   # Clean build
 
 ## Next Steps
 
-- Explore the [REPL Guide](REPL_GUIDE.md) for interactive development
-- Read [Performance Tips](PERFORMANCE_TIPS.md) for optimization strategies
-- See [Language Reference](docs/2_language_basics/) for full syntax
+- Explore [REPL](../tooling/repl.md) for interactive development
+- Read [Performance Optimizations](performance-optimizations.md) for optimization strategies
+- See [Language Specification](../reference/language-spec.md) for full syntax
 - Check [Examples](examples/) for more code samples
 
 ## Contributing

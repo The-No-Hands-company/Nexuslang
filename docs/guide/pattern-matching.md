@@ -809,10 +809,10 @@ end
 
 ## Further Reading
 
-- **Type System Guide:** `docs/5_type_system/`
-- **Option/Result Types:** `docs/3_core_concepts/option_result.md`
-- **Enums:** `docs/3_core_concepts/enums.md`
-- **Control Flow:** `docs/2_language_basics/control_flow.md`
+- **Type System Guide:** `docs/guide/type-system.md`
+- **Option/Result Types:** `docs/reference/stdlib/index.md`
+- **Enums:** `docs/guide/enum-types.md`
+- **Control Flow:** `docs/tutorials/beginner/02-variables-functions-control-flow.md`
 - **Examples:** `examples/15_pattern_matching.nlpl`
 
 ---

@@ -640,5 +640,5 @@ Open VS Code settings (Ctrl+,) and search for "NexusLang":
 
 - **VS Code LSP Guide:** https://code.visualstudio.com/api/language-extensions/language-server-extension-guide
 - **LSP Specification:** https://microsoft.github.io/language-server-protocol/
-- **NLPL LSP Features:** `docs/7_development/LSP_FEATURES.md`
-- **Performance Report:** `docs/7_development/LSP_PERFORMANCE_REPORT.md`
+- **NexusLang LSP Features:** `docs/tooling/lsp-features.md`
+- **LSP Guide:** `docs/tooling/lsp.md`

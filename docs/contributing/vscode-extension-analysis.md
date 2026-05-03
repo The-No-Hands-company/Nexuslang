@@ -344,7 +344,7 @@ vscode-extension/
 
 11. **Update Project Documentation**:
     - `VSCODE_EXTENSION_GUIDE.md`: Installation and development
-    - `docs/7_development/`: Extension architecture
+   - `docs/tooling/`: Extension architecture and usage
     - Remove references to old directories
 
 12. **Create Migration Guide** (for other contributors):
@@ -512,7 +512,7 @@ NexusLang/
 │   ├── settings.json              # Workspace settings
 │   └── extensions.json            # Recommended extensions
 │
-├── src/nlpl/                      # Language implementation
+├── src/nexuslang/                 # Language implementation
 ├── docs/                          # Documentation
 ├── examples/                      # Example programs
 └── test_programs/                 # Test suite

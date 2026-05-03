@@ -213,7 +213,7 @@ set p.y to 20
 
 ## Implementation Files Modified
 
-1. **`src/nlpl/compiler/backends/llvm_ir_generator.py`**:
+1. **`src/nexuslang/compiler/backends/llvm_ir_generator.py`**:
  - Added `_generate_member_access_pointer()` (line ~3838)
  - Added `_infer_member_access_type()` (line ~3910)
  - Enhanced `_generate_member_access()` (line ~3692)

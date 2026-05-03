@@ -931,10 +931,10 @@ end
 
 ## Further Reading
 
-- **FFI Guide:** `docs/3_core_concepts/ffi.md`
-- **Memory Management:** `docs/3_core_concepts/memory.md`
-- **Struct/Union Types:** `docs/3_core_concepts/struct_union.md`
-- **System Programming:** `docs/8_advanced/system_programming.md`
+- **FFI Guide:** `docs/reference/stdlib/ffi.md`
+- **Memory Management:** `docs/tutorials/advanced/02-memory-management.md`
+- **Struct/Union Types:** `docs/guide/structs-and-unions.md`
+- **Language Reference:** `docs/reference/language-spec.md`
 - **x86_64 Reference:** Intel/AMD architecture manuals
 - **System V ABI:** Calling convention specification
 

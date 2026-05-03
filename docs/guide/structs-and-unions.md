@@ -957,10 +957,10 @@ end
 
 ## Further Reading
 
-- **FFI Guide:** `docs/3_core_concepts/ffi.md`
-- **Memory Management:** `docs/3_core_concepts/memory.md`
-- **Inline Assembly:** `docs/3_core_concepts/inline_assembly.md`
-- **Type System:** `docs/5_type_system/`
+- **FFI Guide:** `docs/reference/stdlib/ffi.md`
+- **Memory Management:** `docs/tutorials/advanced/02-memory-management.md`
+- **Inline Assembly:** `docs/guide/inline-assembly.md`
+- **Type System:** `docs/guide/type-system.md`
 - **Examples:** `examples/24_struct_and_union.nlpl`
 
 ---

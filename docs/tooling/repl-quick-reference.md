@@ -100,6 +100,6 @@ Error: Cannot add string and integer
 
 ## See Also
 
-- Full documentation: `docs/7_development/repl.md`
+- Full documentation: `docs/tooling/repl.md`
 - Examples: `examples/01_basic_concepts.nlpl`
 - Manual tests: `test_repl_manual.py`

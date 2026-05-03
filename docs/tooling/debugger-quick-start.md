@@ -225,7 +225,7 @@ ls src/nexuslang/debugger/dap_server.py
    - Call stack navigation
 
 2. **Read full documentation:**
-   - `docs/7_development/DEBUGGER_IMPLEMENTATION.md`
+   - `docs/tooling/debugger.md`
 
 3. **Report issues:**
    - Check `/tmp/nlpl-dap.log` for errors

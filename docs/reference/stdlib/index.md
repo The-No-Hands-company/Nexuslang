@@ -1263,9 +1263,9 @@ The NexusLang standard library provides:
 ✅ **Full documentation** with examples  
 
 **For detailed guides, see:**
-- Core concepts: [docs/3_core_concepts/](../3_core_concepts/)
-- Pattern matching: [pattern_matching.md](../3_core_concepts/pattern_matching.md)
-- FFI: [ffi.md](../3_core_concepts/ffi.md)
-- Inline assembly: [inline_assembly.md](../3_core_concepts/inline_assembly.md)
+- Core concepts: [docs/guide/](../../guide/)
+- Pattern matching: [pattern-matching.md](../../guide/pattern-matching.md)
+- FFI: [ffi.md](ffi.md)
+- Inline assembly: [inline-assembly.md](../../guide/inline-assembly.md)
 
 **Status:** All modules are fully implemented and ready for production use!

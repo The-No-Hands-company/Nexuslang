@@ -508,8 +508,8 @@ The debugger adds overhead to program execution:
 
 ## See Also
 
-- **REPL Documentation**: `docs/7_development/repl.md`
-- **Interpreter Architecture**: `docs/4_architecture/compiler_architecture.md`
+- **REPL Documentation**: `docs/tooling/repl.md`
+- **Interpreter Architecture**: `docs/contributing/compiler-guide.md`
 - **Examples**: `test_programs/integration/debugger/`
 - **Test Suite**: `test_debugger.py`
 

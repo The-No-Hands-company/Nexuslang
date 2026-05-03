@@ -389,16 +389,16 @@ def _count_nodes(node) -> int:
 ### Contributing
 
 Performance improvements welcome! See:
-- `src/nlpl/parser/ast_cache.py` - Cache implementation
-- `src/nlpl/parser/cached_parser.py` - Parser wrapper
+- `src/nexuslang/parser/ast_cache.py` - Cache implementation
+- `src/nexuslang/parser/cached_parser.py` - Parser wrapper
 - `dev_tools/profile_parser.py` - Profiling tool
 - `dev_tools/benchmark_lsp_cache.py` - Benchmark tool
 
 ## References
 
-- **AST Cache**: `src/nlpl/parser/ast_cache.py`
-- **Cached Parser**: `src/nlpl/parser/cached_parser.py`
-- **LSP Integration**: `src/nlpl/lsp/diagnostics.py`
+- **AST Cache**: `src/nexuslang/parser/ast_cache.py`
+- **Cached Parser**: `src/nexuslang/parser/cached_parser.py`
+- **LSP Integration**: `src/nexuslang/lsp/diagnostics.py`
 - **Profiling Tool**: `dev_tools/profile_parser.py`
 - **Benchmark Tool**: `dev_tools/benchmark_lsp_cache.py`
 - **Test Suite**: `dev_tools/test_ast_cache.py`

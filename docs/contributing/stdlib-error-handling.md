@@ -3,7 +3,7 @@
 ## Overview
 
 All NexusLang standard library modules must use the unified error types defined in
-`src/nlpl/stdlib/errors.py` rather than raw Python exceptions. This ensures
+`src/nexuslang/stdlib/errors.py` rather than raw Python exceptions. This ensures
 NLPL programs receive consistent, catchable errors with rich context.
 
 ## Error Hierarchy

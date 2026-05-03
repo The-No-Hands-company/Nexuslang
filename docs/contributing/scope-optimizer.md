@@ -166,7 +166,7 @@ Cache rebuilds: 4
 To enable by default in `main.py`:
 
 ```python
-# In src/nlpl/main.py:
+# In src/nexuslang/main.py:
 from nexuslang.interpreter.scope_optimizer import enable_scope_optimization
 
 # After creating interpreter:

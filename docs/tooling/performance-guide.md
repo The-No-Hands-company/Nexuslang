@@ -524,6 +524,6 @@ NLPL performance optimization toolkit:
 5. Achieve 10-300x speedup
 
 For more details:
-- `TOOLING_GUIDE.md` - Profiler, analyzer, formatter
-- `COMPILER_GUIDE.md` - Compilation and benchmarks
-- `docs/4_architecture/` - Compiler architecture
+- `docs/tooling/tooling-guide.md` - Profiler, analyzer, formatter
+- `docs/contributing/compiler-guide.md` - Compilation and benchmarks
+- `docs/reference/optimization-guide.md` - Optimization architecture and tuning

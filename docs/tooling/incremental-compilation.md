@@ -84,10 +84,10 @@ Incremental compilation is **enabled by default**:
 
 ```bash
 # Build with incremental compilation (default)
-nxl_build build
+nlpl build
 
 # Disable incremental compilation
-nxl_build build --no-incremental
+nlpl build --clean
 ```
 
 ### Clean Build
@@ -95,8 +95,8 @@ nxl_build build --no-incremental
 Clear the cache to force a full rebuild:
 
 ```bash
-nxl_build clean  # Removes build/ directory and cache
-nxl_build build  # Fresh build with new cache
+nlpl clean  # Removes build/ directory and cache
+nlpl build  # Fresh build with new cache
 ```
 
 ### Verbose Output
@@ -104,7 +104,7 @@ nxl_build build  # Fresh build with new cache
 See rebuild reasons in verbose mode:
 
 ```bash
-nxl_build build --verbose
+nlpl build --verbose
 ```
 
 Output:
@@ -218,7 +218,7 @@ Example:
 
 ### Integration with Build Tool
 
-**dev_tools/nxl_build.py**:
+**`nlpl` CLI integration**:
 
 ```python
 class BuildTool:
@@ -256,7 +256,7 @@ class BuildTool:
 `test_programs/build_system/`:
 - `calculator.nlpl` - Main program
 - `math_utils.nlpl` - Dependency module
-- `nlpl.toml` - Build manifest
+- `nexuslang.toml` - Build manifest
 
 ### Manual Testing
 
@@ -264,17 +264,17 @@ class BuildTool:
 cd test_programs/build_system
 
 # Clean build
-nxl_build clean
-nxl_build build --verbose
+nlpl clean
+nlpl build --verbose
 # Output: "1 compiled, 0 up-to-date"
 
 # No changes - should skip
-nxl_build build --verbose
+nlpl build --verbose
 # Output: "0 compiled, 1 up-to-date"
 
 # Modify dependency
 echo '# Comment' >> math_utils.nlpl
-nxl_build build --verbose
+nlpl build --verbose
 # Output: "Rebuild reason: Dependency math_utils.nlpl changed"
 #         "1 compiled, 0 up-to-date"
 ```
@@ -289,7 +289,7 @@ nxl_build build --verbose
 | Modify dependency | All reverse dependents rebuilt |
 | Change profile (dev→release) | All files rebuilt |
 | Delete output artifact | Corresponding source rebuilt |
-| `--no-incremental` flag | Always rebuild everything |
+| `--clean` flag | Force clean rebuild |
 
 ## Limitations & Future Enhancements
 
@@ -333,8 +333,8 @@ nxl_build build --verbose
 
 **Fix**:
 ```bash
-nxl_build clean  # Removes corrupted cache
-nxl_build build  # Fresh build
+nlpl clean  # Removes corrupted cache
+nlpl build  # Fresh build
 ```
 
 ### False Positives (Unnecessary Rebuilds)
@@ -343,7 +343,7 @@ nxl_build build  # Fresh build
 
 **Debug**:
 ```bash
-nxl_build build --verbose  # See rebuild reason
+nlpl build --verbose  # See rebuild reason
 ```
 
 **Common Causes**:
@@ -370,7 +370,7 @@ stat source_file.nlpl
 
 **Fix**:
 ```bash
-nxl_build clean && nxl_build build
+nlpl clean && nlpl build
 ```
 
 ## Architecture Decisions
@@ -408,9 +408,9 @@ nxl_build clean && nxl_build build
 
 ## Related Documentation
 
-- [Build System Guide](BUILD_TOOL_GUIDE.md) - Overview of build system
-- [NLPL.toml Specification](NLPL_TOML_SPECIFICATION.md) - Manifest format
-- [Compiler Architecture](../4_architecture/compiler_architecture.md) - Compilation pipeline
+- [Build Tool](build-tool.md) - Overview of build system
+- [nexuslang.toml Specification](nlpl-toml.md) - Manifest format
+- [Compiler Architecture](../contributing/compiler-guide.md) - Compilation pipeline
 
 ## See Also
 
