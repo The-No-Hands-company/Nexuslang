@@ -1,4 +1,4 @@
-# NexusLang — NexusLang
+# NexusLang
 
 > A general-purpose programming language that reads like English
 
