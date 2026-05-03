@@ -50,8 +50,8 @@ import module_name as alias
 16. [json_utils](#json_utils) - JSON parsing/serialization
 17. [csv_utils](#csv_utils) - CSV file handling
 18. [xml_utils](#xml_utils) - XML parsing
-19. [yaml](#yaml) - YAML support (planned)
-20. [toml](#toml) - TOML configuration (planned)
+19. [yaml](#yaml) - YAML support (via serialization module)
+20. [toml](#toml) - TOML configuration (via serialization module)
 21. [pdf_utils](#pdf_utils) - PDF generation
 
 ### Databases

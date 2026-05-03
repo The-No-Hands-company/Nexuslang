@@ -1092,7 +1092,9 @@ Test 7: Signature Help
 
 ### Q: Does LSP support debugging?
 
-**A**: Not yet. Debugger integration (DAP protocol) is planned for post-v1.0.
+**A**: Yes, via the NexusLang debugger's DAP server (`src/nexuslang/debugger/dap_server.py`).
+The LSP server and DAP server are separate components that can be used together
+in editor integrations.
 
 ### Q: How do I disable specific diagnostics?
 

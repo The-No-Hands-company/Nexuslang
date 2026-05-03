@@ -514,7 +514,8 @@ python dev_tools/nlplc_llvm.py app.nlpl -O2 -o app_o2
 
 ### Link-Time Optimization (LTO)
 
-**Future feature** - not yet implemented
+**Available in build profiles** via `nlpl build --lto` and profile settings.
+The direct `dev_tools/nlplc_llvm.py --lto` workflow below is still planned.
 
 Will enable optimization across module boundaries:
 ```bash
@@ -524,7 +525,8 @@ python dev_tools/nlplc_llvm.py app.nlpl -O2 --lto -o app
 
 ### Profile-Guided Optimization (PGO)
 
-**Future feature** - not yet implemented
+**Available in the build tool workflow** via `nlpl pgo instrument|collect|build`.
+The direct `dev_tools/nlplc_llvm.py --profile-*` workflow below is still planned.
 
 Will use runtime profiling data to guide optimization:
 ```bash
