@@ -101,7 +101,10 @@ class SymbolProvider:
                     'struct': 23,    # Struct
                     'variable': 13,  # Variable
                     'field': 8,      # Field
-                    'parameter': 13  # Variable
+                    'parameter': 13, # Variable
+                    'switch': 2,     # Module-like control-flow group
+                    'case': 22,      # EnumMember-like branch entry
+                    'label': 20,     # Key-like label identifier
                 }
                 symbols.append({
                     'name': sym.name,

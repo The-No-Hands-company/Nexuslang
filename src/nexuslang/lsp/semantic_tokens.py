@@ -6,6 +6,7 @@ Provides semantic token highlighting using AST-based symbol analysis.
 """
 
 from typing import List, Dict, Optional, Tuple
+import re
 from ..parser.lexer import Lexer
 from ..parser.parser import Parser
 from ..analysis import ASTSymbolExtractor, SymbolTable, SymbolKind
@@ -116,19 +117,16 @@ class SemanticTokensProvider:
         """
         # Build symbol table
         symbol_table = self._get_or_build_symbol_table(text, uri)
+        absolute_tokens: List[Tuple[int, int, int, int, int]] = []
         if not symbol_table:
-            return []
+            all_symbols = []
+        else:
+            # Get all symbols from the symbol table
+            all_symbols = self._collect_all_symbols(symbol_table)
+            # Sort by position (line, then column)
+            all_symbols.sort(key=lambda s: (s.location.line, s.location.column))
         
-        # Collect all symbols with their positions
-        tokens = []
-        
-        # Get all symbols from the symbol table
-        all_symbols = self._collect_all_symbols(symbol_table)
-        
-        # Sort by position (line, then column)
-        all_symbols.sort(key=lambda s: (s.location.line, s.location.column))
-        
-        # Convert to LSP format (relative encoding)
+        # Convert symbol-derived tokens to absolute positions.
         prev_line = 0
         prev_char = 0
         
@@ -147,6 +145,30 @@ class SemanticTokensProvider:
             delta_line = line - prev_line
             delta_char = char - prev_char if delta_line == 0 else char
             
+            absolute_tokens.append((line, char, length, token_type, modifiers))
+
+            prev_line = line
+            prev_char = char
+
+        # Add control-flow keyword tokens for switch/label/fallthrough constructs.
+        keyword_type = self.TOKEN_TYPES.index("keyword")
+        control_flow_keywords = ("switch", "case", "default", "fallthrough", "label")
+        keyword_pattern = r'\b(' + "|".join(control_flow_keywords) + r')\b'
+        for line_num, line_text in enumerate(text.split('\n')):
+            if line_text.strip().startswith('#'):
+                continue
+            for match in re.finditer(keyword_pattern, line_text, re.IGNORECASE):
+                absolute_tokens.append((line_num, match.start(), len(match.group(1)), keyword_type, 0))
+
+        # De-duplicate and sort before converting to delta-encoded LSP representation.
+        absolute_tokens = sorted(set(absolute_tokens), key=lambda t: (t[0], t[1], t[2], t[3], t[4]))
+
+        tokens: List[int] = []
+        prev_line = 0
+        prev_char = 0
+        for line, char, length, token_type, modifiers in absolute_tokens:
+            delta_line = line - prev_line
+            delta_char = char - prev_char if delta_line == 0 else char
             tokens.extend([delta_line, delta_char, length, token_type, modifiers])
             
             prev_line = line

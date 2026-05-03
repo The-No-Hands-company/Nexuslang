@@ -36,7 +36,8 @@ from ..parser.lexer import Lexer
 from ..parser.parser import Parser
 from ..parser.ast import (
     Program, FunctionDefinition, ClassDefinition, StructDefinition,
-    VariableDeclaration, ImportStatement, ASTNode, MethodDefinition
+    VariableDeclaration, ImportStatement, ASTNode, MethodDefinition,
+    SwitchStatement, WhileLoop, ForLoop
 )
 
 logger = logging.getLogger('nlpl-lsp.workspace-index')
@@ -249,6 +250,107 @@ class WorkspaceIndex:
                 type_annotation=str(param.type_annotation) if hasattr(param, 'type_annotation') and param.type_annotation else None
             )
             symbols.append(param_symbol)
+
+        function_scope = f"{scope}.{stmt.name}" if scope else stmt.name
+        symbols.extend(self._extract_control_flow_symbols(stmt.body, file_uri, function_scope))
+        return symbols
+
+    def _extract_control_flow_symbols(self, statements: List[ASTNode], file_uri: str, scope: str) -> List[SymbolInfo]:
+        """Extract labeled-loop and switch/case outline symbols from statement lists."""
+        symbols: List[SymbolInfo] = []
+        if not statements:
+            return symbols
+
+        for stmt in statements:
+            if isinstance(stmt, WhileLoop) and getattr(stmt, 'label', None):
+                line = stmt.line_number - 1 if stmt.line_number else 0
+                symbols.append(SymbolInfo(
+                    name=stmt.label,
+                    kind='label',
+                    file_uri=file_uri,
+                    line=line,
+                    column=0,
+                    scope=scope,
+                    signature='loop label'
+                ))
+                symbols.extend(self._extract_control_flow_symbols(getattr(stmt, 'body', []), file_uri, scope))
+                symbols.extend(self._extract_control_flow_symbols(getattr(stmt, 'else_body', []), file_uri, scope))
+                continue
+
+            if isinstance(stmt, ForLoop) and getattr(stmt, 'label', None):
+                line = stmt.line_number - 1 if stmt.line_number else 0
+                symbols.append(SymbolInfo(
+                    name=stmt.label,
+                    kind='label',
+                    file_uri=file_uri,
+                    line=line,
+                    column=0,
+                    scope=scope,
+                    signature='loop label'
+                ))
+                symbols.extend(self._extract_control_flow_symbols(getattr(stmt, 'body', []), file_uri, scope))
+                symbols.extend(self._extract_control_flow_symbols(getattr(stmt, 'else_body', []), file_uri, scope))
+                continue
+
+            if isinstance(stmt, SwitchStatement):
+                switch_line = stmt.line_number - 1 if stmt.line_number else 0
+                symbols.append(SymbolInfo(
+                    name='switch',
+                    kind='switch',
+                    file_uri=file_uri,
+                    line=switch_line,
+                    column=0,
+                    scope=scope,
+                    signature='switch statement'
+                ))
+
+                for case_stmt in getattr(stmt, 'cases', []):
+                    case_line = case_stmt.line_number - 1 if case_stmt.line_number else switch_line
+                    case_name = 'case'
+                    if hasattr(case_stmt, 'value') and case_stmt.value is not None:
+                        case_value = getattr(case_stmt.value, 'value', None)
+                        if case_value is not None:
+                            case_name = f'case {case_value}'
+                    symbols.append(SymbolInfo(
+                        name=case_name,
+                        kind='case',
+                        file_uri=file_uri,
+                        line=case_line,
+                        column=0,
+                        scope=scope,
+                        signature='switch case'
+                    ))
+                    symbols.extend(self._extract_control_flow_symbols(getattr(case_stmt, 'body', []), file_uri, scope))
+
+                if getattr(stmt, 'default_case', None):
+                    symbols.append(SymbolInfo(
+                        name='default',
+                        kind='case',
+                        file_uri=file_uri,
+                        line=switch_line,
+                        column=0,
+                        scope=scope,
+                        signature='switch default'
+                    ))
+                    symbols.extend(self._extract_control_flow_symbols(getattr(stmt, 'default_case', []), file_uri, scope))
+                continue
+
+            # Descend into common nested blocks where statements can appear.
+            nested_blocks = []
+            if hasattr(stmt, 'body') and isinstance(getattr(stmt, 'body', None), list):
+                nested_blocks.append(stmt.body)
+            if hasattr(stmt, 'then_block') and isinstance(getattr(stmt, 'then_block', None), list):
+                nested_blocks.append(stmt.then_block)
+            if hasattr(stmt, 'else_block') and isinstance(getattr(stmt, 'else_block', None), list):
+                nested_blocks.append(stmt.else_block)
+            if hasattr(stmt, 'try_block') and isinstance(getattr(stmt, 'try_block', None), list):
+                nested_blocks.append(stmt.try_block)
+            if hasattr(stmt, 'catch_block') and isinstance(getattr(stmt, 'catch_block', None), list):
+                nested_blocks.append(stmt.catch_block)
+
+            for block in nested_blocks:
+                symbols.extend(self._extract_control_flow_symbols(block, file_uri, scope))
+
         return symbols
 
     def _extract_class_symbol(self, stmt: ClassDefinition, file_uri: str, scope: Optional[str]) -> List[SymbolInfo]:
@@ -290,6 +392,8 @@ class WorkspaceIndex:
                             type_annotation=str(param.type_annotation) if hasattr(param, 'type_annotation') and param.type_annotation else None
                         )
                         symbols.append(param_symbol)
+                    method_scope = f"{class_scope}.{method.name}"
+                    symbols.extend(self._extract_control_flow_symbols(getattr(method, 'body', []), file_uri, method_scope))
         if hasattr(stmt, 'attributes'):
             for attr in stmt.attributes:
                 if isinstance(attr, VariableDeclaration):

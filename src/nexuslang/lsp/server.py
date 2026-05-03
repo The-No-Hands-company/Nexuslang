@@ -671,7 +671,10 @@ class NLPLLanguageServer:
                 'struct': 23,    # Struct
                 'variable': 13,  # Variable
                 'field': 8,      # Field
-                'parameter': 13  # Variable
+                'parameter': 13, # Variable
+                'switch': 2,     # Module-like control-flow group
+                'case': 22,      # EnumMember-like branch entry
+                'label': 20,     # Key-like loop label
             }
             
             # Group by scope for hierarchy
@@ -698,7 +701,7 @@ class NLPLLanguageServer:
                 if not sym.scope:
                     # Top-level symbol
                     top_level.append(lsp_symbol)
-                    if sym.kind in ('class', 'struct'):
+                    if sym.kind in ('class', 'struct', 'function'):
                         # Initialize children list for this scope
                         children_by_scope[sym.name] = []
                 else:
