@@ -3695,6 +3695,94 @@ class LLVMIRGenerator(CodeGenerator):
                         expected_reg = self._convert_type(expected_reg, expected_type, 'i64', indent)
                     cond_reg = self._new_temp()
                     self.emit(f'{indent}{cond_reg} = icmp {ipred} i64 {actual_reg}, {expected_reg}')
+            elif matcher == 'contain':
+                if actual_type != 'i8*':
+                    if actual_type in ('i64', 'i32', 'i16', 'i8', 'i1', 'double', 'float'):
+                        actual_reg = self._convert_number_to_string(actual_reg, actual_type, indent)
+                        actual_type = 'i8*'
+                    else:
+                        actual_reg = self._convert_type(actual_reg, actual_type, 'i8*', indent)
+                        actual_type = 'i8*'
+                if expected_type != 'i8*':
+                    if expected_type in ('i64', 'i32', 'i16', 'i8', 'i1', 'double', 'float'):
+                        expected_reg = self._convert_number_to_string(expected_reg, expected_type, indent)
+                    else:
+                        expected_reg = self._convert_type(expected_reg, expected_type, 'i8*', indent)
+
+                strstr_reg = self._new_temp()
+                self.emit(f'{indent}{strstr_reg} = call i8* @strstr(i8* {actual_reg}, i8* {expected_reg})')
+                cond_reg = self._new_temp()
+                self.emit(f'{indent}{cond_reg} = icmp ne i8* {strstr_reg}, null')
+            elif matcher == 'start_with':
+                if actual_type != 'i8*':
+                    if actual_type in ('i64', 'i32', 'i16', 'i8', 'i1', 'double', 'float'):
+                        actual_reg = self._convert_number_to_string(actual_reg, actual_type, indent)
+                        actual_type = 'i8*'
+                    else:
+                        actual_reg = self._convert_type(actual_reg, actual_type, 'i8*', indent)
+                        actual_type = 'i8*'
+                if expected_type != 'i8*':
+                    if expected_type in ('i64', 'i32', 'i16', 'i8', 'i1', 'double', 'float'):
+                        expected_reg = self._convert_number_to_string(expected_reg, expected_type, indent)
+                    else:
+                        expected_reg = self._convert_type(expected_reg, expected_type, 'i8*', indent)
+
+                strstr_reg = self._new_temp()
+                self.emit(f'{indent}{strstr_reg} = call i8* @strstr(i8* {actual_reg}, i8* {expected_reg})')
+                cond_reg = self._new_temp()
+                self.emit(f'{indent}{cond_reg} = icmp eq i8* {strstr_reg}, {actual_reg}')
+            elif matcher == 'end_with':
+                if actual_type != 'i8*':
+                    if actual_type in ('i64', 'i32', 'i16', 'i8', 'i1', 'double', 'float'):
+                        actual_reg = self._convert_number_to_string(actual_reg, actual_type, indent)
+                        actual_type = 'i8*'
+                    else:
+                        actual_reg = self._convert_type(actual_reg, actual_type, 'i8*', indent)
+                        actual_type = 'i8*'
+                if expected_type != 'i8*':
+                    if expected_type in ('i64', 'i32', 'i16', 'i8', 'i1', 'double', 'float'):
+                        expected_reg = self._convert_number_to_string(expected_reg, expected_type, indent)
+                    else:
+                        expected_reg = self._convert_type(expected_reg, expected_type, 'i8*', indent)
+
+                actual_len = self._new_temp()
+                expected_len = self._new_temp()
+                has_room = self._new_temp()
+                offset = self._new_temp()
+                tail_ptr = self._new_temp()
+                cmp_reg = self._new_temp()
+                eq_reg = self._new_temp()
+                fallback_false = self._new_temp()
+                self.emit(f'{indent}{actual_len} = call i64 @strlen(i8* {actual_reg})')
+                self.emit(f'{indent}{expected_len} = call i64 @strlen(i8* {expected_reg})')
+                self.emit(f'{indent}{has_room} = icmp uge i64 {actual_len}, {expected_len}')
+                self.emit(f'{indent}{offset} = sub i64 {actual_len}, {expected_len}')
+                self.emit(f'{indent}{tail_ptr} = getelementptr i8, i8* {actual_reg}, i64 {offset}')
+                self.emit(f'{indent}{cmp_reg} = call i32 @strcmp(i8* {tail_ptr}, i8* {expected_reg})')
+                self.emit(f'{indent}{eq_reg} = icmp eq i32 {cmp_reg}, 0')
+                self.emit(f'{indent}{fallback_false} = and i1 {eq_reg}, {has_room}')
+                cond_reg = fallback_false
+            elif matcher == 'approximately_equal':
+                if actual_type != 'double':
+                    actual_reg = self._convert_type(actual_reg, actual_type, 'double', indent)
+                if expected_type != 'double':
+                    expected_reg = self._convert_type(expected_reg, expected_type, 'double', indent)
+
+                tolerance_expr = getattr(stmt, 'tolerance_expr', None)
+                if tolerance_expr is not None:
+                    tolerance_reg = self._generate_expression(tolerance_expr, indent)
+                    tolerance_type = self._infer_expression_type(tolerance_expr)
+                    if tolerance_type != 'double':
+                        tolerance_reg = self._convert_type(tolerance_reg, tolerance_type, 'double', indent)
+                else:
+                    tolerance_reg = '1.000000e-06'
+
+                diff = self._new_temp()
+                abs_diff = self._new_temp()
+                cond_reg = self._new_temp()
+                self.emit(f'{indent}{diff} = fsub double {actual_reg}, {expected_reg}')
+                self.emit(f'{indent}{abs_diff} = call double @fabs(double {diff})')
+                self.emit(f'{indent}{cond_reg} = fcmp ole double {abs_diff}, {tolerance_reg}')
             else:
                 msg_reg = self._contract_message_ptr(
                     getattr(stmt, 'message_expr', None),
@@ -9936,7 +10024,26 @@ class LLVMIRGenerator(CodeGenerator):
             target = expr.target
             # Check if target is Identifier (Type Name)
             if type(target).__name__ == 'Identifier':
-                type_name = target.name
+                ident_name = target.name
+
+                # Prefer variable resolution when identifier is already in scope.
+                # This handles sizeof variable-expression targets correctly.
+                if ident_name in self.local_vars or ident_name in self.global_vars:
+                    if ident_name in self.local_vars:
+                        inferred_type = self.local_vars[ident_name][0]
+                    else:
+                        inferred_type = self.global_vars[ident_name][0]
+                    inferred_type = inferred_type or self._infer_expression_type(target) or "i8"
+                    size_bits = self._get_type_size_bits(inferred_type)
+                    size_bytes = (size_bits + 7) // 8
+                    size_reg = f"%sizeof_res_{self.temp_counter}"
+                    self.temp_counter += 1
+                    self.ir_lines.append(
+                        f"{indent}{size_reg} = add i64 {size_bytes}, 0  ; sizeof expression target ({inferred_type})"
+                    )
+                    return size_reg
+
+                type_name = ident_name
                 
                 # Check generics first (critical for List<T>)
                 if type_name in self.type_cache:
@@ -9964,9 +10071,9 @@ class LLVMIRGenerator(CodeGenerator):
                     # Infer element type from first element
                     first_elem_type = self._infer_expression_type(target.elements[0])
                     
-                    # Get size of element type
+                    # Get size of element type (round up bits -> bytes)
                     elem_size_bits = self._get_type_size_bits(first_elem_type)
-                    elem_size_bytes = elem_size_bits // 8
+                    elem_size_bytes = (elem_size_bits + 7) // 8
                     
                     # Calculate total size
                     total_size = element_count * elem_size_bytes
@@ -9983,8 +10090,16 @@ class LLVMIRGenerator(CodeGenerator):
                     self.ir_lines.append(f"{indent}{size_reg} = add i64 0, 0  ; sizeof empty array literal")
                     return size_reg
             else:
-                # Expression target - unsupported for now
-                pass
+                # Expression target: infer expression LLVM type and compute its size.
+                inferred_type = self._infer_expression_type(target) or "i8"
+                size_bits = self._get_type_size_bits(inferred_type)
+                size_bytes = (size_bits + 7) // 8
+                size_reg = f"%sizeof_res_{self.temp_counter}"
+                self.temp_counter += 1
+                self.ir_lines.append(
+                    f"{indent}{size_reg} = add i64 {size_bytes}, 0  ; sizeof expression target ({inferred_type})"
+                )
+                return size_reg
         
         # Check if this is an empty type (class/struct with no fields)
         is_empty_type = False

@@ -875,16 +875,35 @@ def widget_button(window_id: int, text: str = "OK", x: int = 0, y: int = 0,
                   color: str = "#000000", bg: str = "#e0e0e0",
                   font_family: str = "Arial", font_size: int = 11,
                   command_name: str = "") -> Optional[int]:
-    """Place a button widget.  Returns widget handle or None."""
+    """Place a button widget.  Returns widget handle or None.
+
+    When the button is clicked it enqueues a ``button_click`` event in the
+    window's event queue (accessible via ``event_poll``).  The event dict
+    contains ``type="button_click"``, ``widget_id``, ``text``, and
+    ``command_name`` fields so NexusLang programs can distinguish which button
+    was pressed without requiring Python-level callables.
+    """
     if not _tk_available or window_id not in _windows:
         return None
     try:
         widget_id = _next_id()
+
+        q = _event_queues.setdefault(window_id, queue.Queue())
+
+        def _on_click(_wid=widget_id, _text=text, _cname=command_name, _q=q):
+            _q.put({
+                "type": "button_click",
+                "widget_id": _wid,
+                "text": _text,
+                "command_name": _cname,
+            })
+
         btn = _tk.Button(
             _windows[window_id],
             text=str(text), fg=_coerce_color(color), bg=_coerce_color(bg),
             font=(str(font_family), int(font_size)),
             width=int(width) // 8,  # tkinter width is in char units for buttons
+            command=_on_click,
         )
         btn.place(x=int(x), y=int(y), width=int(width), height=int(height))
         _widgets[widget_id] = btn

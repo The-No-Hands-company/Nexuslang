@@ -302,3 +302,27 @@ end
     assert "nums[0]" in c_code
     assert "__match_bind_head_" in c_code
     assert "__match_bind_tail_" in c_code
+
+
+def test_c_match_expression_lowers_non_identifier_list_expression():
+    ast = _parse(
+        """
+function main returns Integer
+    match [2, 3] with
+        case (x, y)
+            print text x
+            print text y
+        case _
+            print text 0
+    end
+    return 0
+end
+"""
+    )
+
+    c_code = CCodeGenerator(target="c").generate(ast)
+
+    assert "__nxl_match_value_" in c_code
+    assert "[] = {2, 3}" in c_code
+    assert "[0]" in c_code
+    assert "[1]" in c_code

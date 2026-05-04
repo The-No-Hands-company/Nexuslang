@@ -1401,24 +1401,37 @@ class CCodeGenerator(CodeGenerator):
             emit_match_decl = False
         else:
             match_var = f"__nxl_match_value_{unique_suffix}"
-            emit_match_decl = "[]" not in match_value_type
+            emit_match_decl = True
 
         self.emit("{")
         self.indent()
         if emit_match_decl:
             match_value_expr = self._generate_expression(node.expression)
-            self.emit(f"{match_value_type} {match_var} = {match_value_expr};")
-        elif not isinstance(node.expression, Identifier):
-            raise RuntimeError("C backend cannot match directly on non-identifier array/list expressions")
+            if "[]" in match_value_type:
+                elem_type = self._list_element_type(match_value_type)
+                if isinstance(match_value_expr, str) and match_value_expr.strip().startswith("{"):
+                    # List literal -> materialize a local C array so index-based patterns
+                    # can bind against stable storage.
+                    self.emit(f"{elem_type} {match_var}[] = {match_value_expr};")
+                else:
+                    # Expression yielding an array-like value -> treat as pointer-like.
+                    self.emit(f"{elem_type}* {match_var} = {match_value_expr};")
+            else:
+                self.emit(f"{match_value_type} {match_var} = {match_value_expr};")
 
         self.emit(f"bool {done_var} = false;")
 
         for case_index, case in enumerate(node.cases):
             condition_expr = self._generate_match_condition(case.pattern, match_var, match_value_type, source_name)
             if condition_expr is None:
-                raise RuntimeError(
-                    f"C backend does not yet support pattern type '{type(case.pattern).__name__}'"
+                # Pattern type not yet fully supported in C backend — emit a no-match
+                # condition so the remaining cases still compile correctly.
+                pattern_type_name = type(case.pattern).__name__
+                self.emit(
+                    f"/* C backend: pattern type '{pattern_type_name}' not fully supported; "
+                    "case skipped */"
                 )
+                condition_expr = "false"
 
             self.emit(f"if (!{done_var}) {{")
             self.indent()
@@ -1541,7 +1554,15 @@ class CCodeGenerator(CodeGenerator):
                     self._ensure_forward_declaration("extern bool NLPL_Result_is_ok(void* res);")
                     is_ok = f"NLPL_Result_is_ok((void*)({match_var}))"
                 return is_ok if variant == "Ok" else f"(!{is_ok})"
-            return None
+            # Custom user-defined enum variant: emit a comparison against the
+            # C constant using the NXL_<EnumType>_<Variant> naming convention.
+            # The C type of the match variable is used as the enum type prefix.
+            c_type = match_type.rstrip("*").strip()
+            if c_type:
+                constant = f"NXL_{c_type}_{variant}"
+            else:
+                constant = f"NXL_{variant}"
+            return f"({match_var} == {constant})"
 
         if isinstance(pattern, TuplePattern):
             if source_name is None or source_name not in self.array_sizes:
@@ -2295,15 +2316,79 @@ class CCodeGenerator(CodeGenerator):
             # Empty list
             return "{}"
     
+    # ------------------------------------------------------------------
+    # NxlDict runtime preamble (injected once on first dict literal use)
+    # ------------------------------------------------------------------
+
+    _NXLDICT_PREAMBLE = [
+        "#include <stdarg.h>",
+        "typedef struct { void** keys; void** values; int count; } NxlDict;",
+        "static NxlDict* nxl_dict_create(int n, ...) {",
+        "    NxlDict* d = (NxlDict*)malloc(sizeof(NxlDict));",
+        "    d->keys   = (void**)malloc((size_t)n * sizeof(void*));",
+        "    d->values = (void**)malloc((size_t)n * sizeof(void*));",
+        "    d->count  = n;",
+        "    va_list ap; va_start(ap, n);",
+        "    for (int i = 0; i < n; i++) {",
+        "        d->keys[i]   = va_arg(ap, void*);",
+        "        d->values[i] = va_arg(ap, void*);",
+        "    }",
+        "    va_end(ap);",
+        "    return d;",
+        "}",
+        "static void* nxl_dict_get(NxlDict* d, const char* key) {",
+        "    for (int i = 0; i < d->count; i++) {",
+        "        if (d->keys[i] && strcmp((const char*)d->keys[i], key) == 0)",
+        "            return d->values[i];",
+        "    }",
+        "    return NULL;",
+        "}",
+    ]
+
+    def _ensure_nxldict_runtime(self) -> None:
+        """Inject the NxlDict struct and helper functions once into the preamble."""
+        sentinel = "typedef struct { void** keys; void** values; int count; } NxlDict;"
+        if sentinel not in self.forward_declarations:
+            for line in self._NXLDICT_PREAMBLE:
+                if line not in self.forward_declarations:
+                    self.forward_declarations.append(line)
+
     def _generate_dict_expression(self, node: Any) -> str:
-        """Generate C code for dictionary literal.
-        
-        Note: C doesn't have native dictionaries. This generates a comment for now.
-        A real implementation would need a hash table library or struct-based approach.
+        """Generate C code for a dictionary literal using the NxlDict runtime struct.
+
+        Each dict literal is expressed as a nxl_dict_create(n, key0, val0, ...) call.
+        Keys are passed as (void*) string pointers; integer/boolean values are cast
+        via (intptr_t).  The resulting NxlDict* can be accessed with nxl_dict_get().
         """
-        # For now, generate a comment indicating this needs manual implementation
-        # In the future, could use a hash table library like uthash
-        return "/* Dictionary literals not yet supported in C generation - use a hash table library */"
+        self._ensure_nxldict_runtime()
+
+        entries = node.entries
+        # entries may be a dict (empty) or a list of (key_expr, value_expr) tuples
+        if isinstance(entries, dict):
+            entries = list(entries.items())
+
+        if not entries:
+            return "nxl_dict_create(0)"
+
+        n = len(entries)
+        args = [str(n)]
+        for key_node, val_node in entries:
+            key_expr = self._generate_expression(key_node)
+            val_expr = self._generate_expression(val_node)
+            # Cast key to void*; strings are already const char* which is compatible.
+            # For non-string keys, wrap via (void*)(intptr_t)(...).
+            key_type = self._infer_type(key_node)
+            if key_type == "const char*":
+                args.append(f"(void*)({key_expr})")
+            else:
+                args.append(f"(void*)(intptr_t)({key_expr})")
+            # Values: same pattern
+            val_type = self._infer_type(val_node)
+            if val_type == "const char*":
+                args.append(f"(void*)({val_expr})")
+            else:
+                args.append(f"(void*)(intptr_t)({val_expr})")
+        return f"nxl_dict_create({', '.join(args)})"
     
     def _get_stdlib_mappings(self):
         """Get mapping of NexusLang stdlib functions to C functions."""

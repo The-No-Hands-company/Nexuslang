@@ -54,6 +54,29 @@ def test_llvm_contracts_and_expect_emit_runtime_panic_guards():
     assert "contract.fail" in llvm_ir
 
 
+def test_llvm_expect_supports_string_and_approximate_matchers():
+    ast = Program([
+        ExpectStatement(Literal("string", "nexuslang"), "contain", Literal("string", "lang")),
+        ExpectStatement(Literal("string", "nexuslang"), "start_with", Literal("string", "nexus")),
+        ExpectStatement(Literal("string", "nexuslang"), "end_with", Literal("string", "lang")),
+        ExpectStatement(
+            Literal("float", 3.14159),
+            "approximately_equal",
+            Literal("float", 3.1416),
+            tolerance_expr=Literal("float", 0.001),
+        ),
+    ])
+
+    generator = LLVMIRGenerator()
+    llvm_ir = generator.generate(ast)
+
+    assert "unsupported expect matcher" not in llvm_ir
+    assert "call i8* @strstr(" in llvm_ir
+    assert "call i64 @strlen(" in llvm_ir
+    assert "call i32 @strcmp(" in llvm_ir
+    assert "call double @fabs(" in llvm_ir
+
+
 def test_llvm_try_catch_block_lowers_with_landingpad_and_raise():
     ast = Program([
         TryCatchBlock(
