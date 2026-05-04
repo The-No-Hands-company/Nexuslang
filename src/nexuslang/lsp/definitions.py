@@ -152,6 +152,19 @@ class DefinitionProvider:
         symbol = self._get_symbol_at_position(text, position)
         if not symbol:
             return None
+
+        # Resolve member access through imported module aliases, e.g.:
+        #   import utils.math as m
+        #   set x to m.helper with 1
+        member_access = self._get_member_access_at_position(text, position)
+        if member_access:
+            base_name, member_name = member_access
+            if member_name == symbol:
+                module_name = self._resolve_module_alias(text, base_name)
+                if module_name:
+                    location = self._resolve_symbol_in_module(module_name, member_name, uri)
+                    if location:
+                        return location
         
         # Check if it's an import
         import_target = self._get_import_target(text, position, symbol)
@@ -173,6 +186,93 @@ class DefinitionProvider:
         if location:
             return location
         
+        return None
+
+    def _get_member_access_at_position(self, text: str, position) -> Optional[Tuple[str, str]]:
+        """Return (base, member) if cursor is on `<base>.<member>`, else None."""
+        lines = text.split('\n')
+        if position.line >= len(lines):
+            return None
+
+        line = lines[position.line]
+        if position.character >= len(line):
+            return None
+
+        # Expand token under cursor (member side)
+        start = position.character
+        end = position.character
+        while start > 0 and (line[start - 1].isalnum() or line[start - 1] == '_'):
+            start -= 1
+        while end < len(line) and (line[end].isalnum() or line[end] == '_'):
+            end += 1
+
+        if start == end:
+            return None
+
+        member = line[start:end]
+        if start == 0 or line[start - 1] != '.':
+            return None
+
+        # Expand token left of '.' (base side)
+        base_end = start - 1
+        base_start = base_end
+        while base_start > 0 and (line[base_start - 1].isalnum() or line[base_start - 1] == '_'):
+            base_start -= 1
+
+        if base_start == base_end:
+            return None
+
+        base = line[base_start:base_end]
+        if not base or not member:
+            return None
+
+        return (base, member)
+
+    def _resolve_module_alias(self, text: str, alias_or_module: str) -> Optional[str]:
+        """Resolve alias/module token to full module name from import statements."""
+        lines = text.split('\n')
+        for line in lines:
+            match = re.search(r'^\s*import\s+(.+)$', line, re.IGNORECASE)
+            if not match:
+                continue
+
+            for part in match.group(1).split(','):
+                item = part.strip()
+                if not item:
+                    continue
+
+                alias_match = re.match(r'^([\w\.]+)\s+as\s+(\w+)$', item, re.IGNORECASE)
+                if alias_match:
+                    module_name, alias = alias_match.groups()
+                    if alias == alias_or_module:
+                        return module_name
+                    continue
+
+                module_name = item
+                if module_name == alias_or_module:
+                    return module_name
+
+                # Support common short-form usage for dotted imports: pkg.mod -> mod
+                short_name = module_name.split('.')[-1]
+                if short_name == alias_or_module:
+                    return module_name
+
+        return None
+
+    def _resolve_symbol_in_module(self, module_name: str, symbol: str, current_uri: str):
+        """Resolve symbol definition inside the given module name."""
+        current_dir = os.path.dirname(current_uri.replace('file://', ''))
+
+        for module_path in self._find_module_paths(module_name, current_dir):
+            module_uri = f"file://{module_path}"
+            module_text = self._get_module_text(module_uri, module_path)
+            if not module_text:
+                continue
+
+            location = self._find_in_current_file(module_text, symbol, module_uri, None)
+            if location:
+                return location
+
         return None
     
     def _get_import_target(self, text: str, position, symbol: str) -> Optional[str]:

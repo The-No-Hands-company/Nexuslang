@@ -392,6 +392,78 @@ set result to h with 5
             assert location.uri == f"file://{module_file}"
             assert location.range.start.line == 1
 
+    def test_find_definition_for_import_alias_member_access(self):
+        """Go-to-definition should resolve member access through import aliases."""
+        module_code = """
+function helper that takes x as Integer returns Integer
+    return x
+"""
+        user_code = """
+import pkg.subpkg.math as m
+
+set result to m.helper with 5
+"""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            module_dir = os.path.join(tmpdir, "pkg", "subpkg")
+            os.makedirs(module_dir, exist_ok=True)
+            module_file = os.path.join(module_dir, "math.nxl")
+            user_file = os.path.join(tmpdir, "main.nxl")
+
+            with open(module_file, "w", encoding="utf-8") as fh:
+                fh.write(module_code)
+            with open(user_file, "w", encoding="utf-8") as fh:
+                fh.write(user_code)
+
+            server = NLPLLanguageServer()
+            provider = DefinitionProvider(server)
+
+            user_uri = f"file://{user_file}"
+            server.documents[user_uri] = user_code
+
+            position = Position(3, 18)  # on "helper" in "m.helper"
+            location = provider.get_definition(user_code, position, user_uri)
+
+            assert location is not None, "Should resolve aliased member definition"
+            assert location.uri == f"file://{module_file}"
+            assert location.range.start.line == 1
+
+    def test_find_definition_for_dotted_import_short_name_member_access(self):
+        """Go-to-definition should resolve member access for dotted imports using short module name."""
+        module_code = """
+function helper that takes x as Integer returns Integer
+    return x
+"""
+        user_code = """
+import pkg.subpkg.math
+
+set result to math.helper with 5
+"""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            module_dir = os.path.join(tmpdir, "pkg", "subpkg")
+            os.makedirs(module_dir, exist_ok=True)
+            module_file = os.path.join(module_dir, "math.nxl")
+            user_file = os.path.join(tmpdir, "main.nxl")
+
+            with open(module_file, "w", encoding="utf-8") as fh:
+                fh.write(module_code)
+            with open(user_file, "w", encoding="utf-8") as fh:
+                fh.write(user_code)
+
+            server = NLPLLanguageServer()
+            provider = DefinitionProvider(server)
+
+            user_uri = f"file://{user_file}"
+            server.documents[user_uri] = user_code
+
+            position = Position(3, 21)  # on "helper" in "math.helper"
+            location = provider.get_definition(user_code, position, user_uri)
+
+            assert location is not None, "Should resolve dotted import member definition"
+            assert location.uri == f"file://{module_file}"
+            assert location.range.start.line == 1
+
 
 class TestEnhancedHover:
     """Test enhanced hover documentation."""
