@@ -64,6 +64,7 @@ statement
     | panicStatement
     | fallthroughStatement
     | sendStatement
+    | closeStatement
     | tryCatch
     | raiseStatement
     | assertStatement
@@ -564,6 +565,10 @@ sendStatement
     : SEND expression TO expression
     ;
 
+closeStatement
+    : CLOSE WITH? expression
+    ;
+
 appendStatement
     : APPEND expression TO expression
     ;
@@ -637,11 +642,26 @@ freeStatement
 // --------------------------------------------------------------------------
 
 inlineAssembly
-    : ASM asmBody END
+    : ASM (FOR ARCH STRING_LITERAL)? asmSection* END?
     ;
 
-asmBody
-    : ( ~END_KW )*     // raw token sequence until 'end' keyword
+asmSection
+    : CODE STRING_LITERAL+
+    | INPUTS asmOperandList
+    | OUTPUTS asmOperandList
+    | CLOBBERS asmClobberList
+    ;
+
+asmOperandList
+    : asmOperand (COMMA asmOperand)*
+    ;
+
+asmOperand
+    : STRING_LITERAL ':' expression
+    ;
+
+asmClobberList
+    : STRING_LITERAL (COMMA STRING_LITERAL)*
     ;
 
 // --------------------------------------------------------------------------
@@ -652,20 +672,37 @@ asmBody
 
 foreignFunction
     : FOREIGN FUNCTION IDENTIFIER
-        (FROM STRING_LITERAL)?
-        (WITH parameterList)?
+        (WITH externParameterList)?
         (RETURNS typeAnnotation)?
-        END?
+        (FROM LIBRARY STRING_LITERAL)?
+        (CALLING CONVENTION (CDECL | STDCALL | IDENTIFIER))?
     ;
 
 externDeclaration
     : EXTERN FUNCTION IDENTIFIER
-        (WITH parameterList)?
+        (WITH externParameterList)?
         (RETURNS typeAnnotation)?
         (FROM LIBRARY STRING_LITERAL)?
-    | EXTERN IDENTIFIER IDENTIFIER AS typeAnnotation
+        (CALLING CONVENTION (CDECL | STDCALL | IDENTIFIER))?
+    | EXTERN VARIABLE IDENTIFIER AS typeAnnotation
         (FROM LIBRARY STRING_LITERAL)?
-    | EXTERN TYPE IDENTIFIER AS typeAnnotation
+    | EXTERN TYPE IDENTIFIER AS OPAQUE? typeAnnotation
+    | EXTERN TYPE IDENTIFIER AS FUNCTION
+        (WITH externTypeList)?
+        (RETURNS typeAnnotation)?
+    ;
+
+externParameterList
+    : externParameter (COMMA externParameter)* (COMMA ELLIPSIS)?
+    | ELLIPSIS
+    ;
+
+externParameter
+    : IDENTIFIER AS typeAnnotation
+    ;
+
+externTypeList
+    : typeAnnotation (COMMA typeAnnotation)*
     ;
 
 // --------------------------------------------------------------------------
@@ -1001,14 +1038,20 @@ BITWISE_XOR: 'bitwise' WS 'xor' ;
 BYTES      : 'bytes' ;
 BY         : 'by' ;
 BREAK      : 'break' ;
+CALLING    : 'calling' ;
 CASE       : 'case' ;
 CATCH      : 'catch' ;
+CDECL      : 'cdecl' ;
 CLASS      : 'class' ;
 CHANNEL    : 'channel' ;
+CLOBBERS   : 'clobbers' ;
+CLOSE      : 'close' ;
 COMMA      : ',' ;
+CONVENTION : 'convention' ;
 CONSTRUCTOR: 'constructor' ;
 CONTINUE   : 'continue' ;
 CONVERT    : 'convert' ;
+CODE       : 'code' ;
 CREATE     : 'create' ;
 DEALLOCATE : 'deallocate' ;
 DEFAULT    : 'default' ;
@@ -1019,7 +1062,7 @@ EACH       : 'each' ;
 ELSE       : 'else' ;
 EMPTY      : 'empty' ;
 END        : 'end' ;
-END_KW     : 'end' ;     // alias used in asmBody rule
+END_KW     : 'end' ;     // alias kept for compatibility with older tooling
 ENSURE     : 'ensure' ;
 ENUM       : 'enum' ;
 EQUALS     : 'equals' ;
@@ -1039,6 +1082,7 @@ IMPLEMENTS : 'implements' ;
 IMPORT     : 'import' ;
 IN         : 'in' ;
 INDEX      : 'index' ;
+INPUTS     : 'inputs' ;
 INTERFACE  : 'interface' ;
 INVARIANT  : 'invariant' ;
 IS         : 'is' ;
@@ -1060,6 +1104,8 @@ ONLY       : 'only' ;
 OPERATOR   : 'operator' ;
 OR         : 'or' ;
 OTHERWISE  : 'otherwise' ;
+OPAQUE     : 'opaque' ;
+OUTPUTS    : 'outputs' ;
 PANIC      : 'panic' ;
 PLUS       : 'plus' ;
 POWER      : 'power' ;
@@ -1083,6 +1129,7 @@ SIZEOF     : 'sizeof' ;
 SPAWN      : 'spawn' ;
 STATIC     : 'static' ;
 STRUCT     : 'struct' ;
+STDCALL    : 'stdcall' ;
 SWITCH     : 'switch' ;
 TEST       : 'test' ;
 TEXT       : 'text' ;
@@ -1096,11 +1143,13 @@ TRY        : 'try' ;
 TYPE       : 'type' ;
 UNION      : 'union' ;
 UNSAFE     : 'unsafe' ;
+VARIABLE   : 'variable' ;
 WHEN       : 'when' ;
 WHERE      : 'where' ;
 WHILE      : 'while' ;
 WITH       : 'with' ;
 YIELD      : 'yield' ;
+ELLIPSIS   : '...' ;
 
 
 // ==========================================================================

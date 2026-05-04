@@ -389,6 +389,79 @@ Execute assembly {
 }.
 ```
 
+Parser-aligned canonical forms:
+
+```ebnf
+inlineAssembly  ::= "asm" ["for" "arch" STRING] asmSection* ["end"]
+asmSection      ::= "code" STRING+
+                  | "inputs" asmOperandList
+                  | "outputs" asmOperandList
+                  | "clobbers" asmClobberList
+asmOperandList  ::= asmOperand ("," asmOperand)*
+asmOperand      ::= STRING ":" expression
+asmClobberList  ::= STRING ("," STRING)*
+```
+
+```nexuslang
+asm for arch "x86_64"
+    code "mov rax, 1" "ret"
+    inputs "r": value
+    outputs "=r": out_reg
+    clobbers "rax", "rcx"
+end
+```
+
+### Channels (Parser-Aligned)
+
+```ebnf
+sendStatement   ::= "send" expression "to" expression
+closeStatement  ::= "close" ["with"] expression
+receiveExpr     ::= "receive" ["from"] expression
+```
+
+```nexuslang
+send payload to jobs
+set next to receive from jobs
+close with jobs
+```
+
+### FFI and Unsafe (Parser-Aligned)
+
+```ebnf
+externFunction  ::= "extern" "function" IDENTIFIER
+                    ["with" externParameterList]
+                    ["returns" typeAnnotation]
+                    ["from" "library" STRING]
+                    ["calling" "convention" ("cdecl"|"stdcall"|IDENTIFIER)]
+
+externVariable  ::= "extern" "variable" IDENTIFIER "as" typeAnnotation
+                    ["from" "library" STRING]
+
+externType      ::= "extern" "type" IDENTIFIER "as" ["opaque"] typeAnnotation
+                  | "extern" "type" IDENTIFIER "as" "function"
+                    ["with" typeAnnotation ("," typeAnnotation)*]
+                    ["returns" typeAnnotation]
+
+foreignFunction ::= "foreign" "function" IDENTIFIER
+                    ["with" externParameterList]
+                    ["returns" typeAnnotation]
+                    ["from" "library" STRING]
+                    ["calling" "convention" ("cdecl"|"stdcall"|IDENTIFIER)]
+
+unsafeBlock     ::= "unsafe" ["do"] statement* "end"
+```
+
+```nexuslang
+extern function puts with s as String returns Integer from library "libc" calling convention cdecl
+extern variable errno as Integer from library "libc"
+extern type FILE as opaque pointer
+
+unsafe do
+    set ptr to address of buffer
+    # raw pointer operations
+end
+```
+
 ## Compiler Directives
 
 ```

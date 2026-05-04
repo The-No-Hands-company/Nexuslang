@@ -84,6 +84,19 @@ end
         assert '@NLPL_Optional_has_value' in llvm_ir
         assert '@NLPL_Optional_get_value' in llvm_ir
 
+    def test_option_pointer_pattern_uses_runtime_helpers(self):
+        """Pointer-backed Option patterns should use runtime helper calls."""
+        generator = LLVMIRGenerator()
+        pattern = OptionPattern("Some", "payload")
+
+        cond_reg = generator._generate_option_pattern_match(pattern, "%opt", "i8*", "  ")
+        generator._generate_option_pattern_binding(pattern, "%opt", "i8*", "  ")
+
+        ir = "\n".join(generator.ir_lines)
+        assert cond_reg.startswith("%")
+        assert "call i1 @NLPL_Optional_has_value(i8* %opt)" in ir
+        assert "call i64 @NLPL_Optional_get_value(i8* %opt)" in ir
+
 
 class TestResultPatternMatching:
     """Test Result<T, E> pattern matching compilation."""
@@ -142,6 +155,29 @@ end
         assert '@NLPL_Result_is_ok' in llvm_ir
         assert '@NLPL_Result_get_error' in llvm_ir
         assert '@NLPL_Result_get_value' in llvm_ir
+
+    def test_result_pointer_err_pattern_uses_runtime_helpers(self):
+        """Pointer-backed Result Err patterns should use runtime matcher and error extractor."""
+        generator = LLVMIRGenerator()
+        pattern = ResultPattern("Err", "message")
+
+        cond_reg = generator._generate_result_pattern_match(pattern, "%res", "i8*", "  ")
+        generator._generate_result_pattern_binding(pattern, "%res", "i8*", "  ")
+
+        ir = "\n".join(generator.ir_lines)
+        assert cond_reg.startswith("%")
+        assert "call i1 @NLPL_Result_is_ok(i8* %res)" in ir
+        assert "call i8* @NLPL_Result_get_error(i8* %res)" in ir
+
+    def test_result_pointer_ok_pattern_uses_runtime_value_helper(self):
+        """Pointer-backed Result Ok bindings should use runtime value extractor."""
+        generator = LLVMIRGenerator()
+        pattern = ResultPattern("Ok", "value")
+
+        generator._generate_result_pattern_binding(pattern, "%res", "i8*", "  ")
+        ir = "\n".join(generator.ir_lines)
+
+        assert "call i64 @NLPL_Result_get_value(i8* %res)" in ir
 
 
 class TestTuplePatternMatching:

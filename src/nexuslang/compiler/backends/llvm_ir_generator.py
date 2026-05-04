@@ -7126,10 +7126,13 @@ class LLVMIRGenerator(CodeGenerator):
         is_some = (variant == 'Some') or bool(getattr(pattern, 'is_some', False))
 
         if value_type.endswith('*'):
-            has_value = self._new_temp()
-            self.emit(f'{indent}{has_value} = ptrtoint {value_type} {value_reg} to i64')
+            opt_ptr = value_reg
+            if value_type != 'i8*':
+                opt_ptr = self._new_temp()
+                self.emit(f'{indent}{opt_ptr} = bitcast {value_type} {value_reg} to i8*')
+
             has_value_i1 = self._new_temp()
-            self.emit(f'{indent}{has_value_i1} = icmp ne i64 {has_value}, 0')
+            self.emit(f'{indent}{has_value_i1} = call i1 @NLPL_Optional_has_value(i8* {opt_ptr})')
             if is_some:
                 return has_value_i1
             is_none = self._new_temp()
@@ -7157,10 +7160,13 @@ class LLVMIRGenerator(CodeGenerator):
         is_ok_variant = (variant == 'Ok') or bool(getattr(pattern, 'is_ok', False))
 
         if value_type.endswith('*'):
-            value_i64 = self._new_temp()
-            self.emit(f'{indent}{value_i64} = ptrtoint {value_type} {value_reg} to i64')
+            res_ptr = value_reg
+            if value_type != 'i8*':
+                res_ptr = self._new_temp()
+                self.emit(f'{indent}{res_ptr} = bitcast {value_type} {value_reg} to i8*')
+
             is_ok = self._new_temp()
-            self.emit(f'{indent}{is_ok} = icmp sge i64 {value_i64}, 0')
+            self.emit(f'{indent}{is_ok} = call i1 @NLPL_Result_is_ok(i8* {res_ptr})')
             if is_ok_variant:
                 return is_ok
             is_err = self._new_temp()
@@ -7676,8 +7682,12 @@ class LLVMIRGenerator(CodeGenerator):
         
         inner_type = 'i64'
         if value_type.endswith('*'):
+            opt_ptr = value_reg
+            if value_type != 'i8*':
+                opt_ptr = self._new_temp()
+                self.emit(f'{indent}{opt_ptr} = bitcast {value_type} {value_reg} to i8*')
             inner_val = self._new_temp()
-            self.emit(f'{indent}{inner_val} = ptrtoint {value_type} {value_reg} to i64')
+            self.emit(f'{indent}{inner_val} = call i64 @NLPL_Optional_get_value(i8* {opt_ptr})')
         else:
             inner_val = value_reg
         
@@ -7714,16 +7724,28 @@ class LLVMIRGenerator(CodeGenerator):
             # Extract value from Result.Ok
             inner_type = 'i64'  # Can be enhanced with type inference
             if value_type.endswith('*'):
+                res_ptr = value_reg
+                if value_type != 'i8*':
+                    res_ptr = self._new_temp()
+                    self.emit(f'{indent}{res_ptr} = bitcast {value_type} {value_reg} to i8*')
                 inner_val = self._new_temp()
-                self.emit(f'{indent}{inner_val} = ptrtoint {value_type} {value_reg} to i64')
+                self.emit(f'{indent}{inner_val} = call i64 @NLPL_Result_get_value(i8* {res_ptr})')
             else:
                 inner_val = value_reg
         else:
             # Extract error from Result.Err
             inner_type = 'i8*'  # Error is typically a string
-            str_name, str_len = self._get_or_create_string_constant('error')
-            inner_val = self._new_temp()
-            self.emit(f'{indent}{inner_val} = getelementptr inbounds [{str_len} x i8], [{str_len} x i8]* {str_name}, i64 0, i64 0')
+            if value_type.endswith('*'):
+                res_ptr = value_reg
+                if value_type != 'i8*':
+                    res_ptr = self._new_temp()
+                    self.emit(f'{indent}{res_ptr} = bitcast {value_type} {value_reg} to i8*')
+                inner_val = self._new_temp()
+                self.emit(f'{indent}{inner_val} = call i8* @NLPL_Result_get_error(i8* {res_ptr})')
+            else:
+                str_name, str_len = self._get_or_create_string_constant('error')
+                inner_val = self._new_temp()
+                self.emit(f'{indent}{inner_val} = getelementptr inbounds [{str_len} x i8], [{str_len} x i8]* {str_name}, i64 0, i64 0')
         
         # Direct binding form: ResultPattern("Ok"|"Err", "name")
         if bind_name:
@@ -9059,6 +9081,27 @@ class LLVMIRGenerator(CodeGenerator):
         if not self.in_async_function:
             result_reg = self._generate_expression(inner_expr, indent)
             return result_reg
+
+        inner_type = type(inner_expr).__name__
+
+        # Hardening: only run coroutine polling path when awaited target is
+        # known to produce a coroutine handle. Otherwise evaluate directly.
+        known_async_target = False
+        if inner_type == 'Identifier':
+            func_name = inner_expr.name
+            if func_name in self.async_functions:
+                known_async_target = True
+            elif func_name in self.local_vars:
+                known_async_target = self.local_vars[func_name][0] == 'i8*'
+            elif func_name in self.global_vars:
+                known_async_target = self.global_vars[func_name][0] == 'i8*'
+        elif inner_type == 'FunctionCall':
+            call_name = getattr(inner_expr, 'name', None)
+            if isinstance(call_name, str) and call_name in self.async_functions:
+                known_async_target = True
+
+        if not known_async_target:
+            return self._generate_expression(inner_expr, indent)
         
         # Get unique suspend point ID
         suspend_id = self.suspend_counter
@@ -9067,8 +9110,6 @@ class LLVMIRGenerator(CodeGenerator):
         # Call the async function to get coroutine handle
         # If inner_expr is an Identifier (just function name), we need to call it
         # If inner_expr is a FunctionCall, generate the call normally
-        inner_type = type(inner_expr).__name__
-        
         if inner_type == 'Identifier':
             # It's just a function name - need to generate a call to it
             func_name = inner_expr.name

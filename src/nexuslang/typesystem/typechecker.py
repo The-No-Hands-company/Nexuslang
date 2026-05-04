@@ -5,6 +5,8 @@ This module provides type checking functionality for NexusLang programs.
 
 from typing import Dict, List, Optional, Set, Union, Any, Tuple, Type
 import re
+import enum
+import types as pytypes
 from ..parser.ast import (
     Program, VariableDeclaration, FunctionDefinition, Parameter,
     IfStatement, WhileLoop, ForLoop, MemoryAllocation, MemoryDeallocation,
@@ -2026,9 +2028,29 @@ class TypeChecker:
 
         return yielded_type
 
-    def _statement_contains_yield(self, node: Any) -> bool:
+    def _statement_contains_yield(self, node: Any, _visited: Optional[Set[int]] = None) -> bool:
         """Return True when *node* contains a yield in the current function scope."""
         if node is None:
+            return False
+
+        # Prevent infinite recursion for cyclic object graphs in metadata
+        # (e.g. Token -> TokenType -> Enum internals -> TokenType ...).
+        if _visited is None:
+            _visited = set()
+
+        node_id = id(node)
+        if node_id in _visited:
+            return False
+        _visited.add(node_id)
+
+        # Ignore primitive and interpreter metadata objects.
+        if isinstance(node, (str, bytes, int, float, bool)):
+            return False
+        if isinstance(node, enum.Enum):
+            return False
+        if isinstance(node, type):
+            return False
+        if isinstance(node, pytypes.ModuleType):
             return False
 
         node_type = type(node).__name__
@@ -2036,18 +2058,25 @@ class TypeChecker:
             return True
         if node_type in {'FunctionDefinition', 'AsyncFunctionDefinition', 'LambdaExpression', 'ClassDefinition', 'MethodDefinition'}:
             return False
+        if node_type in {'Token', 'TokenType', 'EnumType'}:
+            return False
 
-        if isinstance(node, list):
-            return any(self._statement_contains_yield(item) for item in node)
+        if isinstance(node, (list, tuple, set)):
+            return any(self._statement_contains_yield(item, _visited) for item in node)
+
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if self._statement_contains_yield(key, _visited):
+                    return True
+                if self._statement_contains_yield(value, _visited):
+                    return True
+            return False
 
         if not hasattr(node, '__dict__'):
             return False
 
         for value in vars(node).values():
-            if isinstance(value, list):
-                if any(self._statement_contains_yield(item) for item in value):
-                    return True
-            elif hasattr(value, '__dict__') and self._statement_contains_yield(value):
+            if self._statement_contains_yield(value, _visited):
                 return True
 
         return False

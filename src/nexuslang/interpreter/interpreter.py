@@ -236,6 +236,12 @@ class Interpreter:
         # execute_* methods are also picked up correctly.
         self._dispatch_cache: Dict[str, Any] = {}
 
+        # Built-in call metadata cache.
+        # Key: Python callable object registered in runtime.functions
+        # Value: whether first parameter is named 'runtime'.
+        # This avoids repeated inspect.signature(...) in hot loops.
+        self._builtin_runtime_param_cache: Dict[Any, bool] = {}
+
         # Accumulated test results from all describe / test / it blocks run
         # during this interpreter session.  Each entry is a dict produced by
         # _run_test_body: {"name": str, "passed": bool, "error": str|None,
@@ -3717,10 +3723,19 @@ class Interpreter:
         """Call a function registered in the runtime's built-in function table."""
         import inspect
         func = self.runtime.functions[function_name]
-        sig = inspect.signature(func)
-        params = list(sig.parameters.keys())
-        
-        if params and params[0] == 'runtime':
+
+        needs_runtime = self._builtin_runtime_param_cache.get(func)
+        if needs_runtime is None:
+            try:
+                sig = inspect.signature(func)
+                params = list(sig.parameters.keys())
+                needs_runtime = bool(params and params[0] == 'runtime')
+            except (TypeError, ValueError):
+                # Some callables may not expose a Python signature.
+                needs_runtime = False
+            self._builtin_runtime_param_cache[func] = needs_runtime
+
+        if needs_runtime:
             positional_args = [self.runtime] + list(positional_args)
         
         if named_args:
