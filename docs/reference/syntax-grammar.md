@@ -422,8 +422,40 @@ receiveExpr     ::= "receive" ["from"] expression
 ```nexuslang
 send payload to jobs
 set next to receive from jobs
+set fallback to receive jobs
 close with jobs
+close jobs
 ```
+
+Notes:
+
+1. `receive` supports both `receive from ch` and `receive ch`.
+2. `close` supports both `close with ch` and `close ch`.
+3. Channel pipeline operator forms are not part of the current parser-aligned reference grammar.
+
+### Async and Await (Parser-Aligned)
+
+```ebnf
+asyncFunctionDef  ::= "async" "function" IDENTIFIER [genericParams]
+                      ["with" parameterList] ["returns" typeAnnotation]
+                      contractClauses? statement* "end"
+
+awaitExpression   ::= "await" expression
+```
+
+```nexuslang
+async function fetch_data with endpoint as String returns String
+    return "ok"
+end
+
+set result to await fetch_data with "/status"
+```
+
+Notes:
+
+1. `async` is parser-level syntax only for function declarations (`async function ...`).
+2. `await` is parsed as an expression and can be nested inside larger expressions.
+3. `spawn` is currently tooling/runtime-facing and not a parser-level keyword form in the reference grammar.
 
 ### FFI and Unsafe (Parser-Aligned)
 

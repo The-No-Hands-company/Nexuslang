@@ -83,9 +83,6 @@ statement
     | importStatement
     | exportStatement
     | testBlock
-    | asyncStatement
-    | awaitStatement
-    | spawnStatement
     | expressionStatement
     ;
 
@@ -562,10 +559,12 @@ printStatement
     ;
 
 sendStatement
+    // Parser-aligned: send <value> to <channel>
     : SEND expression TO expression
     ;
 
 closeStatement
+    // Parser-aligned variants: close <channel> | close with <channel>
     : CLOSE WITH? expression
     ;
 
@@ -752,14 +751,6 @@ testBlock
       END
     ;
 
-// --------------------------------------------------------------------------
-// Async / concurrency
-// --------------------------------------------------------------------------
-
-asyncStatement : ASYNC statement ;
-awaitStatement : AWAIT expression ;
-spawnStatement : SPAWN expression ;
-
 unsafeBlock
     : UNSAFE DO? statement* END
     ;
@@ -890,6 +881,7 @@ atom
     ;
 
 receiveExpression
+    // Parser-aligned variants: receive <channel> | receive from <channel>
     : RECEIVE FROM? expression
     ;
 
