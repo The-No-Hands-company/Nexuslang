@@ -249,6 +249,149 @@ class AppService extends BaseService
             assert location.uri == base_uri
             assert location.range.start.line == 2
 
+    def test_find_definition_for_from_import_symbol(self):
+        """Go-to-definition should resolve symbols imported via from-import."""
+        module_code = """
+function helper that takes x as Integer returns Integer
+    return x
+"""
+        user_code = """
+from utils import helper, unused
+
+set result to helper with 5
+"""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            module_file = os.path.join(tmpdir, "utils.nxl")
+            user_file = os.path.join(tmpdir, "main.nxl")
+
+            with open(module_file, "w", encoding="utf-8") as fh:
+                fh.write(module_code)
+            with open(user_file, "w", encoding="utf-8") as fh:
+                fh.write(user_code)
+
+            server = NLPLLanguageServer()
+            provider = DefinitionProvider(server)
+
+            user_uri = f"file://{user_file}"
+            server.documents[user_uri] = user_code
+
+            position = Position(3, 16)  # on "helper" call
+            location = provider.get_definition(user_code, position, user_uri)
+
+            assert location is not None, "Should resolve imported helper definition"
+            assert location.uri == f"file://{module_file}"
+            assert location.range.start.line == 1
+
+    def test_find_definition_for_from_import_alias(self):
+        """Go-to-definition should resolve aliased symbols imported via from-import."""
+        module_code = """
+function helper that takes x as Integer returns Integer
+    return x
+"""
+        user_code = """
+from utils import helper as local_helper
+
+set result to local_helper with 5
+"""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            module_file = os.path.join(tmpdir, "utils.nxl")
+            user_file = os.path.join(tmpdir, "main.nxl")
+
+            with open(module_file, "w", encoding="utf-8") as fh:
+                fh.write(module_code)
+            with open(user_file, "w", encoding="utf-8") as fh:
+                fh.write(user_code)
+
+            server = NLPLLanguageServer()
+            provider = DefinitionProvider(server)
+
+            user_uri = f"file://{user_file}"
+            server.documents[user_uri] = user_code
+
+            position = Position(3, 16)  # on "local_helper" call
+            location = provider.get_definition(user_code, position, user_uri)
+
+            assert location is not None, "Should resolve aliased imported definition"
+            assert location.uri == f"file://{module_file}"
+            assert location.range.start.line == 1
+
+    def test_find_definition_for_nested_package_import(self):
+        """Go-to-definition should resolve symbols imported from dotted module paths."""
+        module_code = """
+function helper that takes x as Integer returns Integer
+    return x
+"""
+        user_code = """
+from pkg.subpkg.math import helper
+
+set result to helper with 5
+"""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            module_dir = os.path.join(tmpdir, "pkg", "subpkg")
+            os.makedirs(module_dir, exist_ok=True)
+            module_file = os.path.join(module_dir, "math.nxl")
+            user_file = os.path.join(tmpdir, "main.nxl")
+
+            with open(module_file, "w", encoding="utf-8") as fh:
+                fh.write(module_code)
+            with open(user_file, "w", encoding="utf-8") as fh:
+                fh.write(user_code)
+
+            server = NLPLLanguageServer()
+            provider = DefinitionProvider(server)
+
+            user_uri = f"file://{user_file}"
+            server.documents[user_uri] = user_code
+
+            position = Position(3, 16)  # on "helper" call
+            location = provider.get_definition(user_code, position, user_uri)
+
+            assert location is not None, "Should resolve nested-package imported helper"
+            assert location.uri == f"file://{module_file}"
+            assert location.range.start.line == 1
+
+    def test_find_definition_for_nested_package_from_subfolder(self):
+        """Go-to-definition should resolve imports when current file is in a deeper subfolder."""
+        module_code = """
+function helper that takes x as Integer returns Integer
+    return x
+"""
+        user_code = """
+from pkg.subpkg.math import helper as h
+
+set result to h with 5
+"""
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            module_dir = os.path.join(tmpdir, "pkg", "subpkg")
+            app_dir = os.path.join(tmpdir, "apps", "service")
+            os.makedirs(module_dir, exist_ok=True)
+            os.makedirs(app_dir, exist_ok=True)
+
+            module_file = os.path.join(module_dir, "math.nxl")
+            user_file = os.path.join(app_dir, "main.nxl")
+
+            with open(module_file, "w", encoding="utf-8") as fh:
+                fh.write(module_code)
+            with open(user_file, "w", encoding="utf-8") as fh:
+                fh.write(user_code)
+
+            server = NLPLLanguageServer()
+            provider = DefinitionProvider(server)
+
+            user_uri = f"file://{user_file}"
+            server.documents[user_uri] = user_code
+
+            position = Position(3, 14)  # on aliased call "h"
+            location = provider.get_definition(user_code, position, user_uri)
+
+            assert location is not None, "Should resolve nested-package import from subfolder"
+            assert location.uri == f"file://{module_file}"
+            assert location.range.start.line == 1
+
 
 class TestEnhancedHover:
     """Test enhanced hover documentation."""

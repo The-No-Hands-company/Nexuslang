@@ -183,48 +183,74 @@ class DefinitionProvider:
         
         line = lines[position.line]
         
-        # Check for "import module_name"
-        import_match = re.search(r'\bimport\s+(\w+)', line, re.IGNORECASE)
-        if import_match and import_match.group(1) == symbol:
-            return symbol
-        
-        # Check for "from module_name import symbol"
-        from_match = re.search(r'\bfrom\s+(\w+)\s+import\s+(\w+)', line, re.IGNORECASE)
+        # Check for "import module_name" and comma-separated forms.
+        import_match = re.search(r'^\s*import\s+(.+)$', line, re.IGNORECASE)
+        if import_match:
+            for part in import_match.group(1).split(','):
+                item = part.strip()
+                if not item:
+                    continue
+                alias_match = re.match(r'^([\w\.]+)\s+as\s+(\w+)$', item, re.IGNORECASE)
+                if alias_match:
+                    module_name, alias = alias_match.groups()
+                    if symbol in (module_name, alias):
+                        return module_name
+                    continue
+                if item == symbol:
+                    return symbol
+
+        # Check for "from module_name import a, b as c".
+        from_match = re.search(r'^\s*from\s+([\w\.]+)\s+import\s+(.+)$', line, re.IGNORECASE)
         if from_match:
-            module_name, imported_symbol = from_match.groups()
+            module_name, imported_part = from_match.groups()
             if module_name == symbol:
                 return module_name
-            elif imported_symbol == symbol:
-                return f"{module_name}.{imported_symbol}"
+            for item in imported_part.split(','):
+                spec = item.strip()
+                if not spec:
+                    continue
+                alias_match = re.match(r'^(\w+)\s+as\s+(\w+)$', spec, re.IGNORECASE)
+                if alias_match:
+                    imported_symbol, alias = alias_match.groups()
+                    if symbol in (imported_symbol, alias):
+                        return f"{module_name}.{imported_symbol}"
+                elif spec == symbol:
+                    return f"{module_name}.{spec}"
         
         return None
     
     def _resolve_import(self, import_target: str, current_uri: str):
         """Resolve import to file path."""
         from ..lsp.server import Location, Range, Position
-        
-        # Split module.symbol if present
-        parts = import_target.split('.')
-        module_name = parts[0]
-        symbol_name = parts[1] if len(parts) > 1 else None
+
+        current_dir = os.path.dirname(current_uri.replace('file://', ''))
+
+        # Resolve ambiguity for dotted targets:
+        # - "pkg.sub.mod" (module path)
+        # - "pkg.sub.mod.symbol" (module path + symbol)
+        symbol_name = None
+        module_name = import_target
+        if '.' in import_target:
+            as_module = self._find_module_paths(import_target, current_dir)
+            if not as_module:
+                module_name, symbol_name = import_target.rsplit('.', 1)
         
         # Skip stdlib modules
-        if module_name in self.stdlib_modules:
+        if module_name.split('.')[0] in self.stdlib_modules:
             return None
         
-        # Find module file
-        current_dir = os.path.dirname(current_uri.replace('file://', ''))
-        module_path = os.path.join(current_dir, f"{module_name}.nxl")
-        
-        if os.path.exists(module_path):
+        # Find module file across nested package paths.
+        for module_path in self._find_module_paths(module_name, current_dir):
             module_uri = f"file://{module_path}"
-            
-            # If looking for specific symbol in module
-            if symbol_name and module_uri in self.server.documents:
-                module_text = self.server.documents[module_uri]
-                return self._find_in_current_file(module_text, symbol_name, module_uri, None)
-            
-            # Point to start of module
+
+            if symbol_name:
+                module_text = self._get_module_text(module_uri, module_path)
+                if module_text:
+                    location = self._find_in_current_file(module_text, symbol_name, module_uri, None)
+                    if location:
+                        return location
+
+            # Point to start of module when no symbol target or symbol not found.
             return Location(
                 uri=module_uri,
                 range=Range(
@@ -255,47 +281,115 @@ class DefinitionProvider:
     def _find_in_imports(self, text: str, symbol: str, current_uri: str):
         """Find definition in imported modules."""
         lines = text.split('\n')
-        imports = []
+        imports: List[Tuple[str, str]] = []
         
         # Extract import statements
         for line in lines:
-            match = re.search(r'\bimport\s+(\w+)', line, re.IGNORECASE)
+            match = re.search(r'^\s*import\s+(.+)$', line, re.IGNORECASE)
             if match:
-                imports.append(match.group(1))
-            
-            match = re.search(r'\bfrom\s+(\w+)\s+import\s+(\w+)', line, re.IGNORECASE)
+                for part in match.group(1).split(','):
+                    item = part.strip()
+                    if not item:
+                        continue
+                    alias_match = re.match(r'^([\w\.]+)\s+as\s+(\w+)$', item, re.IGNORECASE)
+                    if alias_match:
+                        module_name, alias = alias_match.groups()
+                        if symbol in (module_name, alias):
+                            imports.append((module_name, symbol))
+                        continue
+                    if item == symbol:
+                        imports.append((item, symbol))
+
+            match = re.search(r'^\s*from\s+([\w\.]+)\s+import\s+(.+)$', line, re.IGNORECASE)
             if match:
-                module_name, imported_symbol = match.groups()
-                if imported_symbol == symbol:
-                    imports.append(module_name)
+                module_name, imported_part = match.groups()
+                for item in imported_part.split(','):
+                    spec = item.strip()
+                    if not spec:
+                        continue
+                    alias_match = re.match(r'^(\w+)\s+as\s+(\w+)$', spec, re.IGNORECASE)
+                    if alias_match:
+                        imported_symbol, alias = alias_match.groups()
+                        if symbol in (imported_symbol, alias):
+                            imports.append((module_name, imported_symbol))
+                    elif spec == symbol:
+                        imports.append((module_name, spec))
         
         # Search imported modules
         current_dir = os.path.dirname(current_uri.replace('file://', ''))
         
-        for module_name in imports:
-            if module_name in self.stdlib_modules:
+        for module_name, imported_symbol in imports:
+            if module_name.split('.')[0] in self.stdlib_modules:
                 continue
-            
-            module_path = os.path.join(current_dir, f"{module_name}.nxl")
-            if os.path.exists(module_path):
+
+            for module_path in self._find_module_paths(module_name, current_dir):
                 module_uri = f"file://{module_path}"
-                
-                # Get module text
-                if module_uri in self.server.documents:
-                    module_text = self.server.documents[module_uri]
-                else:
-                    try:
-                        with open(module_path, 'r') as f:
-                            module_text = f.read()
-                    except:
-                        continue
-                
-                # Find symbol in module
-                location = self._find_in_current_file(module_text, symbol, module_uri, None)
+                module_text = self._get_module_text(module_uri, module_path)
+                if not module_text:
+                    continue
+
+                location = self._find_in_current_file(module_text, imported_symbol, module_uri, None)
                 if location:
                     return location
         
         return None
+
+    def _candidate_base_dirs(self, current_dir: str) -> List[str]:
+        """Return candidate base directories for module resolution."""
+        bases: List[str] = []
+
+        # Walk upwards from current file directory so sibling/parent packages resolve.
+        cur = os.path.abspath(current_dir)
+        workspace_root = None
+        if getattr(self.server, 'workspace_index', None):
+            workspace_root = os.path.abspath(getattr(self.server.workspace_index, 'root_path', '') or '')
+
+        while True:
+            if cur not in bases:
+                bases.append(cur)
+            if workspace_root and os.path.abspath(cur) == workspace_root:
+                break
+            parent = os.path.dirname(cur)
+            if parent == cur:
+                break
+            cur = parent
+
+        if workspace_root and workspace_root not in bases:
+            bases.append(workspace_root)
+
+        return bases
+
+    def _find_module_paths(self, module_name: str, current_dir: str) -> List[str]:
+        """Resolve dotted module names to candidate .nxl paths and __init__.nxl files."""
+        rel_path = module_name.replace('.', os.sep)
+        candidates: List[str] = []
+
+        for base in self._candidate_base_dirs(current_dir):
+            file_candidate = os.path.join(base, f"{rel_path}.nxl")
+            init_candidate = os.path.join(base, rel_path, "__init__.nxl")
+            if os.path.exists(file_candidate):
+                candidates.append(file_candidate)
+            if os.path.exists(init_candidate):
+                candidates.append(init_candidate)
+
+        # Keep first-seen order, remove duplicates.
+        seen = set()
+        unique = []
+        for path in candidates:
+            if path not in seen:
+                unique.append(path)
+                seen.add(path)
+        return unique
+
+    def _get_module_text(self, module_uri: str, module_path: str) -> Optional[str]:
+        """Get module source from open docs cache or filesystem."""
+        if module_uri in self.server.documents:
+            return self.server.documents[module_uri]
+        try:
+            with open(module_path, 'r', encoding='utf-8') as f:
+                return f.read()
+        except Exception:
+            return None
     
     def _find_in_workspace(self, symbol: str):
         """Find definition across all open documents."""

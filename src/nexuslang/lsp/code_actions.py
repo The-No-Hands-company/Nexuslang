@@ -140,6 +140,7 @@ class CodeActionsProvider:
         # Actions for specific diagnostics
         for diagnostic in diagnostics:
             message = diagnostic.get('message', '')
+            message_lower = message.lower()
             diag_range = diagnostic.get('range', {})
 
             # Prefer structured fixes from diagnostic payload
@@ -156,15 +157,125 @@ class CodeActionsProvider:
                     actions.append(fix)
             
             # Fix undefined variable
-            if 'undefined' in message.lower():
+            if 'undefined' in message_lower:
                 match = re.search(r"'(\w+)'", message)
                 if match:
                     var_name = match.group(1)
                     declare_action = self._declare_variable_action(uri, diag_range, var_name, diagnostic)
                     if declare_action:
                         actions.append(declare_action)
+
+            # Parser quick fixes for common syntax diagnostics.
+            if ('syntax error' in message_lower or 'expected' in message_lower):
+                missing_end = self._add_missing_end_action(uri, text, diag_range, diagnostic)
+                if missing_end:
+                    actions.append(missing_end)
+
+                missing_paren = self._add_missing_closing_paren_action(uri, text, diag_range, diagnostic)
+                if missing_paren:
+                    actions.append(missing_paren)
+
+            # Generic typing quick fix from message alone (without structured fixes).
+            if 'type error' in message_lower and "expected '" in message_lower:
+                type_fix = self._add_type_annotation(uri, text, diag_range, message)
+                if type_fix:
+                    type_fix["diagnostics"] = [diagnostic]
+                    actions.append(type_fix)
+
+            # Boolean condition quick fix for control flow checks.
+            if 'must be a boolean' in message_lower:
+                bool_fix = self._convert_condition_to_boolean_check(uri, text, diag_range, diagnostic)
+                if bool_fix:
+                    actions.append(bool_fix)
         
         return actions
+
+    def _add_missing_end_action(self, uri: str, text: str, diag_range: Dict, diagnostic: Dict) -> Optional[Dict]:
+        """Offer a quick fix to add a missing 'end' when parser diagnostics suggest it."""
+        message = diagnostic.get('message', '').lower()
+        if 'end' not in message:
+            return None
+
+        insert_line = max(0, diag_range.get('end', {}).get('line', 0))
+        return {
+            "title": "Add missing end",
+            "kind": self.KIND_QUICKFIX,
+            "diagnostics": [diagnostic],
+            "edit": {
+                "changes": {
+                    uri: [{
+                        "range": {
+                            "start": {"line": insert_line, "character": 0},
+                            "end": {"line": insert_line, "character": 0},
+                        },
+                        "newText": "end\n",
+                    }]
+                }
+            },
+        }
+
+    def _add_missing_closing_paren_action(self, uri: str, text: str, diag_range: Dict, diagnostic: Dict) -> Optional[Dict]:
+        """Offer a quick fix to insert a missing closing ')' for parser diagnostics."""
+        message = diagnostic.get('message', '').lower()
+        if "')'" not in message and 'parenthesis' not in message and 'paren' not in message:
+            return None
+
+        line_num = max(0, diag_range.get('start', {}).get('line', 0))
+        lines = text.split('\n')
+        if line_num >= len(lines):
+            return None
+
+        insert_char = len(lines[line_num])
+        return {
+            "title": "Add closing )",
+            "kind": self.KIND_QUICKFIX,
+            "diagnostics": [diagnostic],
+            "edit": {
+                "changes": {
+                    uri: [{
+                        "range": {
+                            "start": {"line": line_num, "character": insert_char},
+                            "end": {"line": line_num, "character": insert_char},
+                        },
+                        "newText": ")",
+                    }]
+                }
+            },
+        }
+
+    def _convert_condition_to_boolean_check(self, uri: str, text: str, diag_range: Dict, diagnostic: Dict) -> Optional[Dict]:
+        """Convert control-flow condition to explicit boolean check by appending 'is true'."""
+        line_num = max(0, diag_range.get('start', {}).get('line', 0))
+        lines = text.split('\n')
+        if line_num >= len(lines):
+            return None
+
+        line = lines[line_num]
+        match = re.match(r'^(\s*)(if|while)\s+(.+?)\s*$', line, re.IGNORECASE)
+        if not match:
+            return None
+
+        indent, keyword, condition = match.groups()
+        if re.search(r'\bis\s+(true|false)\b', condition, re.IGNORECASE):
+            return None
+
+        new_line = f"{indent}{keyword} {condition} is true"
+        return {
+            "title": "Convert condition to explicit boolean check",
+            "kind": self.KIND_QUICKFIX,
+            "diagnostics": [diagnostic],
+            "edit": {
+                "changes": {
+                    uri: [{
+                        "range": {
+                            "start": {"line": line_num, "character": 0},
+                            "end": {"line": line_num, "character": len(line)},
+                        },
+                        "newText": new_line,
+                    }]
+                }
+            },
+        }
     
     def _has_selection(self, range_params: Dict) -> bool:
         """Check if range represents a non-empty selection."""
