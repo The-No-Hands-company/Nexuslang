@@ -120,6 +120,9 @@ end
 
 refresh with
 window_show with win
+window_set_topmost with win and true
+window_focus with win
+window_set_topmost with win and false
 
 print text "Delivery Command Center GUI started."
 print text "A desktop window should now be visible."

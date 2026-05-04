@@ -189,6 +189,37 @@ def window_show(window_id: int) -> bool:
         return False
 
 
+def window_focus(window_id: int) -> bool:
+    """Request input focus and raise the window to the front."""
+    if not _tk_available or window_id not in _windows:
+        return False
+    try:
+        win = _windows[window_id]
+        win.deiconify()
+        try:
+            win.lift()
+        except Exception:
+            pass
+        try:
+            win.focus_force()
+        except Exception:
+            pass
+        return True
+    except Exception:
+        return False
+
+
+def window_set_topmost(window_id: int, topmost: bool = True) -> bool:
+    """Set or clear always-on-top state for a window."""
+    if not _tk_available or window_id not in _windows:
+        return False
+    try:
+        _windows[window_id].attributes("-topmost", bool(topmost))
+        return True
+    except Exception:
+        return False
+
+
 def window_hide(window_id: int) -> bool:
     """Hide a window without destroying it."""
     if not _tk_available or window_id not in _windows:
@@ -1462,6 +1493,7 @@ def register_gui_functions(runtime: Runtime) -> None:
     # --- Windowing ---
     runtime.register_function("window_create", window_create)
     runtime.register_function("window_show", window_show)
+    runtime.register_function("window_focus", window_focus)
     runtime.register_function("window_hide", window_hide)
     runtime.register_function("window_destroy", window_destroy)
     runtime.register_function("window_is_open", window_is_open)
@@ -1482,6 +1514,7 @@ def register_gui_functions(runtime: Runtime) -> None:
     runtime.register_function("window_set_max_size", window_set_max_size)
     runtime.register_function("window_set_icon", window_set_icon)
     runtime.register_function("window_set_alpha", window_set_alpha)
+    runtime.register_function("window_set_topmost", window_set_topmost)
     runtime.register_function("window_get_screen_size", window_get_screen_size)
     runtime.register_function("gui_quit", gui_quit)
 
