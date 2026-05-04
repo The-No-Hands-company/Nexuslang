@@ -38,6 +38,30 @@ Run it locally:
 PYTHONPATH=src python -m nexuslang.main examples/26_calculator_gui.nxl
 ```
 
+### Delivery Command Center (GUI)
+
+Business-oriented KPI dashboard built with the NexusLang GUI runtime.
+
+![NexusLang Delivery Command Center](showcase/delivery/delivery_command_center_gui.png)
+
+Run it locally:
+
+```bash
+PYTHONPATH=src python -m nexuslang.main examples/27_delivery_dashboard_gui.nxl
+```
+
+### Service Desk Operations (Interactive TUI)
+
+Interactive terminal application with stateful updates and action-driven workflow.
+
+![NexusLang Service Desk TUI](showcase/delivery/service_desk_tui_console.png)
+
+Run it locally:
+
+```bash
+PYTHONPATH=src python -m nexuslang.main examples/business/service_desk_tui.nxl
+```
+
 ## Language At A Glance
 
 ```nlpl
