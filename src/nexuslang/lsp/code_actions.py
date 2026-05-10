@@ -368,6 +368,7 @@ class CodeActionsProvider:
         diag_range = diagnostic.get("range", {})
         ownership_ctx = data.get("ownership") if isinstance(data.get("ownership"), dict) else {}
         ownership_var = ownership_ctx.get("variable")
+        ownership_op = ownership_ctx.get("operation")
 
         for fix_text in fixes:
             if not isinstance(fix_text, str):
@@ -461,6 +462,16 @@ class CodeActionsProvider:
                     )
                     if action:
                         actions.append(action)
+
+                    if ownership_op == "borrow_mutable" or "mutable borrow" in message_lower:
+                        mutable_action = self._insert_drop_mutable_borrow_before_operation_action(
+                            uri,
+                            diag_range,
+                            ownership_var,
+                            diagnostic,
+                        )
+                        if mutable_action:
+                            actions.append(mutable_action)
                     continue
 
                 if "avoid mutable borrow" in fix_lower:
@@ -501,6 +512,35 @@ class CodeActionsProvider:
                             "end": {"line": line_num, "character": 0},
                         },
                         "newText": f"drop borrow {var_name}\n",
+                    }]
+                }
+            },
+        }
+
+    def _insert_drop_mutable_borrow_before_operation_action(
+        self,
+        uri: str,
+        diag_range: Dict,
+        var_name: str,
+        diagnostic: Dict,
+    ) -> Optional[Dict]:
+        """Insert `drop borrow mutable <var>` immediately before the flagged operation."""
+        line_num = diag_range.get("start", {}).get("line")
+        if line_num is None:
+            return None
+
+        return {
+            "title": f"Drop mutable borrow of '{var_name}' before this operation",
+            "kind": self.KIND_QUICKFIX,
+            "diagnostics": [diagnostic],
+            "edit": {
+                "changes": {
+                    uri: [{
+                        "range": {
+                            "start": {"line": line_num, "character": 0},
+                            "end": {"line": line_num, "character": 0},
+                        },
+                        "newText": f"drop borrow mutable {var_name}\n",
                     }]
                 }
             },

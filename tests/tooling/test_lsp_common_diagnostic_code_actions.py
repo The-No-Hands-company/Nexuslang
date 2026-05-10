@@ -310,3 +310,34 @@ def test_ownership_structured_fix_converts_mutable_borrow_to_immutable():
     assert action is not None
     edit = action["edit"]["changes"][uri][0]
     assert edit["newText"] == "set m to borrow x"
+
+
+def test_ownership_structured_fix_inserts_drop_mutable_borrow_action():
+    provider = _provider()
+    uri = "file:///ownership_drop_mutable_fix.nxl"
+    code = "set x to 0\nset m to borrow mutable x\nset n to borrow x\n"
+    diagnostic = {
+        "range": {"start": {"line": 2, "character": 10}, "end": {"line": 2, "character": 11}},
+        "severity": 1,
+        "message": "Ownership error: Cannot take mutable borrow of 'x' while immutable borrow exists",
+        "source": "nlpl",
+        "code": "E201",
+        "data": {
+            "fixes": [
+                "Drop active borrows before move or assignment",
+            ],
+            "ownership": {
+                "variable": "x",
+                "kind": "borrow",
+                "line": 2,
+                "operation": "borrow_mutable",
+            },
+        },
+    }
+
+    actions = provider.get_code_actions(uri, code, _range(2), [diagnostic])
+    action = _find_action(actions, "Drop mutable borrow of 'x' before this operation")
+    assert action is not None
+    edit = action["edit"]["changes"][uri][0]
+    assert edit["newText"] == "drop borrow mutable x\n"
+    assert edit["range"]["start"]["line"] == 2

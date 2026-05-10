@@ -86,3 +86,17 @@ set y to move x
     assert ownership.get("kind") in {"borrow", "lifetime", "ownership"}
     assert isinstance(ownership.get("line"), int)
     assert ownership.get("operation") in {"move", "borrow", "borrow_mutable", "drop_borrow", None}
+
+
+def test_ownership_diagnostic_sets_borrow_mutable_operation_when_present():
+    code = """
+set x to 0
+set m to borrow mutable x
+set n to borrow x
+"""
+
+    diagnostics = _ownership_diags(code)
+    assert diagnostics, "Expected ownership diagnostic for mutable/immutable borrow conflict"
+
+    operations = {d.get("data", {}).get("ownership", {}).get("operation") for d in diagnostics}
+    assert "borrow_mutable" in operations
