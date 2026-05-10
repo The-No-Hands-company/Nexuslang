@@ -486,3 +486,97 @@ def test_ownership_reorder_move_action_suppressed_for_attached_directive_comment
     actions = provider.get_code_actions(uri, code, _range(3), [diagnostic])
     action = _find_action(actions, "Reorder move of 'x' after drop borrow")
     assert action is None
+
+
+def test_ownership_move_conflict_offers_narrow_borrow_scope_action():
+    provider = _provider()
+    uri = "file:///ownership_narrow_scope_action.nxl"
+    code = "set x to 10\nset b to borrow x\nprint text b\nset y to move x\n"
+    diagnostic = {
+        "range": {"start": {"line": 3, "character": 9}, "end": {"line": 3, "character": 10}},
+        "severity": 1,
+        "message": "Ownership error: Cannot move 'x' while borrowed",
+        "source": "nlpl",
+        "code": "E201",
+        "data": {
+            "fixes": [
+                "Drop active borrows before move or assignment",
+            ],
+            "ownership": {
+                "variable": "x",
+                "kind": "borrow",
+                "line": 3,
+                "operation": "move",
+            },
+        },
+    }
+
+    actions = provider.get_code_actions(uri, code, _range(3), [diagnostic])
+    action = _find_action(actions, "Narrow borrow scope of 'x' before move")
+    assert action is not None
+    edit = action["edit"]["changes"][uri][0]
+    assert edit["range"]["start"]["line"] == 1
+    assert edit["range"]["end"]["line"] == 3
+    assert edit["newText"] == (
+        "if true\n"
+        "    set b to borrow x\n"
+        "    print text b\n"
+        "    drop borrow x\n"
+        "end\n"
+    )
+
+
+def test_ownership_narrow_scope_action_not_offered_when_alias_used_after_move():
+    provider = _provider()
+    uri = "file:///ownership_narrow_scope_alias_used_after.nxl"
+    code = "set x to 10\nset b to borrow x\nprint text b\nset y to move x\nprint text b\n"
+    diagnostic = {
+        "range": {"start": {"line": 3, "character": 9}, "end": {"line": 3, "character": 10}},
+        "severity": 1,
+        "message": "Ownership error: Cannot move 'x' while borrowed",
+        "source": "nlpl",
+        "code": "E201",
+        "data": {
+            "fixes": [
+                "Drop active borrows before move or assignment",
+            ],
+            "ownership": {
+                "variable": "x",
+                "kind": "borrow",
+                "line": 3,
+                "operation": "move",
+            },
+        },
+    }
+
+    actions = provider.get_code_actions(uri, code, _range(3), [diagnostic])
+    action = _find_action(actions, "Narrow borrow scope of 'x' before move")
+    assert action is None
+
+
+def test_ownership_narrow_scope_action_not_offered_when_drop_already_present():
+    provider = _provider()
+    uri = "file:///ownership_narrow_scope_drop_exists.nxl"
+    code = "set x to 10\nset b to borrow x\ndrop borrow x\nset y to move x\n"
+    diagnostic = {
+        "range": {"start": {"line": 3, "character": 9}, "end": {"line": 3, "character": 10}},
+        "severity": 1,
+        "message": "Ownership error: Cannot move 'x' while borrowed",
+        "source": "nlpl",
+        "code": "E201",
+        "data": {
+            "fixes": [
+                "Drop active borrows before move or assignment",
+            ],
+            "ownership": {
+                "variable": "x",
+                "kind": "borrow",
+                "line": 3,
+                "operation": "move",
+            },
+        },
+    }
+
+    actions = provider.get_code_actions(uri, code, _range(3), [diagnostic])
+    action = _find_action(actions, "Narrow borrow scope of 'x' before move")
+    assert action is None

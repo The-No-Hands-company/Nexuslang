@@ -474,6 +474,16 @@ class CodeActionsProvider:
                             actions.append(mutable_action)
 
                     if ownership_op == "move" or "move" in message_lower:
+                        narrow_scope_action = self._narrow_borrow_scope_before_move_action(
+                            uri,
+                            text,
+                            diag_range,
+                            ownership_var,
+                            diagnostic,
+                        )
+                        if narrow_scope_action:
+                            actions.append(narrow_scope_action)
+
                         reorder_action = self._reorder_move_after_drop_borrow_action(
                             uri,
                             text,
@@ -633,6 +643,120 @@ class CodeActionsProvider:
                 }
             },
         }
+
+    def _narrow_borrow_scope_before_move_action(
+        self,
+        uri: str,
+        text: str,
+        diag_range: Dict,
+        var_name: str,
+        diagnostic: Dict,
+    ) -> Optional[Dict]:
+        """Wrap a nearby borrow region into a tight scope before a conflicting move.
+
+        This rewrite is intentionally conservative and only offered when:
+        - The diagnostic line contains `move <var>`.
+        - A preceding same-indentation `set <alias> to borrow( mutable) <var>` exists.
+        - No explicit drop of `<var>` already exists in the candidate region.
+        - The borrow alias is not referenced after the move line.
+        - Neither statement has attached inline/directive comment metadata.
+        """
+        move_line_num = diag_range.get("start", {}).get("line")
+        if move_line_num is None:
+            return None
+
+        lines = text.split("\n")
+        if move_line_num < 0 or move_line_num >= len(lines):
+            return None
+
+        move_line = lines[move_line_num]
+        move_indent_text = self._leading_whitespace(move_line)
+        move_pattern = rf"\bmove\s+{re.escape(var_name)}\b"
+        if not re.search(move_pattern, move_line, re.IGNORECASE):
+            return None
+
+        borrow_decl_re = re.compile(
+            rf"^(?P<indent>\s*)set\s+(?P<alias>[A-Za-z_]\w*)\s+to\s+borrow(?P<mutable>\s+mutable)?\s+{re.escape(var_name)}\b\s*$",
+            re.IGNORECASE,
+        )
+        drop_re = re.compile(
+            rf"^\s*drop\s+borrow(?:\s+mutable)?\s+{re.escape(var_name)}\b",
+            re.IGNORECASE,
+        )
+
+        borrow_line_num: Optional[int] = None
+        borrow_alias: Optional[str] = None
+        borrow_is_mutable = False
+
+        for idx in range(move_line_num - 1, -1, -1):
+            line = lines[idx]
+            if not line.strip():
+                continue
+
+            if self._leading_whitespace(line) != move_indent_text:
+                continue
+
+            match = borrow_decl_re.match(line)
+            if match:
+                borrow_line_num = idx
+                borrow_alias = match.group("alias")
+                borrow_is_mutable = bool(match.group("mutable"))
+                break
+
+        if borrow_line_num is None or not borrow_alias:
+            return None
+
+        if self._has_attached_ownership_metadata(lines, move_line_num, var_name):
+            return None
+        if self._has_attached_ownership_metadata(lines, borrow_line_num, var_name):
+            return None
+
+        region = lines[borrow_line_num:move_line_num]
+        if any(drop_re.match(region_line) for region_line in region):
+            return None
+
+        alias_re = re.compile(rf"\b{re.escape(borrow_alias)}\b")
+        for idx in range(move_line_num + 1, len(lines)):
+            tail_line = lines[idx]
+            if not tail_line.strip() or tail_line.lstrip().startswith("#"):
+                continue
+            if alias_re.search(tail_line):
+                return None
+
+        indent_unit = "\t" if "\t" in move_indent_text else "    "
+        inner_prefix = move_indent_text + indent_unit
+
+        scoped_lines = [f"{move_indent_text}if true"]
+        for original in region:
+            if original.startswith(move_indent_text):
+                scoped_lines.append(inner_prefix + original[len(move_indent_text):])
+            else:
+                scoped_lines.append(inner_prefix + original.lstrip())
+
+        drop_stmt = f"drop borrow{' mutable' if borrow_is_mutable else ''} {var_name}"
+        scoped_lines.append(inner_prefix + drop_stmt)
+        scoped_lines.append(f"{move_indent_text}end")
+
+        return {
+            "title": f"Narrow borrow scope of '{var_name}' before move",
+            "kind": self.KIND_QUICKFIX,
+            "diagnostics": [diagnostic],
+            "edit": {
+                "changes": {
+                    uri: [{
+                        "range": {
+                            "start": {"line": borrow_line_num, "character": 0},
+                            "end": {"line": move_line_num, "character": 0},
+                        },
+                        "newText": "\n".join(scoped_lines) + "\n",
+                    }]
+                }
+            },
+        }
+
+    def _leading_whitespace(self, line: str) -> str:
+        """Return leading whitespace prefix for indentation-sensitive rewrites."""
+        return line[:len(line) - len(line.lstrip())]
 
     def _has_attached_ownership_metadata(self, lines: List[str], line_num: int, var_name: str) -> bool:
         """Return True if a move/drop statement has attached metadata comments/directives."""
