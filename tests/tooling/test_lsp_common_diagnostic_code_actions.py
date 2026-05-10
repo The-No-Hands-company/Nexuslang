@@ -404,6 +404,42 @@ def test_ownership_structured_fix_reorders_move_after_nearby_drop_borrow():
     assert edit["range"]["start"]["line"] == 2
 
 
+def test_ownership_specialized_move_fixes_have_deterministic_priority_order():
+    provider = _provider()
+    uri = "file:///ownership_move_fix_priority_order.nxl"
+    code = "set x to 10\nset b to borrow x\nset y to move x\ndrop borrow x\n"
+    diagnostic = {
+        "range": {"start": {"line": 2, "character": 9}, "end": {"line": 2, "character": 10}},
+        "severity": 1,
+        "message": "Ownership error: Cannot move 'x' while borrowed",
+        "source": "nlpl",
+        "code": "E201",
+        "data": {
+            "fixes": [
+                "Drop active borrows before move or assignment",
+            ],
+            "ownership": {
+                "variable": "x",
+                "kind": "borrow",
+                "line": 2,
+                "operation": "move",
+            },
+        },
+    }
+
+    actions = provider.get_code_actions(uri, code, _range(2), [diagnostic])
+    specialized_titles = [
+        action.get("title", "")
+        for action in actions
+        if "Reorder move of 'x' after drop borrow" in action.get("title", "")
+        or "Narrow borrow scope of 'x' before move" in action.get("title", "")
+    ]
+    assert specialized_titles == [
+        "Reorder move of 'x' after drop borrow (safe reorder)",
+        "Narrow borrow scope of 'x' before move",
+    ]
+
+
 def test_ownership_reorder_move_action_suppressed_for_inline_drop_comment():
     provider = _provider()
     uri = "file:///ownership_reorder_move_guard_comment.nxl"

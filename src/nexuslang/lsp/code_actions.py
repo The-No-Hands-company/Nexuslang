@@ -489,6 +489,7 @@ class CodeActionsProvider:
                             specialized_move_actions.append(reorder_action)
 
                     if move_conflict and specialized_move_actions:
+                        specialized_move_actions.sort(key=self._specialized_move_fix_sort_key)
                         actions.extend(specialized_move_actions)
                     else:
                         action = self._insert_drop_borrow_before_operation_action(
@@ -514,6 +515,22 @@ class CodeActionsProvider:
                     continue
 
         return actions
+
+    def _specialized_move_fix_sort_key(self, action: Dict) -> tuple:
+        """Provide deterministic ordering for move-conflict specialized quick fixes.
+
+        Preferred order:
+        1) local reorder move-after-drop edits
+        2) borrow-scope narrowing rewrites
+        3) any future specialized actions (stable alphabetical fallback)
+        """
+        title = str(action.get("title", ""))
+        title_lower = title.lower()
+        if "reorder move" in title_lower:
+            return (0, title_lower)
+        if "narrow borrow scope" in title_lower:
+            return (1, title_lower)
+        return (2, title_lower)
 
     def _insert_drop_borrow_before_operation_action(
         self,
