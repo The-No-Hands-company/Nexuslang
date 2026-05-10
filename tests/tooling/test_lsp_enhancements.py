@@ -785,6 +785,21 @@ set p to new Per
         labels = [c["label"] for c in completions]
         assert "Channel" in labels, "Should suggest Channel type"
 
+    def test_channel_variable_completion_after_close(self):
+        """Test channel variable completions after 'close'."""
+        server = NLPLLanguageServer()
+        provider = CompletionProvider(server)
+
+        code = """
+set ch to create channel
+close 
+"""
+        position = Position(2, len("close "))
+
+        completions = provider.get_completions(code, position)
+        labels = [c["label"] for c in completions]
+        assert "ch" in labels, "Should suggest channel variable after close"
+
     def test_expand_completion_suggests_known_macro_names(self):
         """Test macro name completions after 'expand'."""
         server = NLPLLanguageServer()

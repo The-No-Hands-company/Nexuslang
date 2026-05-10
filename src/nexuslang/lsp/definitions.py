@@ -8,10 +8,26 @@ Provides go-to-definition functionality using AST-based symbol resolution.
 from typing import Optional, Tuple, Dict, List
 import re
 import os
+import logging
 from ..parser.lexer import Lexer
 from ..parser.parser import Parser
 from ..analysis import ASTSymbolExtractor, SymbolTable
 from ..parser.ast import ClassDefinition
+from ..errors import NxlError
+
+
+logger = logging.getLogger(__name__)
+
+
+_RECOVERABLE_LSP_EXCEPTIONS = (
+    NxlError,
+    RuntimeError,
+    ValueError,
+    TypeError,
+    AttributeError,
+    OSError,
+    UnicodeError,
+)
 
 
 class DefinitionProvider:
@@ -65,7 +81,7 @@ class DefinitionProvider:
             # Cache it
             self.symbol_tables[uri] = symbol_table
             return symbol_table
-        except Exception as e:
+        except _RECOVERABLE_LSP_EXCEPTIONS:
             # Parse failed - return cached version if available
             return self.symbol_tables.get(uri, None)
     
@@ -488,7 +504,8 @@ class DefinitionProvider:
         try:
             with open(module_path, 'r', encoding='utf-8') as f:
                 return f.read()
-        except Exception:
+        except _RECOVERABLE_LSP_EXCEPTIONS:
+            logger.warning("Failed to read module text for %s", module_path, exc_info=True)
             return None
     
     def _find_in_workspace(self, symbol: str):
@@ -654,7 +671,8 @@ class DefinitionProvider:
                 tokens = lexer.tokenize()
                 parser = Parser(tokens)
                 ast = parser.parse()
-            except Exception:
+            except _RECOVERABLE_LSP_EXCEPTIONS:
+                logger.debug("Skipping class hierarchy parse for %s", file_uri, exc_info=True)
                 continue
 
             for stmt in getattr(ast, 'statements', []):

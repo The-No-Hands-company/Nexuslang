@@ -1,8 +1,19 @@
 import logging
+from unittest.mock import patch
 
+import pytest
+
+from nexuslang.lsp.code_actions import CodeActionsProvider
+from nexuslang.lsp.definitions import DefinitionProvider
+from nexuslang.lsp.diagnostics import DiagnosticsProvider
+from nexuslang.lsp.formatter import NexusLangFormatter
 from nexuslang.lsp.rename import RenameProvider
 from nexuslang.lsp.references import ReferencesProvider
+from nexuslang.lsp.semantic_tokens import SemanticTokensProvider
+from nexuslang.lsp.server import NexusLangLanguageServer
 from nexuslang.lsp.inlay_hints import InlayHintsProvider
+from nexuslang.lsp.symbols import SymbolProvider
+from nexuslang.lsp import telemetry as lsp_telemetry
 
 
 class _Pos:
@@ -82,3 +93,209 @@ def test_inlay_hints_logs_workspace_symbol_enrichment_failures(caplog):
 
     assert isinstance(hints, list)
     assert "Skipping workspace-index parameter cache enrichment" in caplog.text
+
+
+def test_semantic_tokens_returns_cached_symbol_table_on_parse_failure():
+    server = _Server()
+    provider = SemanticTokensProvider(server)
+    uri = "file:///main.nxl"
+    sentinel = object()
+    provider.symbol_tables[uri] = sentinel
+
+    class _BadLexer:
+        def __init__(self, _text):
+            pass
+
+        def tokenize(self):
+            raise ValueError("tokenization failed")
+
+    with patch("nexuslang.lsp.semantic_tokens.Lexer", _BadLexer):
+        result = provider._get_or_build_symbol_table("set x to 1", uri)
+
+    assert result is sentinel
+
+
+def test_code_actions_returns_cached_symbol_table_on_parse_failure():
+    server = _Server()
+    provider = CodeActionsProvider(server)
+    uri = "file:///main.nxl"
+    sentinel = object()
+    provider.symbol_tables[uri] = sentinel
+
+    class _BadLexer:
+        def __init__(self, _text):
+            pass
+
+        def tokenize(self):
+            raise ValueError("tokenization failed")
+
+    with patch("nexuslang.lsp.code_actions.Lexer", _BadLexer):
+        result = provider._get_or_build_symbol_table("set x to 1", uri)
+
+    assert result is sentinel
+
+
+def test_definitions_module_text_read_failure_logs_and_returns_none(caplog):
+    provider = DefinitionProvider(_Server())
+
+    with caplog.at_level(logging.WARNING):
+        text = provider._get_module_text("file:///missing.nxl", "/missing/module.nxl")
+
+    assert text is None
+    assert "Failed to read module text" in caplog.text
+
+
+def test_diagnostics_type_check_failure_logs_and_returns_empty(caplog):
+    provider = DiagnosticsProvider(_Server())
+
+    class _BadLexer:
+        def __init__(self, _text):
+            pass
+
+        def tokenize(self):
+            raise ValueError("tokenization failed")
+
+    with patch("nexuslang.parser.lexer.Lexer", _BadLexer):
+        with caplog.at_level(logging.DEBUG):
+            diags = provider._check_type_errors("set x to 1")
+
+    assert diags == []
+    assert "Type checker diagnostics failed" in caplog.text
+
+
+def test_formatter_falls_back_to_regex_on_token_pass_failure():
+    formatter = NexusLangFormatter()
+
+    with patch.object(formatter, "_format_with_tokens", side_effect=ValueError("bad token pass")):
+        with patch.object(formatter, "_format_regex", return_value="fallback-result") as fallback:
+            result = formatter.format("set value to 1")
+
+    assert result == "fallback-result"
+    assert fallback.called
+
+
+def test_server_get_or_parse_returns_none_on_parse_failure():
+    server = NexusLangLanguageServer.__new__(NexusLangLanguageServer)
+    server._parse_cache = {}
+
+    class _BadLexer:
+        def __init__(self, _text):
+            pass
+
+        def tokenize(self):
+            raise ValueError("tokenization failed")
+
+    with patch("nexuslang.parser.lexer.Lexer", _BadLexer):
+        result = NexusLangLanguageServer.get_or_parse(server, "file:///main.nxl", "set x to 1")
+
+    assert result is None
+
+
+def test_server_outgoing_calls_open_failure_returns_empty_result():
+    class _Index:
+        def _uri_to_path(self, _uri):
+            return "/definitely/missing/file.nxl"
+
+    server = NexusLangLanguageServer.__new__(NexusLangLanguageServer)
+    server.workspace_index = _Index()
+
+    response = NexusLangLanguageServer._handle_outgoing_calls(
+        server,
+        7,
+        {
+            "item": {
+                "uri": "file:///missing.nxl",
+                "range": {"start": {"line": 0, "character": 0}},
+            }
+        },
+    )
+
+    assert response["id"] == 7
+    assert response["result"] == []
+
+
+def test_symbols_provider_returns_cached_symbol_table_on_parse_failure(caplog):
+    server = _Server()
+    provider = SymbolProvider(server)
+    uri = "file:///main.nxl"
+    sentinel = object()
+    provider.symbol_tables[uri] = sentinel
+
+    class _BadLexer:
+        def __init__(self, _text):
+            pass
+
+        def tokenize(self):
+            raise ValueError("tokenization failed")
+
+    with patch("nexuslang.lsp.symbols.Lexer", _BadLexer):
+        with caplog.at_level(logging.WARNING):
+            table = provider._get_or_build_symbol_table("set value to 1", uri)
+
+    assert table is sentinel
+    assert "Symbol extraction failed for file:///main.nxl" in caplog.text
+
+
+def test_symbols_provider_propagates_runtime_errors_from_extractor():
+    server = _Server()
+    provider = SymbolProvider(server)
+    uri = "file:///main.nxl"
+
+    class _PassLexer:
+        def __init__(self, _text):
+            pass
+
+        def tokenize(self):
+            return [object()]
+
+    class _PassParser:
+        def __init__(self, _tokens):
+            pass
+
+        def parse(self):
+            return object()
+
+    class _BadExtractor:
+        def __init__(self, _uri):
+            pass
+
+        def extract(self, _ast):
+            raise RuntimeError("unexpected extractor bug")
+
+    with patch("nexuslang.lsp.symbols.Lexer", _PassLexer):
+        with patch("nexuslang.lsp.symbols.Parser", _PassParser):
+            with patch("nexuslang.lsp.symbols.ASTSymbolExtractor", _BadExtractor):
+                with pytest.raises(RuntimeError, match="unexpected extractor bug"):
+                    provider._get_or_build_symbol_table("set value to 1", uri)
+
+
+def test_telemetry_record_logs_recoverable_persist_failures(caplog):
+    telemetry = lsp_telemetry.DiagnosticTelemetry()
+
+    with patch("nexuslang.lsp.telemetry._persist_counts", side_effect=UnicodeError("bad unicode")):
+        with caplog.at_level(logging.WARNING):
+            telemetry.record([{"code": "E101"}])
+
+    assert "Failed to persist telemetry counts" in caplog.text
+
+
+def test_telemetry_load_data_purges_corrupt_json(tmp_path, monkeypatch, caplog):
+    telemetry_dir = tmp_path / "telemetry"
+    telemetry_dir.mkdir(parents=True)
+    counts_file = telemetry_dir / "diagnostic_counts.json"
+    counts_file.write_text("{not-valid-json", encoding="utf-8")
+
+    monkeypatch.setattr(lsp_telemetry, "_TELEMETRY_DIR", telemetry_dir)
+    monkeypatch.setattr(lsp_telemetry, "_COUNTS_FILE", counts_file)
+
+    with caplog.at_level(logging.WARNING):
+        data = lsp_telemetry._load_data()
+
+    assert data == {
+        "counts": {},
+        "sessions": 0,
+        "first_seen": str(lsp_telemetry.date.today()),
+        "last_updated": "",
+    }
+    assert not counts_file.exists()
+    assert "Removing corrupt file" in caplog.text
