@@ -249,3 +249,64 @@ def test_closed_channel_move_close_action_suppressed_for_attached_directive_comm
     actions = provider.get_code_actions(uri, code, _range(3), [diagnostic])
     action = _find_action(actions, "Move close 'ch' after this operation")
     assert action is None
+
+
+def test_ownership_structured_fix_inserts_drop_borrow_before_operation():
+    provider = _provider()
+    uri = "file:///ownership_drop_fix.nxl"
+    code = "set x to 10\nset b to borrow x\nset y to move x\n"
+    diagnostic = {
+        "range": {"start": {"line": 2, "character": 9}, "end": {"line": 2, "character": 10}},
+        "severity": 1,
+        "message": "Ownership error: Cannot move 'x' while borrowed",
+        "source": "nlpl",
+        "code": "E201",
+        "data": {
+            "fixes": [
+                "Drop active borrows before move or assignment",
+            ],
+            "ownership": {
+                "variable": "x",
+                "kind": "borrow",
+                "line": 2,
+                "operation": "move",
+            },
+        },
+    }
+
+    actions = provider.get_code_actions(uri, code, _range(2), [diagnostic])
+    action = _find_action(actions, "Drop active borrow of 'x'")
+    assert action is not None
+    edit = action["edit"]["changes"][uri][0]
+    assert edit["newText"] == "drop borrow x\n"
+    assert edit["range"]["start"]["line"] == 2
+
+
+def test_ownership_structured_fix_converts_mutable_borrow_to_immutable():
+    provider = _provider()
+    uri = "file:///ownership_mutable_fix.nxl"
+    code = "set x to 0\nset m to borrow mutable x\nset n to borrow x\n"
+    diagnostic = {
+        "range": {"start": {"line": 1, "character": 10}, "end": {"line": 1, "character": 24}},
+        "severity": 1,
+        "message": "Ownership error: Cannot take mutable borrow of 'x' while immutable borrow exists",
+        "source": "nlpl",
+        "code": "E201",
+        "data": {
+            "fixes": [
+                "Avoid mutable borrow while immutable borrows are active",
+            ],
+            "ownership": {
+                "variable": "x",
+                "kind": "borrow",
+                "line": 1,
+                "operation": "borrow_mutable",
+            },
+        },
+    }
+
+    actions = provider.get_code_actions(uri, code, _range(1), [diagnostic])
+    action = _find_action(actions, "Convert mutable borrow of 'x' to immutable borrow")
+    assert action is not None
+    edit = action["edit"]["changes"][uri][0]
+    assert edit["newText"] == "set m to borrow x"

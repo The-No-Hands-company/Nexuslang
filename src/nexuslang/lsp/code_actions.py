@@ -366,6 +366,8 @@ class CodeActionsProvider:
         message = diagnostic.get("message", "")
         message_lower = message.lower()
         diag_range = diagnostic.get("range", {})
+        ownership_ctx = data.get("ownership") if isinstance(data.get("ownership"), dict) else {}
+        ownership_var = ownership_ctx.get("variable")
 
         for fix_text in fixes:
             if not isinstance(fix_text, str):
@@ -449,7 +451,101 @@ class CodeActionsProvider:
                 if action:
                     actions.append(action)
 
+            if "ownership error:" in message_lower and ownership_var:
+                if "drop active borrows" in fix_lower:
+                    action = self._insert_drop_borrow_before_operation_action(
+                        uri,
+                        diag_range,
+                        ownership_var,
+                        diagnostic,
+                    )
+                    if action:
+                        actions.append(action)
+                    continue
+
+                if "avoid mutable borrow" in fix_lower:
+                    action = self._convert_mutable_borrow_to_immutable_action(
+                        uri,
+                        text,
+                        diag_range,
+                        ownership_var,
+                        diagnostic,
+                    )
+                    if action:
+                        actions.append(action)
+                    continue
+
         return actions
+
+    def _insert_drop_borrow_before_operation_action(
+        self,
+        uri: str,
+        diag_range: Dict,
+        var_name: str,
+        diagnostic: Dict,
+    ) -> Optional[Dict]:
+        """Insert `drop borrow <var>` immediately before the flagged operation."""
+        line_num = diag_range.get("start", {}).get("line")
+        if line_num is None:
+            return None
+
+        return {
+            "title": f"Drop active borrow of '{var_name}' before this operation",
+            "kind": self.KIND_QUICKFIX,
+            "diagnostics": [diagnostic],
+            "edit": {
+                "changes": {
+                    uri: [{
+                        "range": {
+                            "start": {"line": line_num, "character": 0},
+                            "end": {"line": line_num, "character": 0},
+                        },
+                        "newText": f"drop borrow {var_name}\n",
+                    }]
+                }
+            },
+        }
+
+    def _convert_mutable_borrow_to_immutable_action(
+        self,
+        uri: str,
+        text: str,
+        diag_range: Dict,
+        var_name: str,
+        diagnostic: Dict,
+    ) -> Optional[Dict]:
+        """Convert `borrow mutable <var>` to `borrow <var>` on the flagged line."""
+        line_num = diag_range.get("start", {}).get("line")
+        if line_num is None:
+            return None
+
+        lines = text.split("\n")
+        if line_num < 0 or line_num >= len(lines):
+            return None
+
+        line = lines[line_num]
+        pattern = rf"\bborrow\s+mutable\s+{re.escape(var_name)}\b"
+        match = re.search(pattern, line, re.IGNORECASE)
+        if not match:
+            return None
+
+        replacement = re.sub(pattern, f"borrow {var_name}", line, count=1, flags=re.IGNORECASE)
+        return {
+            "title": f"Convert mutable borrow of '{var_name}' to immutable borrow",
+            "kind": self.KIND_QUICKFIX,
+            "diagnostics": [diagnostic],
+            "edit": {
+                "changes": {
+                    uri: [{
+                        "range": {
+                            "start": {"line": line_num, "character": 0},
+                            "end": {"line": line_num, "character": len(line)},
+                        },
+                        "newText": replacement,
+                    }]
+                }
+            },
+        }
 
     def _add_contract_message_action(self, uri: str, text: str, diag_range: Dict, diagnostic: Dict) -> Optional[Dict]:
         """Append a default message clause to a contract statement if missing."""
