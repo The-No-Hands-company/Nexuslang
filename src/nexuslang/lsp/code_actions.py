@@ -490,6 +490,8 @@ class CodeActionsProvider:
 
                     if move_conflict and specialized_move_actions:
                         specialized_move_actions.sort(key=self._specialized_move_fix_sort_key)
+                        for idx, ranked_action in enumerate(specialized_move_actions):
+                            ranked_action["isPreferred"] = idx == 0
                         actions.extend(specialized_move_actions)
                     else:
                         action = self._insert_drop_borrow_before_operation_action(

@@ -428,16 +428,20 @@ def test_ownership_specialized_move_fixes_have_deterministic_priority_order():
     }
 
     actions = provider.get_code_actions(uri, code, _range(2), [diagnostic])
-    specialized_titles = [
-        action.get("title", "")
+    specialized_actions = [
+        action
         for action in actions
         if "Reorder move of 'x' after drop borrow" in action.get("title", "")
         or "Narrow borrow scope of 'x' before move" in action.get("title", "")
     ]
+
+    specialized_titles = [action.get("title", "") for action in specialized_actions]
     assert specialized_titles == [
         "Reorder move of 'x' after drop borrow (safe reorder)",
         "Narrow borrow scope of 'x' before move",
     ]
+    assert specialized_actions[0].get("isPreferred") is True
+    assert specialized_actions[1].get("isPreferred") in (None, False)
 
 
 def test_ownership_reorder_move_action_suppressed_for_inline_drop_comment():
