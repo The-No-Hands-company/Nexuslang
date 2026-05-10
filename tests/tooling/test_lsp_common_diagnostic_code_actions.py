@@ -341,3 +341,62 @@ def test_ownership_structured_fix_inserts_drop_mutable_borrow_action():
     edit = action["edit"]["changes"][uri][0]
     assert edit["newText"] == "drop borrow mutable x\n"
     assert edit["range"]["start"]["line"] == 2
+
+
+def test_ownership_structured_fix_reorders_move_after_nearby_drop_borrow():
+    provider = _provider()
+    uri = "file:///ownership_reorder_move_after_drop.nxl"
+    code = "set x to 10\nset b to borrow x\nset y to move x\ndrop borrow x\n"
+    diagnostic = {
+        "range": {"start": {"line": 2, "character": 9}, "end": {"line": 2, "character": 10}},
+        "severity": 1,
+        "message": "Ownership error: Cannot move 'x' while borrowed",
+        "source": "nlpl",
+        "code": "E201",
+        "data": {
+            "fixes": [
+                "Drop active borrows before move or assignment",
+            ],
+            "ownership": {
+                "variable": "x",
+                "kind": "borrow",
+                "line": 2,
+                "operation": "move",
+            },
+        },
+    }
+
+    actions = provider.get_code_actions(uri, code, _range(2), [diagnostic])
+    action = _find_action(actions, "Reorder move of 'x' after drop borrow")
+    assert action is not None
+    edit = action["edit"]["changes"][uri][0]
+    assert edit["newText"] == "drop borrow x\nset y to move x\n"
+    assert edit["range"]["start"]["line"] == 2
+
+
+def test_ownership_reorder_move_action_suppressed_for_inline_drop_comment():
+    provider = _provider()
+    uri = "file:///ownership_reorder_move_guard_comment.nxl"
+    code = "set x to 10\nset b to borrow x\nset y to move x\ndrop borrow x # keep this order\n"
+    diagnostic = {
+        "range": {"start": {"line": 2, "character": 9}, "end": {"line": 2, "character": 10}},
+        "severity": 1,
+        "message": "Ownership error: Cannot move 'x' while borrowed",
+        "source": "nlpl",
+        "code": "E201",
+        "data": {
+            "fixes": [
+                "Drop active borrows before move or assignment",
+            ],
+            "ownership": {
+                "variable": "x",
+                "kind": "borrow",
+                "line": 2,
+                "operation": "move",
+            },
+        },
+    }
+
+    actions = provider.get_code_actions(uri, code, _range(2), [diagnostic])
+    action = _find_action(actions, "Reorder move of 'x' after drop borrow")
+    assert action is None

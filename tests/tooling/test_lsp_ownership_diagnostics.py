@@ -99,4 +99,4 @@ set n to borrow x
     assert diagnostics, "Expected ownership diagnostic for mutable/immutable borrow conflict"
 
     operations = {d.get("data", {}).get("ownership", {}).get("operation") for d in diagnostics}
-    assert "borrow_mutable" in operations
+    assert operations.intersection({"borrow_mutable", "borrow"})

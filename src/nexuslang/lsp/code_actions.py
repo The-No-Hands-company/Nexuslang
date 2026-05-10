@@ -472,6 +472,17 @@ class CodeActionsProvider:
                         )
                         if mutable_action:
                             actions.append(mutable_action)
+
+                    if ownership_op == "move" or "move" in message_lower:
+                        reorder_action = self._reorder_move_after_drop_borrow_action(
+                            uri,
+                            text,
+                            diag_range,
+                            ownership_var,
+                            diagnostic,
+                        )
+                        if reorder_action:
+                            actions.append(reorder_action)
                     continue
 
                 if "avoid mutable borrow" in fix_lower:
@@ -545,6 +556,125 @@ class CodeActionsProvider:
                 }
             },
         }
+
+    def _reorder_move_after_drop_borrow_action(
+        self,
+        uri: str,
+        text: str,
+        diag_range: Dict,
+        var_name: str,
+        diagnostic: Dict,
+    ) -> Optional[Dict]:
+        """Reorder `move <var>` after a nearby `drop borrow <var>` when safe.
+
+        Safety policy (conservative):
+        - The flagged line must contain `move <var>`.
+        - The nearest non-empty line below must be exactly `drop borrow <var>` or
+          `drop borrow mutable <var>` in the same indentation block.
+        - No inline comments or attached directive/comment metadata can be present
+          on the statements being reordered.
+        """
+        move_line_num = diag_range.get("start", {}).get("line")
+        if move_line_num is None:
+            return None
+
+        lines = text.split("\n")
+        if move_line_num < 0 or move_line_num >= len(lines):
+            return None
+
+        move_line = lines[move_line_num]
+        move_indent = len(move_line) - len(move_line.lstrip())
+        move_pattern = rf"\bmove\s+{re.escape(var_name)}\b"
+        if not re.search(move_pattern, move_line, re.IGNORECASE):
+            return None
+
+        drop_line_num = move_line_num + 1
+        while drop_line_num < len(lines) and not lines[drop_line_num].strip():
+            drop_line_num += 1
+        if drop_line_num >= len(lines):
+            return None
+
+        drop_line = lines[drop_line_num]
+        drop_indent = len(drop_line) - len(drop_line.lstrip())
+        drop_pattern = rf"^\s*drop\s+borrow(?:\s+mutable)?\s+{re.escape(var_name)}\b\s*$"
+        if not re.match(drop_pattern, drop_line, re.IGNORECASE):
+            return None
+        if drop_indent != move_indent:
+            return None
+
+        if self._has_attached_ownership_metadata(lines, move_line_num, var_name):
+            return None
+        if self._has_attached_ownership_metadata(lines, drop_line_num, var_name):
+            return None
+
+        segment_lines = lines[move_line_num:drop_line_num + 1]
+        reordered = segment_lines[1:] + [segment_lines[0]]
+
+        if drop_line_num + 1 < len(lines):
+            replace_end = {"line": drop_line_num + 1, "character": 0}
+            replacement = "\n".join(reordered) + "\n"
+        else:
+            replace_end = {"line": drop_line_num, "character": len(lines[drop_line_num])}
+            replacement = "\n".join(reordered)
+
+        return {
+            "title": f"Reorder move of '{var_name}' after drop borrow (safe reorder)",
+            "kind": self.KIND_QUICKFIX,
+            "diagnostics": [diagnostic],
+            "edit": {
+                "changes": {
+                    uri: [{
+                        "range": {
+                            "start": {"line": move_line_num, "character": 0},
+                            "end": replace_end,
+                        },
+                        "newText": replacement,
+                    }]
+                }
+            },
+        }
+
+    def _has_attached_ownership_metadata(self, lines: List[str], line_num: int, var_name: str) -> bool:
+        """Return True if a move/drop statement has attached metadata comments/directives."""
+        if line_num < 0 or line_num >= len(lines):
+            return False
+
+        line = lines[line_num]
+        indent = len(line) - len(line.lstrip())
+
+        inline_ownership = re.match(
+            rf"^\s*(?:drop\s+borrow(?:\s+mutable)?\s+{re.escape(var_name)}\b|.*\bmove\s+{re.escape(var_name)}\b).*#.+$",
+            line,
+            re.IGNORECASE,
+        )
+        if inline_ownership:
+            return True
+
+        comment_line_re = re.compile(r"^\s*#")
+        directive_line_re = re.compile(r"^\s*(?:@\w+|pragma\b|directive\b)", re.IGNORECASE)
+        directive_comment_re = re.compile(
+            r"^\s*#\s*(?:noqa\b|nolint\b|lint:|pragma\b|directive\b|nlpl:|nexuslang:)",
+            re.IGNORECASE,
+        )
+
+        idx = line_num - 1
+        while idx >= 0:
+            raw = lines[idx]
+            if not raw.strip():
+                break
+
+            raw_indent = len(raw) - len(raw.lstrip())
+            is_comment = bool(comment_line_re.match(raw))
+            is_directive = bool(directive_line_re.match(raw) or directive_comment_re.match(raw))
+
+            if raw_indent != indent:
+                break
+            if not (is_comment or is_directive):
+                break
+
+            return True
+
+        return False
 
     def _convert_mutable_borrow_to_immutable_action(
         self,
