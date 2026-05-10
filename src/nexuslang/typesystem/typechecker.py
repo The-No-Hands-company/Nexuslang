@@ -5,6 +5,7 @@ This module provides type checking functionality for NexusLang programs.
 
 from typing import Dict, List, Optional, Set, Union, Any, Tuple, Type
 import re
+import sys
 import enum
 import types as pytypes
 from ..parser.ast import (
@@ -34,12 +35,15 @@ from ..parser.ast import (
     SwitchStatement,
     # Mutation/assignment nodes (used for contract side-effect detection)
     IndexAssignment, DereferenceAssignment,
+    # Lifetime-wrapped type annotations
+    ReturnTypeWithLifetime,
 )
 from ..typesystem.types import (
     Type, PrimitiveType, ListType, DictionaryType, ClassType, 
     FunctionType, UnionType, AnyType, 
     INTEGER_TYPE, FLOAT_TYPE, STRING_TYPE, BOOLEAN_TYPE, NULL_TYPE, ANY_TYPE,
-    get_type_by_name, infer_type, GenericType, GenericParameter, ChannelType
+    get_type_by_name, infer_type, GenericType, GenericParameter, ChannelType,
+    AwaitableType
 )
 from ..typesystem.type_inference import TypeInferenceEngine
 from ..typesystem.generic_types import GenericTypeRegistry, GenericTypeContext
@@ -59,7 +63,7 @@ class TypeCheckError(Exception):
 class TypeEnvironment:
     """Environment for type checking, containing variable and function types."""
     
-    def __init__(self, parent: Optional['TypeEnvironment'] = None):
+    def __init__(self, parent: Optional['TypeEnvironment'] = None) -> None:
         self.parent = parent
         self.variables: Dict[str, Type] = {}
         self.functions: Dict[str, FunctionType] = {}
@@ -208,9 +212,18 @@ class TypeRegistry(dict):
 class TypeChecker:
     """Type checker for NexusLang programs."""
     
-    def __init__(self):
+    def __init__(
+        self,
+        enable_ownership_passes: bool = True,
+        stop_on_ownership_errors: bool = True,
+    ) -> None:
+        if not isinstance(enable_ownership_passes, bool):
+            raise TypeError("enable_ownership_passes must be a bool")
+        if not isinstance(stop_on_ownership_errors, bool):
+            raise TypeError("stop_on_ownership_errors must be a bool")
         self.env = TypeEnvironment()
         self.errors: List[str] = []
+        self.warnings: List[str] = []
         # Use the type inference engine for improved inference
         self.type_inference = TypeInferenceEngine()
         self.type_inference_engine = self.type_inference  # Alias for pattern matching
@@ -228,26 +241,214 @@ class TypeChecker:
         self.generic_inference = GenericTypeInference()
         self.generic_functions: Dict[str, FunctionDefinition] = {}  # Track generic function templates
         self.macro_definitions: Dict[str, MacroDefinition] = {}
+        self.async_function_names: Set[str] = set()
+        self.ffi_extern_types: Dict[str, Any] = {}
 
         # HKT registry: used to validate higher-kinded type constraints
         self.hkt_registry = GLOBAL_HKT_REGISTRY
+
+        # Ownership / lifetime pass pipeline controls.
+        self.enable_ownership_passes = enable_ownership_passes
+        self.stop_on_ownership_errors = stop_on_ownership_errors
+        self.ownership_errors: List[str] = []
+        self.ownership_warnings: List[str] = []
     
     def check_program(self, program: Program) -> List[str]:
         """Check the types in a program and return any errors."""
+        self._require_program_node(program)
         self.errors = []
+        self.warnings = []
+        self.ownership_errors = []
+        self.ownership_warnings = []
+        self.async_function_names = set()
+
+        if self.enable_ownership_passes:
+            ownership_ok = self._run_ownership_lifetime_passes(program)
+            if self.stop_on_ownership_errors and not ownership_ok:
+                return self.errors
         
         for statement in program.statements:
             self.check_statement(statement, self.env)
         
         return self.errors
+
+    def _run_ownership_lifetime_passes(self, program: Program) -> bool:
+        """Run deterministic ownership analysis phases before core type checking.
+
+        Phase order is fixed:
+        1. Borrow checker (hard errors)
+        2. Lifetime checker (hard errors + warnings)
+
+        Returns True when no hard ownership/lifetime errors were produced.
+        """
+        try:
+            from .borrow_checker import BorrowChecker
+            from .lifetime_checker import LifetimeChecker
+        except (ImportError, ModuleNotFoundError) as e:
+            # Ownership modules are optional for some tooling contexts.
+            import logging
+            logging.debug(f"Ownership/lifetime checking unavailable: {e}")
+            return True
+
+        borrow_errors = BorrowChecker().check(program)
+        for err in borrow_errors:
+            msg = f"[ownership.borrow] {err}"
+            self.ownership_errors.append(msg)
+            self.errors.append(msg)
+
+        # Deterministic boundary: skip lifetime phase when borrow phase already
+        # failed and strict boundary mode is enabled.
+        if borrow_errors and self.stop_on_ownership_errors:
+            return False
+
+        lifetime_results = LifetimeChecker().check(program)
+        hard_lifetime = [e for e in lifetime_results if not getattr(e, 'is_warning', False)]
+        lifetime_warnings = [e for e in lifetime_results if getattr(e, 'is_warning', False)]
+
+        for err in hard_lifetime:
+            msg = f"[ownership.lifetime] {err}"
+            self.ownership_errors.append(msg)
+            self.errors.append(msg)
+
+        for warn in lifetime_warnings:
+            msg = f"[ownership.lifetime.warning] {warn}"
+            self.ownership_warnings.append(msg)
+            self.warnings.append(msg)
+
+        return len(self.ownership_errors) == 0
+
+    def _normalize_type_annotation(self, annotation: Any) -> Any:
+        """Return the base type name for wrapped annotations.
+
+        Lifetime-aware annotations wrap a base type (for example
+        ReturnTypeWithLifetime(borrow String lifetime a)). For core type
+        checking we currently reason over the base type while ownership/lifetime
+        passes validate the lifetime relations separately.
+        """
+        if isinstance(annotation, ReturnTypeWithLifetime):
+            return annotation.base_type
+        return annotation
+
+    def _require_program_node(self, program: Any) -> None:
+        """Validate program input shape for type-checking entrypoints."""
+        if program is None or not hasattr(program, 'statements'):
+            raise TypeError("program must be a Program-like node with statements")
+        if not isinstance(program.statements, list):
+            raise TypeError("program.statements must be a list")
+
+    def _require_statement_env(self, statement: Any, env: Any, method_name: str) -> None:
+        """Validate statement+environment inputs for internal dispatch helpers."""
+        if statement is None:
+            raise TypeError(f"{method_name}: statement must not be None")
+        if not isinstance(env, TypeEnvironment):
+            raise TypeError(f"{method_name}: env must be a TypeEnvironment")
+
+    def _require_list_attribute(self, statement: Any, attr_name: str, method_name: str) -> None:
+        """Validate that a statement attribute exists and is a list."""
+        if not hasattr(statement, attr_name):
+            raise TypeError(f"{method_name}: statement must define '{attr_name}'")
+        value = getattr(statement, attr_name)
+        if not isinstance(value, list):
+            raise TypeError(f"{method_name}: statement.{attr_name} must be a list")
+
+    def _require_attribute(self, statement: Any, attr_name: str, method_name: str) -> None:
+        """Validate that a statement attribute exists."""
+        if not hasattr(statement, attr_name):
+            raise TypeError(f"{method_name}: statement must define '{attr_name}'")
+
+    def _require_string_attribute(self, statement: Any, attr_name: str, method_name: str) -> None:
+        """Validate that a statement attribute exists and is a non-empty string."""
+        self._require_attribute(statement, attr_name, method_name)
+        value = getattr(statement, attr_name)
+        if not isinstance(value, str) or not value.strip():
+            raise TypeError(f"{method_name}: statement.{attr_name} must be a non-empty string")
+
+    def _require_block_like_attribute(self, statement: Any, attr_name: str, method_name: str) -> None:
+        """Validate that a statement attribute is a Block-like node with a statements list."""
+        self._require_attribute(statement, attr_name, method_name)
+        block = getattr(statement, attr_name)
+        if block is None or not hasattr(block, 'statements'):
+            raise TypeError(f"{method_name}: statement.{attr_name} must be a Block-like node with statements")
+        if not isinstance(block.statements, list):
+            raise TypeError(f"{method_name}: statement.{attr_name}.statements must be a list")
+
+    def _require_inline_assembly_shape(self, statement: Any) -> None:
+        """Validate inline assembly operand shapes before semantic checks."""
+        self._require_list_attribute(statement, 'inputs', "_check_inline_assembly_statement")
+        self._require_list_attribute(statement, 'outputs', "_check_inline_assembly_statement")
+        self._require_list_attribute(statement, 'clobbers', "_check_inline_assembly_statement")
+
+        for entry in statement.inputs:
+            if not isinstance(entry, tuple) or len(entry) != 2:
+                raise TypeError(
+                    "_check_inline_assembly_statement: each input must be a (constraint, expression) tuple"
+                )
+
+        for entry in statement.outputs:
+            if not isinstance(entry, tuple) or len(entry) != 2:
+                raise TypeError(
+                    "_check_inline_assembly_statement: each output must be a (constraint, target) tuple"
+                )
+
+    def _require_match_expression_shape(self, statement: Any) -> None:
+        """Validate match expression case structure before type checking."""
+        if not hasattr(statement, 'expression'):
+            raise TypeError("_check_match_expression_statement: statement must define 'expression'")
+        self._require_list_attribute(statement, 'cases', "_check_match_expression_statement")
+
+        for case in statement.cases:
+            if not hasattr(case, 'pattern'):
+                raise TypeError("_check_match_expression_statement: each case must define 'pattern'")
+            if not hasattr(case, 'body'):
+                raise TypeError("_check_match_expression_statement: each case must define 'body'")
+            if not isinstance(case.body, list):
+                raise TypeError("_check_match_expression_statement: each case.body must be a list")
+
+    def _require_try_catch_body_shape(self, node: Any, attr_name: str, method_name: str) -> None:
+        """Validate TryCatch body shape as list of statements or Block-like node."""
+        self._require_attribute(node, attr_name, method_name)
+        body = getattr(node, attr_name)
+        if body is None:
+            return
+        if isinstance(body, list):
+            return
+        if hasattr(body, 'statements'):
+            if not isinstance(body.statements, list):
+                raise TypeError(f"{method_name}: statement.{attr_name}.statements must be a list")
+            return
+        raise TypeError(
+            f"{method_name}: statement.{attr_name} must be a list of statements or a Block-like node"
+        )
+
+    def _require_function_call_shape(self, call: Any) -> None:
+        """Validate FunctionCall node shape before type-check dispatch."""
+        if call is None:
+            raise TypeError("check_function_call: call must not be None")
+        if not hasattr(call, 'name'):
+            raise TypeError("check_function_call: call must define 'name'")
+        if not isinstance(call.name, str) or not call.name.strip():
+            raise TypeError("check_function_call: call.name must be a non-empty string")
+        if not hasattr(call, 'arguments'):
+            raise TypeError("check_function_call: call must define 'arguments'")
+        if not isinstance(call.arguments, list):
+            raise TypeError("check_function_call: call.arguments must be a list")
+        if not hasattr(call, 'named_arguments'):
+            raise TypeError("check_function_call: call must define 'named_arguments'")
+        if call.named_arguments is None:
+            return
+        if not isinstance(call.named_arguments, dict):
+            raise TypeError("check_function_call: call.named_arguments must be a dict")
     
     def check_statement(self, statement: Any, env: TypeEnvironment) -> Type:
         """Check the type of a statement."""
+        self._require_statement_env(statement, env, "check_statement")
         # Standard AST nodes with dedicated check methods
         if isinstance(statement, VariableDeclaration):
             return self.check_variable_declaration(statement, env)
         elif isinstance(statement, FunctionDefinition):
             return self.check_function_definition(statement, env)
+        elif statement.__class__.__name__ == 'AsyncFunctionDefinition':
+            return self.check_async_function_definition(statement, env)
         elif isinstance(statement, ClassDefinition):
             return self.check_class_definition(statement, env)
         elif isinstance(statement, InterfaceDefinition):
@@ -346,6 +547,7 @@ class TypeChecker:
 
     def _check_import_statement(self, statement: Any, env: TypeEnvironment) -> Tuple[bool, Any]:
         """Handle import-related statement nodes. Returns (handled, type)."""
+        self._require_statement_env(statement, env, "_check_import_statement")
         cls = statement.__class__.__name__
         if cls == 'ImportStatement':
             if hasattr(statement, 'module_name'):
@@ -368,6 +570,7 @@ class TypeChecker:
 
     def _check_data_structure_statement(self, statement: Any, env: TypeEnvironment) -> Tuple[bool, Any]:
         """Handle struct/union/object/memory statement nodes. Returns (handled, type)."""
+        self._require_statement_env(statement, env, "_check_data_structure_statement")
         cls = statement.__class__.__name__
         if cls == 'SendStatement':
             self._check_send_statement(statement, env)
@@ -411,6 +614,7 @@ class TypeChecker:
 
     def _check_collection_expression(self, statement: Any, env: TypeEnvironment) -> Tuple[bool, Any]:
         """Handle collection literal and comprehension nodes. Returns (handled, type)."""
+        self._require_statement_env(statement, env, "_check_collection_expression")
         cls = statement.__class__.__name__
         if cls == 'ChannelCreation':
             return True, ChannelType(ANY_TYPE)
@@ -428,6 +632,8 @@ class TypeChecker:
             return True, self.check_generator_expression(statement, env)
         if cls == 'YieldExpression':
             return True, self.check_yield_expression(statement, env)
+        if cls == 'AwaitExpression':
+            return True, self.check_await_expression(statement, env)
         if cls == 'MemberAccess':
             return True, self.check_member_access(statement, env)
         if cls == 'IndexExpression':
@@ -438,13 +644,15 @@ class TypeChecker:
 
     def _check_send_statement(self, statement: Any, env: TypeEnvironment) -> None:
         """Type check sending a value to a channel."""
+        self._require_statement_env(statement, env, "_check_send_statement")
+        self._require_attribute(statement, 'value', "_check_send_statement")
+        self._require_attribute(statement, 'channel', "_check_send_statement")
+
         value_type = ANY_TYPE
         channel_type: Type = ANY_TYPE
 
-        if hasattr(statement, 'value'):
-            value_type = self.check_expression(statement.value, env)
-        if hasattr(statement, 'channel'):
-            channel_type = self.check_expression(statement.channel, env)
+        value_type = self.check_expression(statement.value, env)
+        channel_type = self.check_expression(statement.channel, env)
 
         if isinstance(channel_type, AnyType):
             return
@@ -472,8 +680,8 @@ class TypeChecker:
 
     def _check_receive_expression(self, statement: Any, env: TypeEnvironment) -> Type:
         """Type check receiving a value from a channel."""
-        if not hasattr(statement, 'channel'):
-            return ANY_TYPE
+        self._require_statement_env(statement, env, "_check_receive_expression")
+        self._require_attribute(statement, 'channel', "_check_receive_expression")
 
         channel_type = self.check_expression(statement.channel, env)
 
@@ -491,8 +699,8 @@ class TypeChecker:
 
     def _check_close_statement(self, statement: Any, env: TypeEnvironment) -> None:
         """Type check closing a channel."""
-        if not hasattr(statement, 'channel'):
-            return
+        self._require_statement_env(statement, env, "_check_close_statement")
+        self._require_attribute(statement, 'channel', "_check_close_statement")
 
         channel_type = self.check_expression(statement.channel, env)
 
@@ -507,6 +715,10 @@ class TypeChecker:
 
     def _refine_channel_identifier_type(self, channel_expr: Any, payload_type: Type, env: TypeEnvironment) -> None:
         """Refine an identifier channel from Channel[Any] to Channel[payload_type]."""
+        if not isinstance(env, TypeEnvironment):
+            raise TypeError("_refine_channel_identifier_type: env must be a TypeEnvironment")
+        if payload_type is None or not hasattr(payload_type, 'is_compatible_with'):
+            raise TypeError("_refine_channel_identifier_type: payload_type must be a valid NexusLang type")
         if not isinstance(channel_expr, Identifier):
             return
 
@@ -527,8 +739,11 @@ class TypeChecker:
 
     def _check_ffi_statement(self, statement: Any, env: TypeEnvironment) -> Tuple[bool, Any]:
         """Handle FFI extern declaration nodes. Returns (handled, type)."""
+        self._require_statement_env(statement, env, "_check_ffi_statement")
         cls = statement.__class__.__name__
         if cls == 'ExternFunctionDeclaration':
+            self._require_list_attribute(statement, 'parameters', "_check_ffi_statement")
+            self._validate_extern_function_abi(statement)
             if hasattr(statement, 'name'):
                 param_types = []
                 if hasattr(statement, 'parameters'):
@@ -542,18 +757,132 @@ class TypeChecker:
                 env.define_function(statement.name, func_type)
             return True, ANY_TYPE
         if cls == 'ExternVariableDeclaration':
+            self._validate_ffi_abi_type(getattr(statement, 'type_annotation', 'Any'), getattr(statement, 'line_number', '?'), f"extern variable '{getattr(statement, 'name', '?')}'")
             if hasattr(statement, 'name') and hasattr(statement, 'type_annotation'):
                 var_type = get_type_by_name(statement.type_annotation)
                 env.define_variable(statement.name, var_type)
             return True, ANY_TYPE
         if cls == 'ExternTypeDeclaration':
+            self.ffi_extern_types[getattr(statement, 'name', '')] = statement
+            self._validate_extern_type_declaration(statement)
             return True, ANY_TYPE
         return False, None
 
+    def _validate_extern_type_declaration(self, statement: Any) -> None:
+        """Validate extern type declaration ABI metadata for soundness."""
+        line = getattr(statement, 'line_number', '?')
+        type_name = getattr(statement, 'name', '<unknown>')
+
+        if getattr(statement, 'is_function_pointer', False):
+            signature = getattr(statement, 'function_signature', None)
+            if signature and isinstance(signature, tuple) and len(signature) == 2:
+                param_types, return_type = signature
+                for idx, ptype in enumerate(param_types or []):
+                    self._validate_ffi_abi_type(ptype, line, f"extern function-pointer type '{type_name}' param {idx + 1}")
+                self._validate_ffi_abi_type(return_type, line, f"extern function-pointer type '{type_name}' return")
+            return
+
+        base_type = str(getattr(statement, 'base_type', '') or '').strip().lower()
+        is_opaque = bool(getattr(statement, 'is_opaque', False))
+
+        if is_opaque and base_type not in ('pointer', 'struct'):
+            self.errors.append(
+                f"Line {line}: Opaque extern type '{type_name}' must be declared as opaque pointer or opaque struct, got '{base_type}'"
+            )
+
+    def _validate_extern_function_abi(self, statement: Any) -> None:
+        """Validate extern function declaration ABI compatibility and layout constraints."""
+        line = getattr(statement, 'line_number', '?')
+        name = getattr(statement, 'name', '<extern>')
+        calling_convention = str(getattr(statement, 'calling_convention', 'cdecl') or 'cdecl').lower()
+        variadic = bool(getattr(statement, 'variadic', False))
+
+        from ..stdlib.ffi import is_calling_convention_supported
+
+        if not is_calling_convention_supported(calling_convention, sys.platform):
+            self.errors.append(
+                f"Line {line}: Unsupported FFI calling convention '{calling_convention}' for extern function '{name}'"
+            )
+        elif sys.platform != 'win32' and calling_convention in ('stdcall', 'thiscall', 'fastcall', 'vectorcall', 'win64'):
+            self.errors.append(
+                f"Line {line}: Calling convention '{calling_convention}' for extern function '{name}' is platform-ABI mismatched on '{sys.platform}'"
+            )
+
+        if variadic and calling_convention not in ('cdecl', 'sysv'):
+            self.errors.append(
+                f"Line {line}: Variadic extern function '{name}' requires 'cdecl' or 'sysv' calling convention, got '{calling_convention}'"
+            )
+
+        params = list(getattr(statement, 'parameters', []) or [])
+        if variadic and len(params) == 0:
+            self.errors.append(
+                f"Line {line}: Variadic extern function '{name}' must declare at least one fixed parameter before ellipsis"
+            )
+
+        for idx, param in enumerate(params):
+            ann = getattr(param, 'type_annotation', 'Any')
+            self._validate_ffi_abi_type(ann, line, f"extern function '{name}' param {idx + 1}")
+
+        self._validate_ffi_abi_type(getattr(statement, 'return_type', 'Void'), line, f"extern function '{name}' return")
+
+    def _is_pointer_like_annotation(self, type_annotation: str) -> bool:
+        """Return True if a type annotation denotes pointer-like ABI transport."""
+        text = str(type_annotation or '').strip().lower()
+        if not text:
+            return False
+        return ('*' in text) or ('pointer' in text) or text.endswith('ptr') or text == 'void*'
+
+    def _validate_ffi_abi_type(self, type_annotation: Any, line: Any, context: str) -> None:
+        """Validate ABI safety for extern parameter/return type annotations."""
+        raw = str(type_annotation or 'Any').strip()
+        lowered = raw.lower()
+
+        if lowered in ('void', 'any', 'integer', 'int', 'int8', 'int16', 'int32', 'int64',
+                       'uint8', 'uint16', 'uint32', 'uint64', 'size_t', 'float', 'double',
+                       'boolean', 'bool', 'char', 'string', 'str', 'null', 'pointer', 'void*'):
+            return
+
+        pointer_like = self._is_pointer_like_annotation(raw)
+
+        # Managed / unsized aggregate containers are not ABI-stable by-value in extern signatures.
+        aggregate_keywords = (
+            'list', 'dict', 'dictionary', 'set', 'tuple', 'option', 'result',
+            'channel', 'awaitable', 'task', 'promise'
+        )
+        if any(keyword in lowered for keyword in aggregate_keywords):
+            self.errors.append(
+                f"Line {line}: Unsized/managed type '{raw}' in {context} is ABI-unstable; use pointer-based extern types instead"
+            )
+            return
+
+        # Opaque extern types require pointer transport unless concrete layout is exposed.
+        extern_decl = self.ffi_extern_types.get(raw)
+        if extern_decl is not None:
+            if bool(getattr(extern_decl, 'is_opaque', False)) and not pointer_like:
+                self.errors.append(
+                    f"Line {line}: Opaque extern type '{raw}' has unknown layout in {context}; pass it as a pointer"
+                )
+                return
+
+        # Struct-by-value is layout-sensitive unless explicitly modeled as pointer.
+        if ('struct' in lowered) and not pointer_like:
+            self.errors.append(
+                f"Line {line}: Struct type '{raw}' in {context} requires explicit ABI layout agreement; prefer pointer-based FFI signatures"
+            )
+            return
+
+        # Function types crossing ABI boundary should be function pointers.
+        if lowered.startswith('function') and not pointer_like:
+            self.errors.append(
+                f"Line {line}: Function type '{raw}' in {context} must be passed as a function pointer extern type"
+            )
+
     def _check_inline_assembly_statement(self, statement: Any, env: TypeEnvironment) -> Tuple[bool, Any]:
         """Handle inline assembly nodes. Returns (handled, type)."""
+        self._require_statement_env(statement, env, "_check_inline_assembly_statement")
         if statement.__class__.__name__ != 'InlineAssembly':
             return False, None
+        self._require_inline_assembly_shape(statement)
         line = getattr(statement, 'line_number', '?')
 
         if hasattr(statement, 'inputs'):
@@ -633,8 +962,10 @@ class TypeChecker:
 
     def _check_match_expression_statement(self, statement: Any, env: TypeEnvironment) -> Tuple[bool, Any]:
         """Handle match/case expression nodes. Returns (handled, type)."""
+        self._require_statement_env(statement, env, "_check_match_expression_statement")
         if statement.__class__.__name__ != 'MatchExpression':
             return False, None
+        self._require_match_expression_shape(statement)
         match_expr_type = self.check_expression(statement.expression, env)
         result_types = []
         for case in statement.cases:
@@ -690,36 +1021,50 @@ class TypeChecker:
 
     def _check_ownership_statement(self, statement: Any, env: TypeEnvironment) -> Tuple[bool, Any]:
         """Handle ownership/smart-pointer nodes. Returns (handled, type)."""
+        self._require_statement_env(statement, env, "_check_ownership_statement")
         cls = statement.__class__.__name__
         if cls == 'RcCreation':
-            if hasattr(statement, 'value') and statement.value is not None:
+            self._require_attribute(statement, 'value', "_check_ownership_statement")
+            if statement.value is not None:
                 self.check_statement(statement.value, env)
             return True, ANY_TYPE
         if cls == 'DowngradeExpression':
-            if hasattr(statement, 'rc_expr') and statement.rc_expr is not None:
+            self._require_attribute(statement, 'rc_expr', "_check_ownership_statement")
+            if statement.rc_expr is not None:
                 self.check_statement(statement.rc_expr, env)
             return True, ANY_TYPE
         if cls == 'UpgradeExpression':
-            if hasattr(statement, 'weak_expr') and statement.weak_expr is not None:
+            self._require_attribute(statement, 'weak_expr', "_check_ownership_statement")
+            if statement.weak_expr is not None:
                 self.check_statement(statement.weak_expr, env)
             return True, ANY_TYPE
         if cls == 'MoveExpression':
+            self._require_attribute(statement, 'var_name', "_check_ownership_statement")
             var_name = getattr(statement, 'var_name', None)
             if var_name is not None:
                 try:
                     return True, env.get_variable_type(var_name)
-                except Exception:
+                except TypeCheckError:
+                    # Variable not found in environment
                     pass
             return True, ANY_TYPE
         if cls in ('BorrowExpression', 'BorrowExpressionWithLifetime'):
+            self._require_attribute(statement, 'var_name', "_check_ownership_statement")
             var_name = getattr(statement, 'var_name', None)
             if var_name is not None:
                 try:
                     return True, env.get_variable_type(var_name)
-                except Exception:
+                except TypeCheckError:
+                    # Variable not found in environment
                     pass
             return True, ANY_TYPE
-        if cls in ('DropBorrowStatement', 'LifetimeAnnotation', 'MovedValue'):
+        if cls == 'DropBorrowStatement':
+            self._require_attribute(statement, 'var_name', "_check_ownership_statement")
+            return True, ANY_TYPE
+        if cls == 'LifetimeAnnotation':
+            self._require_string_attribute(statement, 'label', "_check_ownership_statement")
+            return True, ANY_TYPE
+        if cls == 'MovedValue':
             return True, ANY_TYPE
         return False, None
     
@@ -854,11 +1199,12 @@ class TypeChecker:
                 variadic_index = i
             
             if param.type_annotation:
+                normalized_param_annotation = self._normalize_type_annotation(param.type_annotation)
                 # Check if this is a type parameter
-                if env.is_type_parameter(param.type_annotation):
-                    param_type = GenericParameter(param.type_annotation)
+                if env.is_type_parameter(normalized_param_annotation):
+                    param_type = GenericParameter(normalized_param_annotation)
                 else:
-                    param_type = get_type_by_name(param.type_annotation)
+                    param_type = get_type_by_name(normalized_param_annotation)
                 
                 # Wrap variadic parameter type in ListType
                 if is_variadic_param:
@@ -882,10 +1228,11 @@ class TypeChecker:
         declared_return_type = ANY_TYPE
         has_explicit_return_type = bool(definition.return_type)
         if definition.return_type:
-            if env.is_type_parameter(definition.return_type):
-                declared_return_type = GenericParameter(definition.return_type)
+            normalized_return_annotation = self._normalize_type_annotation(definition.return_type)
+            if env.is_type_parameter(normalized_return_annotation):
+                declared_return_type = GenericParameter(normalized_return_annotation)
             else:
-                declared_return_type = get_type_by_name(definition.return_type)
+                declared_return_type = get_type_by_name(normalized_return_annotation)
         else:
             inferred_return_type = self.type_inference.infer_function_return_type(definition, env.variables)
             if inferred_return_type != ANY_TYPE:
@@ -940,6 +1287,33 @@ class TypeChecker:
         function_type.return_type = return_type
         env.define_function(definition.name, function_type)
         
+        return function_type
+
+    def check_async_function_definition(self, definition: Any, env: TypeEnvironment) -> Type:
+        """Check an async function and register an awaitable return signature."""
+        self._require_statement_env(definition, env, "check_async_function_definition")
+        self._require_string_attribute(definition, 'name', "check_async_function_definition")
+        self._require_list_attribute(definition, 'parameters', "check_async_function_definition")
+        self._require_list_attribute(definition, 'body', "check_async_function_definition")
+        if hasattr(definition, 'type_parameters') and not isinstance(definition.type_parameters, list):
+            raise TypeError("check_async_function_definition: statement.type_parameters must be a list")
+
+        sync_like_definition = FunctionDefinition(
+            name=definition.name,
+            parameters=getattr(definition, 'parameters', []),
+            body=getattr(definition, 'body', []),
+            return_type=getattr(definition, 'return_type', None),
+            type_parameters=getattr(definition, 'type_parameters', []),
+            line_number=getattr(definition, 'line_number', None),
+        )
+
+        function_type = self.check_function_definition(sync_like_definition, env)
+        self.async_function_names.add(definition.name)
+
+        # Async function invocations produce awaitable handles; await unwraps payload type.
+        payload_type = function_type.return_type
+        function_type.return_type = AwaitableType(payload_type)
+        env.define_function(definition.name, function_type)
         return function_type
     
     def check_if_statement(self, statement: IfStatement, env: TypeEnvironment) -> Type:
@@ -1026,6 +1400,11 @@ class TypeChecker:
 
     def check_parallel_for_loop(self, loop: ParallelForLoop, env: TypeEnvironment) -> Type:
         """Check a parallel for-each loop."""
+        self._require_statement_env(loop, env, "check_parallel_for_loop")
+        self._require_string_attribute(loop, 'var_name', "check_parallel_for_loop")
+        self._require_attribute(loop, 'iterable', "check_parallel_for_loop")
+        self._require_list_attribute(loop, 'body', "check_parallel_for_loop")
+
         iterable_type = self.check_statement(loop.iterable, env)
 
         loop_env = TypeEnvironment(env)
@@ -1352,6 +1731,29 @@ class TypeChecker:
         matcher = getattr(node, 'matcher', '')
         expected_expr = getattr(node, 'expected_expr', None)
 
+        def _is_numeric(t: Type) -> bool:
+            return (
+                isinstance(t, AnyType)
+                or t.is_compatible_with(INTEGER_TYPE)
+                or t.is_compatible_with(FLOAT_TYPE)
+            )
+
+        def _is_string_like(t: Type) -> bool:
+            if isinstance(t, AnyType):
+                return True
+            if isinstance(t, PrimitiveType):
+                return t.name == 'string'
+            return False
+
+        def _is_length_capable(t: Type) -> bool:
+            if isinstance(t, AnyType):
+                return True
+            if isinstance(t, (ListType, DictionaryType)):
+                return True
+            if isinstance(t, PrimitiveType) and t.name == 'string':
+                return True
+            return False
+
         if matcher in (
             'equal', 'greater_than', 'less_than',
             'greater_than_or_equal_to', 'less_than_or_equal_to'
@@ -1369,9 +1771,7 @@ class TypeChecker:
                         )
                 else:
                     for t in (actual_type, expected_type):
-                        if (not isinstance(t, AnyType)
-                                and not t.is_compatible_with(INTEGER_TYPE)
-                                and not t.is_compatible_with(FLOAT_TYPE)):
+                        if not _is_numeric(t):
                             self.errors.append(
                                 f"Type error: expect comparison matcher requires numeric operands, got '{self._type_name(t)}'"
                             )
@@ -1388,21 +1788,90 @@ class TypeChecker:
             if expected_expr is not None:
                 expected_type = self.check_statement(expected_expr, env)
                 for t in (actual_type, expected_type):
-                    if (not isinstance(t, AnyType)
-                            and not t.is_compatible_with(INTEGER_TYPE)
-                            and not t.is_compatible_with(FLOAT_TYPE)):
+                    if not _is_numeric(t):
                         self.errors.append(
                             f"Type error: approximately_equal requires numeric operands, got '{self._type_name(t)}'"
                         )
             tolerance_expr = getattr(node, 'tolerance_expr', None)
             if tolerance_expr is not None:
                 tol_type = self.check_statement(tolerance_expr, env)
-                if (not isinstance(tol_type, AnyType)
-                        and not tol_type.is_compatible_with(INTEGER_TYPE)
-                        and not tol_type.is_compatible_with(FLOAT_TYPE)):
+                if not _is_numeric(tol_type):
                     self.errors.append(
                         f"Type error: expect approximately_equal tolerance must be numeric, got '{self._type_name(tol_type)}'"
                     )
+        elif matcher == 'contain':
+            expected_type = self.check_statement(expected_expr, env) if expected_expr is not None else ANY_TYPE
+
+            if not _is_length_capable(actual_type):
+                self.errors.append(
+                    f"Type error: expect contain requires a string/list/dictionary actual value, got '{self._type_name(actual_type)}'"
+                )
+
+            if isinstance(actual_type, PrimitiveType) and actual_type.name == 'string' and not _is_string_like(expected_type):
+                self.errors.append(
+                    f"Type error: expect contain on strings requires a string expected value, got '{self._type_name(expected_type)}'"
+                )
+            elif isinstance(actual_type, ListType):
+                if (not isinstance(expected_type, AnyType)
+                        and not expected_type.is_compatible_with(actual_type.element_type)
+                        and not actual_type.element_type.is_compatible_with(expected_type)):
+                    self.errors.append(
+                        f"Type error: expect contain on list expects element type '{self._type_name(actual_type.element_type)}', got '{self._type_name(expected_type)}'"
+                    )
+            elif isinstance(actual_type, DictionaryType):
+                if (not isinstance(expected_type, AnyType)
+                        and not expected_type.is_compatible_with(actual_type.key_type)
+                        and not actual_type.key_type.is_compatible_with(expected_type)):
+                    self.errors.append(
+                        f"Type error: expect contain on dictionary expects key type '{self._type_name(actual_type.key_type)}', got '{self._type_name(expected_type)}'"
+                    )
+        elif matcher == 'have_length':
+            expected_type = self.check_statement(expected_expr, env) if expected_expr is not None else ANY_TYPE
+
+            if not _is_length_capable(actual_type):
+                self.errors.append(
+                    f"Type error: expect have_length requires a string/list/dictionary actual value, got '{self._type_name(actual_type)}'"
+                )
+
+            if (not isinstance(expected_type, AnyType)
+                    and not expected_type.is_compatible_with(INTEGER_TYPE)):
+                self.errors.append(
+                    f"Type error: expect have_length requires an integer expected value, got '{self._type_name(expected_type)}'"
+                )
+        elif matcher in ('start_with', 'end_with'):
+            expected_type = self.check_statement(expected_expr, env) if expected_expr is not None else ANY_TYPE
+
+            if isinstance(actual_type, PrimitiveType) and actual_type.name == 'string':
+                if not _is_string_like(expected_type):
+                    self.errors.append(
+                        f"Type error: expect {matcher} on strings requires a string expected value, got '{self._type_name(expected_type)}'"
+                    )
+            elif isinstance(actual_type, ListType):
+                if (not isinstance(expected_type, AnyType)
+                        and not expected_type.is_compatible_with(actual_type.element_type)
+                        and not actual_type.element_type.is_compatible_with(expected_type)):
+                    self.errors.append(
+                        f"Type error: expect {matcher} on list expects element type '{self._type_name(actual_type.element_type)}', got '{self._type_name(expected_type)}'"
+                    )
+            elif not isinstance(actual_type, AnyType):
+                self.errors.append(
+                    f"Type error: expect {matcher} requires a string/list actual value, got '{self._type_name(actual_type)}'"
+                )
+        elif matcher == 'be_empty':
+            if not _is_length_capable(actual_type):
+                self.errors.append(
+                    f"Type error: expect be_empty requires a string/list/dictionary actual value, got '{self._type_name(actual_type)}'"
+                )
+        elif matcher == 'be_of_type':
+            if expected_expr is not None:
+                expected_type = self.check_statement(expected_expr, env)
+                if not _is_string_like(expected_type):
+                    self.errors.append(
+                        f"Type error: expect be_of_type requires a string type name, got '{self._type_name(expected_type)}'"
+                    )
+        elif matcher == 'raise_error':
+            # Always valid at type-check time: whether the expression raises is a runtime assertion.
+            pass
         else:
             if expected_expr is not None:
                 self.check_statement(expected_expr, env)
@@ -1503,6 +1972,9 @@ class TypeChecker:
     
     def check_concurrent_block(self, block: ConcurrentBlock, env: TypeEnvironment) -> Type:
         """Check a concurrent block of statements."""
+        self._require_statement_env(block, env, "check_concurrent_block")
+        self._require_list_attribute(block, 'statements', "check_concurrent_block")
+
         block_env = TypeEnvironment(env)
         result_types = []
         
@@ -1514,6 +1986,10 @@ class TypeChecker:
     
     def check_try_catch_block(self, block: TryCatchBlock, env: TypeEnvironment) -> Type:
         """Check a try-catch block."""
+        self._require_statement_env(block, env, "check_try_catch_block")
+        self._require_block_like_attribute(block, 'try_block', "check_try_catch_block")
+        self._require_block_like_attribute(block, 'catch_block', "check_try_catch_block")
+
         try_env = TypeEnvironment(env)
         try_type = self.check_block(block.try_block, try_env)
 
@@ -1532,6 +2008,13 @@ class TypeChecker:
     
     def check_try_catch(self, node: TryCatch, env: TypeEnvironment) -> Type:
         """Check a TryCatch node (alternative try-catch AST form)."""
+        self._require_statement_env(node, env, "check_try_catch")
+        self._require_try_catch_body_shape(node, 'try_block', "check_try_catch")
+        self._require_try_catch_body_shape(node, 'catch_block', "check_try_catch")
+        if getattr(node, 'exception_var', None) is not None:
+            if not isinstance(node.exception_var, str) or not node.exception_var.strip():
+                raise TypeError("check_try_catch: statement.exception_var must be a non-empty string when provided")
+
         def check_body(body, local_env):
             if body is None:
                 return ANY_TYPE
@@ -1552,8 +2035,153 @@ class TypeChecker:
         catch_type = check_body(node.catch_block, catch_env)
         return UnionType([try_type, catch_type])
 
+    def _infer_generic_substitutions(
+        self, func_def: FunctionDefinition, arg_types: List[Type]
+    ) -> Dict[str, Type]:
+        """Infer type-parameter substitutions (e.g. T->Integer) from call arguments.
+
+        Iterates over the function's parameter list and, for each parameter
+        whose type annotation names a declared generic type parameter, unifies
+        the corresponding argument type with that variable.  Conflicting
+        bindings are reported as type errors and the first binding wins.
+
+        Returns a dict mapping each resolved type-parameter name to its
+        inferred concrete type.
+        """
+        substitutions: Dict[str, Type] = {}
+        type_param_names: Set[str] = set(func_def.type_parameters) if func_def.type_parameters else set()
+
+        for arg_type, param in zip(arg_types, func_def.parameters):
+            if not param.type_annotation:
+                continue
+            normalized = self._normalize_type_annotation(param.type_annotation)
+            if normalized not in type_param_names:
+                continue
+            # This parameter position is typed with a generic type variable
+            if normalized in substitutions:
+                existing = substitutions[normalized]
+                if not arg_type.is_compatible_with(existing):
+                    self.errors.append(
+                        f"Type error: Conflicting types inferred for type parameter "
+                        f"'{normalized}': '{self._type_name(existing)}' vs "
+                        f"'{self._type_name(arg_type)}'"
+                    )
+            else:
+                substitutions[normalized] = arg_type
+        return substitutions
+
+    def _type_satisfies_constraint(self, actual_type: Type, constraint_name: str) -> bool:
+        """Return True if *actual_type* satisfies the named trait/interface constraint.
+
+        Checks in order:
+        1. AnyType always passes (dynamically typed)
+        2. PrimitiveType against well-known built-in traits
+        3. ClassType against registered traits (method-set check) and
+           parent class hierarchy
+        4. Structured types (List, Dict) against collection traits
+        5. Unknown constraints pass optimistically (may come from external modules)
+        """
+        cn_lower = constraint_name.lower()
+        type_name_lower = self._type_name(actual_type).lower()
+
+        # AnyType satisfies any constraint — dynamic typing
+        if isinstance(actual_type, AnyType):
+            return True
+
+        NUMERIC_NAMES = {'integer', 'float', 'int', 'float64', 'i64', 'f64', 'number'}
+        ORDERED_NAMES = {'integer', 'float', 'string', 'int', 'float64', 'i64', 'f64', 'str', 'number'}
+        ALL_PRIM_NAMES = NUMERIC_NAMES | {'string', 'boolean', 'bool', 'str'}
+
+        if isinstance(actual_type, PrimitiveType):
+            if cn_lower in ('comparable', 'orderable', 'ordered', 'partialord', 'ord'):
+                return type_name_lower in ORDERED_NAMES
+            if cn_lower in ('equatable', 'equality', 'partialeq', 'eq'):
+                return True
+            if cn_lower in ('numeric', 'number', 'num'):
+                return type_name_lower in NUMERIC_NAMES
+            if cn_lower in ('printable', 'display', 'debug', 'tostring', 'stringable', 'show'):
+                return True
+            if cn_lower in ('clone', 'copy'):
+                return True
+            if cn_lower in ('hashable', 'hash'):
+                return True
+            if cn_lower in ('default',):
+                return True
+            # Unknown built-in constraint on primitive — pass optimistically
+            return True
+
+        if isinstance(actual_type, ClassType):
+            class_methods: Set[str] = (
+                set(actual_type.methods.keys())
+                if hasattr(actual_type, 'methods') and actual_type.methods
+                else set()
+            )
+            # Trait registered in self.trait_methods: check method-set containment
+            if constraint_name in self.trait_methods:
+                required = self.trait_methods[constraint_name]
+                return required.issubset(class_methods)
+            # Interface registered in type_registry: use missing-method check
+            if constraint_name in self.type_registry:
+                missing = self.type_registry.check_interface_implementation(
+                    actual_type.name, constraint_name
+                )
+                return len(missing) == 0
+            # Parent-class / mixin hierarchy
+            if hasattr(actual_type, 'parent_classes') and actual_type.parent_classes:
+                if constraint_name in actual_type.parent_classes:
+                    return True
+            # Unknown constraint on class — pass optimistically
+            return True
+
+        if isinstance(actual_type, ListType):
+            if cn_lower in ('iterable', 'collection', 'sequence', 'indexable'):
+                return True
+            return True
+
+        if isinstance(actual_type, DictionaryType):
+            if cn_lower in ('iterable', 'collection', 'mapping'):
+                return True
+            return True
+
+        # Default: pass unknown constraint on unknown type
+        return True
+
+    def _check_generic_constraints(
+        self,
+        func_name: str,
+        substitutions: Dict[str, Type],
+        func_def: FunctionDefinition,
+    ) -> None:
+        """Validate that every inferred type-argument satisfies its declared constraints.
+
+        If *func_def.type_constraints* is a dict mapping type-parameter names to
+        lists of trait/interface names, each inferred substitution is checked
+        against its constraint list via :meth:`_type_satisfies_constraint`.  Any
+        constraint violation is appended to ``self.errors``.
+        """
+        if not hasattr(func_def, 'type_constraints') or not func_def.type_constraints:
+            return
+        constraints = func_def.type_constraints
+        # Only handle the canonical dict format
+        if not isinstance(constraints, dict):
+            return
+        for param_name, trait_names in constraints.items():
+            if param_name not in substitutions:
+                continue
+            actual_type = substitutions[param_name]
+            for trait_name in trait_names:
+                if not self._type_satisfies_constraint(actual_type, trait_name):
+                    self.errors.append(
+                        f"Type error: Type '{self._type_name(actual_type)}' does not "
+                        f"satisfy constraint '{trait_name}' for type parameter "
+                        f"'{param_name}' in function '{func_name}'"
+                    )
+
     def check_function_call(self, call: FunctionCall, env: TypeEnvironment) -> Type:
         """Check a function call with bidirectional type inference."""
+        self._require_statement_env(call, env, "check_function_call")
+        self._require_function_call_shape(call)
+
         # Handle module.function calls (function name contains a dot)
         if isinstance(call.name, str) and '.' in call.name:
             # Module member access - type check arguments but return ANY_TYPE
@@ -1631,11 +2259,20 @@ class TypeChecker:
                 arg_types_to_check = arg_types
             
             for i, (arg_type, param_type) in enumerate(zip(arg_types_to_check, positional_param_types)):
-                if param_type != ANY_TYPE and not arg_type.is_compatible_with(param_type):
+                if (param_type != ANY_TYPE
+                        and not isinstance(param_type, GenericParameter)
+                        and not arg_type.is_compatible_with(param_type)):
                     self.errors.append(
                         f"Type error: Function '{call.name}' argument {i+1} expects type '{self._type_name(param_type)}', got '{self._type_name(arg_type)}'"
                     )
-            
+
+            # Generic constraint propagation: validate that each inferred
+            # type-argument satisfies the declared trait/interface constraints.
+            if call.name in self.generic_functions:
+                func_def = self.generic_functions[call.name]
+                substitutions = self._infer_generic_substitutions(func_def, arg_types)
+                self._check_generic_constraints(call.name, substitutions, func_def)
+
             return function_type.return_type
         except TypeCheckError:
             # If the function is not defined, assume it's a runtime-registered function (stdlib)
@@ -1651,6 +2288,8 @@ class TypeChecker:
     
     def _type_name(self, type_: Type) -> str:
         """Get a human-readable name for a type."""
+        if isinstance(type_, AwaitableType):
+            return f"Awaitable<{self._type_name(type_.payload_type)}>"
         if hasattr(type_, 'name'):
             return type_.name
         return type_.__class__.__name__
@@ -2005,6 +2644,9 @@ class TypeChecker:
 
     def check_yield_expression(self, yield_expr, env: TypeEnvironment) -> Type:
         """Check a yield expression with function-context compatibility checks."""
+        self._require_statement_env(yield_expr, env, "check_yield_expression")
+        self._require_attribute(yield_expr, 'value', "check_yield_expression")
+
         yielded_type = NULL_TYPE
         if getattr(yield_expr, 'value', None) is not None:
             yielded_type = self.check_statement(yield_expr.value, env)
@@ -2027,6 +2669,34 @@ class TypeChecker:
             )
 
         return yielded_type
+
+    def check_await_expression(self, await_expr: Any, env: TypeEnvironment) -> Type:
+        """Check an await expression and return the unwrapped task payload type."""
+        self._require_statement_env(await_expr, env, "check_await_expression")
+
+        operand = getattr(await_expr, 'expression', None)
+        if operand is None:
+            operand = getattr(await_expr, 'expr', None)
+
+        if operand is None:
+            raise TypeError("check_await_expression: statement must define 'expression' or 'expr'")
+
+        awaited_type = self.check_statement(operand, env)
+
+        if isinstance(awaited_type, AwaitableType):
+            return awaited_type.payload_type
+
+        if isinstance(awaited_type, AnyType):
+            return ANY_TYPE
+
+        # Current parser/compiler semantics allow awaiting direct synchronous calls.
+        if isinstance(operand, FunctionCall):
+            return awaited_type
+
+        self.errors.append(
+            f"Type error: await expects a task or awaitable value, got '{self._type_name(awaited_type)}'"
+        )
+        return ANY_TYPE
 
     def _statement_contains_yield(self, node: Any, _visited: Optional[Set[int]] = None) -> bool:
         """Return True when *node* contains a yield in the current function scope."""
@@ -2372,6 +3042,121 @@ class TypeChecker:
         for method_name in trait_methods:
             if method_name not in class_type.methods:
                 raise TypeError(f"Class {class_name} does not implement trait method {method_name} from trait {trait_name}")
+
+    def get_trait_conformance_diagnostics(self, class_name: str, trait_name: str) -> Dict[str, Any]:
+        """Generate detailed conformance diagnostics for trait/interface implementation.
+        
+        Returns a dict with keys:
+        - conforms: bool - whether class implements trait completely
+        - missing_methods: List[str] - methods required but not implemented
+        - incompatible_methods: Dict[str, str] - methods with signature mismatches
+        - suggestions: List[str] - fix suggestions
+        - required_methods: List[str] - all methods required by trait
+        """
+        result = {
+            'conforms': False,
+            'missing_methods': [],
+            'incompatible_methods': {},
+            'suggestions': [],
+            'required_methods': [],
+            'trait_name': trait_name,
+            'class_name': class_name,
+        }
+        
+        # Get trait definition
+        if trait_name not in self.type_registry:
+            result['suggestions'].append(f"Trait '{trait_name}' not found in registry")
+            return result
+        
+        trait_type = self.type_registry.get(trait_name)
+        if not trait_type:
+            result['suggestions'].append(f"Cannot resolve trait type for '{trait_name}'")
+            return result
+        
+        # Get class definition
+        if class_name not in self.type_registry:
+            result['suggestions'].append(f"Class '{class_name}' not found in registry")
+            return result
+        
+        class_type = self.type_registry.get(class_name)
+        if not class_type:
+            result['suggestions'].append(f"Cannot resolve class type for '{class_name}'")
+            return result
+        
+        # Get required methods from trait
+        trait_methods = {}
+        if hasattr(trait_type, 'methods'):
+            trait_methods = trait_type.methods or {}
+        
+        result['required_methods'] = list(trait_methods.keys())
+        
+        # Check each required method
+        for method_name, required_method_type in trait_methods.items():
+            if method_name not in class_type.methods:
+                # Method completely missing
+                result['missing_methods'].append(method_name)
+                result['suggestions'].append(
+                    f"Add method '{method_name}' to class '{class_name}' "
+                    f"to match trait '{trait_name}'"
+                )
+            else:
+                # Method exists - check signature compatibility
+                impl_method = class_type.methods[method_name]
+                
+                # Type compatibility check (simplified)
+                if hasattr(required_method_type, 'param_types') and hasattr(impl_method, 'param_types'):
+                    if len(required_method_type.param_types) != len(impl_method.param_types):
+                        result['incompatible_methods'][method_name] = (
+                            f"Parameter count mismatch: "
+                            f"trait expects {len(required_method_type.param_types)}, "
+                            f"implementation has {len(impl_method.param_types)}"
+                        )
+                        result['suggestions'].append(
+                            f"Update method '{method_name}' signature in '{class_name}' "
+                            f"to match trait definition"
+                        )
+                
+                if hasattr(required_method_type, 'return_type') and hasattr(impl_method, 'return_type'):
+                    if required_method_type.return_type != impl_method.return_type:
+                        result['incompatible_methods'][method_name] = (
+                            f"Return type mismatch: "
+                            f"trait expects {required_method_type.return_type}, "
+                            f"implementation returns {impl_method.return_type}"
+                        )
+                        if method_name not in [s.split("'")[1] for s in result['suggestions'] if "signature" in s]:
+                            result['suggestions'].append(
+                                f"Fix return type of '{method_name}' in '{class_name}'"
+                            )
+        
+        # Determine if class conforms to trait
+        result['conforms'] = (
+            len(result['missing_methods']) == 0 and 
+            len(result['incompatible_methods']) == 0
+        )
+        
+        # Add summary suggestion if not conforming
+        if not result['conforms']:
+            missing_count = len(result['missing_methods'])
+            incompatible_count = len(result['incompatible_methods'])
+            if missing_count > 0 and incompatible_count > 0:
+                result['suggestions'].insert(0,
+                    f"Class '{class_name}' is missing {missing_count} method(s) "
+                    f"and has {incompatible_count} incompatible method(s) "
+                    f"from trait '{trait_name}'"
+                )
+            elif missing_count > 0:
+                result['suggestions'].insert(0,
+                    f"Class '{class_name}' must implement {missing_count} "
+                    f"method(s) from trait '{trait_name}': "
+                    f"{', '.join(result['missing_methods'])}"
+                )
+            else:
+                result['suggestions'].insert(0,
+                    f"Class '{class_name}' has {incompatible_count} "
+                    f"method(s) with incompatible signatures in trait '{trait_name}'"
+                )
+        
+        return result
 
     # ------------------------------------------------------------------
     # Higher-Kinded Type (HKT) constraint checking

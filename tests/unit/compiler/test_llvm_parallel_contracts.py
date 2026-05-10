@@ -9,11 +9,15 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 from nexuslang.compiler.backends.llvm_ir_generator import LLVMIRGenerator
 from nexuslang.parser.ast import (
     Program,
+    FunctionDefinition,
     ParallelForLoop,
     ListExpression,
+    GeneratorExpression,
     Literal,
     PrintStatement,
     Identifier,
+    VariableDeclaration,
+    BinaryOperation,
     RequireStatement,
     ExpectStatement,
     TryCatchBlock,
@@ -39,6 +43,121 @@ def test_llvm_parallel_for_is_lowered_to_parallel_runtime_call():
     assert "declare void @nxl_parallel_for_i64(i64*, i64, void (i64)*, i64)" in llvm_ir
     assert "define void @__nxl_parallel_body_0(i64 %iter_value)" in llvm_ir
     assert "call void @nxl_parallel_for_i64(" in llvm_ir
+
+
+def test_llvm_parallel_for_allows_read_only_outer_local_capture():
+    ast = Program([
+        FunctionDefinition(
+            name="use_parallel_scale",
+            parameters=[],
+            body=[
+                VariableDeclaration("scale", Literal("integer", 2)),
+                ParallelForLoop(
+                    "item",
+                    ListExpression([Literal("integer", 1), Literal("integer", 2)]),
+                    [PrintStatement(BinaryOperation(Identifier("item"), "*", Identifier("scale")))],
+                ),
+            ],
+        ),
+    ])
+
+    generator = LLVMIRGenerator()
+    llvm_ir = generator.generate(ast)
+
+    assert "@.parallel_capture.0.scale = internal global i64 zeroinitializer, align 8" in llvm_ir
+    assert "define void @__nxl_parallel_body_0(i64 %iter_value)" in llvm_ir
+    assert "call void @nxl_parallel_for_i64(" in llvm_ir
+
+
+def test_llvm_parallel_for_over_inline_identity_generator_uses_parallel_runtime():
+    ast = Program([
+        VariableDeclaration(
+            "numbers",
+            ListExpression([Literal("integer", 1), Literal("integer", 2), Literal("integer", 3)]),
+        ),
+        ParallelForLoop(
+            "item",
+            GeneratorExpression(
+                Identifier("x"),
+                Identifier("x"),
+                Identifier("numbers"),
+                None,
+            ),
+            [PrintStatement(Identifier("item"))],
+        ),
+    ])
+
+    generator = LLVMIRGenerator()
+    llvm_ir = generator.generate(ast)
+
+    assert "call void @nxl_parallel_for_i64(" in llvm_ir
+    assert "define void @__nxl_parallel_body_0(i64 %iter_value)" in llvm_ir
+
+
+def test_llvm_parallel_for_over_filtered_generator_emits_prefilter_then_parallel():
+    """Parallel-for over a filtered generator should emit a prefilter pass rather than falling back."""
+    ast = Program([
+        FunctionDefinition(
+            name="parallel_filtered",
+            parameters=[],
+            body=[
+                VariableDeclaration(
+                    "numbers",
+                    ListExpression([
+                        Literal("integer", -1),
+                        Literal("integer", 3),
+                        Literal("integer", -2),
+                        Literal("integer", 7),
+                    ]),
+                ),
+                ParallelForLoop(
+                    "item",
+                    GeneratorExpression(
+                        Identifier("x"),
+                        Identifier("x"),
+                        Identifier("numbers"),
+                        BinaryOperation(Identifier("x"), ">", Literal("integer", 0)),
+                    ),
+                    [PrintStatement(Identifier("item"))],
+                ),
+            ],
+        ),
+    ])
+
+    generator = LLVMIRGenerator()
+    llvm_ir = generator.generate(ast)
+
+    assert "call void @nxl_parallel_for_i64(" in llvm_ir
+    assert "nxl_generator_predicate_match" in llvm_ir
+    assert "pfilt.cond" in llvm_ir
+    assert "pfilt.end" in llvm_ir
+    assert "call void @free(i8*" in llvm_ir
+
+
+def test_llvm_parallel_for_over_arithmetic_generator_uses_source_directly():
+    """Parallel-for over an arithmetic-mapped generator should call parallel without materialization."""
+    ast = Program([
+        VariableDeclaration(
+            "numbers",
+            ListExpression([Literal("integer", 1), Literal("integer", 2), Literal("integer", 3)]),
+        ),
+        ParallelForLoop(
+            "item",
+            GeneratorExpression(
+                BinaryOperation(Identifier("x"), "+", Literal("integer", 5)),
+                Identifier("x"),
+                Identifier("numbers"),
+                None,
+            ),
+            [PrintStatement(Identifier("item"))],
+        ),
+    ])
+
+    generator = LLVMIRGenerator()
+    llvm_ir = generator.generate(ast)
+
+    assert "call void @nxl_parallel_for_i64(" in llvm_ir
+    assert "call i8* @malloc(i64 800)" not in llvm_ir
 
 
 def test_llvm_contracts_and_expect_emit_runtime_panic_guards():

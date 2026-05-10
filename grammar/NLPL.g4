@@ -83,6 +83,9 @@ statement
     | importStatement
     | exportStatement
     | testBlock
+    | macroDefinition
+    | macroExpansion
+    | comptimeStatement
     | expressionStatement
     ;
 
@@ -167,8 +170,8 @@ memberAssignment
 functionDefinition
     : ASYNC? FUNCTION IDENTIFIER genericTypeParams?
         (WITH parameterList)?
+        whereClause?
         (RETURNS typeAnnotation)?
-        contractClauses?
         functionBody
         END
     ;
@@ -189,8 +192,16 @@ genericTypeParams
     ;
 
 genericParam
-    : IDENTIFIER (WHERE IDENTIFIER IS typeConstraintList)?
+    : IDENTIFIER (':' typeConstraintList)?
     | IDENTIFIER '::' kindAnnotation
+    ;
+
+whereClause
+    : WHERE whereConstraint (',' whereConstraint)*
+    ;
+
+whereConstraint
+    : IDENTIFIER IS typeConstraintList
     ;
 
 kindAnnotation
@@ -202,7 +213,7 @@ kindAnnotation
 ARROW : '->' ;
 
 typeConstraintList
-    : IDENTIFIER (AND IDENTIFIER)*
+    : IDENTIFIER (('+' | AND) IDENTIFIER)*
     ;
 
 functionBody
@@ -214,10 +225,10 @@ contractClauses
     ;
 
 contractClause
-    : REQUIRE expression
-    | ENSURE expression
-    | GUARANTEE expression
-    | INVARIANT expression
+    : REQUIRE expression (MESSAGE expression)?
+    | ENSURE expression (MESSAGE expression)?
+    | GUARANTEE expression (MESSAGE expression)?
+    | INVARIANT expression (MESSAGE expression)?
     ;
 
 // --------------------------------------------------------------------------
@@ -239,7 +250,7 @@ contractClause
 
 classDefinition
     : CLASS IDENTIFIER genericTypeParams?
-        (EXTENDS typeList)?
+        ((EXTENDS | INHERITS) typeList)?
         (IMPLEMENTS typeList)?
         classBody
         END
@@ -260,8 +271,6 @@ classMemberModifier
     : PUBLIC
     | PRIVATE
     | PROTECTED
-    | STATIC
-    | ABSTRACT
     ;
 
 propertyDeclaration
@@ -271,6 +280,7 @@ propertyDeclaration
 
 methodDefinition
     : functionDefinition
+    | 'static' functionDefinition
     | ABSTRACT FUNCTION IDENTIFIER genericTypeParams?
         (WITH parameterList)?
         (RETURNS typeAnnotation)?
@@ -603,10 +613,10 @@ assertStatement
     | ASSERT expression COMMA expression
     ;
 
-requireStatement  : REQUIRE expression ;
-ensureStatement   : ENSURE expression ;
-guaranteeStatement: GUARANTEE expression ;
-invariantStatement: INVARIANT expression ;
+requireStatement  : REQUIRE expression (MESSAGE expression)? ;
+ensureStatement   : ENSURE expression (MESSAGE expression)? ;
+guaranteeStatement: GUARANTEE expression (MESSAGE expression)? ;
+invariantStatement: INVARIANT expression (MESSAGE expression)? ;
 
 // --------------------------------------------------------------------------
 // Memory management (low-level)
@@ -670,6 +680,7 @@ asmClobberList
 // --------------------------------------------------------------------------
 
 foreignFunction
+    // Parser-aligned: foreign only applies to function declarations.
     : FOREIGN FUNCTION IDENTIFIER
         (WITH externParameterList)?
         (RETURNS typeAnnotation)?
@@ -678,6 +689,7 @@ foreignFunction
     ;
 
 externDeclaration
+    // Parser-aligned extern variants: function, variable, and type declarations.
     : EXTERN FUNCTION IDENTIFIER
         (WITH externParameterList)?
         (RETURNS typeAnnotation)?
@@ -751,7 +763,36 @@ testBlock
       END
     ;
 
+macroDefinition
+    : MACRO IDENTIFIER (WITH macroParameterList)? statement* END
+    ;
+
+macroParameterList
+    : IDENTIFIER (COMMA IDENTIFIER)*
+    ;
+
+macroExpansion
+    : EXPAND IDENTIFIER (WITH macroArgumentList)?
+    ;
+
+macroArgumentList
+    : macroArgument (COMMA macroArgument)*
+    ;
+
+macroArgument
+    : IDENTIFIER expression
+    ;
+
+comptimeStatement
+    : COMPTIME EVAL expression
+    | COMPTIME CONST IDENTIFIER (IS | TO) expression
+    | COMPTIME ASSERT expression
+    | COMPTIME ASSERT expression MESSAGE expression
+    | COMPTIME expression
+    ;
+
 unsafeBlock
+    // Parser-aligned unsafe variants: unsafe do ... end | unsafe ... end
     : UNSAFE DO? statement* END
     ;
 
@@ -873,6 +914,10 @@ atom
     | addressOfExpression
     | dereferenceExpression
     | lengthExpression
+        | moveExpression
+        | borrowExpression
+        | rcCreation
+        | arcCreation
     | genericTypeInstantiation
     | receiveExpression
     | yieldExpression
@@ -962,6 +1007,53 @@ lengthExpression
     ;
 
 genericTypeInstantiation
+    // ==========================================================================
+    // Ownership / Borrow / Lifetime expressions
+    // ==========================================================================
+
+    // Transfer ownership of a variable to a new binding; the source is invalidated.
+    moveExpression
+        : MOVE IDENTIFIER
+        ;
+
+    // Create an immutable or mutable borrow; optional lifetime annotation.
+    borrowExpression
+        : BORROW MUTABLE? IDENTIFIER lifetimeAnnotation?
+        ;
+
+    // Explicit lifetime annotation on a borrow or parameter.
+    lifetimeAnnotation
+        : WITH LIFETIME IDENTIFIER
+        ;
+
+    // Release an active borrow before the end of the enclosing scope.
+    dropBorrowStatement
+        : DROP BORROW MUTABLE? IDENTIFIER
+        ;
+
+    // Reference-counted heap allocation: creates an Rc<T> (single-threaded)
+    // or Arc<T> (thread-safe) smart pointer.
+    rcCreation
+        : RC typeAnnotation ':' expression
+        | RC expression
+        ;
+
+    arcCreation
+        : ARC typeAnnotation ':' expression
+        | ARC expression
+        ;
+
+    // Downgrade an Rc/Arc to a Weak reference to break reference cycles.
+    downgradeExpression
+        : DOWNGRADE expression
+        ;
+
+    // Upgrade a Weak reference back to an Rc/Arc (returns None if already dropped).
+    upgradeExpression
+        : UPGRADE expression
+        ;
+
+    genericTypeInstantiation
     : CREATE IDENTIFIER OF typeAnnotation
     | CREATE IDENTIFIER WITH LENGTH expression
     | CREATE ARRAY OF typeAnnotation WITH LENGTH expression
@@ -1038,10 +1130,12 @@ CLASS      : 'class' ;
 CHANNEL    : 'channel' ;
 CLOBBERS   : 'clobbers' ;
 CLOSE      : 'close' ;
+COMPTIME   : 'comptime' ;
 COMMA      : ',' ;
 CONVENTION : 'convention' ;
 CONSTRUCTOR: 'constructor' ;
 CONTINUE   : 'continue' ;
+CONST      : 'const' ;
 CONVERT    : 'convert' ;
 CODE       : 'code' ;
 CREATE     : 'create' ;
@@ -1058,8 +1152,10 @@ END_KW     : 'end' ;     // alias kept for compatibility with older tooling
 ENSURE     : 'ensure' ;
 ENUM       : 'enum' ;
 EQUALS     : 'equals' ;
+EVAL       : 'eval' ;
 EXTERN     : 'extern' ;
 EXPORT     : 'export' ;
+EXPAND     : 'expand' ;
 EXTENDS    : 'extends' ;
 FALLTHROUGH: 'fallthrough' ;
 FINALLY    : 'finally' ;
@@ -1084,7 +1180,9 @@ LENGTH     : 'length' ;
 LESS       : 'less' ;
 LIBRARY    : 'library' ;
 GREATER    : 'greater' ;
+MACRO      : 'macro' ;
 MATCH      : 'match' ;
+MESSAGE    : 'message' ;
 MINUS      : 'minus' ;
 MODULO     : 'modulo' ;
 NEW        : 'new' ;
@@ -1142,6 +1240,17 @@ WHILE      : 'while' ;
 WITH       : 'with' ;
 YIELD      : 'yield' ;
 ELLIPSIS   : '...' ;
+
+// Ownership / borrow / lifetime keywords
+ARC        : 'arc' ;
+BORROW     : 'borrow' ;
+DOWNGRADE  : 'downgrade' ;
+DROP       : 'drop' ;
+LIFETIME   : 'lifetime' ;
+MOVE       : 'move' ;
+MUTABLE    : 'mutable' ;
+RC         : 'rc' ;
+UPGRADE    : 'upgrade' ;
 
 
 // ==========================================================================

@@ -3,6 +3,7 @@ Interpreter for NexusLang.
 Executes AST nodes and manages program state.
 """
 
+import logging
 import os
 import copy
 import queue
@@ -33,6 +34,7 @@ from nexuslang.parser.ast import (
     MatchExpression, MatchCase,
     LiteralPattern, IdentifierPattern, WildcardPattern,
     OptionPattern, ResultPattern, VariantPattern,
+    TuplePattern, ListPattern,
     # Smart pointer / ownership AST nodes
     RcCreation, DowngradeExpression, UpgradeExpression,
     MoveExpression, BorrowExpression, DropBorrowStatement,
@@ -55,6 +57,7 @@ from nexuslang.runtime.structures import (
     StructureInstance
 )
 from nexuslang.typesystem.generics_system import TypeParameterInfo, TypeConstraint, GenericTypeInference
+_logger = logging.getLogger(__name__)
 
 
 
@@ -112,7 +115,10 @@ class _Channel:
         # Snapshot mutable payloads to model transfer semantics in interpreter mode.
         try:
             transferred = copy.deepcopy(value)
-        except Exception:
+        except TypeError as e:
+            # Type not deepcopyable (e.g., lambdas, C objects); transfer original
+            import logging
+            logging.debug(f"Cannot deep-copy channel value of type {type(value).__name__}: {e}")
             transferred = value
         self._queue.put(transferred)
 
@@ -730,7 +736,7 @@ class Interpreter:
             try:
                 from ..stdlib.smart_pointers import RcValue, ArcValue, WeakValue
                 _sp_types = (RcValue, ArcValue, WeakValue)
-            except Exception:
+            except ImportError:
                 _sp_types = ()
 
             for val in reversed(list(scope.values())):
@@ -749,8 +755,13 @@ class Interpreter:
                     # 2. Smart-pointer RAII drop
                     if _sp_types and isinstance(val, _sp_types):
                         val.drop()
-                except Exception:
-                    pass  # Never let RAII / drop errors abort cleanup
+                except Exception as e:
+                    # Log RAII/drop errors but never let them abort cleanup (invariant)
+                    import logging
+                    logging.warning(
+                        f"Exception during scope cleanup (RAII/drop of {type(val).__name__}): {e}. "
+                        f"Cleanup will continue; resource may leak."
+                    )
 
             self.current_scope.pop()
             if len(self._type_annotations) > 1:
@@ -1031,7 +1042,13 @@ class Interpreter:
             if nxl_func is None:
                 try:
                     nxl_func = self.get_variable(decorator_node.name)
-                except Exception:
+                except NameError:
+                    # Decorator variable not found; skip this decorator
+                    nxl_func = None
+                except Exception as e:
+                    # Unexpected error in decorator lookup; log and skip
+                    import logging
+                    logging.warning(f"Error retrieving decorator '{decorator_node.name}': {e}")
                     nxl_func = None
             if nxl_func is not None and hasattr(nxl_func, 'body'):
                 self.enter_scope()
@@ -1645,6 +1662,53 @@ class Interpreter:
             # For now, just fail to match
             return (False, {})
         
+        # Tuple pattern: case (x, y) or case (a, b, c)
+        elif isinstance(pattern, TuplePattern):
+            # Value must be a tuple or list of matching length
+            if not isinstance(value, (tuple, list)):
+                return (False, {})
+
+            if len(pattern.patterns) != len(value):
+                return (False, {})
+
+            combined_bindings: dict = {}
+            for sub_pattern, sub_value in zip(pattern.patterns, value):
+                sub_matched, sub_bindings = self._match_pattern(sub_pattern, sub_value)
+                if not sub_matched:
+                    return (False, {})
+                combined_bindings.update(sub_bindings)
+
+            return (True, combined_bindings)
+
+        # List pattern: case [first, second] or case [head, ...rest]
+        elif isinstance(pattern, ListPattern):
+            if not isinstance(value, (list, tuple)):
+                return (False, {})
+
+            n_patterns = len(pattern.patterns)
+            n_value = len(value)
+
+            if pattern.rest_binding is not None:
+                # With a rest binding: value must have at least n_patterns elements
+                if n_value < n_patterns:
+                    return (False, {})
+            else:
+                # Without a rest binding: lengths must match exactly
+                if n_value != n_patterns:
+                    return (False, {})
+
+            combined_bindings: dict = {}
+            for i, sub_pattern in enumerate(pattern.patterns):
+                sub_matched, sub_bindings = self._match_pattern(sub_pattern, value[i])
+                if not sub_matched:
+                    return (False, {})
+                combined_bindings.update(sub_bindings)
+
+            if pattern.rest_binding is not None:
+                combined_bindings[pattern.rest_binding] = list(value[n_patterns:])
+
+            return (True, combined_bindings)
+
         # Unknown pattern type
         else:
             raise NxlRuntimeError(
@@ -1747,8 +1811,13 @@ class Interpreter:
                     val = self.execute(arg_expr)
                     if isinstance(val, str):
                         traits.append(val)
-                except Exception:
-                    pass
+                except Exception as e:
+                    # Error evaluating decorator argument; log and skip this trait
+                    import logging
+                    logging.warning(
+                        f"Error evaluating decorator argument at line {getattr(arg_expr, 'line', '?')}: {e}. "
+                        f"Trait will be skipped."
+                    )
 
         for trait in traits:
             if trait == "DebugPrint":
@@ -1902,8 +1971,11 @@ class Interpreter:
             from ..runtime.structures import StructureInstance
             if isinstance(val, StructureInstance):
                 return val.definition.size
-        except:
-            pass
+        except (AttributeError, TypeError) as e:
+            # Size cannot be determined for non-structure types;
+            # fall through to default pointer size
+            import logging
+            logging.debug(f"Cannot determine sizeof for {target}: {e}")
             
         return 8  # Default pointer size.
     
@@ -2146,8 +2218,8 @@ class Interpreter:
                 try:
                     error_val = self.get_variable("error")
                     raise NLPLUserException("Error", str(error_val), getattr(node, 'line', None))
-                except:
-                    # No exception to re-raise
+                except NameError:
+                    # "error" variable not found in scope - no exception to re-raise
                     raise NxlRuntimeError(
                         message="Nothing to re-raise",
                         line=getattr(node, 'line', None),
@@ -2877,7 +2949,7 @@ class Interpreter:
                     passed = len(actual) > 0 and actual[0] == expected
                 else:
                     passed = False
-            except Exception:
+            except TypeError:
                 passed = False
         elif matcher == "end_with":
             try:
@@ -2887,7 +2959,7 @@ class Interpreter:
                     passed = len(actual) > 0 and actual[-1] == expected
                 else:
                     passed = False
-            except Exception:
+            except TypeError:
                 passed = False
         else:
             raise RuntimeError(f"Unknown comparison matcher: {matcher!r}")
@@ -2898,10 +2970,12 @@ class Interpreter:
             qual = "not " if negated else ""
             if matcher == "have_length":
                 actual_len = len(actual) if hasattr(actual, "__len__") else None
-                _fail(
-                    f"Expected value {qual}to have length {expected!r}"
-                    + (f", but it has length {actual_len!r}" if actual_len is not None else "")
-                )
+                if negated:
+                    _fail(f"Expected {actual!r} not to have length {expected!r}, but it does")
+                elif actual_len is None:
+                    _fail(f"Expected {actual!r} to have length {expected!r}, but it has no length")
+                else:
+                    _fail(f"Expected {actual!r} to have length {expected!r}, but it has length {actual_len}")
             elif matcher in ("equal",):
                 if negated:
                     _fail(f"Expected {actual!r} not to equal {expected!r}")
@@ -4163,7 +4237,11 @@ class Interpreter:
         type_args_map = self._build_generic_type_args_map(class_def, node, class_name)
         
         if isinstance(class_def, (RuntimeStructDefinition, RuntimeUnionDefinition)):
-            return self._instantiate_struct_or_union(class_def)
+            instance = self._instantiate_struct_or_union(class_def)
+            named_fields = getattr(node, 'named_fields', None) or {}
+            for field_name, value_expr in named_fields.items():
+                instance.set_field(field_name, self.execute(value_expr))
+            return instance
         
         return self._instantiate_regular_class(class_name, class_def, type_args_map)
 
@@ -4379,8 +4457,15 @@ class Interpreter:
                     for key in obj.properties.keys():
                         try:
                             obj.set_property(key, self.get_variable(key))
-                        except:
+                        except NameError:
+                            # Property variable not found in scope; keep original value
                             pass
+                        except (AttributeError, TypeError) as e:
+                            # Property assignment failed; log and continue
+                            import logging
+                            logging.warning(
+                                f"Failed to update property {key} on {type(obj).__name__}: {e}"
+                            )
                         
                     return result
                 finally:
@@ -4539,8 +4624,15 @@ class Interpreter:
                         if not key.startswith("__"):
                             try:
                                 obj[key] = self.get_variable(key)
-                            except:
-                                pass  # Field not modified
+                            except NameError:
+                                # Field variable not found in scope; keep original value
+                                pass
+                            except (AttributeError, KeyError, TypeError) as e:
+                                # Field assignment failed; log and continue
+                                import logging
+                                logging.warning(
+                                    f"Failed to update field {key} on object: {e}"
+                                )
                         
                     return result
                 finally:
@@ -4611,8 +4703,8 @@ class Interpreter:
                 for key in obj.properties.keys():
                     try:
                         obj.set_property(key, self.get_variable(key))
-                    except Exception:
-                        pass
+                    except (AttributeError, KeyError, NxlRuntimeError):
+                        pass  # Variable may not be in scope if method did not touch it
 
                 return result
             finally:
@@ -4658,8 +4750,8 @@ class Interpreter:
                     if not key.startswith("__"):
                         try:
                             obj[key] = self.get_variable(key)
-                        except Exception:
-                            pass
+                        except (KeyError, NxlRuntimeError):
+                            pass  # Variable may not be in scope if method did not touch it
 
                 return result
             finally:
@@ -4867,8 +4959,8 @@ class Interpreter:
                 try:
                     msg_val = self.execute(node.message_expr)
                     message = f"Compile-time assertion failed: {msg_val}"
-                except Exception:
-                    pass
+                except (NxlRuntimeError, AttributeError, TypeError):
+                    pass  # Best-effort: if message eval fails, use the default message
             raise NxlRuntimeError(
                 message,
                 line=node.line_number,

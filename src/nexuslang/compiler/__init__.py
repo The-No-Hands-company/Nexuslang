@@ -18,10 +18,23 @@ Supported Targets:
 Philosophy: No compromises - NexusLang compiles to true native code, not bytecode.
 """
 
+import subprocess
 from typing import Any, Dict, List, Optional, Set, Tuple
 from abc import ABC, abstractmethod
 from nexuslang.parser.ast import *
 from nexuslang.optimizer import OptimizationLevel, OptimizationPipeline, create_optimization_pipeline
+
+
+_RECOVERABLE_COMPILER_FILE_EXCEPTIONS = (
+    OSError,
+    UnicodeError,
+)
+
+_RECOVERABLE_COMPILER_SUBPROCESS_EXCEPTIONS = (
+    OSError,
+    ValueError,
+    subprocess.SubprocessError,
+)
 
 
 class CompilationTarget:
@@ -105,6 +118,8 @@ class CompilerOptions:
         # Runtime pointer / memory validation (FFI safety)
         self.sanitize_address = False      # Enable AddressSanitizer (-fsanitize=address)
         self.sanitize_undefined = False    # Enable UndefinedBehaviorSanitizer (-fsanitize=undefined)
+        self.sanitize_thread = False       # Enable ThreadSanitizer (-fsanitize=thread)
+        self.sanitize_memory = False       # Enable MemorySanitizer (-fsanitize=memory)
         self.enable_valgrind = False       # Emit Valgrind client-request macros in generated C
         
     def apply_optimization_preset(self, level: int) -> None:
@@ -143,6 +158,17 @@ class Compiler:
         self.generators[CompilationTarget.CPP] = CppCodeGenerator
         self.generators[CompilationTarget.LLVM_IR] = LLVMIRGenerator
         # More generators will be registered as implemented
+
+    @staticmethod
+    def normalize_target(target: str) -> str:
+        """Canonicalize target aliases used across compiler-adjacent surfaces."""
+        normalized = target.strip().lower().replace('-', '_')
+        alias_map = {
+            "c++": CompilationTarget.CPP,
+            "cxx": CompilationTarget.CPP,
+            "llvm": CompilationTarget.LLVM_IR,
+        }
+        return alias_map.get(normalized, normalized)
     
     def _map_optimization_level(self) -> OptimizationLevel:
         """Map CompilerOptions.optimization_level to OptimizationLevel enum."""
@@ -202,53 +228,50 @@ class Compiler:
         Returns:
             Tuple[bool, Set[str]]: (Success, Required libraries)
         """
-        if target not in self.generators:
+        normalized_target = self.normalize_target(target)
+
+        if normalized_target not in self.generators:
             raise ValueError(f"Unsupported compilation target: {target}")
         
         # Apply AST-level optimizations based on optimization level
         optimized_ast = self._apply_ast_optimizations(ast)
         
         # Get appropriate generator
-        generator_class = self.generators[target]
-        generator = generator_class(target)
+        generator_class = self.generators[normalized_target]
+        generator = generator_class(normalized_target)
         
-        # Generate code
+        code = generator.generate(optimized_ast)
+
         try:
-            code = generator.generate(optimized_ast)
-            
             # Ensure output directory exists
             import os
             output_dir = os.path.dirname(output_file)
             if output_dir and not os.path.exists(output_dir):
                 os.makedirs(output_dir, exist_ok=True)
-            
+
             # Write to output file
             with open(output_file, 'w') as f:
                 f.write(code)
-            
+
             print(f" Compilation successful: {output_file}")
-            
+
             # Generate C header if requested and target is C/CPP
-            if self.options.generate_header and target in [CompilationTarget.C, CompilationTarget.CPP]:
+            if self.options.generate_header and normalized_target in [CompilationTarget.C, CompilationTarget.CPP]:
                 from .codegen.header_generator import CHeaderGenerator
                 header_gen = CHeaderGenerator()
                 # Use same base name but .h extension
-                import os
                 base_name = os.path.splitext(output_file)[0]
                 header_file = f"{base_name}.h"
                 module_name = os.path.basename(base_name)
-                
+
                 header_code = header_gen.generate(ast, module_name)
                 with open(header_file, 'w') as f:
                     f.write(header_code)
                 print(f" Header generation successful: {header_file}")
-            
+
             return True, generator.required_libraries
-            
-        except Exception as e:
+        except _RECOVERABLE_COMPILER_FILE_EXCEPTIONS as e:
             print(f" Compilation failed: {e}")
-            import traceback
-            traceback.print_exc()
             return False, set()
     
     def compile_and_link(self, ast: Program, target: str, output_file: str) -> bool:
@@ -258,23 +281,25 @@ class Compiler:
         For C/C++ targets, this generates the source and then invokes
         the system compiler (GCC/Clang) to create the final binary.
         """
+        normalized_target = self.normalize_target(target)
+
         # First compile to intermediate format
         # Place intermediate files in same directory as output to avoid root clutter
         import os
         output_dir = os.path.dirname(output_file) or "."
         output_base = os.path.basename(output_file)
-        intermediate_file = os.path.join(output_dir, f"{output_base}.generated.{target}")
+        intermediate_file = os.path.join(output_dir, f"{output_base}.generated.{normalized_target}")
         
-        success, libraries = self.compile(ast, target, intermediate_file)
+        success, libraries = self.compile(ast, normalized_target, intermediate_file)
         if not success:
             return False
         
         # For C/C++, invoke system compiler
-        if target in [CompilationTarget.C, CompilationTarget.CPP]:
-            return self._link_with_system_compiler(intermediate_file, output_file, target, libraries)
+        if normalized_target in [CompilationTarget.C, CompilationTarget.CPP]:
+            return self._link_with_system_compiler(intermediate_file, output_file, normalized_target, libraries)
         
         # For assembly, use assembler and linker
-        elif target in [CompilationTarget.ASM_X86_64, CompilationTarget.ASM_ARM]:
+        elif normalized_target in [CompilationTarget.ASM_X86_64, CompilationTarget.ASM_ARM]:
             return self._assemble_and_link(intermediate_file, output_file)
         
         # Other targets don't need linking
@@ -282,7 +307,6 @@ class Compiler:
     
     def _link_with_system_compiler(self, source_file: str, output_file: str, target: str, libraries: Set[str] = None) -> bool:
         """Link using system C/C++ compiler."""
-        import subprocess
         import shutil
         
         # Choose compiler
@@ -325,6 +349,10 @@ class Compiler:
             cmd.extend(['-fsanitize=address', '-fno-omit-frame-pointer'])
         if self.options.sanitize_undefined:
             cmd.append('-fsanitize=undefined')
+        if self.options.sanitize_thread:
+            cmd.extend(['-fsanitize=thread', '-fno-omit-frame-pointer'])
+        if self.options.sanitize_memory:
+            cmd.extend(['-fsanitize=memory', '-fno-omit-frame-pointer'])
 
         if self.options.strip_symbols and self.options.optimization_level >= 3:
             cmd.append('-s')
@@ -333,22 +361,20 @@ class Compiler:
         try:
             print(f"Linking with {compiler}...")
             result = subprocess.run(cmd, capture_output=True, text=True)
-            
+
             if result.returncode == 0:
                 print(f" Linking successful: {output_file}")
                 return True
-            else:
-                print(f" Linking failed:")
-                print(result.stderr)
-                return False
-                
-        except Exception as e:
+
+            print(f" Linking failed:")
+            print(result.stderr)
+            return False
+        except _RECOVERABLE_COMPILER_SUBPROCESS_EXCEPTIONS as e:
             print(f" Linking error: {e}")
             return False
     
     def _assemble_and_link(self, asm_file: str, output_file: str) -> bool:
         """Assemble and link assembly code."""
-        import subprocess
         import shutil
         
         # Check for assembler (nasm for x86-64)
@@ -365,7 +391,7 @@ class Compiler:
             if result.returncode != 0:
                 print(f" Assembly failed: {result.stderr}")
                 return False
-        except Exception as e:
+        except _RECOVERABLE_COMPILER_SUBPROCESS_EXCEPTIONS as e:
             print(f" Assembly error: {e}")
             return False
         
@@ -377,11 +403,10 @@ class Compiler:
             if result.returncode != 0:
                 print(f" Linking failed: {result.stderr}")
                 return False
-            
+
             print(f" Assembly and linking successful: {output_file}")
             return True
-            
-        except Exception as e:
+        except _RECOVERABLE_COMPILER_SUBPROCESS_EXCEPTIONS as e:
             print(f" Linking error: {e}")
             return False
 
