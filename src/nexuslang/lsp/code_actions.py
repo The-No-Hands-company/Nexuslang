@@ -719,8 +719,14 @@ class CodeActionsProvider:
             r"^\s*(?:if\b|else\b|while\b|for\b|function\b|end\b)",
             re.IGNORECASE,
         )
+        write_to_owned_var_re = re.compile(
+            rf"^\s*set\s+{re.escape(var_name)}\b",
+            re.IGNORECASE,
+        )
         for region_line in region:
             if control_flow_delimiter_re.match(region_line):
+                return None
+            if write_to_owned_var_re.match(region_line):
                 return None
 
         alias_re = re.compile(rf"\b{re.escape(borrow_alias)}\b")
