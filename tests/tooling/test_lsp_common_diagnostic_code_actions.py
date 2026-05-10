@@ -400,3 +400,89 @@ def test_ownership_reorder_move_action_suppressed_for_inline_drop_comment():
     actions = provider.get_code_actions(uri, code, _range(2), [diagnostic])
     action = _find_action(actions, "Reorder move of 'x' after drop borrow")
     assert action is None
+
+
+def test_ownership_reorder_move_action_allows_drop_borrow_mutable_variant():
+    provider = _provider()
+    uri = "file:///ownership_reorder_move_drop_mutable.nxl"
+    code = "set x to 10\nset b to borrow x\nset y to move x\ndrop borrow mutable x\n"
+    diagnostic = {
+        "range": {"start": {"line": 2, "character": 9}, "end": {"line": 2, "character": 10}},
+        "severity": 1,
+        "message": "Ownership error: Cannot move 'x' while borrowed",
+        "source": "nlpl",
+        "code": "E201",
+        "data": {
+            "fixes": [
+                "Drop active borrows before move or assignment",
+            ],
+            "ownership": {
+                "variable": "x",
+                "kind": "borrow",
+                "line": 2,
+                "operation": "move",
+            },
+        },
+    }
+
+    actions = provider.get_code_actions(uri, code, _range(2), [diagnostic])
+    action = _find_action(actions, "Reorder move of 'x' after drop borrow")
+    assert action is not None
+    edit = action["edit"]["changes"][uri][0]
+    assert edit["newText"] == "drop borrow mutable x\nset y to move x\n"
+
+
+def test_ownership_reorder_move_action_suppressed_for_indentation_mismatch():
+    provider = _provider()
+    uri = "file:///ownership_reorder_move_indent_guard.nxl"
+    code = "if true\n    set b to borrow x\n    set y to move x\ndrop borrow x\nend\n"
+    diagnostic = {
+        "range": {"start": {"line": 2, "character": 13}, "end": {"line": 2, "character": 14}},
+        "severity": 1,
+        "message": "Ownership error: Cannot move 'x' while borrowed",
+        "source": "nlpl",
+        "code": "E201",
+        "data": {
+            "fixes": [
+                "Drop active borrows before move or assignment",
+            ],
+            "ownership": {
+                "variable": "x",
+                "kind": "borrow",
+                "line": 2,
+                "operation": "move",
+            },
+        },
+    }
+
+    actions = provider.get_code_actions(uri, code, _range(2), [diagnostic])
+    action = _find_action(actions, "Reorder move of 'x' after drop borrow")
+    assert action is None
+
+
+def test_ownership_reorder_move_action_suppressed_for_attached_directive_comment():
+    provider = _provider()
+    uri = "file:///ownership_reorder_move_directive_guard.nxl"
+    code = "set x to 10\nset b to borrow x\n# noqa: keep this tracked\nset y to move x\ndrop borrow x\n"
+    diagnostic = {
+        "range": {"start": {"line": 3, "character": 9}, "end": {"line": 3, "character": 10}},
+        "severity": 1,
+        "message": "Ownership error: Cannot move 'x' while borrowed",
+        "source": "nlpl",
+        "code": "E201",
+        "data": {
+            "fixes": [
+                "Drop active borrows before move or assignment",
+            ],
+            "ownership": {
+                "variable": "x",
+                "kind": "borrow",
+                "line": 3,
+                "operation": "move",
+            },
+        },
+    }
+
+    actions = provider.get_code_actions(uri, code, _range(3), [diagnostic])
+    action = _find_action(actions, "Reorder move of 'x' after drop borrow")
+    assert action is None
