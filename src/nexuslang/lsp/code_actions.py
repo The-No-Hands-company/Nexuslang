@@ -454,14 +454,8 @@ class CodeActionsProvider:
 
             if "ownership error:" in message_lower and ownership_var:
                 if "drop active borrows" in fix_lower:
-                    action = self._insert_drop_borrow_before_operation_action(
-                        uri,
-                        diag_range,
-                        ownership_var,
-                        diagnostic,
-                    )
-                    if action:
-                        actions.append(action)
+                    move_conflict = ownership_op == "move" or "move" in message_lower
+                    specialized_move_actions: List[Dict] = []
 
                     if ownership_op == "borrow_mutable" or "mutable borrow" in message_lower:
                         mutable_action = self._insert_drop_mutable_borrow_before_operation_action(
@@ -473,7 +467,7 @@ class CodeActionsProvider:
                         if mutable_action:
                             actions.append(mutable_action)
 
-                    if ownership_op == "move" or "move" in message_lower:
+                    if move_conflict:
                         narrow_scope_action = self._narrow_borrow_scope_before_move_action(
                             uri,
                             text,
@@ -482,7 +476,7 @@ class CodeActionsProvider:
                             diagnostic,
                         )
                         if narrow_scope_action:
-                            actions.append(narrow_scope_action)
+                            specialized_move_actions.append(narrow_scope_action)
 
                         reorder_action = self._reorder_move_after_drop_borrow_action(
                             uri,
@@ -492,7 +486,19 @@ class CodeActionsProvider:
                             diagnostic,
                         )
                         if reorder_action:
-                            actions.append(reorder_action)
+                            specialized_move_actions.append(reorder_action)
+
+                    if move_conflict and specialized_move_actions:
+                        actions.extend(specialized_move_actions)
+                    else:
+                        action = self._insert_drop_borrow_before_operation_action(
+                            uri,
+                            diag_range,
+                            ownership_var,
+                            diagnostic,
+                        )
+                        if action:
+                            actions.append(action)
                     continue
 
                 if "avoid mutable borrow" in fix_lower:

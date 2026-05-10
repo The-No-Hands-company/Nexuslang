@@ -251,7 +251,7 @@ def test_closed_channel_move_close_action_suppressed_for_attached_directive_comm
     assert action is None
 
 
-def test_ownership_structured_fix_inserts_drop_borrow_before_operation():
+def test_ownership_structured_fix_uses_specialized_move_fixes_over_generic_drop_insert():
     provider = _provider()
     uri = "file:///ownership_drop_fix.nxl"
     code = "set x to 10\nset b to borrow x\nset y to move x\n"
@@ -275,11 +275,41 @@ def test_ownership_structured_fix_inserts_drop_borrow_before_operation():
     }
 
     actions = provider.get_code_actions(uri, code, _range(2), [diagnostic])
+    narrow_action = _find_action(actions, "Narrow borrow scope of 'x' before move")
+    assert narrow_action is not None
+    generic_drop_action = _find_action(actions, "Drop active borrow of 'x'")
+    assert generic_drop_action is None
+
+
+def test_ownership_structured_fix_falls_back_to_generic_drop_insert_when_no_specialized_move_fix():
+    provider = _provider()
+    uri = "file:///ownership_drop_fallback_fix.nxl"
+    code = "set y to move x\n"
+    diagnostic = {
+        "range": {"start": {"line": 0, "character": 9}, "end": {"line": 0, "character": 10}},
+        "severity": 1,
+        "message": "Ownership error: Cannot move 'x' while borrowed",
+        "source": "nlpl",
+        "code": "E201",
+        "data": {
+            "fixes": [
+                "Drop active borrows before move or assignment",
+            ],
+            "ownership": {
+                "variable": "x",
+                "kind": "borrow",
+                "line": 0,
+                "operation": "move",
+            },
+        },
+    }
+
+    actions = provider.get_code_actions(uri, code, _range(0), [diagnostic])
     action = _find_action(actions, "Drop active borrow of 'x'")
     assert action is not None
     edit = action["edit"]["changes"][uri][0]
     assert edit["newText"] == "drop borrow x\n"
-    assert edit["range"]["start"]["line"] == 2
+    assert edit["range"]["start"]["line"] == 0
 
 
 def test_ownership_structured_fix_converts_mutable_borrow_to_immutable():
