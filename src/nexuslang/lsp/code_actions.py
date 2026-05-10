@@ -719,8 +719,10 @@ class CodeActionsProvider:
             r"^\s*(?:if\b|else\b|while\b|for\b|function\b|end\b)",
             re.IGNORECASE,
         )
+        # Match writes to the owned root variable, including index/property chains.
+        # Examples: set x to 1, set x[0] to 1, set x.field to 1, set x[0].y to 1
         write_to_owned_var_re = re.compile(
-            rf"^\s*set\s+{re.escape(var_name)}\b",
+            rf"^\s*set\s+{re.escape(var_name)}(?:\s*(?:\[[^\]]+\]|\.[A-Za-z_]\w*))*\s+to\b",
             re.IGNORECASE,
         )
         for region_line in region:
