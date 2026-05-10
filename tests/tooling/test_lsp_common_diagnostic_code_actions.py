@@ -580,3 +580,59 @@ def test_ownership_narrow_scope_action_not_offered_when_drop_already_present():
     actions = provider.get_code_actions(uri, code, _range(3), [diagnostic])
     action = _find_action(actions, "Narrow borrow scope of 'x' before move")
     assert action is None
+
+
+def test_ownership_narrow_scope_action_not_offered_with_if_delimiter_in_region():
+    provider = _provider()
+    uri = "file:///ownership_narrow_scope_if_delimiter.nxl"
+    code = "set x to 10\nset b to borrow x\nif ready\nprint text b\nset y to move x\n"
+    diagnostic = {
+        "range": {"start": {"line": 4, "character": 9}, "end": {"line": 4, "character": 10}},
+        "severity": 1,
+        "message": "Ownership error: Cannot move 'x' while borrowed",
+        "source": "nlpl",
+        "code": "E201",
+        "data": {
+            "fixes": [
+                "Drop active borrows before move or assignment",
+            ],
+            "ownership": {
+                "variable": "x",
+                "kind": "borrow",
+                "line": 4,
+                "operation": "move",
+            },
+        },
+    }
+
+    actions = provider.get_code_actions(uri, code, _range(4), [diagnostic])
+    action = _find_action(actions, "Narrow borrow scope of 'x' before move")
+    assert action is None
+
+
+def test_ownership_narrow_scope_action_not_offered_with_end_delimiter_in_region():
+    provider = _provider()
+    uri = "file:///ownership_narrow_scope_end_delimiter.nxl"
+    code = "set x to 10\nset b to borrow x\nprint text b\nend\nset y to move x\n"
+    diagnostic = {
+        "range": {"start": {"line": 4, "character": 9}, "end": {"line": 4, "character": 10}},
+        "severity": 1,
+        "message": "Ownership error: Cannot move 'x' while borrowed",
+        "source": "nlpl",
+        "code": "E201",
+        "data": {
+            "fixes": [
+                "Drop active borrows before move or assignment",
+            ],
+            "ownership": {
+                "variable": "x",
+                "kind": "borrow",
+                "line": 4,
+                "operation": "move",
+            },
+        },
+    }
+
+    actions = provider.get_code_actions(uri, code, _range(4), [diagnostic])
+    action = _find_action(actions, "Narrow borrow scope of 'x' before move")
+    assert action is None

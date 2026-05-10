@@ -715,6 +715,14 @@ class CodeActionsProvider:
         if any(drop_re.match(region_line) for region_line in region):
             return None
 
+        control_flow_delimiter_re = re.compile(
+            r"^\s*(?:if\b|else\b|while\b|for\b|function\b|end\b)",
+            re.IGNORECASE,
+        )
+        for region_line in region:
+            if control_flow_delimiter_re.match(region_line):
+                return None
+
         alias_re = re.compile(rf"\b{re.escape(borrow_alias)}\b")
         for idx in range(move_line_num + 1, len(lines)):
             tail_line = lines[idx]
