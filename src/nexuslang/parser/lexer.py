@@ -143,6 +143,7 @@ class TokenType(Enum):
     FOR = auto()
     FOR_EACH = auto()
     IN = auto()
+    RANGE = auto()  # Reserved for future expression-range syntax
     FROM = auto()
     DO = auto()
     BREAK = auto()
@@ -210,6 +211,9 @@ class TokenType(Enum):
     OBJECT = auto()
     POINTER = auto()
     REFERENCE = auto()
+    
+    # Reserved for future expression-range operators (e.g. ..=)
+    RANGE_INCLUSIVE = auto()
     
     # Error propagation
     QUESTION = auto()  # ? operator for Result unwrapping
@@ -474,6 +478,7 @@ class Lexer:
             "for": TokenType.FOR,
             "for each": TokenType.FOR_EACH,
             "in": TokenType.IN,
+            "range": TokenType.RANGE,
             "from": TokenType.FROM,
             "to": TokenType.TO,
             "do": TokenType.DO,
@@ -569,7 +574,9 @@ class Lexer:
             "generic": TokenType.GENERIC,
 
             # Inline assembly
+            "assembly": TokenType.ASM,
             "asm": TokenType.ASM,
+            "inline assembly": TokenType.ASM,
 
             # Test framework
             "test": TokenType.TEST,
