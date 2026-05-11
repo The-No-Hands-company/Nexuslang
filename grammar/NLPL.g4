@@ -648,6 +648,9 @@ freeStatement
 //       xor rdi, rdi
 //       syscall
 //   end
+//
+// Canonical token path is ASM.
+// Accepted lexical aliases: "asm", "assembly", "inline assembly".
 // --------------------------------------------------------------------------
 
 inlineAssembly
@@ -1104,6 +1107,10 @@ literal
 // Lexer rules — keywords (alphabetical within category)
 // ==========================================================================
 
+// Policy note:
+// Domain-specific data/network/database verbs are intentionally stdlib-level
+// APIs, not grammar-level keywords.
+
 // Declaration
 ABSTRACT   : 'abstract' ;
 ADDRESS    : 'address' ;
@@ -1113,6 +1120,7 @@ APPEND     : 'append' ;
 ARRAY      : 'array' ;
 AS         : 'as' ;
 ASSERT     : 'assert' ;
+ASM        : 'asm' | 'assembly' | 'inline assembly' ;
 ASYNC      : 'async' ;
 AWAIT      : 'await' ;
 BITWISE_AND: 'bitwise' WS 'and' ;
@@ -1209,6 +1217,8 @@ RECEIVE    : 'receive' ;
 REPEAT     : 'repeat' ;
 REQUIRE    : 'require' ;
 REQUIRES   : 'requires' ;
+RANGE      : 'range' ; // Reserved for future expression-range syntax.
+RANGE_INCLUSIVE : '..=' ; // Reserved for future expression-range operators.
 RETURN     : 'return' ;
 RETURNS    : 'returns' ;
 RIGHT      : 'right' ;
