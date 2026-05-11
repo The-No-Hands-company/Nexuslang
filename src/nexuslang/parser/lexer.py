@@ -143,7 +143,6 @@ class TokenType(Enum):
     FOR = auto()
     FOR_EACH = auto()
     IN = auto()
-    RANGE = auto()
     FROM = auto()
     DO = auto()
     BREAK = auto()
@@ -174,38 +173,22 @@ class TokenType(Enum):
     NUMBER = auto()
     CONVERT = auto()
     AS = auto()
-    INTO = auto()
     READ = auto()
     WRITE = auto()
     APPEND = auto()
-    JOIN = auto()
     LENGTH = auto()
     EMPTY = auto()
     CONTAINS = auto()
     
     # Database operations
-    DATABASE = auto()
-    CONNECT = auto()
-    DISCONNECT = auto()
-    QUERY = auto()
-    EXECUTE = auto()
     INSERT = auto()
     UPDATE = auto()
-    DELETE = auto()
-    SELECT = auto()
     WHERE = auto()
     
     # Network operations
-    NETWORK = auto()
     CHANNEL = auto()
     SEND = auto()
     RECEIVE = auto()
-    REQUEST = auto()
-    RESPONSE = auto()
-    HTTP = auto()
-    WEBSOCKET = auto()
-    CONNECT_TO = auto()
-    DISCONNECT_FROM = auto()
     
     # File operations
     FILE = auto()
@@ -227,9 +210,6 @@ class TokenType(Enum):
     OBJECT = auto()
     POINTER = auto()
     REFERENCE = auto()
-    
-    # Range operators
-    RANGE_INCLUSIVE = auto()  # ..=
     
     # Error propagation
     QUESTION = auto()  # ? operator for Result unwrapping
@@ -303,8 +283,6 @@ class TokenType(Enum):
     GENERIC = auto()
     
     # Inline assembly
-    INLINE = auto()
-    ASSEMBLY = auto()
     ASM = auto()  # Short form
     
     # Variadic functions
@@ -496,7 +474,6 @@ class Lexer:
             "for": TokenType.FOR,
             "for each": TokenType.FOR_EACH,
             "in": TokenType.IN,
-            "range": TokenType.RANGE,
             "from": TokenType.FROM,
             "to": TokenType.TO,
             "do": TokenType.DO,
@@ -541,39 +518,23 @@ class Lexer:
             "convert": TokenType.CONVERT,
             "as": TokenType.AS,
             "from": TokenType.FROM,
-            "into": TokenType.INTO,
             "read": TokenType.READ,
             "write": TokenType.WRITE,
             "append": TokenType.APPEND,
-            "join": TokenType.JOIN,
             "length": TokenType.LENGTH,
             "empty": TokenType.EMPTY,
             "contains": TokenType.CONTAINS,
 
             # Database operations
             "export": TokenType.EXPORT,
-            "database": TokenType.DATABASE,
-            "connect": TokenType.CONNECT,
-            "disconnect": TokenType.DISCONNECT,
-            "query": TokenType.QUERY,
-            "execute": TokenType.EXECUTE,
             "insert": TokenType.INSERT,
             "update": TokenType.UPDATE,
-            "delete": TokenType.DELETE,
-            "select": TokenType.SELECT,
             "where": TokenType.WHERE,
 
             # Network operations
-            "network": TokenType.NETWORK,
             "channel": TokenType.CHANNEL,
             "send": TokenType.SEND,
             "receive": TokenType.RECEIVE,
-            "request": TokenType.REQUEST,
-            "response": TokenType.RESPONSE,
-            "http": TokenType.HTTP,
-            "websocket": TokenType.WEBSOCKET,
-            "connect to": TokenType.CONNECT_TO,
-            "disconnect from": TokenType.DISCONNECT_FROM,
 
             # File operations
             "file": TokenType.FILE,
@@ -608,10 +569,7 @@ class Lexer:
             "generic": TokenType.GENERIC,
 
             # Inline assembly
-            "inline": TokenType.INLINE,
-            "assembly": TokenType.ASSEMBLY,
             "asm": TokenType.ASM,
-            "inline assembly": TokenType.INLINE,
 
             # Test framework
             "test": TokenType.TEST,
