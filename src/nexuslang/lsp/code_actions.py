@@ -750,10 +750,17 @@ class CodeActionsProvider:
             rf"^\s*set\s+{re.escape(var_name)}(?:\s*(?:\[[^\]]+\]|\.[A-Za-z_]\w*))*\s+to\b",
             re.IGNORECASE,
         )
+        write_to_alias_re = re.compile(
+            rf"^\s*set\s+{re.escape(borrow_alias)}(?:\s*(?:\[[^\]]+\]|\.[A-Za-z_]\w*))*\s+to\b",
+            re.IGNORECASE,
+        )
         for region_line in region:
             if control_flow_delimiter_re.match(region_line):
                 return None
             if write_to_owned_var_re.match(region_line):
+                return None
+        for region_line in region[1:]:
+            if write_to_alias_re.match(region_line):
                 return None
 
         alias_re = re.compile(rf"\b{re.escape(borrow_alias)}\b")
