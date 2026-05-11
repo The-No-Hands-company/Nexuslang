@@ -754,13 +754,23 @@ class CodeActionsProvider:
             rf"^\s*set\s+{re.escape(borrow_alias)}(?:\s*(?:\[[^\]]+\]|\.[A-Za-z_]\w*))*\s+to\b",
             re.IGNORECASE,
         )
-        for region_line in region:
+        for idx, region_line in enumerate(region):
             if control_flow_delimiter_re.match(region_line):
                 return None
             if write_to_owned_var_re.match(region_line):
                 return None
-        for region_line in region[1:]:
-            if write_to_alias_re.match(region_line):
+            if idx > 0 and write_to_alias_re.match(region_line):
+                return None
+
+        for idx in range(move_line_num):
+            if idx == borrow_line_num:
+                continue
+            line = lines[idx]
+            if not line.strip():
+                continue
+            if self._leading_whitespace(line) != move_indent_text:
+                continue
+            if borrow_decl_re.match(line):
                 return None
 
         alias_re = re.compile(rf"\b{re.escape(borrow_alias)}\b")
