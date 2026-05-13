@@ -1,5 +1,20 @@
 # NexusLang Dead/Unused Tokens Audit
 
+## Status Update (May 11, 2026)
+
+This document is now a historical snapshot and is partially stale.
+
+Policy and implementation have changed:
+- Database/Network/Data token families were removed from lexer keywords and TokenType.
+- Assembly handling was consolidated to canonical ASM aliases.
+- RANGE and RANGE_INCLUSIVE were retained as reserved/future tokens.
+- NLPL.g4 was synchronized to reflect this policy.
+
+For current direction and decisions, use:
+- STRATEGIC_ARCHITECTURE_AUDIT.md
+- src/nexuslang/parser/lexer.py
+- grammar/NLPL.g4
+
 **Document**: Complete analysis of 22+ unused TokenType definitions  
 **Date**: May 11, 2026  
 **Auditor**: Automated Codebase Analysis  

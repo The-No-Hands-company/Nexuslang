@@ -3798,6 +3798,18 @@ class LLVMIRGenerator(CodeGenerator):
             self._collect_macro_definition(stmt)
         elif stmt_type == 'MacroExpansion':
             self._generate_macro_expansion(stmt, indent)
+        elif stmt_type == 'TestBlock':
+            self._generate_test_block(stmt, indent)
+        elif stmt_type == 'DescribeBlock':
+            self._generate_describe_block(stmt, indent)
+        elif stmt_type == 'ItBlock':
+            self._generate_it_block(stmt, indent)
+        elif stmt_type == 'ParameterizedTestBlock':
+            self._generate_parameterized_test_block(stmt, indent)
+        elif stmt_type == 'BeforeEachBlock':
+            self._generate_before_each_block(stmt, indent)
+        elif stmt_type == 'AfterEachBlock':
+            self._generate_after_each_block(stmt, indent)
         elif stmt_type == 'ComptimeExpression':
             self._generate_comptime_expression(stmt, indent)
         elif stmt_type == 'ComptimeConst':
@@ -3809,6 +3821,77 @@ class LLVMIRGenerator(CodeGenerator):
             # Runtime lowering is intentionally a no-op in compiled backends.
             pass
         # Add more statement types as needed
+
+    def _generate_test_block(self, stmt, indent='') -> None:
+        """Lower a named test block by emitting nested body statements inline."""
+        self.emit(f'{indent}; test: {getattr(stmt, "name", "unnamed")}')
+        for inner in getattr(stmt, 'body', []) or []:
+            self._generate_statement(inner, indent)
+        self.emit(f'{indent}; end test')
+
+    def _generate_describe_block(self, stmt, indent='') -> None:
+        """Lower a describe suite block by emitting nested items inline."""
+        self.emit(f'{indent}; describe: {getattr(stmt, "name", "unnamed")}')
+        for inner in getattr(stmt, 'body', []) or []:
+            self._generate_statement(inner, indent)
+        self.emit(f'{indent}; end describe')
+
+    def _generate_it_block(self, stmt, indent='') -> None:
+        """Lower an it block by emitting nested body statements inline."""
+        self.emit(f'{indent}; it: {getattr(stmt, "name", "unnamed")}')
+        for inner in getattr(stmt, 'body', []) or []:
+            self._generate_statement(inner, indent)
+        self.emit(f'{indent}; end it')
+
+    def _generate_before_each_block(self, stmt, indent='') -> None:
+        """Lower a before_each fixture block inline."""
+        self.emit(f'{indent}; before each')
+        for inner in getattr(stmt, 'body', []) or []:
+            self._generate_statement(inner, indent)
+        self.emit(f'{indent}; end before each')
+
+    def _generate_after_each_block(self, stmt, indent='') -> None:
+        """Lower an after_each fixture block inline."""
+        self.emit(f'{indent}; after each')
+        for inner in getattr(stmt, 'body', []) or []:
+            self._generate_statement(inner, indent)
+        self.emit(f'{indent}; end after each')
+
+    def _generate_parameterized_test_block(self, stmt, indent='') -> None:
+        """Lower a parameterized test by materializing one scoped case at a time."""
+        self.emit(f'{indent}; parameterized test: {getattr(stmt, "name", "unnamed")}')
+        params = list(getattr(stmt, 'params', []) or [])
+        cases = list(getattr(stmt, 'cases', []) or [])
+        if not cases:
+            self.emit(f'{indent}; no cases')
+            for inner in getattr(stmt, 'body', []) or []:
+                self._generate_statement(inner, indent)
+            self.emit(f'{indent}; end parameterized test')
+            return
+
+        for case_index, case in enumerate(cases):
+            self.emit(f'{indent}; case {case_index + 1}: {", ".join(str(expr) for expr in case) if case else "no arguments"}')
+            self.emit(f'{indent}; {{')
+            case_indent = indent + '  '
+            saved_local_vars = dict(self.local_vars)
+            try:
+                for param_index, param_name in enumerate(params):
+                    case_expr = case[param_index] if param_index < len(case) else None
+                    if case_expr is None:
+                        self.emit(f'{case_indent}; missing argument for {param_name}')
+                        continue
+                    llvm_type = self._infer_expression_type(case_expr) or 'i64'
+                    value_reg = self._generate_expression(case_expr, case_indent)
+                    alloca_name = self._new_temp()
+                    self.emit(f'{case_indent}{alloca_name} = alloca {llvm_type}, align 8')
+                    self.emit(f'{case_indent}store {llvm_type} {value_reg}, {llvm_type}* {alloca_name}, align 8')
+                    self.local_vars[param_name] = (llvm_type, alloca_name)
+                for inner in getattr(stmt, 'body', []) or []:
+                    self._generate_statement(inner, case_indent)
+            finally:
+                self.local_vars = saved_local_vars
+            self.emit(f'{indent}; }}')
+        self.emit(f'{indent}; end parameterized test')
 
     def _coerce_to_i1(self, value_reg: str, value_type: str, indent='') -> str:
         """Coerce a value to an LLVM i1 condition."""

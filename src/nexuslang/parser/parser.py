@@ -3643,6 +3643,8 @@ class Parser:
             if self.current_token.lexeme.lower() == 'by':
                 self.advance()  # consume 'by'
                 step = self.expression()
+                if step is None:
+                    self.error("Expected step expression after 'by' in range loop")
         
         # Consume INDENT if present (for block-based syntax)
         if self.current_token and self.current_token.type == TokenType.INDENT:
@@ -5955,6 +5957,8 @@ class Parser:
             # Statement-level keywords that are also common variable/function names
             TokenType.LABEL,   # 'label' is a keyword for labeled loops but common as a variable
             TokenType.REPEAT,  # 'repeat' starts repeat-loops but common as a variable/function
+            # Range prototype hardening: allow direct range(...) call expressions.
+            TokenType.RANGE,
         }
         return token.type in contextual_keywords
         

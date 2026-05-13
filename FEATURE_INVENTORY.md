@@ -265,6 +265,14 @@ end while
 - Range: `for index from 1 to 10 do ... end`
 - Range inclusive: `for index from 1 to 10 inclusive do ... end`
 
+**Range Expression Surface (Prototype Hardened, May 2026)**:
+- Canonical form: `range(start, stop[, step])`
+- Parser sugar: tuple shorthand `(start, stop[, step])` lowers to `range(...)`
+- Loop step rule: `by` requires an explicit step expression
+- Backend invariants: direct and tuple forms lower to equivalent C/LLVM call signatures
+- Coverage: [tests/unit/compiler/test_range_expression_hardening_matrix.py](tests/unit/compiler/test_range_expression_hardening_matrix.py), [tests/unit/compiler/test_range_codegen_hardening_matrix.py](tests/unit/compiler/test_range_codegen_hardening_matrix.py)
+- Decision: punctuation operators `..` and `..=` are deferred in this cycle; see [docs/_internal/planning/range-expression-surface-rfc-2026-05.md](docs/_internal/planning/range-expression-surface-rfc-2026-05.md)
+
 ---
 
 ### Parallel For Loop
@@ -1031,8 +1039,9 @@ end
 | **AST** | ✅ Yes | `TestBlock`, `DescribeBlock`, `ItBlock`, `ExpectStatement` |
 | **Interpreter** | ✅ Yes | Test execution and reporting |
 | **Typechecker** | ✅ Yes | Test block validation |
-| **LLVM Backend** | ⚠️ Limited | Test code generation |
-| **C Backend** | ⚠️ Limited | Test code generation |
+| **LLVM Backend** | ✅ Partial | `test`/`describe`/`it`/fixture/parameterized block lowering + `expect` assertion lowering |
+| **C Backend** | ✅ Partial | `test`/`describe`/`it`/fixture/parameterized block lowering + `expect` assertion generation |
+| **C++ Backend** | ✅ Partial | Inherits C-style test/fixture lowering with dedicated backend regression tests |
 | **LSP** | ✅ Yes | Test lens and hints |
 | **Formatter** | ✅ Yes | Test block formatting |
 | **Tests** | ✅ Yes | Test framework itself tested |
