@@ -450,6 +450,10 @@ class Lexer:
             "bitwise not": TokenType.BITWISE_NOT,
             "shift left": TokenType.LEFT_SHIFT,
             "shift right": TokenType.RIGHT_SHIFT,
+            "shifted left": TokenType.LEFT_SHIFT,
+            "shifted right": TokenType.RIGHT_SHIFT,
+            "shifted left by": TokenType.LEFT_SHIFT,
+            "shifted right by": TokenType.RIGHT_SHIFT,
 
             # Pointer operations (natural language)
             "address of": TokenType.ADDRESS_OF,

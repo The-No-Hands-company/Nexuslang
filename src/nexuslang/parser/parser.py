@@ -3722,7 +3722,10 @@ class Parser:
         
         # Parse expression carefully - stop at 'with'
         # Use a limited expression parser that stops at 'with'
-        if self.current_token.type == TokenType.IDENTIFIER:
+        if self.current_token and (
+            self.current_token.type == TokenType.IDENTIFIER or
+            self._can_be_identifier(self.current_token)
+        ):
             # Check if next token is 'with' - if so, just parse identifier
             var_name = self.current_token.lexeme
             self.advance()
@@ -4042,7 +4045,7 @@ class Parser:
         
         # Optional guard clause - supports both 'if' and 'when' keywords
         guard = None
-        if self.match(TokenType.IF) or self.match(TokenType.WHEN):
+        if self.match(TokenType.IF) or self.match(TokenType.WHEN) or self.match(TokenType.WHERE):
             guard = self.expression()
         
         # Compact inline case: case pattern as value
@@ -4190,14 +4193,14 @@ class Parser:
         
         # Variant pattern: Ok value, Error message, Some x
         # or simple identifier pattern: value
-        if self.current_token.type == TokenType.IDENTIFIER:
+        if self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
             first_name = self.current_token.lexeme
             self.advance()
             
             # Support dotted variant names (e.g. Result.Ok)
             while self.current_token.type == TokenType.DOT:
                 self.advance() # Eat '.'
-                if self.current_token.type == TokenType.IDENTIFIER:
+                if self.current_token.type == TokenType.IDENTIFIER or self._can_be_identifier(self.current_token):
                     first_name += "." + self.current_token.lexeme
                     self.advance()
                 else:
