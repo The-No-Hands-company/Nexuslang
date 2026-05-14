@@ -4600,6 +4600,8 @@ class Parser:
         2. try <try_block> catch <exception_var> <catch_block> end
         """
         line_number = self.current_token.line
+        dedent_seen = False
+        exception_type = None
         
         # Eat 'try'
         self.eat(TokenType.TRY)
@@ -4629,11 +4631,32 @@ class Parser:
             # Optional comma after "fails"
             if self.current_token and self.current_token.type == TokenType.COMMA:
                 self.advance()
+
+            # Consume optional NEWLINE/INDENT before the catch body.
+            if self.current_token and self.current_token.type == TokenType.NEWLINE:
+                self.advance()
+            if self.current_token and self.current_token.type == TokenType.INDENT:
+                self.advance()
                 
             # Parse catch block
             catch_block = []
             exception_var = None
             exception_properties = []
+
+            while (
+                self.current_token and
+                self.current_token.type != TokenType.EOF and
+                self.current_token.type != TokenType.DEDENT and
+                self.current_token.type != TokenType.END and
+                self.current_token.type != TokenType.END_TRY
+            ):
+                statement = self.statement()
+                if statement:
+                    catch_block.append(statement)
+
+            if self.current_token and self.current_token.type == TokenType.DEDENT:
+                self.advance()
+                dedent_seen = True
             
         else:
             # Syntax 2: try <try_block> catch <exception_var> <catch_block> end
@@ -4715,7 +4738,6 @@ class Parser:
                     catch_block.append(statement)
         
             # Consume DEDENT if present (after catch block) - this ends the try/catch
-            dedent_seen = False
             if self.current_token and self.current_token.type == TokenType.DEDENT:
                 self.advance()
                 dedent_seen = True
