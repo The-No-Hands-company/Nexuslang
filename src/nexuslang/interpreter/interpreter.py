@@ -4424,8 +4424,15 @@ class Interpreter:
                 self.enter_scope()
                     
                 try:
-                    # Bind instance to 'self'
+                    # Snapshot property values so we can detect which ones the
+                    # method body modifies via *direct* scope assignment (e.g.
+                    # `set count to count plus 1`) vs via `set me.count to …`
+                    # (which already writes through to obj.properties directly).
+                    initial_props = dict(obj.properties)
+
+                    # Bind instance to 'self' and 'me' (both are valid aliases)
                     self.set_variable("self", obj)
+                    self.set_variable("me", obj)
 
                     # Bind instance properties to scope (implicit self)
                     for key, value in obj.properties.items():
@@ -4453,15 +4460,19 @@ class Interpreter:
                             if isinstance(statement, ReturnStatement):
                                 break
                         
-                    # Update instance properties from scope
-                    for key in obj.properties.keys():
+                    # Write back only properties whose *scope variable* was changed
+                    # relative to the initial value.  This prevents the implicit
+                    # copy-back from overwriting property updates that the method
+                    # body performed via `set me.<prop> to …` (member assignment),
+                    # which already updated obj.properties in-place.
+                    for key in list(initial_props.keys()):
                         try:
-                            obj.set_property(key, self.get_variable(key))
+                            scope_value = self.get_variable(key)
+                            if scope_value != initial_props[key]:
+                                obj.set_property(key, scope_value)
                         except NameError:
-                            # Property variable not found in scope; keep original value
                             pass
                         except (AttributeError, TypeError) as e:
-                            # Property assignment failed; log and continue
                             import logging
                             logging.warning(
                                 f"Failed to update property {key} on {type(obj).__name__}: {e}"

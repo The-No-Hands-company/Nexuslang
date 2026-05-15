@@ -2242,8 +2242,23 @@ class Parser:
             class_name = self.current_token.lexeme
             self.advance()
 
-            # Check for generic type parameters: class Container<T> or class Functor<F :: * -> *>
-            generic_parameters, class_type_param_kinds = self._parse_class_generic_parameters()
+            # Natural-language generic syntax: class Box of T  or  class Map of K, V
+            if self.current_token and self.current_token.type == TokenType.OF:
+                self.advance()  # consume 'of'
+                generic_parameters = []
+                class_type_param_kinds = {}
+                while self.current_token and (
+                    self.current_token.type == TokenType.IDENTIFIER or
+                    self._can_be_identifier(self.current_token)
+                ):
+                    generic_parameters.append(self.current_token.lexeme)
+                    self.advance()
+                    if not (self.current_token and self.current_token.type == TokenType.COMMA):
+                        break
+                    self.advance()  # consume comma between type params
+            else:
+                # Check for generic type parameters: class Container<T> or class Functor<F :: * -> *>
+                generic_parameters, class_type_param_kinds = self._parse_class_generic_parameters()
 
             # Check for inheritance and interface implementation
             parent_classes, implemented_interfaces = self._parse_class_inheritance_and_interfaces()
@@ -5857,11 +5872,19 @@ class Parser:
                     if self.current_token.type in (
                         TokenType.WITH, TokenType.LEFT_PAREN, TokenType.DOT, TokenType.LEFT_BRACKET,
                         TokenType.PLUS, TokenType.MINUS, TokenType.TIMES, TokenType.DIVIDED_BY,
-                        TokenType.EQUAL_TO, TokenType.NOT_EQUAL_TO, TokenType.LESS_THAN, TokenType.GREATER_THAN,
                         TokenType.AND, TokenType.OR, TokenType.NEWLINE, TokenType.DEDENT, TokenType.COMMA,
                         TokenType.RIGHT_PAREN, TokenType.RIGHT_BRACKET,
                         TokenType.END, TokenType.RETURN, TokenType.IF, TokenType.WHILE, TokenType.FOR,
                         TokenType.EOF,
+                    ):
+                        break
+
+                    # Comparison-operator keywords (e.g. 'equals' -> EQUAL_TO) are only
+                    # hard stops for *subsequent* tokens in a multi-word member name.
+                    # On the first token they are valid method names: p.equals(x), p.not_equal(y).
+                    if not _first_member_token and self.current_token.type in (
+                        TokenType.EQUAL_TO, TokenType.NOT_EQUAL_TO,
+                        TokenType.LESS_THAN, TokenType.GREATER_THAN,
                     ):
                         break
 

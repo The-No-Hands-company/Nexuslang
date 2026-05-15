@@ -487,3 +487,173 @@ class TestClassDefinitionComprehensive:
         assert "clone" in class_b._derived_methods
         assert hasattr(class_c, '_is_singleton')
         assert class_c._is_singleton is True
+
+
+class TestParserFixesForClasses:
+    """Tests for parser fixes: reserved-word member names, generic class syntax, and 'me' alias."""
+
+    def test_equals_method_call_via_derive_works(self):
+        """p.equals(other) must work: 'equals' tokenises as EQUAL_TO but is valid after '.'."""
+        source = """
+        @derive(Equality)
+        class Point
+            property x as Integer
+            property y as Integer
+        end
+
+        set p1 to new Point
+        set p1.x to 3
+        set p1.y to 4
+
+        set p2 to new Point
+        set p2.x to 3
+        set p2.y to 4
+
+        set result to p1.equals(p2)
+        """
+        interpreter = run_program(source)
+        assert interpreter.get_variable("result") is True
+
+    def test_equals_method_call_false_when_different(self):
+        source = """
+        @derive(Equality)
+        class Point
+            property x as Integer
+            property y as Integer
+        end
+
+        set p1 to new Point
+        set p1.x to 1
+        set p1.y to 2
+
+        set p2 to new Point
+        set p2.x to 1
+        set p2.y to 9
+
+        set result to p1.equals(p2)
+        """
+        interpreter = run_program(source)
+        assert interpreter.get_variable("result") is False
+
+    def test_equals_method_call_with_non_object_returns_false(self):
+        """Calling equals() on a plain scalar must return False, not crash."""
+        source = """
+        @derive(Equality)
+        class Box
+            property value as Integer
+        end
+
+        set b to new Box
+        set b.value to 10
+        """
+        interpreter = run_program(source)
+        class_node = interpreter.classes.get("Box")
+        equals_fn = class_node._derived_methods["equals"]
+        b = interpreter.get_variable("b")
+        assert equals_fn(b, 42) is False
+
+    def test_generic_class_of_T_syntax_is_parsed(self):
+        """class Box of T should parse without error and register the class."""
+        source = """
+        class Box of T
+            property contents as T
+        end
+
+        set b to new Box
+        set b.contents to 99
+        """
+        interpreter = run_program(source)
+        assert "Box" in interpreter.classes
+        obj = interpreter.get_variable("b")
+        assert obj.properties['contents'] == 99
+
+    def test_generic_class_of_multiple_params(self):
+        """class Map of K, V should parse both type params."""
+        source = """
+        class Pair of A, B
+            property first as A
+            property second as B
+        end
+
+        set p to new Pair
+        set p.first to "hello"
+        set p.second to 42
+        """
+        interpreter = run_program(source)
+        class_node = interpreter.classes.get("Pair")
+        assert class_node is not None
+        assert len(class_node.generic_parameters) == 2
+        obj = interpreter.get_variable("p")
+        assert obj.properties['first'] == "hello"
+        assert obj.properties['second'] == 42
+
+    def test_me_alias_resolves_to_self_in_method(self):
+        """Methods should be able to reference the instance via 'me'."""
+        source = """
+        class Counter
+            property count as Integer
+
+            function increment
+                set me.count to me.count plus 1
+            end
+        end
+
+        set c to new Counter
+        set c.count to 10
+        c.increment()
+        set val to c.count
+        """
+        interpreter = run_program(source)
+        assert interpreter.get_variable("val") == 11
+
+    def test_me_and_self_both_resolve_in_same_method(self):
+        """Both 'me' and 'self' should resolve to the same instance."""
+        source = """
+        class Thing
+            property x as Integer
+
+            function double_x
+                set self.x to self.x times 2
+            end
+        end
+
+        set t to new Thing
+        set t.x to 7
+        t.double_x()
+        set val to t.x
+        """
+        interpreter = run_program(source)
+        assert interpreter.get_variable("val") == 14
+
+    def test_derive_equality_end_to_end_via_member_call(self):
+        """Full end-to-end: @derive(Equality) + p.equals(q) in NexusLang source."""
+        source = """
+        @derive(Equality)
+        class Color
+            property r as Integer
+            property g as Integer
+            property b as Integer
+        end
+
+        set c1 to new Color
+        set c1.r to 255
+        set c1.g to 0
+        set c1.b to 0
+
+        set c2 to new Color
+        set c2.r to 255
+        set c2.g to 0
+        set c2.b to 0
+
+        set same to c1.equals(c2)
+
+        set c3 to new Color
+        set c3.r to 0
+        set c3.g to 255
+        set c3.b to 0
+
+        set different to c1.equals(c3)
+        """
+        interpreter = run_program(source)
+        assert interpreter.get_variable("same") is True
+        assert interpreter.get_variable("different") is False
