@@ -334,11 +334,17 @@ class LifetimeChecker:
                 self._check_node(case.guard)
             self._check_statements(case.body)
 
-    def _check_TryCatchStatement(self, node) -> None:
+    def _check_TryCatch(self, node) -> None:
         self._check_statements(getattr(node, 'try_block', None) or [])
         self._check_statements(getattr(node, 'catch_block', None) or [])
         if getattr(node, 'finally_block', None):
             self._check_statements(node.finally_block)
+
+    def _check_TryCatchBlock(self, node) -> None:
+        self._check_TryCatch(node)
+
+    def _check_TryCatchStatement(self, node) -> None:
+        self._check_TryCatch(node)
 
     def _check_ClassDefinition(self, node) -> None:
         for stmt in (node.methods or []):
