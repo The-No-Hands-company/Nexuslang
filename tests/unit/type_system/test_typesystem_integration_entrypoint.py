@@ -60,7 +60,7 @@ def test_register_class_collects_properties_methods_and_interfaces():
         _restore_registry(ts.type_registry, snap)
 
 
-def test_register_generic_class_path_currently_raises_generic_constructor_error():
+def test_register_generic_class_path_registers_generic_type():
     ts = TypeSystem()
     snap = _snapshot_registry(ts.type_registry)
     try:
@@ -71,11 +71,13 @@ def test_register_generic_class_path_currently_raises_generic_constructor_error(
             generic_parameters=["T"],
         )
 
-        # Current behavior: registry generic constructor signature mismatch.
-        # This still validates that the generic registration branch is exercised.
-        import pytest
-        with pytest.raises(TypeError, match="GenericType.__init__"):
-            ts._register_class(class_def)
+        ts._register_class(class_def)
+
+        box = ts.type_registry.get_type("Box")
+        assert box is not None
+        assert box.name == "Box"
+        assert box.base_type.name == "Box"
+        assert box.type_parameters[0][0] == "T"
     finally:
         _restore_registry(ts.type_registry, snap)
 
