@@ -65,6 +65,33 @@ class TestSimpleInferenceAdditional:
         assert self.inference.infer_expression_type(membership) == BOOLEAN_TYPE
         assert self.inference.infer_expression_type(unknown) == ANY_TYPE
 
+    def test_binary_numeric_operators_fall_back_to_any_for_non_numeric_operands(self):
+        plus_non_numeric = BinaryOperation(
+            Literal("boolean", True),
+            TokenType.PLUS,
+            Literal("boolean", False),
+        )
+        division_non_numeric = BinaryOperation(
+            Literal("string", "x"),
+            TokenType.DIVIDED_BY,
+            Literal("integer", 2),
+        )
+        power_non_numeric = BinaryOperation(
+            Literal("string", "x"),
+            TokenType.POWER,
+            Literal("integer", 2),
+        )
+        floor_divide_non_numeric = BinaryOperation(
+            Literal("string", "x"),
+            TokenType.FLOOR_DIVIDE,
+            Literal("integer", 2),
+        )
+
+        assert self.inference.infer_expression_type(plus_non_numeric) == ANY_TYPE
+        assert self.inference.infer_expression_type(division_non_numeric) == ANY_TYPE
+        assert self.inference.infer_expression_type(power_non_numeric) == ANY_TYPE
+        assert self.inference.infer_expression_type(floor_divide_non_numeric) == ANY_TYPE
+
     def test_unary_operations_cover_numeric_boolean_and_fallback_paths(self):
         negative_float = UnaryOperation(TokenType.MINUS, Literal("float", 3.5))
         negate_bool = UnaryOperation(Token(TokenType.NOT, "not", None, 1, 1), Literal("boolean", True))
@@ -84,6 +111,7 @@ class TestSimpleInferenceAdditional:
         assert self.inference.infer_expression_type(FunctionCall("cached_fn"), env) == STRING_TYPE
         assert self.inference.infer_expression_type(FunctionCall("typed_fn"), env) == BOOLEAN_TYPE
         assert self.inference.infer_expression_type(FunctionCall("not_callable"), env) == ANY_TYPE
+        assert self.inference.infer_expression_type(FunctionCall("unknown"), env) == ANY_TYPE
 
     def test_duck_typed_collection_expressions_infer_element_types_and_empty_defaults(self):
         list_expr = SimpleNamespace(
@@ -149,6 +177,18 @@ class TestSimpleInferenceAdditional:
 
         assert inferred["flag"] == BOOLEAN_TYPE
         assert inferred["echo"] == FunctionType([ANY_TYPE, STRING_TYPE], STRING_TYPE)
+
+    def test_expression_and_program_fallback_paths(self):
+        assert self.inference.infer_expression_type(object()) == ANY_TYPE
+
+        program = Program(
+            [
+                ReturnStatement(Literal("integer", 1)),
+                VariableDeclaration("x", Literal("integer", 2)),
+            ]
+        )
+        inferred = self.inference.infer_program_types(program)
+        assert inferred["x"] == INTEGER_TYPE
 
 
 class TestSimpleInferenceConvenienceWrappers:
