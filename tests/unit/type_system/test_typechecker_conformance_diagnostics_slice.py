@@ -67,6 +67,38 @@ class TestConformanceDiagnosticsSlice:
         assert "suggestions" in result
         assert len(result["suggestions"]) > 0
 
+    def test_conformance_trait_key_present_but_unresolvable(self):
+        """Trait key present with null value follows unresolvable-trait branch."""
+        checker = _checker()
+        checker.type_registry["GhostTrait"] = None
+
+        result = checker.get_trait_conformance_diagnostics("AnyClass", "GhostTrait")
+
+        assert any("Cannot resolve trait type" in s for s in result["suggestions"])
+
+    def test_conformance_class_key_present_but_unresolvable(self):
+        """Class key present with null value follows unresolvable-class branch."""
+        checker = _checker()
+        checker.type_registry["Printable"] = _mock_trait("Printable", {})
+        checker.type_registry["GhostClass"] = None
+
+        result = checker.get_trait_conformance_diagnostics("GhostClass", "Printable")
+
+        assert any("Cannot resolve class type" in s for s in result["suggestions"])
+
+    def test_conformance_trait_without_methods_attribute_has_empty_required_methods(self):
+        """Trait object without methods attribute keeps required method list empty."""
+        checker = _checker()
+        trait = SimpleNamespace(name="MethodlessTrait")
+        class_type = ClassType("Carrier", {}, {})
+        checker.type_registry["MethodlessTrait"] = trait
+        checker.type_registry["Carrier"] = class_type
+
+        result = checker.get_trait_conformance_diagnostics("Carrier", "MethodlessTrait")
+
+        assert result["required_methods"] == []
+        assert result["conforms"] is True
+
     def test_conformance_class_fully_implements_trait(self):
         """Class fully implements trait returns conforms=True."""
         checker = _checker()
@@ -162,6 +194,66 @@ class TestConformanceDiagnosticsSlice:
         assert "to_string" in result.get("incompatible_methods", {}), (
             "Return type mismatch should be in incompatible_methods"
         )
+
+    def test_conformance_return_mismatch_does_not_duplicate_signature_suggestion(self):
+        """When signature suggestion exists, return mismatch does not add duplicate fix line."""
+        checker = _checker()
+
+        trait_methods = {"compare": _mock_method([INTEGER_TYPE], STRING_TYPE)}
+        trait = _mock_trait("Comparable", trait_methods)
+        class_methods = {"compare": _mock_method([], INTEGER_TYPE)}
+        class_type = ClassType("CmpImpl", {}, class_methods)
+
+        checker.type_registry["Comparable"] = trait
+        checker.type_registry["CmpImpl"] = class_type
+
+        result = checker.get_trait_conformance_diagnostics("CmpImpl", "Comparable")
+
+        signature_suggestions = [s for s in result["suggestions"] if s.startswith("Update method")]
+        return_fix_suggestions = [s for s in result["suggestions"] if "Fix return type" in s]
+
+        assert len(signature_suggestions) == 1
+        assert len(return_fix_suggestions) == 0
+
+    def test_conformance_skips_param_count_check_when_param_types_missing(self):
+        """Missing param_types on either side bypasses parameter-count mismatch logic."""
+        checker = _checker()
+
+        trait_methods = {"shape": SimpleNamespace(return_type=STRING_TYPE)}
+        trait = _mock_trait("ShapeTrait", trait_methods)
+        class_methods = {"shape": SimpleNamespace(return_type=STRING_TYPE)}
+        class_type = ClassType("ShapeImpl", {}, class_methods)
+
+        checker.type_registry["ShapeTrait"] = trait
+        checker.type_registry["ShapeImpl"] = class_type
+
+        result = checker.get_trait_conformance_diagnostics("ShapeImpl", "ShapeTrait")
+
+        assert result["conforms"] is True
+        assert result["incompatible_methods"] == {}
+
+    def test_conformance_multiple_methods_loops_after_return_type_guard(self):
+        """A method lacking return_type metadata still allows looping to subsequent methods."""
+        checker = _checker()
+
+        trait_methods = {
+            "m1": SimpleNamespace(param_types=[]),
+            "m2": _mock_method([], STRING_TYPE),
+        }
+        trait = _mock_trait("LoopTrait", trait_methods)
+        class_methods = {
+            "m1": SimpleNamespace(param_types=[]),
+            "m2": _mock_method([], STRING_TYPE),
+        }
+        class_type = ClassType("LoopImpl", {}, class_methods)
+
+        checker.type_registry["LoopTrait"] = trait
+        checker.type_registry["LoopImpl"] = class_type
+
+        result = checker.get_trait_conformance_diagnostics("LoopImpl", "LoopTrait")
+
+        assert result["conforms"] is True
+        assert set(result["required_methods"]) == {"m1", "m2"}
 
     def test_conformance_multiple_missing_methods(self):
         """Multiple missing methods all listed."""

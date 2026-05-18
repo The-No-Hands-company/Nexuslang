@@ -7,6 +7,7 @@ from nexuslang.typesystem.typechecker import TypeChecker, TypeEnvironment
 from nexuslang.typesystem.types import (
     ANY_TYPE,
     BOOLEAN_TYPE,
+    ClassType,
     COMPARABLE_TRAIT,
     EQUATABLE_TRAIT,
     FLOAT_TYPE,
@@ -289,3 +290,70 @@ class TestGenericConstraintsSlice:
         )
 
         assert result is True
+
+    def test_generic_constraints_known_trait_not_implemented(self):
+        """Known trait with non-conforming type appends the expected error."""
+        checker = _checker()
+        checker.hkt_registry = {}
+        type_params = ["T"]
+        type_args = [ClassType("PlainObject", {}, {})]
+        constraints = {"T": ["Comparable"]}
+
+        result = checker.check_generic_constraints(
+            type_params, type_args, constraints, context="test"
+        )
+
+        assert result is False
+        assert any("does not implement trait 'Comparable'" in err for err in checker.errors)
+
+
+class TestValidateGenericFunctionCallSlice:
+    def test_validate_generic_function_call_returns_true_for_non_generic_definition(self):
+        checker = _checker()
+        func_def = SimpleNamespace()
+
+        result = checker.validate_generic_function_call("plain", func_def, [INTEGER_TYPE])
+
+        assert result is True
+
+    def test_validate_generic_function_call_uses_empty_constraints_when_not_dict(self):
+        checker = _checker()
+
+        captured = {}
+
+        def _capture(type_parameters, type_args, constraints, context):
+            captured["constraints"] = constraints
+            captured["context"] = context
+            return True
+
+        checker.check_generic_constraints = _capture
+        func_def = SimpleNamespace(
+            type_parameters=["T"],
+            type_constraints=["not-a-dict"],
+        )
+
+        result = checker.validate_generic_function_call("wrapped", func_def, [INTEGER_TYPE])
+
+        assert result is True
+        assert captured["constraints"] == {}
+        assert captured["context"] == "function 'wrapped'"
+
+    def test_validate_generic_function_call_passes_dict_constraints_through(self):
+        checker = _checker()
+
+        captured = {}
+
+        def _capture(type_parameters, type_args, constraints, context):
+            captured["constraints"] = constraints
+            return True
+
+        checker.check_generic_constraints = _capture
+        func_def = SimpleNamespace(
+            type_parameters=["T"],
+            type_constraints={"T": ["Comparable"]},
+        )
+
+        result = checker.validate_generic_function_call("ordered", func_def, [INTEGER_TYPE])
+
+        assert result is True
+        assert captured["constraints"] == {"T": ["Comparable"]}

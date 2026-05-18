@@ -115,6 +115,39 @@ class TestGenericInstantiationEdges:
         assert isinstance(result, TupleType)
         assert result.element_types == [ANY_TYPE]
 
+    def test_list_without_type_args_or_initial_value_defaults_to_any(self):
+        checker = _checker()
+
+        result = checker.check_generic_type_instantiation(
+            _generic_node("list"),
+            _env(),
+        )
+
+        assert isinstance(result, ListType)
+        assert result.element_type == ANY_TYPE
+
+    def test_set_without_type_args_or_initial_value_defaults_to_any(self):
+        checker = _checker()
+
+        result = checker.check_generic_type_instantiation(
+            _generic_node("set"),
+            _env(),
+        )
+
+        assert isinstance(result, SetType)
+        assert result.element_type == ANY_TYPE
+
+    def test_tuple_without_type_args_or_initial_value_defaults_to_any(self):
+        checker = _checker()
+
+        result = checker.check_generic_type_instantiation(
+            _generic_node("tuple"),
+            _env(),
+        )
+
+        assert isinstance(result, TupleType)
+        assert result.element_types == [ANY_TYPE]
+
 
 class TestFunctionCallValidationEdges:
     def test_non_variadic_exact_arity_error_message(self):
@@ -188,3 +221,24 @@ class TestFunctionCallValidationEdges:
 
         assert result == BOOLEAN_TYPE
         assert len(seen) == 2
+
+    def test_variadic_index_only_checks_non_variadic_prefix_arguments(self):
+        checker = _checker()
+        env = _env()
+
+        fn_type = FunctionType([INTEGER_TYPE, STRING_TYPE], BOOLEAN_TYPE)
+        fn_type.variadic = True
+        fn_type.min_params = 1
+        fn_type.variadic_index = 1
+        env.define_function("var_slice", fn_type)
+
+        checker.type_inference.infer_argument_types_from_function = (
+            lambda function_type, arguments, variables: [STRING_TYPE, INTEGER_TYPE]
+        )
+
+        call = _call("var_slice", arguments=[object(), object()])
+        result = checker.check_function_call(call, env)
+
+        assert result == BOOLEAN_TYPE
+        assert any("argument 1 expects type 'integer'" in err for err in checker.errors)
+        assert all("argument 2" not in err for err in checker.errors)
