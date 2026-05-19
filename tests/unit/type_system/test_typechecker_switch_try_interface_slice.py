@@ -336,3 +336,30 @@ class TestInterfaceAndAbstractionsSlice:
 
         with pytest.raises(TypeError, match="does not implement trait method serialize from trait Serializable"):
             checker.check_trait_method_implementation("Blob", "Serializable")
+
+    def test_check_trait_method_implementation_raises_for_incompatible_signature(self, monkeypatch):
+        checker = _checker()
+        checker.trait_methods["Serializable"] = {"serialize"}
+
+        trait_method = FunctionType([], STRING_TYPE)
+        class_method = FunctionType([], ANY_TYPE)
+
+        checker.type_registry["Serializable"] = ClassType("Serializable", {}, {"serialize": trait_method})
+        checker.type_registry["Blob"] = ClassType("Blob", {}, {"serialize": class_method})
+        monkeypatch.setattr(checker, "types_compatible", lambda left, right: False, raising=False)
+
+        with pytest.raises(TypeError, match="Trait method serialize in class Blob is not compatible with trait Serializable"):
+            checker.check_trait_method_implementation("Blob", "Serializable")
+
+    def test_check_trait_method_implementation_accepts_compatible_signature(self, monkeypatch):
+        checker = _checker()
+        checker.trait_methods["Serializable"] = {"serialize"}
+
+        trait_method = FunctionType([], STRING_TYPE)
+        class_method = FunctionType([], STRING_TYPE)
+
+        checker.type_registry["Serializable"] = ClassType("Serializable", {}, {"serialize": trait_method})
+        checker.type_registry["Blob"] = ClassType("Blob", {}, {"serialize": class_method})
+        monkeypatch.setattr(checker, "types_compatible", lambda left, right: True, raising=False)
+
+        checker.check_trait_method_implementation("Blob", "Serializable")

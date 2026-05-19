@@ -3038,10 +3038,22 @@ class TypeChecker:
         
         class_type = self.type_registry[class_name]
         trait_methods = self.trait_methods[trait_name]
+        trait_type = self.type_registry.get(trait_name)
         
         for method_name in trait_methods:
             if method_name not in class_type.methods:
                 raise TypeError(f"Class {class_name} does not implement trait method {method_name} from trait {trait_name}")
+
+            # When the trait definition is available in the registry, validate
+            # signature compatibility for required methods as well.
+            if trait_type is not None and hasattr(trait_type, 'methods'):
+                required_method_type = trait_type.methods.get(method_name)
+                class_method_type = class_type.methods.get(method_name)
+                if required_method_type is not None and class_method_type is not None:
+                    if not self.types_compatible(class_method_type, required_method_type):
+                        raise TypeError(
+                            f"Trait method {method_name} in class {class_name} is not compatible with trait {trait_name}"
+                        )
 
     def get_trait_conformance_diagnostics(self, class_name: str, trait_name: str) -> Dict[str, Any]:
         """Generate detailed conformance diagnostics for trait/interface implementation.
